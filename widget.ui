@@ -118,7 +118,15 @@
          <string>Line</string>
         </property>
        </item>
+       <item>
+        <property name="text">
+         <string>Arc</string>
+        </property>
+       </item>
       </widget>
+     </item>
+     <item>
+      <widget class="GLWidget_3D" name="glWid3dim" native="true"/>
      </item>
      <item>
       <widget class="QPushButton" name="move_ctrl_pt">
@@ -143,16 +151,6 @@
      </item>
     </layout>
    </widget>
-  </widget>
-  <widget class="GLWidget_3D" name="glWid3dim" native="true">
-   <property name="geometry">
-    <rect>
-     <x>660</x>
-     <y>50</y>
-     <width>561</width>
-     <height>451</height>
-    </rect>
-   </property>
   </widget>
   <widget class="QGroupBox" name="GradationBox">
    <property name="geometry">

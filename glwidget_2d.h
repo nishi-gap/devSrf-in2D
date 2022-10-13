@@ -99,12 +99,12 @@ private:
 
     int referencedRuling(QPointF p);
     void addPoints_intplation(QMouseEvent *e, QPointF& p);
-
+    void assignment_refHE(QPointF& p);
     std::vector<glm::f64vec2> CurvePath;
 
     //std::vector<int> ControllPoints_gradation;//0~510 色の範囲, -1指定なし
     int DiffWheel;
-    int refMeshNum;
+    HalfEdge *refHE;
     int movePt;
     int curvetype;
     QList<std::tuple<QString, int, QString >> CurveList;

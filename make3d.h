@@ -49,14 +49,12 @@ public:
 
     void InsertVertex(Vertex *v);
     void ReInsertVertex(HalfEdge *he, std::vector<HalfEdge*>& edges);
-    void setGradationValue(int val, int refMeshNum,  int& color, int InterpolationType, std::vector<glm::f64vec2>& CurvePath);
-    void SetGradationPoint4linear(std::list<LinearRange>& path, int n = -1);
+    void setGradationValue(int val, HalfEdge *refHE,  int& color, int InterpolationType, std::vector<glm::f64vec2>& CurvePath);
+    void SetGradationPoint4linear(std::vector<HalfEdge*>& path, HalfEdge *he);
 
     void setOutline(std::vector<Vertex*> outline);
     void set2DMesh();
     void addRulings(); //0:move curve point, 1: add(erase, insert) curve point
-
-    void updateRulings();
 
     void SelectCurve(QPointF pt);
     void AddControlPoint(QPointF pt, int curveDimention, int DivSize);
@@ -71,22 +69,24 @@ public:
     int searchPointIndex(QPointF pt, int& ptInd, int type);//type = 0 -> Control Point, 1: Curve Point
 
 private:
-    void LinearInterPolation(std::list<LinearRange>& path);
+    void LinearInterPolation(std::vector<HalfEdge*>& path);
     void SplineInterPolation(std::vector<glm::f64vec2>& CurvePath);
     void setHalfEdgePair(HalfEdge *he);
     
     void LinkRulingAndGradationArea(Face *f);
-    void SetGradationArea(ruling *r, meshline *ml);
+    void SetGradationArea(meshline *ml);
     void clear();
     void deleteHE(HalfEdge *he);
-    void replaceHE(HalfEdge *he);
+    void ConnectEdge(HalfEdge *he);
 
     std::vector<int> refCrv;//0:未参照　1:参照
     std::vector<FaceGradation> Fgrad;
-    LinearRange linearrange[2];
+
     int crvPtNum;
     int befFaceNum;
     void makePath(Face *start, Face *end, std::list<LinearRange>& path);
+    HalfEdge *start, *end;
+    std::vector<HalfEdge*> makePath(HalfEdge *start, HalfEdge *end);
 };
 
 

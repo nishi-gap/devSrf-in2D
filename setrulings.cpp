@@ -6,10 +6,10 @@ Vertex::Vertex(glm::f64vec3 _p){
     deformed = false;
 }
 
-HalfEdge::HalfEdge(Vertex *v, double _angle){
+HalfEdge::HalfEdge(Vertex *v){
     vertex = v;
     pair = nullptr;
-    angle = _angle;
+    r = nullptr;
     v->halfedge.push_back(this);
 }
 
@@ -24,11 +24,13 @@ ruling::ruling(Vertex *a, Vertex *b, crvpt *_pt) {
     r = std::make_tuple(a, b);
     Gradation = 0;
     hasGradPt = false;
+    he[0] = he[1] = nullptr;
     pt = _pt;
 }
 
 ruling::ruling(){
     IsCrossed = -1;
+    he[0] = he[1] = nullptr;
     Gradation = 0;
     hasGradPt = false;
 }
@@ -52,11 +54,11 @@ meshline::meshline(Vertex *a, Vertex *b, crvpt *_pt){
 }
 
 Face::Face(HalfEdge *_halfedge){
-    rulings.clear();
+    //rulings.clear();
     halfedge = _halfedge;
     bend = false;
     hasGradPt = false;
-    Gradation = 0;
+    //Gradation = 0;
     //GradPt = false;
 }
 
@@ -70,10 +72,10 @@ CRV::CRV(int _crvNum, int DivSize){
         ruling *r = new ruling();
         Rulings.push_back(r);
     }
-    for(int i = 0; i < DivSize-2;i++){
-        meshline *l = new meshline();
-        meshLines.push_back(l);
-    }
+    //for(int i = 0; i < DivSize-2;i++){
+        //meshline *l = new meshline();
+        //meshLines.push_back(l);
+    //}
 
     isempty = true;
     curveType = -1;
@@ -231,9 +233,10 @@ bool CRV::setPoint(std::vector<Vertex*>&outline, glm::f64vec3 N, glm::f64vec3& c
     if(itr == crossPoint.end())return IsIntersected;
     int minInd = std::distance(crossPoint.begin(), itr);
     minInd /= 2;
-    P.push_back(crossPoint[2 * minInd]); P.push_back(crossPoint[2 * minInd + 1]);//原因ここ?
+    //P.push_back(crossPoint[2 * minInd]); P.push_back(crossPoint[2 * minInd + 1]);//原因ここ?
     for(int i = 0; i < (int)crossPoint.size(); i++){
-        if(i != minInd || i != minInd + 1)P.push_back(crossPoint[i]);
+        //if(i != minInd || i != minInd + 1)
+            P.push_back(crossPoint[i]);
     }
     return IsIntersected;
 }
@@ -262,12 +265,11 @@ void CRV::BezierRulings(OUTLINE *outline, int& DivSize, int crvPtNum){
         bool IsIntersected = setPoint(vertices, N, CurvePoints[n].pt, crossPoint);
 
         if(IsIntersected){
+            /*
             if(RulingSet){
                 for(int j = 0; j < (int)crossPoint.size(); j += 2){
                     meshLines[mind]->vertices[0]->p = crossPoint[j];
                     meshLines[mind]->vertices[1]->p = crossPoint[j + 1];
-                    std::vector<Vertex*> tmp {new Vertex(crossPoint[j]), new Vertex(crossPoint[j + 1])};
-                    meshLines[mind]->vertices4grad.push_back(tmp);
                 }
                 RulingSet = false;
                 mind++;
@@ -280,10 +282,15 @@ void CRV::BezierRulings(OUTLINE *outline, int& DivSize, int crvPtNum){
                 }
                 RulingSet = true;
                 rind++;
+            }*/
+            for(int j = 0; j < (int)crossPoint.size(); j += 2){
+                Rulings[rind]->r = std::make_tuple(new Vertex(crossPoint[j]), new Vertex(crossPoint[j+1]));
+                Rulings[rind]->pt = &CurvePoints[n];
+                //Rulings.push_back(new ruling(crossPoint[j],crossPoint[j + 1], &CurvePoints[n]));
+                i++;
             }
-
         }
-        t += 1.0 / (double)(std::min(2 * DivSize - 3, crvPtNum) - 1);
+        t += 1.0 / (double)(std::min(DivSize, crvPtNum) - 1);
     }
     return;
 }
@@ -332,6 +339,7 @@ void CRV::BsplineRulings(OUTLINE *outline, int& DivSize, int crvPtNum, int curve
     //ruling *r;
     std::vector<ruling*> bef;
     while(n < eind){
+        /*
         if(RulingSet){
             for(int j = 0; j < (int)CrossPoints[floor(n)].size(); j += 2){
                 meshLines[mind]->vertices[0]->p = CrossPoints[floor(n)][j];
@@ -352,8 +360,14 @@ void CRV::BsplineRulings(OUTLINE *outline, int& DivSize, int crvPtNum, int curve
             }
             rind++;
             RulingSet = true;
+        }*/
+        Rulings[rind]->r = std::make_tuple(new Vertex(CrossPoints[floor(n)][0]), new Vertex(CrossPoints[floor(n)][1]));
+        Rulings[rind]->pt = &CurvePoints[floor(n)];
+        for(int j = 0; j < (int)CrossPoints[floor(n)].size(); j += 2){
+
         }
-        n += (double)(eind - sind + 1)/(double)(2 * DivSize  - 3);
+        rind++;
+        n += (double)(eind - sind + 1)/(double)(DivSize - 1);
     }
     isempty = false;
     return;
@@ -377,12 +391,13 @@ void CRV::Line(){
 void CRV::LineRulings(OUTLINE *outline, int DivSize){
     if(ControllPoints.size() != 2)return;
     double l = 1000;//適当に大きな値
+
     std::vector<glm::f64vec3> crossPoint;
     std::vector<std::vector<glm::f64vec3>> CrossPoints;
     glm::f64vec3 V = glm::normalize(ControllPoints[1] - ControllPoints[0]);
     glm::f64vec3 N = l * glm::f64vec3{-V.y, V.x, 0};
     int i = 0;
-    int sind = -1, eind = curveNum;
+    int sind = -1, eind = curveNum - 1;
     std::vector<Vertex*> vertices = outline->getVertices();
 
     for(i = 0; i < curveNum; i++){
@@ -395,12 +410,14 @@ void CRV::LineRulings(OUTLINE *outline, int DivSize){
     double n = double(sind);
     int mind = 0, rind = 0;
     while(n < eind){
+        /*
         if(RulingSet){
+            meshLines[mind]->vertices4grad.clear();
             for(int j = 0; j < (int)CrossPoints[floor(n)].size(); j += 2){
                 meshLines[mind]->vertices[0]->p = CrossPoints[floor(n)][j];
                 meshLines[mind]->vertices[1]->p = CrossPoints[floor(n)][j + 1];
-                //std::vector<Vertex*> tmp {new Vertex(crossPoint[j]), new Vertex(crossPoint[j + 1])};
-                //meshLines[mind]->vertices4grad.push_back(tmp);
+                std::tuple<Vertex*, Vertex*> tmp = std::make_tuple(new Vertex(CrossPoints[floor(n)][j]), new Vertex(CrossPoints[floor(n)][j + 1]));
+                meshLines[mind]->vertices4grad.push_back(tmp);
             }
             meshLines[mind]->pt = &CurvePoints[floor(n)];
             meshLines[mind]->hasRulings[0] = Rulings[rind - 1];
@@ -413,8 +430,12 @@ void CRV::LineRulings(OUTLINE *outline, int DivSize){
 
             rind++;
             RulingSet = true;
-        }
-        n += (double)(eind - sind + 1)/(double)(2 * DivSize  - 3);
+        }*/
+        Rulings[rind]->r = std::make_tuple(new Vertex(CrossPoints[floor(n)][0]), new Vertex(CrossPoints[floor(n)][1]));
+        Rulings[rind]->pt = &CurvePoints[floor(n)];
+
+        rind++;
+        n += (double)(eind - sind + 1)/(double)(DivSize - 1);
     }
     isempty = false;
     return;
@@ -742,6 +763,25 @@ bool cn(std::vector<glm::f64vec2> &V2, QPointF p) {
             if (p.x() < (V[i].x + (vt * (V[i + 1].x - V[i].x)))) cnt--;
         }
     }
+    if (cnt == 0) return false;
+    else return true;
+}
+
+bool cn(Face *face, glm::f64vec3 p){
+    int cnt = 0;
+
+    double vt;
+    HalfEdge *he = face->halfedge;
+    do{
+        if(he->vertex->p.y <= p.y && he->next->vertex->p.y > p.y){
+            vt = (p.y - he->vertex->p.y) / (he->next->vertex->p.y - he->vertex->p.y);
+            if(p.x < (he->vertex->p.x + vt * (he->next->vertex->p.x - he->vertex->p.x)))cnt++;
+        }else if(he->vertex->p.y > p.y && he->next->vertex->p.y <= p.y){
+            vt = (p.y - he->vertex->p.y)/(he->next->vertex->p.y - he->vertex->p.y);
+            if(p.x < (he->vertex->p.x + vt * (he->next->vertex->p.x - he->vertex->p.x)))cnt--;
+        }
+
+    }while(he != face->halfedge);
     if (cnt == 0) return false;
     else return true;
 }

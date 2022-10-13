@@ -22,9 +22,9 @@ GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
     InterpolationType = 0;
     //ControllPoints_gradation.clear();
     DiffWheel = 0;
-    refMeshNum = -1;
     movePt = -1;
     SelectedCurveIndex = -1;
+    refHE = nullptr;
     KeyEvent = -1;
     curvetype = 0;
 
@@ -182,7 +182,7 @@ void GLWidget_2D::ChangedDivSizeEdit(int n){
     }
 
     if(model->outline->isClosed && model->CrossDection4AllCurve()){
-        model->updateRulings();
+        model->addRulings();
         emit foldingSignals();
     }
 
@@ -196,7 +196,7 @@ void GLWidget_2D::swapCrvsOnLayer(int n1, int n2){
     std::iter_swap(model->crvs.begin() + n1, model->crvs.begin() + n2);
     if(SelectedCurveIndex == n1)SelectedCurveIndex = n2;
     else SelectedCurveIndex = n1;
-    model->updateRulings();
+    model->addRulings();
     emit foldingSignals();
     update();
 }
@@ -216,49 +216,32 @@ void GLWidget_2D::paintGL(){
     glLoadIdentity();
     glOrtho(-0.5, (float)s.width() -0.5, (float)s.height() -0.5, -0.5, -1, 1);
 
-    //グラデーションの描画
     float r, g, b = 0;
-    std::vector<glm::f64vec3> Mesh;
-    std::vector<std::vector<glm::f64vec3>> TriMeshs;
-
-    for(auto& f : model->Faces){
-        Mesh.clear();
-        HalfEdge *h = f->halfedge;
-        do{
-            Mesh.push_back(h->vertex->p);
-            h = h->next;
-        }while(h != f->halfedge);
-        Triangulation(Mesh, TriMeshs);
-        if(f->Gradation == 0){
-            r = g = b = 1;
-        } else if(f->Gradation > 0){
-            r = 1; g = b = 1 - (float)f->Gradation/255.f;
-        }else{
-            b = 1;
-            g = r = 1 + (float)f->Gradation/255.f;
-        }
-        glColor3d(r,g,b);
-        for(auto& tri: TriMeshs){
-            glBegin(GL_POLYGON);
-            for(auto&v: tri){
-                glVertex2d(v.x, v.y);
-            }
-            glEnd();
-        }
-    }
-
     //rulingの描画
     glm::f64vec2 p, p2;
     glPolygonOffset(0.0,1.0);
     for(auto& curve: model->crvs){
         if(curve->isempty)continue;
-        for (int i = 0; i < (int)curve->Rulings.size(); i++) {
-            if(curve->Rulings[i]->IsCrossed == -1)glColor3d(0,0,0);
-            else if(curve->Rulings[i]->IsCrossed == 0) glColor3d(0,1,0);
-            else continue;
+        for(auto&rl: curve->Rulings){
+            if(refHE != nullptr && refHE->r == rl)glColor3d(1,1,0);
+            else{
+                if(rl->IsCrossed == 1)continue;
+                if(rl->IsCrossed == 0)glColor3d(0,1,0);
+                else{
+                    if(rl->Gradation == 0) r = g = b = 0.4;
+                    else if(rl->Gradation > 0){
+                        r = 1; g = b = 1 - (float)rl->Gradation/255.f;
+                    }else{
+                        b = 1;
+                        g = r = 1 + (float)rl->Gradation/255.f;
+                    }
+                    glColor3d(r,g,b);
+                }
+            }
+
             glBegin(GL_LINES);
             glLineWidth(5.0f);
-            p = std::get<0>(curve->Rulings[i]->r)->p, p2 = std::get<1>(curve->Rulings[i]->r)->p;
+            p = std::get<0>(rl->r)->p, p2 = std::get<1>(rl->r)->p;
             glVertex2d(p.x, p.y);
             glVertex2d(p2.x, p2.y);
             glEnd();
@@ -397,7 +380,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
                     if(model->outline->isClosed){
                         model->crvs[SelectedCurveIndex]->BsplineRulings(model->outline,DivSize,crvPtNum, curveDimention);
                         if(!model->crvs[SelectedCurveIndex]->isempty){
-                            model->updateRulings();
+                            model->addRulings();
                             emit foldingSignals();
                         }
                     }
@@ -438,6 +421,7 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
     else if(drawtype == "OutlineRectangle" && movePt != -1)model->outline->getVertices()[movePt]->p = glm::f64vec3{p.x(), p.y(),0};
     else if(drawtype == "EditVertex") model->outline->EditVertex(p);
     else if(drawtype == "MoveOutline") model->outline->MoveVertex(p);
+    else if(drawtype == "NewGradationMode")assignment_refHE(p);
     //else if(model->getSelectedCurveIndex(p) == -1 && (drawtype == "DeleteCurve" || drawtype == "MoveControlPoint" || drawtype == "InsertControlPoint" || drawtype == "DeleteCntrlPt"))
         //SelectedCurveIndex = model->getSelectedCurveIndex(p);
 
@@ -454,14 +438,12 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
             if(model->crvs[SelectedCurveIndex]->getCurveType() == 2){
                 model->crvs[SelectedCurveIndex]->LineRulings(model->outline,DivSize);
             }
-            model->updateRulings();
+            model->addRulings();
         }
     }
 
-    if(model->CrossDection4AllCurve()){
-        //model->addRulings();
-        emit foldingSignals();
-    }
+    if(model->CrossDection4AllCurve()) emit foldingSignals();
+
     update();
 
 }
@@ -525,11 +507,11 @@ int GLWidget_2D::referencedRuling(QPointF p){
 }
 
 void GLWidget_2D::wheelEvent(QWheelEvent *we){
-    if(drawtype != "NewGradationMode")return;
+    if(drawtype != "NewGradationMode" || refHE == nullptr)return;
 
     DiffWheel = (we->angleDelta().y() > 0) ? 1 : -1;
     int color;
-    model->setGradationValue(DiffWheel, refMeshNum, color, InterpolationType, CurvePath);
+    model->setGradationValue(DiffWheel, refHE, color, InterpolationType, CurvePath);
     emit ColorChangeFrom(0, color);
     emit foldingSignals();
 
@@ -538,43 +520,16 @@ void GLWidget_2D::wheelEvent(QWheelEvent *we){
 }
 
 void GLWidget_2D::addPoints_intplation(QMouseEvent *e, QPointF& p){
-    int i = 0;
-    std::vector<glm::f64vec2> mesh;
-    HalfEdge *h;
-    for(auto& f: model->Faces){
-        h = f->halfedge;
-        mesh.clear();
-        do{
-            mesh.push_back(h->vertex->p);
-            h = h->next;
-        }while(h != f->halfedge);
-        if(cn(mesh, p)){
-            refMeshNum = i;
-
-            if(e->button() == Qt::RightButton)model->Faces[i]->hasGradPt = false;
-            else{
-
-                f->hasGradPt = true;
-                f->Gradation = f->rulings[0]->pt->color;
-                f->Gradation = (f->Gradation < -255)? -255 : (255 < f->Gradation)? 255 : f->Gradation;
-                f->rulings[0]->pt->color = f->Gradation;
-                int color;
-                model->setGradationValue(0, refMeshNum, color, InterpolationType, CurvePath);
-                emit ColorChangeFrom(0, f->Gradation);
-                emit foldingSignals();
-            }
-        }
-        i++;
-    }
-
-
+    if(refHE == nullptr)return;
+    int color;
+    model->setGradationValue(0, refHE, color, InterpolationType, CurvePath);
+    emit ColorChangeFrom(0, refHE->r->Gradation);
+    emit foldingSignals();
     update();
 }
 
 void GLWidget_2D::ApplyNewGradationMode(){
-    //if(refcurve == -1){qDebug() << "there is no curve"; return;}
-    //auto CurvePoints = CRVS[refcurve].getCurvePoints();
-    if(refMeshNum == -1){std::cout << "you neeed to add gradation point"<<std::endl; return;}
+    if(refHE == nullptr){std::cout << "you neeed to add gradation point"<<std::endl; return;}
     //QPointF p{-1,-1};
     //int color;
     //model->setGradationValue(p, 0, refMeshNum, color, InterpolationType, CurvePath);
@@ -584,11 +539,13 @@ void GLWidget_2D::ApplyNewGradationMode(){
 }
 
 void GLWidget_2D::getGradationFromSlider(int val){
-    if(refMeshNum == -1) return;
-    model->Faces[refMeshNum]->Gradation = val;
-    for(auto& r: model->Faces[refMeshNum]->rulings)r->pt->color = val;
-    //model->crv->setcolor(1, val, refMeshNum);
+    if(refHE == nullptr) return;
+    refHE->r->Gradation = val;
     emit ColorChangeFrom(2, val);
+    int color;
+    model->setGradationValue(0, refHE, color, InterpolationType, CurvePath);
+    emit foldingSignals();
+    update();
 }
 
 void GLWidget_2D::OpenDebugWindwow(){
@@ -596,4 +553,20 @@ void GLWidget_2D::OpenDebugWindwow(){
     emit CurvePathSet(CurvePath);
 
     gw->show();
+}
+
+void GLWidget_2D::assignment_refHE(QPointF& p){
+    glm::f64vec3 curPos{p.x(), p.y(), 0};
+    refHE = nullptr;
+    double dist = 10;
+    for(auto&crv: model->crvs){
+        if(crv->isempty)continue;
+        for(auto&rl: crv->Rulings){
+            if(rl->IsCrossed != -1)continue;
+            double d = glm::length(glm::cross((curPos - std::get<0>(rl->r)->p), (std::get<0>(rl->r)->p) - std::get<1>(rl->r)->p))/glm::length(std::get<0>(rl->r)->p - std::get<1>(rl->r)->p);
+            if(d < dist){
+                dist = d; refHE = rl->he[0];
+            }
+        }
+    }
 }

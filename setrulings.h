@@ -29,19 +29,6 @@ public:
 
 };
 
-class HalfEdge{
-public:
-    Vertex *vertex;
-    Face *face;
-    HalfEdge *prev;
-    HalfEdge *next;
-    HalfEdge *pair;
-    HalfEdge(Vertex *v, double _angle = 0.0);
-    double angle;
-private:
-
-};
-
 class crvpt{
 public:
     double color;
@@ -54,12 +41,25 @@ class ruling
 {
     public:
     std::tuple<Vertex*, Vertex*> r;
+    HalfEdge *he[2];
     int IsCrossed; //-1:交差なし, 0:同じruling上で交差, 1:上にあるレイヤー上のrulingと交差
     crvpt *pt;
     double Gradation;
     bool hasGradPt;
     ruling(Vertex *a, Vertex *b, crvpt *_pt);
     ruling();
+};
+
+class HalfEdge{
+public:
+    Vertex *vertex;
+    Face *face;
+    HalfEdge *prev;
+    HalfEdge *next;
+    HalfEdge *pair;
+    HalfEdge(Vertex *v);
+    ruling *r;
+private:
 
 };
 
@@ -67,7 +67,7 @@ class meshline
 {
     public:
     Vertex *vertices[2];
-    std::vector<std::vector<Vertex*>> vertices4grad;//rulingは一組だが色の多角形領域を決めるverticesはv複数格納することでrulingが格納される多角形領域を決める際のsafty failを回避.サイズは必ず1として先頭の要素は可能性が最も高い物を残しておく
+    std::vector<std::tuple<Vertex*, Vertex*>> vertices4grad;//rulingは一組だが色の多角形領域を決めるverticesはv複数格納することでrulingが格納される多角形領域を決める際のsafty failを回避.サイズは必ず1として先頭の要素は可能性が最も高い物を残しておく
     ruling *hasRulings[2];
     crvpt *pt;
     meshline(Vertex *a, Vertex *b, crvpt *_pt);
@@ -77,9 +77,9 @@ class meshline
 class Face{
 public:
     bool bend;
-    double Gradation;//範囲-255 ~ 255
+    //double Gradation;//範囲-255 ~ 255
     bool hasGradPt;
-    std::vector<ruling*> rulings;
+    //std::vector<ruling*> rulings;
     HalfEdge* halfedge;
     Face(HalfEdge *_halfedge);
 };
@@ -94,6 +94,8 @@ public:
     void BsplineRulings(OUTLINE *outline , int& DivSize, int crvPtNum, int curveDimention);
     void Line();
     void LineRulings(OUTLINE *outline, int DivSize);
+    void Arc();//制御点 0,3,...: 原点. 1,4,...: 始点. 2,5,...: 終点
+    void ArcRulings(OUTLINE *outline, int DivSize);
 
     void addCtrlPt(QPointF p);
     void eraseCtrlPt(int curveDimention, int crvPtNum);
@@ -109,7 +111,7 @@ public:
     std::vector<glm::f64vec3> ControllPoints;
     std::vector<crvpt> CurvePoints;
     std::vector<ruling*> Rulings;//偶数番目 ruling　奇数番目 グラデーションの多角形に使用
-    std::vector<meshline*> meshLines;
+    //std::vector<meshline*> meshLines;
     glm::f64vec3 InsertPoint;
     bool isempty;
 
@@ -172,6 +174,7 @@ int movePointIndex(QPointF p, std::vector<Vertex*>& V);
 double QVdist(QPointF p, glm::f64vec2 v);
 void CrossDetection(CRV& crvs);
 bool cn(std::vector<glm::f64vec2> &V2, QPointF p);
+bool cn(Face *face, glm::f64vec3 p);
 double set3pt(glm::f64vec3& p1, glm::f64vec3& p2, glm::f64vec3& p3);
 bool IsIntersect(glm::f64vec3&p1, glm::f64vec3&p2, glm::f64vec3&p3, glm::f64vec3&p4);
 void Triangulation(std::vector<glm::f64vec3>&input, std::vector<std::vector<glm::f64vec3>>&output);

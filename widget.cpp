@@ -76,9 +76,13 @@ void MainWindow::FoldingModel(){
 
     switchActivateCheckBox("MakeDevSrf");
     std::vector<ruling*> Rulings;
-    for(auto&f: model->Faces){
-        for(auto& ruling: f->rulings){
-         if(ruling->IsCrossed == -1) Rulings.push_back(ruling);
+    for(auto&crv : model->crvs){
+        if(crv->isempty)continue;
+        for(auto&rl: crv->Rulings){
+            if(rl->IsCrossed == -1){
+                Rulings.push_back(rl);
+                //std::cout<< rl->Gradation << std::endl;
+            }
         }
     }
 
