@@ -19,6 +19,9 @@ class GLWidget_3D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
     Q_OBJECT
 public:
     void setVertices(std::vector<std::vector<glm::f64vec3>>& _Vertices, glm::f64vec3 center);
+    void setVertices(std::vector<Face*>& Faces);
+    void receive(std::vector<std::vector<glm::f64vec3>>& l, std::vector<std::vector<glm::f64vec3>>& r, glm::f64vec3 center);
+    std::vector<int>left;
     explicit GLWidget_3D(QWidget *parent = 0);
     ~GLWidget_3D();
 
@@ -42,7 +45,7 @@ private:
     void perspective(GLdouble fovy, GLdouble aspect, GLdouble zNear, GLdouble zFar);
 
     std::vector<std::vector<glm::f64vec3>> Vertices;
-    std::vector<std::vector<glm::f64vec3>> TriMeshs;
+    std::vector<std::array<glm::f64vec3, 3>> TriMeshs;
     double TransX, TransY, TransZ;
     double RotX, RotY;
     bool firstRotate;
