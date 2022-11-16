@@ -14,6 +14,7 @@
 #include <numeric>
 #include <QPointF>
 #include "setrulings.h"
+#include "foldline.h"
 
 struct LinearRange{
     Face *face;//なし:nullptr
@@ -36,33 +37,46 @@ public:
     std::vector<Face*> Faces;
     std::vector<HalfEdge*> Edges;
     OUTLINE *outline;
-    //CRV *crv;
+    std::vector<std::vector<Vertex*>> ol_vertices;
     std::vector<CRV*> crvs;
+    std::vector<FoldLine*> FL;
+    glm::f64vec3 Axis4Const[2];
+    Vertex* Connect2Vertices[2];
 
     Model();
     Model(int _crvPtNum);
     bool setRuling(std::vector<ruling*>& Rulings);
     void deform(std::vector<std::vector<glm::f64vec3>>& output, std::vector<ruling*>& Rulings, glm::f64vec3& center);
-
+    void deform();
     void Initialize();
     bool devide(HalfEdge* he1, HalfEdge* he2, std::vector<Face*>& faces);
 
     void InsertVertex(Vertex *v);
-    void ReInsertVertex(HalfEdge *he, std::vector<HalfEdge*>& edges);
-    void setGradationValue(int val, HalfEdge *refHE,  int& color, int InterpolationType, std::vector<glm::f64vec2>& CurvePath);
-    void SetGradationPoint4linear(std::vector<HalfEdge*>& path, HalfEdge *he);
+    void setGradationValue(int val, HalfEdge *refHE,int InterpolationType, std::vector<glm::f64vec2>& CurvePath);
 
-    void setOutline(std::vector<Vertex*> outline);
-    void set2DMesh();
+    void setOutline();
+    void drawOutline(QPointF& cursol, int drawtype, double gridsize, bool IsClicked = true);
+    void editOutlineVertex(QPointF& cursol, double gridsize, int event);
+    void addConstraint(QPointF& cursol, int type, int gridsize, glm::f64vec3 (&axis)[2]);
+    void deleteOutline(QPointF& cursol);
+    void ConnectOutline(QPointF& cursol, double gridsize);
     void addRulings(); //0:move curve point, 1: add(erase, insert) curve point
 
+    //FoldLine
+    bool AddControlPoint_FL(glm::f64vec3& p, int event, int curveDimention);
+    void modify2Druling();
+    void applyFL();
+
+    std::vector<glm::f64vec3> resPts;
+
+    //Smooth Surface
     void SelectCurve(QPointF pt);
-    void AddControlPoint(QPointF pt, int curveDimention, int DivSize);
+    void AddControlPoint(glm::f64vec3& p, int curveDimention, int DivSize);
     int AddNewCurve(int curveType, int DivSize);
     void DeleteControlPoint(QPointF pt, int curveDimention, int DivSize);
     int DeleteCurve();
     void Check4Param(int curveDimention, std::vector<int>&deleteIndex);
-    void MoveCurvePoint(QPointF pt, int MoveIndex, int ptInd, int curveDimention, int DivSize);
+    void MoveCurvePoint(glm::f64vec3& p, int MoveIndex, int ptInd, int curveDimention, int DivSize);
     bool CrossDection4AllCurve();
     int IsSelectedCurve();
     int getSelectedCurveIndex(QPointF pt);
@@ -70,23 +84,25 @@ public:
 
 private:
     void LinearInterPolation(std::vector<HalfEdge*>& path);
-    void SplineInterPolation(std::vector<glm::f64vec2>& CurvePath);
+    void SplineInterPolation(std::vector<HalfEdge*>& path, std::vector<glm::f64vec2>& CurvePath);
     void setHalfEdgePair(HalfEdge *he);
     
     void LinkRulingAndGradationArea(Face *f);
-    void SetGradationArea(meshline *ml);
     void clear();
     void deleteHE(HalfEdge *he);
     void ConnectEdge(HalfEdge *he);
 
+    glm::f64vec3 SetOnGrid(QPointF& cursol, double gridsize);
+
     std::vector<int> refCrv;//0:未参照　1:参照
+    std::vector<int> refFL;
     std::vector<FaceGradation> Fgrad;
 
     int crvPtNum;
     int befFaceNum;
-    void makePath(Face *start, Face *end, std::list<LinearRange>& path);
-    HalfEdge *start, *end;
-    std::vector<HalfEdge*> makePath(HalfEdge *start, HalfEdge *end);
+
+    std::vector<HalfEdge*> GradationPoints;
+    std::vector<HalfEdge*> makePath();
 };
 
 

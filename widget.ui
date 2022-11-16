@@ -16,8 +16,8 @@
   <widget class="GLWidget_2D" name="glWid2dim" native="true">
    <property name="geometry">
     <rect>
-     <x>20</x>
-     <y>50</y>
+     <x>10</x>
+     <y>10</y>
      <width>621</width>
      <height>451</height>
     </rect>
@@ -48,26 +48,13 @@
      <enum>Qt::Horizontal</enum>
     </property>
    </widget>
-   <widget class="Line" name="line_5">
-    <property name="geometry">
-     <rect>
-      <x>50</x>
-      <y>450</y>
-      <width>20</width>
-      <height>451</height>
-     </rect>
-    </property>
-    <property name="orientation">
-     <enum>Qt::Vertical</enum>
-    </property>
-   </widget>
   </widget>
   <widget class="QGroupBox" name="CurveListBox">
    <property name="geometry">
     <rect>
-     <x>770</x>
-     <y>590</y>
-     <width>221</width>
+     <x>520</x>
+     <y>490</y>
+     <width>151</width>
      <height>231</height>
     </rect>
    </property>
@@ -77,9 +64,9 @@
    <widget class="QWidget" name="verticalLayoutWidget">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>30</y>
-      <width>160</width>
+      <x>10</x>
+      <y>20</y>
+      <width>121</width>
       <height>204</height>
      </rect>
     </property>
@@ -126,9 +113,6 @@
       </widget>
      </item>
      <item>
-      <widget class="GLWidget_3D" name="glWid3dim" native="true"/>
-     </item>
-     <item>
       <widget class="QPushButton" name="move_ctrl_pt">
        <property name="text">
         <string>Move Control Point</string>
@@ -155,9 +139,9 @@
   <widget class="QGroupBox" name="GradationBox">
    <property name="geometry">
     <rect>
-     <x>520</x>
-     <y>600</y>
-     <width>211</width>
+     <x>350</x>
+     <y>490</y>
+     <width>161</width>
      <height>201</height>
     </rect>
    </property>
@@ -169,7 +153,7 @@
      <rect>
       <x>0</x>
       <y>30</y>
-      <width>205</width>
+      <width>151</width>
       <height>24</height>
      </rect>
     </property>
@@ -182,7 +166,7 @@
      <rect>
       <x>0</x>
       <y>60</y>
-      <width>205</width>
+      <width>151</width>
       <height>22</height>
      </rect>
     </property>
@@ -207,7 +191,7 @@
      <rect>
       <x>9</x>
       <y>100</y>
-      <width>191</width>
+      <width>141</width>
       <height>51</height>
      </rect>
     </property>
@@ -225,7 +209,7 @@
      <rect>
       <x>0</x>
       <y>170</y>
-      <width>205</width>
+      <width>141</width>
       <height>21</height>
      </rect>
     </property>
@@ -243,9 +227,9 @@
   <widget class="QGroupBox" name="OutlineBox">
    <property name="geometry">
     <rect>
-     <x>290</x>
-     <y>580</y>
-     <width>201</width>
+     <x>20</x>
+     <y>490</y>
+     <width>161</width>
      <height>211</height>
     </rect>
    </property>
@@ -257,7 +241,7 @@
      <rect>
       <x>20</x>
       <y>20</y>
-      <width>160</width>
+      <width>121</width>
       <height>191</height>
      </rect>
     </property>
@@ -266,6 +250,20 @@
       <widget class="QCheckBox" name="outline_rectangle">
        <property name="text">
         <string>Rectangle</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="outline_polyline">
+       <property name="text">
+        <string>PolyLine</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="ConnectVertices">
+       <property name="text">
+        <string>Connect Vertices</string>
        </property>
       </widget>
      </item>
@@ -283,13 +281,6 @@
        </property>
        <property name="maximum">
         <number>10</number>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QCheckBox" name="outline_polyline">
-       <property name="text">
-        <string>PolyLine</string>
        </property>
       </widget>
      </item>
@@ -313,10 +304,10 @@
   <widget class="QGroupBox" name="DivideSizeBox">
    <property name="geometry">
     <rect>
-     <x>110</x>
-     <y>670</y>
-     <width>171</width>
-     <height>121</height>
+     <x>210</x>
+     <y>560</y>
+     <width>121</width>
+     <height>131</height>
     </rect>
    </property>
    <property name="title">
@@ -327,8 +318,8 @@
      <rect>
       <x>0</x>
       <y>20</y>
-      <width>151</width>
-      <height>83</height>
+      <width>101</width>
+      <height>71</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -367,9 +358,9 @@
   <widget class="QGroupBox" name="OtherBox">
    <property name="geometry">
     <rect>
-     <x>1020</x>
-     <y>600</y>
-     <width>171</width>
+     <x>840</x>
+     <y>500</y>
+     <width>131</width>
      <height>191</height>
     </rect>
    </property>
@@ -381,7 +372,7 @@
      <rect>
       <x>10</x>
       <y>20</y>
-      <width>160</width>
+      <width>111</width>
       <height>161</height>
      </rect>
     </property>
@@ -427,8 +418,8 @@
   <widget class="QGroupBox" name="LayerListWidget">
    <property name="geometry">
     <rect>
-     <x>1250</x>
-     <y>520</y>
+     <x>1140</x>
+     <y>460</y>
      <width>141</width>
      <height>311</height>
     </rect>
@@ -436,6 +427,108 @@
    <property name="title">
     <string>Layer</string>
    </property>
+  </widget>
+  <widget class="GLWidget_3D" name="glWid3dim" native="true">
+   <property name="geometry">
+    <rect>
+     <x>640</x>
+     <y>10</y>
+     <width>631</width>
+     <height>441</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="Line" name="line_5">
+   <property name="geometry">
+    <rect>
+     <x>-20</x>
+     <y>400</y>
+     <width>20</width>
+     <height>451</height>
+    </rect>
+   </property>
+   <property name="orientation">
+    <enum>Qt::Vertical</enum>
+   </property>
+  </widget>
+  <widget class="QGroupBox" name="GeometoryConstraitBox">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>490</y>
+     <width>131</width>
+     <height>61</height>
+    </rect>
+   </property>
+   <property name="title">
+    <string>Geometric Constraint</string>
+   </property>
+   <widget class="QPushButton" name="symmetryButton">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>30</y>
+      <width>111</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Symmetry</string>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QGroupBox" name="FoldLineBox">
+   <property name="geometry">
+    <rect>
+     <x>680</x>
+     <y>490</y>
+     <width>131</width>
+     <height>151</height>
+    </rect>
+   </property>
+   <property name="title">
+    <string>Fold Line</string>
+   </property>
+   <widget class="QWidget" name="verticalLayoutWidget_5">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>30</y>
+      <width>111</width>
+      <height>121</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout_5">
+     <item>
+      <widget class="QPushButton" name="addFL_line">
+       <property name="text">
+        <string>Add Line</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="addFL_bsp">
+       <property name="text">
+        <string>Add B-spline</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="addFL_bezier">
+       <property name="text">
+        <string>Add Bezier</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="color_FL">
+       <property name="text">
+        <string>Color</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
   </widget>
  </widget>
  <customwidgets>

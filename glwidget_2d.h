@@ -18,10 +18,8 @@
 #include <QString>
 
 #include <QPushButton>
-#include "ui_gtoolwnd.h"
 #include "setrulings.h"
 #include "make3d.h"
-#include "originalbutton.h"
 
 class GLWidget_2D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
 {
@@ -59,6 +57,8 @@ public slots:
     void recieveNewEdgeNum(int num);
     void EditOutlineVertex(int state);
     void MoveOutline(int state);
+    void switchGetmetricConstraint(int state);
+    void ConnectVertices();
 
     void Reset();
     void ChangedDivSizeEdit(int n);
@@ -85,13 +85,16 @@ public slots:
     void changeSelectedCurve(int ind);
     void swapCrvsOnLayer(int n1, int n2);
 
+    //FoldLine
+    void changeFoldType(int state);
+
 private:
     void draw();
     int DivSize;
     int SelectedCurveIndex; //-1: 未参照
     int KeyEvent; //-1:None  0:Enter  1: Back-Space  2:Other
-    //OutlineRectangle, RulingBezier, RulingBspline, RulingLine,  OutlinePolygon, OutlinePolyline, MoveControlPoint, SetColor, NewGradationMode, InsertControlPoint,
-    //None(select mode), EditVertex(outline), MoveOutline, DeleteCntrlPt, DeleteCurve
+    //OutlineRectangle, RulingBezier, RulingBspline, RulingLine, RulingArc,  OutlinePolygon, OutlinePolyline, MoveControlPoint, SetColor, NewGradationMode, InsertControlPoint,
+    //None(select mode), EditVertex(outline), MoveOutline, DeleteCntrlPt, DeleteCurve, OutlineConst, ConnectVertices, FoldLine, FoldlineColor
     QString drawtype;
     int curveDimention;
     int maxDivSize;
@@ -99,7 +102,7 @@ private:
 
     int referencedRuling(QPointF p);
     void addPoints_intplation(QMouseEvent *e, QPointF& p);
-    void assignment_refHE(QPointF& p);
+    HalfEdge *assignment_refHE();
     std::vector<glm::f64vec2> CurvePath;
 
     //std::vector<int> ControllPoints_gradation;//0~510 色の範囲, -1指定なし
@@ -108,6 +111,13 @@ private:
     int movePt;
     int curvetype;
     QList<std::tuple<QString, int, QString >> CurveList;
+
+    double gridsize;
+    void DrawGrid();
+    bool drawpolygon;
+
+    int constType;
+    glm::f64vec3 SetOnGrid(QPointF& cursol, double gridsize);
 
 signals:
     void foldingSignals();
@@ -118,6 +128,7 @@ signals:
     void SendNewActiveCheckBox(QString activeDrawType);
     void CurvePathSet(std::vector<glm::f64vec2>CurvePath);
     void deleteCrvSignal(std::vector<int> n);
+    void signalAddRulings_FL();
 };
 
 #endif // GLWIDGET_2D_H

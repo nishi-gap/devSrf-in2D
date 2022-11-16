@@ -25,7 +25,7 @@ void GLWidget_3D::initializeGL(){
 
 void GLWidget_3D::setVertices(std::vector<std::vector<glm::f64vec3>>& _Vertices, glm::f64vec3 center){
     this->Vertices = _Vertices;
-    std::vector<std::vector<glm::f64vec3>> TriMesh;
+    std::vector<std::array<glm::f64vec3, 3>> TriMesh;
     TriMeshs.clear();
     for(auto& V : Vertices){
        // std::cout << "vertices " << V.size() << std::endl;
@@ -33,6 +33,70 @@ void GLWidget_3D::setVertices(std::vector<std::vector<glm::f64vec3>>& _Vertices,
         for(auto&tri: TriMesh)TriMeshs.push_back(tri);
     }
     //std::cout <<"\n";
+    TransX = 0.1 * center.x;
+    TransY = 0.05 * center.y;
+    this->center = 0.1 * center;
+    update();
+}
+
+void GLWidget_3D::setVertices(std::vector<Face*>& Faces){
+    std::vector<glm::f64vec3> vertices, centers;
+    Vertices.clear();
+    TriMeshs.clear();
+    glm::f64vec3 center;
+    glm::f64mat4x4 Mirror = glm::mat4(1.0f); Mirror[1][1] = -1;
+    glm::f64mat4x4 Scale = glm::scale(glm::f64vec3{0.1, 0.1, 0.1});
+    std::vector<std::array<glm::f64vec3, 3>> trimesh;
+    TriMeshs.clear();
+    for(auto&f: Faces){
+        vertices.clear();
+        HalfEdge *he = f->halfedge;
+        int cnt = 0;
+        do{
+            glm::f64vec3 v = glm::f64vec3(Scale * Mirror * glm::f64vec4(he->vertex->p3,1));
+            center += v;
+            vertices.push_back(v);
+            he = he->next;
+            cnt++;
+        }while(he != f->halfedge);
+        center /= double(cnt);
+        centers.push_back(center);
+        Vertices.push_back(vertices);
+    }
+    for(auto&V: Vertices){
+        Triangulation(V, trimesh);
+        TriMeshs.insert(TriMeshs.end(), trimesh.begin(), trimesh.end());
+    }
+    center = glm::f64vec3(0,0,0);
+    for(auto&c: centers)center += c;
+    center /= (double)centers.size();
+    TransX = 0.1 * center.x;
+    TransY = 0.05 * center.y;
+    this->center = 0.1 * center;
+
+    update();
+}
+
+void GLWidget_3D::receive(std::vector<std::vector<glm::f64vec3>>& l, std::vector<std::vector<glm::f64vec3>>& r, glm::f64vec3 center){
+    std::vector<std::array<glm::f64vec3, 3>> TriMesh;
+    TriMeshs.clear();
+    Vertices = l;
+    for(auto& V : l){
+        Triangulation(V, TriMesh);
+        for(auto&tri: TriMesh){
+            TriMeshs.push_back(tri);
+            left.push_back(1);
+        }
+    }
+    for(auto&V: r){
+        Triangulation(V, TriMesh);
+        for(auto&tri: TriMesh){
+            TriMeshs.push_back(tri);
+            left.push_back(0);
+        }
+        Vertices.push_back(V);
+    }
+
     TransX = 0.1 * center.x;
     TransY = 0.05 * center.y;
     this->center = 0.1 * center;
@@ -53,7 +117,7 @@ void GLWidget_3D::paintGL(){
     glRotated(0.2 * RotY, 1.0, 0.0, 0.0);
     glScaled(0.1, 0.1, 0.1);
 
-    DrawGrid();
+    //DrawGrid();
     DrawMesh(true);
     DrawMesh(false);
     DrawMeshLines();
@@ -61,18 +125,20 @@ void GLWidget_3D::paintGL(){
 }
 
 void GLWidget_3D::DrawMesh(bool isFront){
-    //std::vector<std::vector<glm::f64vec3>> TriMeshs;
     glEnable(GL_CULL_FACE);
     if(isFront){
         glCullFace(GL_FRONT);
-        glColor3d(0.8,0.8,0.8);
-    }else{
-        glCullFace(GL_BACK);
-        glColor3d(0.8,0.8,0.8);
+        glColor3d(0.9,0.9,0.9);
     }
-    for(auto& tri: TriMeshs){
-        glBegin(GL_TRIANGLES);
-        for (auto& v : tri) glVertex3d(v.x, v.y, v.z);
+    else {
+        glCullFace(GL_BACK);
+        glColor3d(0.6,0.6,0.6);
+    }
+    for(int i = 0; i < (int)TriMeshs.size(); i++){
+        //if(left[i] == 1)glColor3d(0.8, 0.2, 0.2);
+        //else glColor3d(0.2, 0.2, 0.8);
+        glBegin(GL_POLYGON);
+        for (auto& v : TriMeshs[i]) glVertex3d(v.x, v.y, v.z);
         glEnd();
     }
     glDisable(GL_LIGHTING);
