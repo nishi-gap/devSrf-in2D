@@ -88,6 +88,9 @@ public slots:
     //FoldLine
     void changeFoldType(int state);
 
+    //Line Width
+    void receiveNewLineWidth(double d);
+
 private:
     void draw();
     int DivSize;
@@ -116,6 +119,7 @@ private:
     double gridsize;
     void DrawGrid();
     bool drawpolygon;
+    double rulingWidth;
 
     int constType;
     glm::f64vec3 SetOnGrid(QPointF& cursol, double gridsize);

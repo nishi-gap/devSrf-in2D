@@ -26,6 +26,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->DivSizeSpinBox, &QSpinBox::valueChanged, this, &MainWindow::ChangeDivSizeEditFromSpinBox);
     connect(ui->glWid2dim, &GLWidget_2D::foldingSignals, this , &MainWindow::fold_Sm);
 
+    //line width
+    connect(ui->LineWidthSpinBox, &QDoubleSpinBox::valueChanged, this, &MainWindow::changeLineWidthFromSpinBox);
+    connect(ui->LineWidthSlider, &QSlider::valueChanged, this, &MainWindow::changeLineWidthFromSlider);
+    connect(this, &MainWindow::signalNewLineWidth, ui->glWid2dim, &GLWidget_2D::receiveNewLineWidth);
+
     connect(ui->AddPointsButton,&QPushButton::clicked,ui->glWid2dim,&GLWidget_2D::setNewGradationMode);
     connect(ui->CBox_InterpolationType,&QComboBox::currentIndexChanged, this, &MainWindow::changeInterpolationType);
     connect(ui->glWid2dim, &GLWidget_2D::ColorChangeFrom, this, &MainWindow::ApplyNewColor);
@@ -95,6 +100,16 @@ void MainWindow::addFoldLine_bezier(){
     emit signalFLtype(2);
 }
 void MainWindow::color_FL(){emit signalFLtype(3);}
+
+void MainWindow::changeLineWidthFromSlider(int n){
+    double d = (double)n/10.;
+    ui->LineWidthSpinBox->setValue(d);
+    emit signalNewLineWidth(d);
+}
+void MainWindow::changeLineWidthFromSpinBox(double d){
+    ui->LineWidthSlider->setValue((int)(d * 10));
+    emit signalNewLineWidth(d);
+}
 
 void MainWindow::fold_Sm(){
 

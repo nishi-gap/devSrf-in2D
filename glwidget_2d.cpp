@@ -166,6 +166,7 @@ void GLWidget_2D::changeFoldType(int state){
         model->FL.push_back(fl);
     }else drawtype = PaintTool::FoldlineColor;
     setMouseTracking(false);
+    update();
 }
 
 void GLWidget_2D::setColor(){
@@ -228,6 +229,11 @@ void GLWidget_2D::swapCrvsOnLayer(int n1, int n2){
     update();
 }
 
+void GLWidget_2D::receiveNewLineWidth(double d){
+    rulingWidth = d;
+    update();
+}
+
 void GLWidget_2D::initializeGL(){
     makeCurrent();
     initializeOpenGLFunctions();
@@ -268,7 +274,7 @@ void GLWidget_2D::paintGL(){
                         glColor3d(r,g,b);
                     }
                 }
-                if(drawtype == PaintTool::NewGradationMode)glLineWidth(2.f);
+                if(drawtype == PaintTool::NewGradationMode)glLineWidth(rulingWidth);
                 else glLineWidth(1.f);
                 glBegin(GL_LINES);              
                 p = std::get<0>(rl->r)->p, p2 = std::get<1>(rl->r)->p;
@@ -553,7 +559,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
     }
     if(model->outline->IsClosed()){
 
-        model->deform();
+        //model->deform();
         emit foldingSignals();
     }
     update();
