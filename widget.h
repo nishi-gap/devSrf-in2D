@@ -50,7 +50,7 @@ public slots:
 
     //輪郭
     void sendNewEdgeNum();
-    void switchActivateCheckBox(QString active);
+    void switchActivateCheckBox(PaintTool active);
     void SymmetricConstraint();
 
     //layer関係
@@ -67,7 +67,7 @@ public slots:
 private:
     Ui::MainWindow *ui;
     Model *model;
-    QList<std::tuple<QCheckBox *, QString >> CBoxlist;
+    QList<std::tuple<QCheckBox *, PaintTool >> CBoxlist;
     int crvPtNum;
     std::vector<std::vector<glm::f64vec3>> output;
     void exportobj();

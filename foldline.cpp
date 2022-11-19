@@ -265,6 +265,8 @@ bool FoldLine::setPoint(std::vector<Face*>& Faces, glm::f64vec3 N, glm::f64vec3&
     return IsIntersected;
 }
 
+#include <fstream>
+#include <sstream>
 bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices,int dim){
     glm::f64vec3 d, dr, dr2, dr3, T, T2d, N, B;
     glm::f64vec3 dh_p,dh_2p, dh_m, dh_2m, dh_3p, dh_3m, crossPts;
@@ -274,6 +276,8 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
     if(type == 0){
 
     }else if(type == 2){
+        std::string file = "result.csv";
+        std::ofstream ofs(file);
         double a, a_bef;
         int EdgeSize = Edges.size();
         for(int i = 0; i < EdgeSize; i++){
@@ -287,8 +291,18 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
                 Vertex *v_new = new Vertex(pt_new);
                 Vertices.push_back(v_new);
                 std::array<HalfEdge*, 2> he_new = splitOnPoint(v_new, Edges);
-                NewInsertedEdges.push_back(he_new[0]); NewInsertedEdges.push_back(he_new[1]);
 
+                NewInsertedEdges.push_back(he_new[0]); NewInsertedEdges.push_back(he_new[1]);
+                for(auto& f: Faces){
+                    int cnt = 0;
+                    auto he = f->halfedge;
+                    do{
+                        he = he->next;
+                        std::cout<<cnt++<<std::endl;
+                        if(cnt  > 1000)exit(0);
+                    }while(he != f->halfedge);
+                }
+                std::cout<<"split and connection success"<<std::endl;
                 dr = -3. * (1 - t) * (1 - t) * CtrlPts[0] + (9 * t * t - 12 * t + 3) * CtrlPts[1] + (-9 * t * t + 6 * t) * CtrlPts[2] + 3 * t * t * CtrlPts[3];
                 dr2 = 6. * (1 - t) * CtrlPts[0] + (18 * t - 12) * CtrlPts[1] + (-18 * t + 6) * CtrlPts[2] + 6 * t * CtrlPts[3];
                 k2d = glm::length(glm::cross(dr, dr2))/std::pow(glm::length(dr), 3);
@@ -305,20 +319,17 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
                     dr = (dh_p - dh_m)/ (2 * eps);
                     dr2 = (dh_p - 2. * d + dh_m)/(eps * eps);
                     dr3 = (-dh_3p + 8. * dh_2p - 13. * dh_p + 13. * dh_m - 8. * dh_2m + dh_3m)/(8. * std::pow(eps, 3));
-                }else if(t < 3 * eps){
-
-                }else if(1 - 3 * eps < t){
-
                 }
+
                 T = glm::normalize(dr);
                 N = glm::normalize(glm::cross(dr, glm::cross(dr2, dr)));
                 B = glm::normalize(glm::cross(dr, dr2));
-                std::cout<< "current " <<  i << "  :  T = " << glm::to_string(T) << " , N = " << glm::to_string(N) << " , B = " << glm::to_string(B) << " , T2d " << glm::to_string(T2d) <<  std::endl;
+                //std::cout<< "current " <<  i << "  :  T = " << glm::to_string(T) << " , N = " << glm::to_string(N) << " , B = " << glm::to_string(B) << " , T2d " << glm::to_string(T2d) <<  std::endl;
                 if(glm::dot(glm::f64vec3{0,0,-1}, B) < 0){B *= -1; N *= -1;}
                 tau = glm::dot(dr, glm::cross(dr2, dr3))/std::pow(glm::length(glm::cross(dr, dr2)), 2);
                 k3d = glm::length(glm::cross(dr, dr2))/std::pow(glm::length(dr), 3);
                 //k3d = glm::length(dr2);
-                k3d = (k2d > k3d) ? k2d : k3d;
+                //k3d = (k2d > k3d) ? k2d : k3d;
                 a = (k3d != 0) ? acos(k2d/k3d): 0;
                 //N = glm::normalize(dr2/k3d);
                 //B = glm::normalize(glm::cross(dr, dr2)/k3d);
@@ -337,12 +348,13 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
                     dr2_bef = (dh_p - 2. * d + dh_m)/(eps * eps);
                     k3d_bef = glm::length(glm::cross(dr_bef, dr2_bef))/std::pow(glm::length(dr_bef), 3);
                     //k3d_bef = glm::length(dr2_bef);
-                    k3d_bef = (k2d_bef > k3d_bef) ? k2d_bef: k3d_bef;
+                    //k3d_bef = (k2d_bef > k3d_bef) ? k2d_bef: k3d_bef;
                     a_bef = (k3d_bef != 0) ? acos((k2d_bef/k3d_bef)) : 0;
                     std::cout<< "before " <<  i << "  :  T = " << glm::to_string(glm::normalize(dr_bef)) << " , N = " << glm::to_string(glm::normalize(glm::cross(dr_bef, glm::cross(dr2_bef, dr_bef)))) << " , B = " << glm::to_string(glm::normalize(glm::cross(dr_bef, dr2_bef))) <<  std::endl;
                 }
                 double da = (a - a_bef)/eps;
                 double phi_bl = rad_2d(k3d, tau, a, -da), phi_br = rad_2d(k3d, tau, a, da);
+                /*
                 glm::f64vec3 rr3d = glm::normalize(cos(phi_br) * T + sin(phi_br) * cos(a) * N + sin(phi_br) * sin(a) * B);
                 glm::f64vec3 rl3d = glm::normalize(cos(phi_bl) * T - sin(phi_bl) * cos(a) * N + sin(phi_bl) * sin(a) * B);
                 glm::f64vec3 rl2d = glm::normalize(glm::rotate(phi_bl, glm::f64vec3{0,0,1}) * glm::f64vec4{T2d,1});
@@ -370,16 +382,17 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
                         he_new[0]->next->vertex->p3 = rr3d * l + pt_new;
                         he_new[0]->next->vertex->p = crossPts;
                     }
-                }
+                }*/
                 //std::cout << "he_new  " << he_new[0]->next->vertex << " , " << he_new[1]->next->vertex <<std::endl;
+                ofs <<  k2d << " , " << k3d << " , " << tau << " , " << k3d_bef << " , " << a << " , " << a_bef << " , " << da << " , " <<  phi_bl << " , " << phi_br << std::endl;
+                std::cout<<i << std::endl;
             }
-            //std::cout <<"**************"<<std::endl;
         }
-        //std::cout<<"-------------\n"<<std::endl;
     }
-    devide2Faces(NewInsertedEdges, Edges, Faces);
+    std::cout<<"finish"<<std::endl;
+    //devide2Faces(NewInsertedEdges, Edges, Faces);
     //std::cout<<"after :  Faces " << Faces.size() << " , Edges " << Edges.size() << "  , Vertices " << Vertices.size() << std::endl;
-    return true;
+    return false;
 }
 
 glm::f64vec3 FoldLine::BezierCrvOn3dSrf(std::vector<glm::f64vec3>& CtrlPts, double t, int dim, std::vector<Face*>& Faces){
@@ -396,13 +409,14 @@ glm::f64vec3 FoldLine::BezierCrvOn3dSrf(std::vector<glm::f64vec3>& CtrlPts, doub
             Eigen::Vector2d b; b(0) = p.x; b(1) = p.y;
             Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
             v_3d = x(0) * (h->next->vertex->p3 - h->vertex->p3) + x(1) * (h->prev->vertex->p3 - h->vertex->p3) + h->vertex->p3;
-            //std::cout<< glm::length(h->next->vertex->p3 - h->next->vertex->p) << " , " << glm::length(h->prev->vertex->p3 - h->prev->vertex->p) << " , " <<  glm::length(h->vertex->p3 - h->vertex->p) << std::endl;
+            std::cout<< glm::length(h->next->vertex->p3 - h->next->vertex->p) << " , " << glm::length(h->prev->vertex->p3 - h->prev->vertex->p) << " , " <<  glm::length(h->vertex->p3 - h->vertex->p) << std::endl;
             if(glm::length(v_3d - v_2d) > 0.1){
-                std::cout<<"world  "<< glm::length(v_3d - v_2d) << std::endl;
+               // std::cout<<"world  "<< glm::length(v_3d - v_2d) << std::endl;
             }
             return v_3d;
         }
     }
+    std::cout<<"not found in BezierCrvOn3dSrf"<<std::endl;
     return v_3d;
 }
 
@@ -431,6 +445,7 @@ std::array<HalfEdge*, 2> FoldLine::splitOnPoint(Vertex *v, std::vector<HalfEdge*
             return he_new;
         }
     }
+
     return he_new;
 }
 

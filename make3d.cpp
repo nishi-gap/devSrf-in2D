@@ -432,11 +432,12 @@ void Model::SplineInterPolation(std::vector<HalfEdge*>& path, std::vector<glm::f
     CurvePath.clear();
     int N =(int)GradationPoints.size() - 1;
     auto getCenter = [](HalfEdge *h) { return glm::f64vec3(h->vertex->p + h->next->vertex->p)/2.0;};
+    auto getItr = [](std::vector<HalfEdge*>& _path, HalfEdge *h){ return (std::find(_path.begin(), _path.end(), h) != _path.end()) ? std::find(_path.begin(), _path.end(), h):  std::find(_path.begin(), _path.end(), h->pair);};
     Eigen::VectorXd v(N - 1);
     std::vector<double>h(N);
     for(int i = 1; i < N + 1; i++)h[i - 1] = getCenter(GradationPoints[i]).x - getCenter(GradationPoints[i - 1]).x;
     for(int i = 1; i < N; i++){
-        double a = (h[i] != 0) ? (GradationPoints[i + 1]->r->Gradation - GradationPoints[i]->r->Gradation)/h[i] : 0, b = (h[i - 1] != 0) ? (double(GradationPoints[i]->r->Gradation - GradationPoints[i - 1]->r->Gradation))/h[i - 1]: 0;
+        double a = (h[i] != 0) ? (GradationPoints[i + 1]->r->Gradation - GradationPoints[i]->r->Gradation)/h[i] : 0, b = (h[i - 1] != 0) ? (GradationPoints[i]->r->Gradation - GradationPoints[i - 1]->r->Gradation)/h[i - 1]: 0;
         v(i - 1) = 6 * (a - b);
     }
     Eigen::VectorXd u;
@@ -460,10 +461,8 @@ void Model::SplineInterPolation(std::vector<HalfEdge*>& path, std::vector<glm::f
         Eigen::MatrixXd A = Eigen::MatrixXd::Zero(N-1,N-1);
         for(int i = 0; i < N-1;i++){
             A(i,i) = 2 * (h[i] + h[i + 1]);
-            if(i == 0) A(0,1) = h[1];
-            else if(i == N-2) A(N-2,N-3) = h[N-2];
-            else{
-                A(i,i-1) = h[i];  A(i,i+1) = h[i+1];
+            if(i != 0){
+                A(i-1,i) = A(i,i-1) = h[i];
             }
 
         }
@@ -474,9 +473,20 @@ void Model::SplineInterPolation(std::vector<HalfEdge*>& path, std::vector<glm::f
 
     double x, a, b, c, d, y;
 
+    int cnt = 0;
     for(int i = 0; i < N; i++){
-        int cur = std::distance(path.begin(), std::find(path.begin(), path.end(), GradationPoints[i]));
-        int next = std::distance(path.begin(), std::find(path.begin(), path.end(), GradationPoints[i + 1]));
+        auto itr_cur = getItr(path, GradationPoints[i]);
+        int cur = (itr_cur != path.end()) ? std::distance(path.begin(), itr_cur): -1;
+        auto itr_next = getItr(path, GradationPoints[i + 1]);
+        int next = (itr_next != path.end()) ? std::distance(path.begin(), itr_next): -1;
+        if(cur == -1){
+        std::cout<< i << "  cur"<<std::endl;
+            return;
+        }
+        if(next == -1 ){
+            std::cout<< i << "  next"<<std::endl;
+            return;
+        }
         glm::f64vec3 befcenter = getCenter(GradationPoints[i]);
         glm::f64vec3 center = getCenter(GradationPoints[i + 1]);
         double den = glm::distance(befcenter, center);
@@ -489,13 +499,13 @@ void Model::SplineInterPolation(std::vector<HalfEdge*>& path, std::vector<glm::f
             x =  glm::distance(getCenter(path[k]), befcenter);
             y = a * std::pow(x, 3) + b * std::pow(x, 2) + c * x + d;
             path[k]->r->Gradation = y;
-            CurvePath.push_back(glm::f64vec2{x + befcenter.x,y});
+            CurvePath.push_back(glm::f64vec2{cnt++,y});
         }
     }
 }
 
 void Model::setGradationValue(int val, HalfEdge *refHE, int InterpolationType, std::vector<glm::f64vec2>& CurvePath){
-    if(Faces.size() == 0 || refHE == nullptr){std::cout<<"no selected" << std::endl; return;}
+    if(Faces.size() == 0 || refHE == nullptr || std::find(Edges.begin(), Edges.end(), refHE) == Edges.end()){std::cout<<"no selected" << std::endl; return;}
     refHE->r->Gradation += val;
     refHE->r->Gradation = (refHE->r->Gradation < -255)? -255 : (255 < refHE->r->Gradation)? 255 : refHE->r->Gradation;
 
@@ -507,7 +517,8 @@ void Model::setGradationValue(int val, HalfEdge *refHE, int InterpolationType, s
     }
     if(InterpolationType == 1){
         if(GradationPoints.size() == 0)GradationPoints.push_back(refHE);
-        else if(std::find(GradationPoints.begin(), GradationPoints.end(), refHE) == GradationPoints.end())GradationPoints.push_back(refHE);
+        if(std::find(GradationPoints.begin(), GradationPoints.end(), refHE) == GradationPoints.end())GradationPoints.push_back(refHE);
+
         std::vector<HalfEdge*> path = makePath();
         SplineInterPolation(path, CurvePath);
     }
@@ -561,7 +572,6 @@ void Model::LinkRulingAndGradationArea(Face *f){
         */
     //}
 }
-
 
 void Model::deleteHE(HalfEdge *he){
     HalfEdge *prev = he->prev, *next = he->next;
@@ -870,7 +880,7 @@ std::vector<HalfEdge*> Model::makePath(){
                 }
                 he = he->next;
             }while(he != f->halfedge);
-            if(nextHE != nullptr){
+            if(nextHE != nullptr && std::find(Edges.begin(), Edges.end(), nextHE) != Edges.end()){
                 bool haspath = false;
                 for(auto& he: path){
                     if(he->r == nextHE->r){

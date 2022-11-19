@@ -12,9 +12,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     model = new Model(crvPtNum);
     ui->glWid2dim->model = model;
-    CBoxlist = {{ui->SelectButton, "None"}, {ui->outline_rectangle, "Rectangle"}, {ui->outline_polygon,  "Polygon"},
-                {ui->outline_polyline, "Polyline"}, {ui->EditVertexButton, "EditVertex"}, {ui->MoveOutLineButton, "MoveOutline"},
-                {ui->make_devsrf, "MakeDevSrf"}, {ui->Reset, "Reset"}
+    CBoxlist = {{ui->SelectButton, PaintTool::None}, {ui->outline_rectangle, PaintTool::Rectangle_ol}, {ui->outline_polygon,  PaintTool::Polygon_ol},
+                {ui->outline_polyline, PaintTool::Polyline_ol}, {ui->EditVertexButton, PaintTool::EditVertex_ol}, {ui->MoveOutLineButton, PaintTool::Move_ol},
+                {ui->make_devsrf, PaintTool::deform}, {ui->Reset, PaintTool::Reset}
                };
 
     connect(ui->SelectButton, &QCheckBox::stateChanged, ui->glWid2dim, &GLWidget_2D::InitializeDrawMode);
@@ -37,7 +37,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->curve_add, &QPushButton::clicked, this, &MainWindow::addCurveBtn);
     connect(ui->move_ctrl_pt, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::MoveCurvePt);
     //connect(ui->CurveTypeBox, &QComboBox::currentTextChanged, ui->glWid2dim, &GLWidget_2D::ChangeCurveType);
-    connect(ui->glWid2dim, &GLWidget_2D::signalCurveType, ui->CurveTypeBox, &QComboBox::currentText);
+    connect(ui->glWid2dim, &GLWidget_2D::signalCurveType, ui->CurveTypeBox, &QComboBox::currentIndex);
     connect(ui->insert_ctrl_pt, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::InsertNewPoint);
     connect(ui->delete_ctrl_pt, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::DeleteCtrlPt);
     connect(this, &MainWindow::PressedEnter, ui->glWid2dim, &GLWidget_2D::cb_ApplyCurveEvent);
@@ -98,7 +98,7 @@ void MainWindow::color_FL(){emit signalFLtype(3);}
 
 void MainWindow::fold_Sm(){
 
-    switchActivateCheckBox("MakeDevSrf");
+    //switchActivateCheckBox("MakeDevSrf");
     if(!model->outline->IsClosed())return;
 
     ui->glWid3dim->setVertices(model->Faces);
@@ -188,7 +188,7 @@ void MainWindow::sendNewEdgeNum(){
     emit signalNewEdgeNum(ui->Polygon_EdgeNum->value());
 }
 
-void MainWindow::switchActivateCheckBox(QString active){
+void MainWindow::switchActivateCheckBox(PaintTool active){
     for(auto& T: CBoxlist){
         if(active != std::get<1>(T))std::get<0>(T)->setCheckState(Qt::Unchecked);
     }

@@ -29,6 +29,37 @@ enum class EdgeType{
     r_fl,//ruling(fold line)
 };
 
+enum class PaintTool{
+    None,
+    Reset,
+    deform,
+
+    AddCurve,
+    Bezier_r,
+    Bspline_r,
+    Line_r,
+    Arc_r,
+
+    SetColor,
+    NewGradationMode,
+
+    Rectangle_ol,
+    Polygon_ol,
+    Polyline_ol,
+    EditVertex_ol,
+    Move_ol,
+    Const_ol,
+    ConnectVertices_ol,
+
+    MoveCtrlPt,
+    InsertCtrlPt,
+    DeleteCtrlPt,
+    DeleteCurve,
+
+    FoldLine,
+    FoldlineColor,
+};
+
 class Vertex{
 public:
     glm::f64vec3 p;

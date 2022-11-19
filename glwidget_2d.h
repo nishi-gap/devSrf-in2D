@@ -95,7 +95,8 @@ private:
     int KeyEvent; //-1:None  0:Enter  1: Back-Space  2:Other
     //OutlineRectangle, RulingBezier, RulingBspline, RulingLine, RulingArc,  OutlinePolygon, OutlinePolyline, MoveControlPoint, SetColor, NewGradationMode, InsertControlPoint,
     //None(select mode), EditVertex(outline), MoveOutline, DeleteCntrlPt, DeleteCurve, OutlineConst, ConnectVertices, FoldLine, FoldlineColor
-    QString drawtype;
+
+    PaintTool drawtype;
     int curveDimention;
     int maxDivSize;
     double standardDist;
@@ -110,7 +111,7 @@ private:
     HalfEdge *refHE;
     int movePt;
     int curvetype;
-    QList<std::tuple<QString, int, QString >> CurveList;
+    QList<std::pair<int, PaintTool>> CurveList;
 
     double gridsize;
     void DrawGrid();
@@ -122,10 +123,10 @@ private:
 signals:
     void foldingSignals();
     void ColorChangeFrom(int wd, int color);//0:mouse, 1:LineEdit, 2:Slider
-    QString signalCurveType();
+    int signalCurveType();
     void getDiviedNumber();
     int getEdgeNum();
-    void SendNewActiveCheckBox(QString activeDrawType);
+    void SendNewActiveCheckBox(PaintTool _drawtype);
     void CurvePathSet(std::vector<glm::f64vec2>CurvePath);
     void deleteCrvSignal(std::vector<int> n);
     void signalAddRulings_FL();
