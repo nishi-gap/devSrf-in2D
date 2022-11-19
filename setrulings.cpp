@@ -1234,3 +1234,80 @@ glm::f64vec3 GetCenter(std::vector<glm::f64vec3>& vertices){
     center/= vertices.size();
     return center;
 }
+
+std::vector<glm::f64vec3> SplineInterpolation(std::vector<Vertex*>& input){
+    if((int)input.size() < 2)return;
+    std::vector<glm::f64vec3> output;
+    int N =(int)input.size() - 1;
+    auto getCenter = [](HalfEdge *h) { return glm::f64vec3(h->vertex->p + h->next->vertex->p)/2.0;};
+    auto getItr = [](std::vector<HalfEdge*>& _path, HalfEdge *h){ return (std::find(_path.begin(), _path.end(), h) != _path.end()) ? std::find(_path.begin(), _path.end(), h):  std::find(_path.begin(), _path.end(), h->pair);};
+    Eigen::VectorXd v(N - 1);
+    std::vector<double>h(N);
+    for(int i = 1; i < N + 1; i++)h[i - 1] = getCenter(GradationPoints[i]).x - getCenter(GradationPoints[i - 1]).x;
+    for(int i = 1; i < N; i++){
+        double a = (h[i] != 0) ? (GradationPoints[i + 1]->r->Gradation - GradationPoints[i]->r->Gradation)/h[i] : 0, b = (h[i - 1] != 0) ? (GradationPoints[i]->r->Gradation - GradationPoints[i - 1]->r->Gradation)/h[i - 1]: 0;
+        v(i - 1) = 6 * (a - b);
+    }
+    Eigen::VectorXd u;
+    if(N == 1){
+        u = Eigen::VectorXd::Zero(2);
+    }
+    if(N == 2){
+        u = Eigen::VectorXd::Zero(3);
+        double dx1, dx2, dx3;
+        dx1 = getCenter(GradationPoints[2]).x - getCenter(GradationPoints[0]).x;
+        dx2 = getCenter(GradationPoints[2]).x - getCenter(GradationPoints[1]).x;
+        dx3 = getCenter(GradationPoints[1]).x - getCenter(GradationPoints[0]).x;
+        if(abs(dx1) < FLT_EPSILON) u(1) = 0;
+        else{
+            double a = (dx2 == 0) ? 0: (GradationPoints[2]->r->Gradation - GradationPoints[1]->r->Gradation)/dx2;
+            double b = (dx3 == 0) ? 0: (GradationPoints[1]->r->Gradation - GradationPoints[0]->r->Gradation)/dx3;
+            u(1) = 3 * (a - b)/dx1;
+        }
+    }
+    if(N > 2){
+        Eigen::MatrixXd A = Eigen::MatrixXd::Zero(N-1,N-1);
+        for(int i = 0; i < N-1;i++){
+            A(i,i) = 2 * (h[i] + h[i + 1]);
+            if(i != 0){
+                A(i-1,i) = A(i,i-1) = h[i];
+            }
+
+        }
+        Eigen::VectorXd t = A.colPivHouseholderQr().solve(v);
+        u = Eigen::VectorXd::Zero(N+1);
+        for(int i = 0; i < (int)t.size(); i++)u(i+1) = t(i);
+    }
+
+    double x, a, b, c, d, y;
+
+    int cnt = 0;
+    for(int i = 0; i < N; i++){
+        auto itr_cur = getItr(path, GradationPoints[i]);
+        int cur = (itr_cur != path.end()) ? std::distance(path.begin(), itr_cur): -1;
+        auto itr_next = getItr(path, GradationPoints[i + 1]);
+        int next = (itr_next != path.end()) ? std::distance(path.begin(), itr_next): -1;
+        if(cur == -1){
+        std::cout<< i << "  cur"<<std::endl;
+            return;
+        }
+        if(next == -1 ){
+            std::cout<< i << "  next"<<std::endl;
+            return;
+        }
+        glm::f64vec3 befcenter = getCenter(GradationPoints[i]);
+        glm::f64vec3 center = getCenter(GradationPoints[i + 1]);
+        double den = glm::distance(befcenter, center);
+        a = (den != 0)? (u(i + 1) - u(i))/(6 * den) : 0;
+        b = u(i)/2;
+        c = - den * (2 * u(i) + u(i + 1))/6.0;
+        c += (den != 0)? (GradationPoints[i + 1]->r->Gradation - GradationPoints[i]->r->Gradation)/den : 0;
+        d = GradationPoints[i]->r->Gradation;
+        for(int k = cur + 1; k < next; k++){
+            x =  glm::distance(getCenter(path[k]), befcenter);
+            y = a * std::pow(x, 3) + b * std::pow(x, 2) + c * x + d;
+            path[k]->r->Gradation = y;
+            CurvePath.push_back(glm::f64vec2{cnt++,y});
+        }
+    }
+}

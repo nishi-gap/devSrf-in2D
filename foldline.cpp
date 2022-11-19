@@ -298,7 +298,7 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
                     auto he = f->halfedge;
                     do{
                         he = he->next;
-                        std::cout<<cnt++<<std::endl;
+                        //std::cout<<cnt++<<std::endl;
                         if(cnt  > 1000)exit(0);
                     }while(he != f->halfedge);
                 }
