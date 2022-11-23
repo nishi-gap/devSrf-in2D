@@ -22,12 +22,14 @@ public:
     HalfEdge *he, *he2;
     std::vector<glm::f64vec3> point;
     Vertex *vx, *vx2;
+
+    std::vector<glm::f64vec3> CtrlPts_res, Curve_res, CrossPts;
 private:
     double color;
     bool setCurve(int dim);
 
     void devide(Vertex *v1, Vertex *v2, std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, EdgeType _type);
-    glm::f64vec3 BezierCrvOn3dSrf(std::vector<glm::f64vec3>& CtrlPts, double t, int dim, std::vector<Face*>& Faces);
+    bool BezierCrvOn3dSrf(std::vector<glm::f64vec3>& CtrlPts, double t, int dim, std::vector<Face*>& Faces, glm::f64vec3& v_3d);
     std::array<HalfEdge*, 2> splitOnPoint(Vertex *v, std::vector<HalfEdge*>& Edges);
     void devide2Faces(std::vector<HalfEdge*>& Inserted, std::vector<HalfEdge*>& Edges, std::vector<Face*>& Faces);
     std::vector<glm::f64vec3>CtrlPts;

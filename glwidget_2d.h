@@ -88,6 +88,10 @@ public slots:
     //FoldLine
     void changeFoldType(int state);
 
+    //Line Width
+    void receiveNewLineWidth(double d);
+    void switchGrid();
+
 private:
     void draw();
     int DivSize;
@@ -114,8 +118,11 @@ private:
     QList<std::pair<int, PaintTool>> CurveList;
 
     double gridsize;
+    int visibleGrid;//1:enable, -1:disable
+
     void DrawGrid();
     bool drawpolygon;
+    double rulingWidth;
 
     int constType;
     glm::f64vec3 SetOnGrid(QPointF& cursol, double gridsize);

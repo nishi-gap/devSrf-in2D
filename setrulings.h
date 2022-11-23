@@ -246,4 +246,6 @@ double basis(int j, int k, double t, std::vector<double>& T);
 glm::f64vec3 bspline(std::vector<glm::f64vec3>&CtrlPts, double t, int dim, std::vector<double>Knot);
 double factorial(int n);
 double cmb(int n, int i);
+
+std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<glm::f64vec3>& Q, std::vector<glm::f64vec3>& CtrlPts_res);
 #endif // SETRULINGS_H

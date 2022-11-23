@@ -29,6 +29,7 @@ GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
     curvetype = 0;
 
     gridsize = 10;
+    visibleGrid = 1;
 
 }
 GLWidget_2D::~GLWidget_2D(){}
@@ -166,10 +167,16 @@ void GLWidget_2D::changeFoldType(int state){
         model->FL.push_back(fl);
     }else drawtype = PaintTool::FoldlineColor;
     setMouseTracking(false);
+    update();
 }
 
 void GLWidget_2D::setColor(){
     drawtype = PaintTool::SetColor;
+}
+
+void GLWidget_2D::switchGrid(){
+    visibleGrid *= -1;
+    update();
 }
 
 void GLWidget_2D::ConnectVertices(){drawtype = PaintTool::ConnectVertices_ol;}
@@ -228,6 +235,11 @@ void GLWidget_2D::swapCrvsOnLayer(int n1, int n2){
     update();
 }
 
+void GLWidget_2D::receiveNewLineWidth(double d){
+    rulingWidth = d;
+    update();
+}
+
 void GLWidget_2D::initializeGL(){
     makeCurrent();
     initializeOpenGLFunctions();
@@ -238,12 +250,13 @@ void GLWidget_2D::initializeGL(){
 
 void GLWidget_2D::paintGL(){
     makeCurrent();
+    glClearColor(1.0,1.0,1.0,1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     QSize s = this->size();
     glLoadIdentity();
     glOrtho(-0.5, (float)s.width() -0.5, (float)s.height() -0.5, -0.5, -1, 1);
 
-    DrawGrid();
+    if(visibleGrid == 1)DrawGrid();
     //rulingの描画
     {
         glm::f64vec2 p, p2;
@@ -268,8 +281,12 @@ void GLWidget_2D::paintGL(){
                         glColor3d(r,g,b);
                     }
                 }
-                if(drawtype == PaintTool::NewGradationMode)glLineWidth(2.f);
-                else glLineWidth(1.f);
+                if(drawtype == PaintTool::NewGradationMode)glLineWidth(rulingWidth);
+                else{
+                    if(rl->IsCrossed  != -1)glColor3d(0,1,0);
+                    else glColor3d(0.4,0.4,0.4);
+                    glLineWidth(1.f);
+                }
                 glBegin(GL_LINES);              
                 p = std::get<0>(rl->r)->p, p2 = std::get<1>(rl->r)->p;
                 glVertex2d(p.x, p.y);
@@ -499,7 +516,10 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
                 bool res;
                 //res = model->FL[0]->applyCurvedFolding(model->Faces, model->Edges, model->vertices, curveDimention);
                 res = model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, curveDimention);
-                if(res) emit foldingSignals();
+                if(res){
+                    std::cout<<"finish"<<std::endl;
+                    //emit foldingSignals();
+                }
             }
         }
         else if(drawtype == PaintTool::DeleteCurve){
@@ -553,7 +573,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
     }
     if(model->outline->IsClosed()){
 
-        model->deform();
+        //model->deform();
         emit foldingSignals();
     }
     update();

@@ -39,7 +39,7 @@ void GLWidget_3D::setVertices(std::vector<std::vector<glm::f64vec3>>& _Vertices,
     update();
 }
 
-void GLWidget_3D::setVertices(std::vector<Face*>& Faces){
+void GLWidget_3D::setVertices(std::vector<Face*>& Faces, std::vector<glm::f64vec3>& _CtrlPts, std::vector<glm::f64vec3>& _Curve, std::vector<glm::f64vec3>& _CrossPts){
     std::vector<glm::f64vec3> vertices, centers;
     Vertices.clear();
     TriMeshs.clear();
@@ -47,6 +47,11 @@ void GLWidget_3D::setVertices(std::vector<Face*>& Faces){
     glm::f64mat4x4 Mirror = glm::mat4(1.0f); Mirror[1][1] = -1;
     glm::f64mat4x4 Scale = glm::scale(glm::f64vec3{0.1, 0.1, 0.1});
     std::vector<std::array<glm::f64vec3, 3>> trimesh;
+    CtrlPts.clear(); Curve.clear(); CrossPts.clear();
+    for(auto&v: _CtrlPts)CtrlPts.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(v,1)));
+    for(auto&v: _Curve)Curve.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(v,1)));
+    for(auto&v: _CrossPts)CrossPts.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(v,1)));
+
     TriMeshs.clear();
     for(auto&f: Faces){
         vertices.clear();
@@ -54,6 +59,7 @@ void GLWidget_3D::setVertices(std::vector<Face*>& Faces){
         int cnt = 0;
         do{
             glm::f64vec3 v = glm::f64vec3(Scale * Mirror * glm::f64vec4(he->vertex->p3,1));
+
             center += v;
             vertices.push_back(v);
             he = he->next;
@@ -122,6 +128,39 @@ void GLWidget_3D::paintGL(){
     DrawMesh(false);
     DrawMeshLines();
 
+
+
+    glColor3d(1,0,0);
+    glPointSize(5);
+    for(auto&v: CtrlPts){
+        glBegin(GL_POINTS);
+        //glVertex3d(v.x,v.y, v.z);
+        glEnd();
+    }
+
+    glColor3d(0,0,1);
+    glPointSize(5);
+    for(auto&v: CrossPts){
+        glBegin(GL_POINTS);
+        glVertex3d(v.x,v.y, v.z);
+        glEnd();
+    }
+
+
+    glColor3d(0,1,0);
+    glLineWidth(2);
+    glBegin(GL_LINE_STRIP);
+    for(auto&v: Curve)glVertex3d(v.x,v.y, v.z);
+    glEnd();
+
+    glColor3d(0.4,0.4,0.4);
+    glLineWidth(1);
+    glEnable(GL_LINE_STIPPLE);
+    glLineStipple(1 , 0xF0F0);
+    glBegin(GL_LINE_STRIP);
+    for(auto&v: CtrlPts) glVertex3d(v.x,v.y, v.z);
+    glEnd();
+    glDisable(GL_LINE_STIPPLE);
 }
 
 void GLWidget_3D::DrawMesh(bool isFront){

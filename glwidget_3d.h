@@ -19,12 +19,13 @@ class GLWidget_3D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
     Q_OBJECT
 public:
     void setVertices(std::vector<std::vector<glm::f64vec3>>& _Vertices, glm::f64vec3 center);
-    void setVertices(std::vector<Face*>& Faces);
+    void setVertices(std::vector<Face*>& Faces, std::vector<glm::f64vec3>& _CtrlPts, std::vector<glm::f64vec3>& _Curve, std::vector<glm::f64vec3>& _CrossPts);
     void receive(std::vector<std::vector<glm::f64vec3>>& l, std::vector<std::vector<glm::f64vec3>>& r, glm::f64vec3 center);
     std::vector<int>left;
     explicit GLWidget_3D(QWidget *parent = 0);
     ~GLWidget_3D();
 
+    std::vector<glm::f64vec3> CtrlPts, Curve, CrossPts;
 protected:
     void initializeGL();
     void paintGL(); 
@@ -55,7 +56,6 @@ private:
     int actionType;//0: None, 1: Left Click, 2: Right click, 3: other
 
     QPointF befPos;
-
 
 };
 

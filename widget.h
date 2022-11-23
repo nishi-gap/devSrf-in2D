@@ -64,6 +64,10 @@ public slots:
     void addFoldLine_bezier();
     void color_FL();
     void fold_FL();
+
+    //Line Width
+    void changeLineWidthFromSlider(int n);
+    void changeLineWidthFromSpinBox(double d);
 private:
     Ui::MainWindow *ui;
     Model *model;
@@ -89,6 +93,7 @@ signals:
     void swapIndex(int n1, int n2);
     void constraintType(int state);
     void signalFLtype(int state);
+    void signalNewLineWidth(double d);
 
 };
 #endif // WIDGET_H

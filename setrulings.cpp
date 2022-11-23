@@ -1234,3 +1234,51 @@ glm::f64vec3 GetCenter(std::vector<glm::f64vec3>& vertices){
     center/= vertices.size();
     return center;
 }
+
+//https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/INT-APP/CURVE-INT-global.html
+//http://www.cad.zju.edu.cn/home/zhx/GM/009/00-bsia.pdf
+std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<glm::f64vec3>& Q, std::vector<glm::f64vec3>& CtrlPts_res){
+    using namespace Eigen;
+    double L= 0.0;
+    int n = Q.size();
+    MatrixXd D(n,3);
+    for(int i = 0; i < n; i++){
+        D(i,0) = Q[i].x; D(i,1) = Q[i].y; D(i,2) = Q[i].z;
+    }
+
+    //The Centripetal Method
+    for(int i = 1; i < n; i++)L += std::sqrt(glm::distance(Q[i], Q[i - 1]));
+    std::vector<double> T(n); T[0] = 0; T[n - 1] = 1;
+    for(int i = 1; i < n - 1; i++)T[i] += T[i - 1] + std::sqrt(glm::distance(Q[i], Q[i-1]))/L;
+
+    //average method
+    int dim = 3;
+    int m = n + dim + 1;
+    std::vector<double> U(m, 0);
+    for(int i = 0; i <= dim; i++) U[m - i - 1] = 1;
+    for(int j = 1; j < n - dim; j++){
+        for(int i = j; i < j + dim; i++)U[j + dim] += T[i]/(double)dim;
+    }
+    //Knot Matrix
+    MatrixXd N(n, n);
+    for(int i = 0; i < n; i++){
+        for(int j = 0; j < n; j++)N(i,j) = basis(j, dim, T[i], U);
+    }
+
+    MatrixXd P = N.fullPivLu().solve(D);
+
+    //cast
+    CtrlPts_res.resize(n);
+    for(int i = 0; i < n; i++){
+        CtrlPts_res[i].x = P(i,0); CtrlPts_res[i].y = P(i,1); CtrlPts_res[i].z = P(i,2);
+    }
+
+    int num = 1000;
+    double t = T[dim];
+    std::vector<glm::f64vec3> BCurve(num);
+    for(int i = 0; i < num; i++){
+        BCurve[i] = bspline(CtrlPts_res, t, dim, T);
+        t += (T[n - dim] - T[dim])/(double)(num);
+    }
+    return BCurve;
+}

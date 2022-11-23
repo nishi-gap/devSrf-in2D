@@ -435,7 +435,7 @@ void Model::SplineInterPolation(std::vector<HalfEdge*>& path, std::vector<glm::f
     auto getItr = [](std::vector<HalfEdge*>& _path, HalfEdge *h){ return (std::find(_path.begin(), _path.end(), h) != _path.end()) ? std::find(_path.begin(), _path.end(), h):  std::find(_path.begin(), _path.end(), h->pair);};
     Eigen::VectorXd v(N - 1);
     std::vector<double>h(N);
-    for(int i = 1; i < N + 1; i++)h[i - 1] = getCenter(GradationPoints[i]).x - getCenter(GradationPoints[i - 1]).x;
+    for(int i = 1; i < N + 1; i++)h[i - 1] = glm::distance(getCenter(GradationPoints[i]),getCenter(GradationPoints[i - 1]));
     for(int i = 1; i < N; i++){
         double a = (h[i] != 0) ? (GradationPoints[i + 1]->r->Gradation - GradationPoints[i]->r->Gradation)/h[i] : 0, b = (h[i - 1] != 0) ? (GradationPoints[i]->r->Gradation - GradationPoints[i - 1]->r->Gradation)/h[i - 1]: 0;
         v(i - 1) = 6 * (a - b);
@@ -447,9 +447,9 @@ void Model::SplineInterPolation(std::vector<HalfEdge*>& path, std::vector<glm::f
     if(N == 2){
         u = Eigen::VectorXd::Zero(3);
         double dx1, dx2, dx3;
-        dx1 = getCenter(GradationPoints[2]).x - getCenter(GradationPoints[0]).x;
-        dx2 = getCenter(GradationPoints[2]).x - getCenter(GradationPoints[1]).x;
-        dx3 = getCenter(GradationPoints[1]).x - getCenter(GradationPoints[0]).x;
+        dx1 = glm::distance(getCenter(GradationPoints[2]), getCenter(GradationPoints[0]));
+        dx2 = glm::distance(getCenter(GradationPoints[2]), getCenter(GradationPoints[1]));
+        dx3 = glm::distance(getCenter(GradationPoints[1]), getCenter(GradationPoints[0]));
         if(abs(dx1) < FLT_EPSILON) u(1) = 0;
         else{
             double a = (dx2 == 0) ? 0: (GradationPoints[2]->r->Gradation - GradationPoints[1]->r->Gradation)/dx2;

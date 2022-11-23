@@ -1,6 +1,6 @@
 #include "foldline.h"
 
-const double eps = 1e-6;
+const double eps = 1e-4;
 
 FoldLine::FoldLine(int crvNum, int rsize, int _type)
 {
@@ -16,6 +16,8 @@ FoldLine::FoldLine(int crvNum, int rsize, int _type)
     color = 0;
     type = _type;
     he = he2 = nullptr;
+    CtrlPts_res.clear();
+    Curve_res.clear();
 }
 
 std::vector<glm::f64vec3> FoldLine::getCtrlPt(){return CtrlPts;}
@@ -273,6 +275,8 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
     double k2d, k3d, tau, k3d_bef, k2d_bef;
     auto rad_2d = [](double k, double tau, double a, double da) { return std::isfinite((k*sin(a))/(da + tau)) ? atan((k*sin(a))/(da + tau)) : M_PI/2; };
     std::vector<HalfEdge*> NewInsertedEdges;
+    std::vector<HalfEdge*> SearchedEdge;
+    CrossPts.clear();
     if(type == 0){
 
     }else if(type == 2){
@@ -281,14 +285,16 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
         double a, a_bef;
         int EdgeSize = Edges.size();
         for(int i = 0; i < EdgeSize; i++){
-            if(Edges[i]->r == nullptr)continue;
+            if(Edges[i]->r == nullptr || (!SearchedEdge.empty() && std::find(SearchedEdge.begin(), SearchedEdge.end(), Edges[i]->pair) != SearchedEdge.end()))continue;
+            SearchedEdge.push_back(Edges[i]);
             std::vector<double>arcT = BezierClipping(CtrlPts, Edges[i], dim);
             for(auto&t: arcT){
                 if(t < 0 || 1 < t){std::cout<<" t is not found " << std::endl; continue;}
 
                 glm::f64vec3 pt_new{0,0,0};
                 for (int i = 0; i < int(CtrlPts.size()); i++) pt_new += cmb(dim, i) * std::pow(t, i) * std::pow(1 - t, dim - i) * CtrlPts[i];
-                Vertex *v_new = new Vertex(pt_new);
+
+                /*Vertex *v_new = new Vertex(pt_new);
                 Vertices.push_back(v_new);
                 std::array<HalfEdge*, 2> he_new = splitOnPoint(v_new, Edges);
 
@@ -298,24 +304,25 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
                     auto he = f->halfedge;
                     do{
                         he = he->next;
-                        std::cout<<cnt++<<std::endl;
+                        //std::cout<<cnt++<<std::endl;
                         if(cnt  > 1000)exit(0);
                     }while(he != f->halfedge);
                 }
-                std::cout<<"split and connection success"<<std::endl;
+                std::cout<<"split and connection success"<<std::endl;*/
                 dr = -3. * (1 - t) * (1 - t) * CtrlPts[0] + (9 * t * t - 12 * t + 3) * CtrlPts[1] + (-9 * t * t + 6 * t) * CtrlPts[2] + 3 * t * t * CtrlPts[3];
                 dr2 = 6. * (1 - t) * CtrlPts[0] + (18 * t - 12) * CtrlPts[1] + (-18 * t + 6) * CtrlPts[2] + 6 * t * CtrlPts[3];
                 k2d = glm::length(glm::cross(dr, dr2))/std::pow(glm::length(dr), 3);
                 //k2d = glm::length(dr2);
                 T2d = glm::normalize(dr);
                 if(3 * eps <= t && t <= 1 - 3 * eps){
-                    d = BezierCrvOn3dSrf(CtrlPts, t, dim, Faces);
-                    dh_p = BezierCrvOn3dSrf(CtrlPts,t + eps, dim, Faces);
-                    dh_2p = BezierCrvOn3dSrf(CtrlPts,t + 2 * eps, dim, Faces);
-                    dh_3p = BezierCrvOn3dSrf(CtrlPts,t + 3 * eps, dim, Faces);
-                    dh_m = BezierCrvOn3dSrf(CtrlPts,t - eps, dim, Faces);
-                    dh_2m = BezierCrvOn3dSrf(CtrlPts,t - 2 * eps, dim, Faces);
-                    dh_3m = BezierCrvOn3dSrf(CtrlPts,t - 3 * eps, dim, Faces);
+                    bool res = BezierCrvOn3dSrf(CtrlPts, t, dim, Faces, d);
+                    if(res)CrossPts.push_back(d);
+                    //BezierCrvOn3dSrf(CtrlPts,t + eps, dim, Faces, dh_p);
+                    //BezierCrvOn3dSrf(CtrlPts,t + 2 * eps, dim, Faces, dh_2p);
+                    //BezierCrvOn3dSrf(CtrlPts,t + 3 * eps, dim, Faces, dh_3p);
+                    //BezierCrvOn3dSrf(CtrlPts,t - eps, dim, Faces, dh_m);
+                    //BezierCrvOn3dSrf(CtrlPts,t - 2 * eps, dim, Faces, dh_2m);
+                    //BezierCrvOn3dSrf(CtrlPts,t - 3 * eps, dim, Faces, dh_3m);
                     dr = (dh_p - dh_m)/ (2 * eps);
                     dr2 = (dh_p - 2. * d + dh_m)/(eps * eps);
                     dr3 = (-dh_3p + 8. * dh_2p - 13. * dh_p + 13. * dh_m - 8. * dh_2m + dh_3m)/(8. * std::pow(eps, 3));
@@ -339,18 +346,18 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
                     glm::f64vec3 dr2_bef = 6. * (1 - t2) * CtrlPts[0] + (18 * t2 - 12) * CtrlPts[1] + (-18 * t2 + 6) * CtrlPts[2] + 6 * t2 * CtrlPts[3];
                     k2d_bef = glm::length(glm::cross(dr_bef, dr2_bef))/std::pow(glm::length(dr_bef), 3);
                     //k2d_bef = glm::length(dr2_bef);
-                    d = BezierCrvOn3dSrf(CtrlPts, t2, dim, Faces);
-                    dh_p = BezierCrvOn3dSrf(CtrlPts,t2 + eps, dim, Faces);
-                    dh_2p = BezierCrvOn3dSrf(CtrlPts,t2 + 2 * eps, dim, Faces);
-                    dh_m = BezierCrvOn3dSrf(CtrlPts,t2 - eps, dim, Faces);
-                    dh_2m = BezierCrvOn3dSrf(CtrlPts,t2 - 2 * eps, dim, Faces);
+                    //BezierCrvOn3dSrf(CtrlPts, t2, dim, Faces, d);
+                    //BezierCrvOn3dSrf(CtrlPts,t2 + eps, dim, Faces, dh_p);
+                    //BezierCrvOn3dSrf(CtrlPts,t2 + 2 * eps, dim, Faces, dh_2p);
+                    //BezierCrvOn3dSrf(CtrlPts,t2 - eps, dim, Faces, dh_m);
+                    //BezierCrvOn3dSrf(CtrlPts,t2 - 2 * eps, dim, Faces, dh_2m);
                     dr_bef = (dh_p - dh_m)/ (2 * eps);
                     dr2_bef = (dh_p - 2. * d + dh_m)/(eps * eps);
                     k3d_bef = glm::length(glm::cross(dr_bef, dr2_bef))/std::pow(glm::length(dr_bef), 3);
                     //k3d_bef = glm::length(dr2_bef);
                     //k3d_bef = (k2d_bef > k3d_bef) ? k2d_bef: k3d_bef;
                     a_bef = (k3d_bef != 0) ? acos((k2d_bef/k3d_bef)) : 0;
-                    std::cout<< "before " <<  i << "  :  T = " << glm::to_string(glm::normalize(dr_bef)) << " , N = " << glm::to_string(glm::normalize(glm::cross(dr_bef, glm::cross(dr2_bef, dr_bef)))) << " , B = " << glm::to_string(glm::normalize(glm::cross(dr_bef, dr2_bef))) <<  std::endl;
+                    //std::cout<< "before " <<  i << "  :  T = " << glm::to_string(glm::normalize(dr_bef)) << " , N = " << glm::to_string(glm::normalize(glm::cross(dr_bef, glm::cross(dr2_bef, dr_bef)))) << " , B = " << glm::to_string(glm::normalize(glm::cross(dr_bef, dr2_bef))) <<  std::endl;
                 }
                 double da = (a - a_bef)/eps;
                 double phi_bl = rad_2d(k3d, tau, a, -da), phi_br = rad_2d(k3d, tau, a, da);
@@ -384,19 +391,20 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
                     }
                 }*/
                 //std::cout << "he_new  " << he_new[0]->next->vertex << " , " << he_new[1]->next->vertex <<std::endl;
-                ofs <<  k2d << " , " << k3d << " , " << tau << " , " << k3d_bef << " , " << a << " , " << a_bef << " , " << da << " , " <<  phi_bl << " , " << phi_br << std::endl;
-                std::cout<<i << std::endl;
+                ofs <<  k2d << " , " << k3d << " , " << k2d_bef << " , " << k3d_bef << std::endl;
             }
         }
     }
-    std::cout<<"finish"<<std::endl;
+
+    Curve_res = GlobalSplineInterpolation(CrossPts, CtrlPts_res);
+
     //devide2Faces(NewInsertedEdges, Edges, Faces);
     //std::cout<<"after :  Faces " << Faces.size() << " , Edges " << Edges.size() << "  , Vertices " << Vertices.size() << std::endl;
     return false;
 }
 
-glm::f64vec3 FoldLine::BezierCrvOn3dSrf(std::vector<glm::f64vec3>& CtrlPts, double t, int dim, std::vector<Face*>& Faces){
-    glm::f64vec3 v_2d{0,0,0}, v_3d;
+bool FoldLine::BezierCrvOn3dSrf(std::vector<glm::f64vec3>& CtrlPts, double t, int dim, std::vector<Face*>& Faces, glm::f64vec3& v_3d){
+    glm::f64vec3 v_2d{0,0,0};
     for (int i = 0; i < int(CtrlPts.size()); i++) v_2d += cmb(dim, i) * std::pow(t, i) * std::pow(1 - t, dim - i) * CtrlPts[i];
 
     for(auto&f: Faces){
@@ -409,15 +417,12 @@ glm::f64vec3 FoldLine::BezierCrvOn3dSrf(std::vector<glm::f64vec3>& CtrlPts, doub
             Eigen::Vector2d b; b(0) = p.x; b(1) = p.y;
             Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
             v_3d = x(0) * (h->next->vertex->p3 - h->vertex->p3) + x(1) * (h->prev->vertex->p3 - h->vertex->p3) + h->vertex->p3;
-            std::cout<< glm::length(h->next->vertex->p3 - h->next->vertex->p) << " , " << glm::length(h->prev->vertex->p3 - h->prev->vertex->p) << " , " <<  glm::length(h->vertex->p3 - h->vertex->p) << std::endl;
-            if(glm::length(v_3d - v_2d) > 0.1){
-               // std::cout<<"world  "<< glm::length(v_3d - v_2d) << std::endl;
-            }
-            return v_3d;
+            //std::cout<< glm::length(h->next->vertex->p3 - h->next->vertex->p) << " , " << glm::length(h->prev->vertex->p3 - h->prev->vertex->p) << " , " <<  glm::length(h->vertex->p3 - h->vertex->p) << std::endl;
+            return true;
         }
     }
     std::cout<<"not found in BezierCrvOn3dSrf"<<std::endl;
-    return v_3d;
+    return false;
 }
 
 std::array<HalfEdge*, 2> FoldLine::splitOnPoint(Vertex *v, std::vector<HalfEdge*>& Edges){

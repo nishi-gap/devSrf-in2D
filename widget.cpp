@@ -26,6 +26,14 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->DivSizeSpinBox, &QSpinBox::valueChanged, this, &MainWindow::ChangeDivSizeEditFromSpinBox);
     connect(ui->glWid2dim, &GLWidget_2D::foldingSignals, this , &MainWindow::fold_Sm);
 
+    //line width
+    connect(ui->LineWidthSpinBox, &QDoubleSpinBox::valueChanged, this, &MainWindow::changeLineWidthFromSpinBox);
+    connect(ui->LineWidthSlider, &QSlider::valueChanged, this, &MainWindow::changeLineWidthFromSlider);
+    connect(this, &MainWindow::signalNewLineWidth, ui->glWid2dim, &GLWidget_2D::receiveNewLineWidth);
+
+    //visualize Grid
+    connect(ui->gridCBox, &QCheckBox::clicked, ui->glWid2dim, &GLWidget_2D::switchGrid);
+
     connect(ui->AddPointsButton,&QPushButton::clicked,ui->glWid2dim,&GLWidget_2D::setNewGradationMode);
     connect(ui->CBox_InterpolationType,&QComboBox::currentIndexChanged, this, &MainWindow::changeInterpolationType);
     connect(ui->glWid2dim, &GLWidget_2D::ColorChangeFrom, this, &MainWindow::ApplyNewColor);
@@ -96,12 +104,23 @@ void MainWindow::addFoldLine_bezier(){
 }
 void MainWindow::color_FL(){emit signalFLtype(3);}
 
+void MainWindow::changeLineWidthFromSlider(int n){
+    double d = (double)n/10.;
+    ui->LineWidthSpinBox->setValue(d);
+    emit signalNewLineWidth(d);
+}
+void MainWindow::changeLineWidthFromSpinBox(double d){
+    ui->LineWidthSlider->setValue((int)(d * 10));
+    emit signalNewLineWidth(d);
+}
+
 void MainWindow::fold_Sm(){
 
     //switchActivateCheckBox("MakeDevSrf");
+    std::vector<glm::f64vec3> tmp;
     if(!model->outline->IsClosed())return;
-
-    ui->glWid3dim->setVertices(model->Faces);
+    if(!model->FL.empty()) ui->glWid3dim->setVertices(model->Faces, model->FL[0]->CtrlPts_res, model->FL[0]->Curve_res, model->FL[0]->CrossPts);
+    else ui->glWid3dim->setVertices(model->Faces, tmp, tmp, tmp);
 }
 
 void MainWindow::fold_FL(){
