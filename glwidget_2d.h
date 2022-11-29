@@ -20,6 +20,7 @@
 #include <QPushButton>
 #include "setrulings.h"
 #include "make3d.h"
+#include "mathtool.h"
 
 class GLWidget_2D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
 {
@@ -48,49 +49,49 @@ protected:
 
 public slots:
     //初期状態
-    void InitializeDrawMode(int state);
+    inline void InitializeDrawMode(int state);
 
     //輪郭関係
-    void DrawOutlineRectangle();
-    void DrawOutlinePolygon(int state);
-    void DrawOutlinePolyline(int state);
-    void recieveNewEdgeNum(int num);
-    void EditOutlineVertex(int state);
-    void MoveOutline(int state);
-    void switchGetmetricConstraint(int state);
-    void ConnectVertices();
+    inline void DrawOutlineRectangle();
+    inline void DrawOutlinePolygon(int state);
+    inline void DrawOutlinePolyline(int state);
+    inline void recieveNewEdgeNum(int num);
+    inline void EditOutlineVertex(int state);
+    inline void MoveOutline(int state);
+    inline void switchGetmetricConstraint(int state);
+    inline void ConnectVertices();
 
-    void Reset();
-    void ChangedDivSizeEdit(int n);
-    void setColor();
-    void receiveColors();
+    inline void Reset();
+    inline void ChangedDivSizeEdit(int n);
+    inline void setColor();
+    inline void receiveColors();
 
     //new gradation mode
-    void setNewGradationMode();
-    void ApplyNewGradationMode();
-    void getGradationFromSlider(int val);
+    inline void setNewGradationMode();
+    inline void ApplyNewGradationMode();
+    inline void getGradationFromSlider(int val);
 
     //add curve
-    void AddCurve();
-    void MoveCurvePt();
+    inline void AddCurve();
+    inline void MoveCurvePt();
 
-    void InsertNewPoint();
-    void DeleteCtrlPt();
-    void OpenDebugWindwow();
+    inline void InsertNewPoint();
+    inline void DeleteCtrlPt();
+    inline void OpenDebugWindwow();
 
     //複数の曲線操作
-    void cb_ApplyCurveEvent();
-    void cb_DeleteCurve();
+    inline void cb_ApplyCurveEvent();
+    inline void cb_DeleteCurve();
     void DeleteCurve();
-    void changeSelectedCurve(int ind);
+    inline void changeSelectedCurve(int ind);
     void swapCrvsOnLayer(int n1, int n2);
 
     //FoldLine
-    void changeFoldType(int state);
+    inline void changeFoldType(int state);
 
     //Line Width
-    void receiveNewLineWidth(double d);
-    void switchGrid();
+    inline void receiveNewLineWidth(double d);
+    inline void switchGrid();
 
 private:
 

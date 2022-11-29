@@ -15,6 +15,7 @@
 #include <QPointF>
 #include "setrulings.h"
 #include "foldline.h"
+#include "mathtool.h"
 
 struct LinearRange{
     Face *face;//なし:nullptr
@@ -88,8 +89,7 @@ private:
     void setHalfEdgePair(HalfEdge *he);
     
     void LinkRulingAndGradationArea(Face *f);
-    void clear();
-    void deleteHE(HalfEdge *he);
+    inline void clear();
     void ConnectEdge(HalfEdge *he);
 
     glm::f64vec3 SetOnGrid(QPointF& cursol, double gridsize);

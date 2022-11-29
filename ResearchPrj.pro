@@ -21,6 +21,7 @@ SOURCES += \
     gtoolwnd.cpp \
     main.cpp \
     make3d.cpp \
+    mathtool.cpp \
     originalbutton.cpp \
     setrulings.cpp \
     widget.cpp
@@ -32,6 +33,7 @@ HEADERS += \
     gradationwidget.h \
     gtoolwnd.h \
     make3d.h \
+    mathtool.h \
     originalbutton.h \
     setrulings.h \
     widget.h

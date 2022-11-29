@@ -122,7 +122,7 @@ void MainWindow::fold_Sm(){
     if(model->FL.empty())ui->glWid3dim->setVertices(model->Faces, tmp, tmp, tmp);
     else{
         std::vector<glm::f64vec3> CrossPts;
-        for(auto&v: model->FL[0]->CrossPts)CrossPts.push_back(v->p3);
+        for(const auto&v: model->FL[0]->T_crs)CrossPts.push_back(v.p3);
         ui->glWid3dim->setVertices(model->Faces, model->FL[0]->CtrlPts_res, model->FL[0]->Curve_res, CrossPts);
     }
 }
@@ -280,7 +280,7 @@ void MainWindow::exportobj(){
             polygon.push_back(h->vertex->p3);
             h = h->next;
         }while(h != f->halfedge);
-        Triangulation(polygon, trimesh);
+        MathTool::Triangulation(polygon, trimesh);
         glm::f64vec3 N = glm::normalize(glm::cross(trimesh[0][2] - trimesh[0][0], trimesh[0][1] - trimesh[0][0]));
         if(befN == glm::f64vec3{0,0,0}) Normals.push_back(N);
         else{

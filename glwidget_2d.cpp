@@ -537,32 +537,6 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
                 //tmp_c = GlobalSplineInterpolation(tmp_cp, model->FL[0]->CtrlPts_res, Knot);
                 //res = model->FL[0]->applyCurvedFolding(model->Faces, model->Edges, model->vertices, curveDimention);
                 res = model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, curveDimention);
-                double c2dlen = 0.0, c3dlen = 0.0;
-                for(int i = 1; i < (int)model->FL[0]->CurvePts.size(); i++){
-                    c3dlen += glm::distance(model->FL[0]->CurvePts[i-1], model->FL[0]->CurvePts[i]);
-                }
-                double t0, t1;
-                for(auto&e: _edges){
-                    std::vector<double>arcT = BezierClipping(_CtrlPts, e, curveDimention);
-                    auto _bezier = [](std::vector<glm::f64vec3>P, int dim, double t) {
-                        glm::f64vec3 v{0,0,0};for(int i = 0; i < (int)P.size();i++)v += cmb(dim, i)*std::pow(t,i)*std::pow(1-t,dim-i)*P[i]; return v;
-                    };
-                    if(arcT.empty())continue;
-                    t0 = std::min(arcT[0], arcT[1]); t1 = std::max(arcT[0], arcT[1]);
-                    glm::f64vec3 bef = _bezier(_CtrlPts,curveDimention,t0);
-                    double t = t0;
-                    for(int n = 0; n < (int)model->FL[0]->Curve_res.size(); n++){
-                        glm::f64vec3 v = _bezier(_CtrlPts,curveDimention,t);
-                        c3dlen += glm::distance(bef, v);
-                        bef = v;
-                        t += (t1- t0)/model->FL[0]->Curve_res.size();
-                    }
-                    for(int i = 1; i < (int)model->crvs[0]->CurvePoints.size(); i++){
-                        c2dlen += glm::distance(model->crvs[0]->CurvePoints[i-1].pt, model->crvs[0]->CurvePoints[i].pt);
-                    }
-                }
-
-                std::cout<< "length : 2d = " << c2dlen << " , 3d = " << c3dlen << " , " << t0 << " , " << t1 <<  std::endl;
             }
         }
         else if(drawtype == PaintTool::DeleteCurve){

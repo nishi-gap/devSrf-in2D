@@ -1,5 +1,6 @@
 //#define PI 3.14159265359
 #include "make3d.h"
+using namespace MathTool;
 
 FaceGradation::FaceGradation(){
     color = 0;
@@ -525,7 +526,8 @@ void Model::setGradationValue(int val, HalfEdge *refHE, int InterpolationType, s
     return;
 }
 
-void Model::LinkRulingAndGradationArea(Face *f){        
+void Model::LinkRulingAndGradationArea(Face *f){
+    /*
     std::vector<glm::f64vec2> mesh;
     HalfEdge *h = f->halfedge;
     do{
@@ -535,19 +537,18 @@ void Model::LinkRulingAndGradationArea(Face *f){
     for(auto&c: crvs){
         if(c->isempty)continue;
         for(auto& r: c->Rulings){
-            glm::f64vec2 p = (std::get<0>(r->r)->p + std::get<1>(r->r)->p);
-            p /= 2;
-            QPointF v{p.x, p.y};
-            if(cn(mesh, v)){
+            //glm::f64vec2 p = (std::get<0>(r->r)->p + std::get<1>(r->r)->p);
+            //p /= 2;
+            //QPointF v{p.x, p.y};
+            //if(cn(mesh, v)){
                 //f->rulings.push_back(r);
                 //f->Gradation = r->Gradation = r->pt->color;
-            }
+           // }
         }
     }
     //ruling *tmp;
     //if(f->rulings.size() == 0){//safty的な感じ。面の中心とrulingの中点の距離が最小となるrulingを選択
         //std::cout<<"safty fail in LinkRulingAndGradationArea"<<std::endl;
-        /*
         std::vector<glm::f64vec2> mesh;
         HalfEdge *h = f->halfedge;
         do{
@@ -569,20 +570,9 @@ void Model::LinkRulingAndGradationArea(Face *f){
             }
         }
         f->rulings.push_back(tmp);
-        */
-    //}
-}
 
-void Model::deleteHE(HalfEdge *he){
-    HalfEdge *prev = he->prev, *next = he->next;
-    prev->next = next;
-    next->prev = prev;
-    Vertex *v = he->vertex;
-    std::vector<HalfEdge*>::iterator itr_v = std::find(v->halfedge.begin(), v->halfedge.end(), he);
-    if(itr_v != v->halfedge.end())v->halfedge.erase(v->halfedge.begin() + std::distance(v->halfedge.begin(), itr_v));
-    std::vector<HalfEdge*>::iterator itr = std::find(Edges.begin(), Edges.end(), he);
-    delete he;
-    if(itr != Edges.end())Edges.erase(itr);
+    //}
+    */
 }
 
 void Model::ConnectEdge(HalfEdge *he){
@@ -788,7 +778,7 @@ void Model::AddControlPoint(glm::f64vec3& p, int curveDimention, int DivSize){
                     if(glm::dot(glm::normalize(h->vertex->p - p),glm::normalize(h->next->vertex->p - p)) >= 1 - FLT_EPSILON)PointOnLines = true;
                     h = h->next;
                 }while(h != f->halfedge);
-                if(!cn(f, p) || PointOnLines)crvs[AddPtIndex]->ControllPoints.push_back(p);
+                if(!f->IsPointInFace(p) || PointOnLines)crvs[AddPtIndex]->ControllPoints.push_back(p);
             }
             else crvs[AddPtIndex]->ControllPoints.push_back(p);
         }

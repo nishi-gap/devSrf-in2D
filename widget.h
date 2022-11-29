@@ -17,6 +17,7 @@
 #include <QFileDialog>
 #include "make3d.h"
 #include "originalbutton.h"
+#include "mathtool.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {

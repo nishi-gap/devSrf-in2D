@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <vector>
-//#include <glm/glm.hpp>
+#include "mathtool.h"
 #include <glm/gtx/transform.hpp>
 #include <tuple>
 #include <QDebug>
@@ -17,7 +17,6 @@ constexpr glm::f64vec3 NullVec = glm::f64vec3{-1,-1,-1};
 class HalfEdge;
 class Model;
 class Face;
-class meshline;
 class ruling;
 class OUTLINE;
 
@@ -60,14 +59,27 @@ enum class PaintTool{
     FoldlineColor,
 };
 
+
 class Vertex{
 public:
     glm::f64vec3 p;
     glm::f64vec3 p3;
-    std::vector<HalfEdge*> halfedge;
     bool deformed;
     Vertex(glm::f64vec3 _p);
+    Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3);
+    void addNewEdge(HalfEdge *he);
+    virtual std::vector<HalfEdge*> SplitEdge(std::vector<HalfEdge*>& Edges);
+protected:
+    std::vector<HalfEdge*> halfedge;
+};
 
+class CrvPt_FL : public Vertex{
+public:
+    double s, k2d;
+    glm::f64vec3 T2d;
+    CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3, double _s) : Vertex(_p2, _p3), s{_s} {}
+    bool operator<(const CrvPt_FL& T) const { return s < T.s; }
+    std::vector<HalfEdge*> SplitEdge(std::vector<HalfEdge*>& Edges) override;
 };
 
 class crvpt{
@@ -106,17 +118,6 @@ private:
 
 };
 
-class meshline
-{
-    public:
-    Vertex *vertices[2];
-    std::vector<std::tuple<Vertex*, Vertex*>> vertices4grad;//rulingは一組だが色の多角形領域を決めるverticesはv複数格納することでrulingが格納される多角形領域を決める際のsafty failを回避.サイズは必ず1として先頭の要素は可能性が最も高い物を残しておく
-    ruling *hasRulings[2];
-    crvpt *pt;
-    meshline(Vertex *a, Vertex *b, crvpt *_pt);
-    meshline();
-};
-
 class Face{
 public:
     bool bend;
@@ -125,8 +126,8 @@ public:
     //std::vector<ruling*> rulings;
     HalfEdge* halfedge;
     Face(HalfEdge *_halfedge);
+    bool IsPointInFace(glm::f64vec3 p);
 };
-
 
 class CRV{
 public:
@@ -161,24 +162,19 @@ public:
 
     //グラデーション
     void FillColor(int c);
-    int getColor(int n);
+    inline int getColor(int n);
     void setcolor(int ctype, int cval, int n);
-    void Interpolation(int method, int g0, int g1);
-    void clearColor();
+    inline void clearColor();
 private:
 
     bool IsInsertNewPoint;
     int OnCurvesORLines(glm::f64vec3& p, int& ind);//-1：どこにものっかっていない　0：曲線上　1：制御点を結んだ線上
-
     int curveType;
     bool setPoint(std::vector<Vertex*>&outline, glm::f64vec3 N, glm::f64vec3& cp, std::vector<glm::f64vec3>& P);
-    void swap(glm::f64vec3&a, glm::f64vec3& b);
+    inline void swap(glm::f64vec3&a, glm::f64vec3& b);
 
     double crvStep;
     int curveNum;
-    double meshLength(int s);
-    void SplineInterpolation(std::vector<glm::f64vec2>& cp, std::vector<glm::f64vec2>& CurvePath);
-    void LinearInterpolation(int g0, int g1);    
 
 };
 
@@ -188,7 +184,6 @@ public:
     OUTLINE();
     QString type;//Rectangle, Polygon, Polyline
 
-    //bool isClosed;
     bool IsClosed();
     int VerticesNum;
     void addVertex(Vertex*v, int n);
@@ -206,49 +201,16 @@ public:
 private:
     std::vector<Vertex*> vertices;
     std::vector<HalfEdge*> edges;
+    int movePointIndex(glm::f64vec3 p);
     Face *face;
 };
 
-double distP2L(glm::f64vec3 la, glm::f64vec3 lb, glm::f64vec3& p, glm::f64vec3& q);//点と線分の距離, s:laからlbへの比率(垂線が内部にあれば0 ~ 1)
-
-
-// -1: 最近傍の点なし
-int movePointIndex(glm::f64vec3 p, std::vector<Vertex*>& V);
-
-double QVdist(QPointF p, glm::f64vec2 v);
 void CrossDetection(Face *f, CRV *crvs);
-bool cn(std::vector<glm::f64vec2> &V2, QPointF p);
-bool cn(Face *face, glm::f64vec3 p);
-double set3pt(glm::f64vec3& p1, glm::f64vec3& p2, glm::f64vec3& p3);
-bool IsIntersect(glm::f64vec3&p1, glm::f64vec3&p2, glm::f64vec3&p3, glm::f64vec3&p4);
-glm::f64vec3 getIntersectionPoint(glm::f64vec3& p1, glm::f64vec3& p2, glm::f64vec3& p3, glm::f64vec3& p4);
 
-void Triangulation(std::vector<glm::f64vec3>&input, std::vector<std::array<glm::f64vec3, 3>>&output);
-void Triangulation(Face *f, std::vector<std::array<glm::f64vec3, 3>>& output);
-bool hasPointInTriangle3D(glm::f64vec3 p, std::array<glm::f64vec3, 3>& V);
-bool hasPointInTriangle3D(glm::f64vec3 p, std::array<HalfEdge*, 3>& V);
-bool hasPointInPolygon(glm::f64vec3 p, std::vector<glm::f64vec3>& V);
-bool IsAngleLessThan180(glm::f64vec3& o, glm::f64vec3& a, glm::f64vec3& b);
 
 std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, HalfEdge *line, int dim);
-std::vector<double> _bezierclipping(std::vector<glm::f64vec3>&CtrlPts_base, std::vector<glm::f64vec3>&CtrlPts_cur, std::array<glm::f64vec3, 2>& line, int dim);//交点が一つのみの場合
-bool is_point_on_line(glm::f64vec3& p, glm::f64vec3& lp1, glm::f64vec3& lp2);
-std::pair<std::vector<glm::f64vec3>, std::vector<glm::f64vec3>> BezierSplit(std::vector<glm::f64vec3> CtrlPts, double t, int dim);
 std::vector<glm::f64vec3> ConvertDistBasedBezier(std::vector<glm::f64vec3>& CtrlPts, HalfEdge *line);
-Eigen::MatrixXd create_Ux(int dim);
-std::vector<std::vector<glm::f64vec3>> de_casteljau_algorithm(std::vector<glm::f64vec3> CtrlPts, double t);
 
-std::vector<glm::f64vec3> GrahamScan(std::vector<glm::f64vec3>& Q);//凸包の計算
-double SignedArea(glm::f64vec3 a, glm::f64vec3 b, glm::f64vec3 p);
-
-std::vector<glm::f64vec3> TranslateGLMfromHE(Face *f);
-glm::f64vec3 GetCenter(std::vector<glm::f64vec3>& vertices);
-
-glm::f64vec3 bspline(std::vector<glm::f64vec3>&CtrlPts, double t, int dim, std::vector<double>Knot);
-double factorial(int n);
-double cmb(int n, int i);
-
-double basis(int i, int p, double u, std::vector<double>& U);
-std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<Vertex*>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot);
+std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot);
 
 #endif // SETRULINGS_H

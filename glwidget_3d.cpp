@@ -1,4 +1,5 @@
 #include "glwidget_3d.h"
+using namespace MathTool;
 
 GLWidget_3D::GLWidget_3D(QWidget *parent):QOpenGLWidget(parent)
 {
