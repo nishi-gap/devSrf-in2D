@@ -9,7 +9,7 @@ GLWidget_3D::GLWidget_3D(QWidget *parent):QOpenGLWidget(parent)
     actionType = 0;
     center = glm::f64vec3{0,0,0};
     eraseMesh = false;
-    eraseCP = false;
+    eraseCtrlPt = eraseCrossPt = false;
 }
 GLWidget_3D::~GLWidget_3D(){
 
@@ -133,13 +133,7 @@ void GLWidget_3D::paintGL(){
         DrawMeshLines();
     }
     //glPolygonOffset(0.f,0.5f);
-    glColor3d(1,0,0);
-    glPointSize(5);
-    for(auto&v: CtrlPts){
-        glBegin(GL_POINTS);
-        glVertex3d(v.x,v.y, v.z);
-        glEnd();
-    }
+
 
     glColor3d(0,1,0);
     glLineWidth(2);
@@ -147,23 +141,35 @@ void GLWidget_3D::paintGL(){
     for(auto&v: Curve)glVertex3d(v.x,v.y, v.z);
     glEnd();
 
-    glColor3d(0.4,0.4,0.4);
-    glLineWidth(1);
-    glEnable(GL_LINE_STIPPLE);
-    glLineStipple(1 , 0xF0F0);
-    glBegin(GL_LINE_STRIP);
-    for(auto&v: CtrlPts) glVertex3d(v.x,v.y, v.z);
-    glEnd();
-    glDisable(GL_LINE_STIPPLE);
+    if(!eraseCtrlPt){
+        glColor3d(1,0,0);
+        glPointSize(5);
+        for(auto&v: CtrlPts){
+            glBegin(GL_POINTS);
+            glVertex3d(v.x,v.y, v.z);
+            glEnd();
+        }
 
-    if(eraseCP)return;
-    glColor3d(0,0,1);
-    glPointSize(5);
-    for(auto&v: CrossPts){
-        glBegin(GL_POINTS);
-        glVertex3d(v.x,v.y, v.z);
+        glColor3d(0.4,0.4,0.4);
+        glLineWidth(1);
+        glEnable(GL_LINE_STIPPLE);
+        glLineStipple(1 , 0xF0F0);
+        glBegin(GL_LINE_STRIP);
+        for(auto&v: CtrlPts) glVertex3d(v.x,v.y, v.z);
         glEnd();
+        glDisable(GL_LINE_STIPPLE);
     }
+
+    if(!eraseCrossPt){
+        glColor3d(0,0,1);
+        glPointSize(5);
+        for(auto&v: CrossPts){
+            glBegin(GL_POINTS);
+            glVertex3d(v.x,v.y, v.z);
+            glEnd();
+        }
+    }
+
 }
 
 void GLWidget_3D::DrawMesh(bool isFront){
@@ -270,13 +276,15 @@ void GLWidget_3D::wheelEvent(QWheelEvent *we){
 
 void GLWidget_3D::keyPressEvent(QKeyEvent *e){
     if(e->key() == Qt::Key_M)eraseMesh = !eraseMesh;
-    if(e->key() == Qt::Key_C) eraseCP = !eraseCP;
+    if(e->key() == Qt::Key_C) eraseCtrlPt = !eraseCtrlPt;
     update();
 }
 
 void GLWidget_3D::receiveKeyEvent(QKeyEvent *e){
     if(e->key() == Qt::Key_M)eraseMesh = !eraseMesh;
-    if(e->key() == Qt::Key_C) eraseCP = !eraseCP;
+    if(e->key() == Qt::Key_C) eraseCtrlPt = !eraseCtrlPt;
+    if(e->key() == Qt::Key_V) eraseCrossPt = !eraseCrossPt;
+
     update();
 }
 

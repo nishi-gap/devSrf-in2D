@@ -27,6 +27,27 @@ HalfEdge::HalfEdge(Vertex *v, EdgeType _type){
     v->addNewEdge(this);
 }
 
+std::vector<HalfEdge*> HalfEdge::Split(Vertex *v, std::vector<HalfEdge*>& Edges){
+    std::vector<HalfEdge*> res;
+    if(!MathTool::is_point_on_line(v->p, vertex->p, next->vertex->p))return res;
+    double t = glm::length(v->p - vertex->p)/glm::length(next->vertex->p - vertex->p);
+    v->p3 = vertex->p3 + t * (next->vertex->p3 - vertex->p3);
+    HalfEdge *h_new = new HalfEdge(v, edgetype); h_new->r = r;
+    h_new->face = face; h_new->next = next; h_new->prev = this; next = h_new;
+    res.push_back(h_new);
+    Edges.push_back(h_new);
+    if(pair != nullptr){
+        HalfEdge *h2_new = new HalfEdge(v, edgetype); h2_new->r = r;
+        h2_new->face = pair->face;
+        h2_new->next = pair->next; h2_new->prev = pair; pair->next = h2_new;
+        h2_new->pair = this; h_new->pair = pair; pair->pair = h_new; pair = h2_new;
+        Edges.push_back(h2_new);
+        res.push_back(h2_new);
+    }
+    return res;
+}
+
+
 crvpt::crvpt(int _ind, glm::f64vec3 _pt, int _color){
     pt = _pt;
     color = _color;
@@ -552,12 +573,12 @@ OUTLINE::OUTLINE(){
     hasPtNum = 0;
 }
 
-inline void OUTLINE::addVertex(Vertex*v, int n){
+void OUTLINE::addVertex(Vertex*v, int n){
     if(n > (int)vertices.size())vertices.push_back(v);
     else vertices.insert(vertices.begin() + n, v);
 }
 
-inline void OUTLINE::addVertex(glm::f64vec3& p){
+void OUTLINE::addVertex(glm::f64vec3& p){
     if(IsClosed()) return;
     if(type == "Rectangle"){
         vertices.push_back(new Vertex(p));
@@ -583,7 +604,7 @@ inline void OUTLINE::addVertex(glm::f64vec3& p){
     }
 }
 
-inline void OUTLINE::eraseVertex(){
+void OUTLINE::eraseVertex(){
     if(type == "Polyline"){
         if(vertices.size() == 0)return;
         vertices.erase(vertices.end() - 1);

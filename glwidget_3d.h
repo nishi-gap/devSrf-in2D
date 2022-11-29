@@ -61,7 +61,7 @@ private:
     int actionType;//0: None, 1: Left Click, 2: Right click, 3: other
 
     QPointF befPos;
-    bool eraseMesh, eraseCP;
+    bool eraseMesh, eraseCtrlPt, eraseCrossPt;
 
 };
 

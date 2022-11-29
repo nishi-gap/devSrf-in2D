@@ -8,12 +8,12 @@ class FoldLine
 public:
     FoldLine(int crvNum, int rsize, int _type);
     std::vector<glm::f64vec3> getCtrlPt();
-    inline bool addCtrlPt(glm::f64vec3& p, int dim, OUTLINE *outline, std::vector<Face*>& Faces, std::vector<HalfEdge*>&Edges, std::vector<Vertex*>& Vertices);
-    inline bool delCtrlPt(glm::f64vec3& p, int dim, OUTLINE *outline);
+    bool addCtrlPt(glm::f64vec3& p, int dim, OUTLINE *outline, std::vector<Face*>& Faces, std::vector<HalfEdge*>&Edges, std::vector<Vertex*>& Vertices);
+    bool delCtrlPt(glm::f64vec3& p, int dim, OUTLINE *outline);
     std::vector<glm::f64vec3> CurvePts;
     std::vector<std::array<glm::f64vec3, 2>> Rulings_3dL, Rulings_3dR, Rulings_2dL, Rulings_2dR;
     bool ChangeColor(OUTLINE *outline, int val, int dim = 3);
-    inline double getColor();
+    double getColor();
     bool modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices,int dim);
     bool applyCurvedFolding(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, int dim);
     void deform();

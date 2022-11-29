@@ -68,18 +68,16 @@ public:
     Vertex(glm::f64vec3 _p);
     Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3);
     void addNewEdge(HalfEdge *he);
-    virtual std::vector<HalfEdge*> SplitEdge(std::vector<HalfEdge*>& Edges);
 protected:
     std::vector<HalfEdge*> halfedge;
 };
 
 class CrvPt_FL : public Vertex{
 public:
-    double s, k2d;
+    double s, k2d, k2d_bef;
     glm::f64vec3 T2d;
     CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3, double _s) : Vertex(_p2, _p3), s{_s} {}
     bool operator<(const CrvPt_FL& T) const { return s < T.s; }
-    std::vector<HalfEdge*> SplitEdge(std::vector<HalfEdge*>& Edges) override;
 };
 
 class crvpt{
@@ -114,6 +112,7 @@ public:
     HalfEdge(Vertex *v, EdgeType _type);
     ruling *r;
     EdgeType edgetype;
+    std::vector<HalfEdge*> Split(Vertex *v, std::vector<HalfEdge*>& Edges);
 private:
 
 };

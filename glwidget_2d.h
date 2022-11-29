@@ -49,49 +49,49 @@ protected:
 
 public slots:
     //初期状態
-    inline void InitializeDrawMode(int state);
+    void InitializeDrawMode(int state);
 
     //輪郭関係
-    inline void DrawOutlineRectangle();
-    inline void DrawOutlinePolygon(int state);
-    inline void DrawOutlinePolyline(int state);
-    inline void recieveNewEdgeNum(int num);
-    inline void EditOutlineVertex(int state);
-    inline void MoveOutline(int state);
-    inline void switchGetmetricConstraint(int state);
-    inline void ConnectVertices();
+    void DrawOutlineRectangle();
+    void DrawOutlinePolygon(int state);
+    void DrawOutlinePolyline(int state);
+    void recieveNewEdgeNum(int num);
+    void EditOutlineVertex(int state);
+    void MoveOutline(int state);
+    void switchGetmetricConstraint(int state);
+    void ConnectVertices();
 
-    inline void Reset();
-    inline void ChangedDivSizeEdit(int n);
-    inline void setColor();
-    inline void receiveColors();
+    void Reset();
+    void ChangedDivSizeEdit(int n);
+    void setColor();
+    void receiveColors();
 
     //new gradation mode
-    inline void setNewGradationMode();
-    inline void ApplyNewGradationMode();
-    inline void getGradationFromSlider(int val);
+    void setNewGradationMode();
+    void ApplyNewGradationMode();
+    void getGradationFromSlider(int val);
 
     //add curve
-    inline void AddCurve();
-    inline void MoveCurvePt();
+    void AddCurve();
+    void MoveCurvePt();
 
-    inline void InsertNewPoint();
-    inline void DeleteCtrlPt();
-    inline void OpenDebugWindwow();
+    void InsertNewPoint();
+    void DeleteCtrlPt();
+    void OpenDebugWindwow();
 
     //複数の曲線操作
-    inline void cb_ApplyCurveEvent();
-    inline void cb_DeleteCurve();
+    void cb_ApplyCurveEvent();
+    void cb_DeleteCurve();
     void DeleteCurve();
-    inline void changeSelectedCurve(int ind);
+    void changeSelectedCurve(int ind);
     void swapCrvsOnLayer(int n1, int n2);
 
     //FoldLine
-    inline void changeFoldType(int state);
+    void changeFoldType(int state);
 
     //Line Width
-    inline void receiveNewLineWidth(double d);
-    inline void switchGrid();
+    void receiveNewLineWidth(double d);
+    void switchGrid();
 
 private:
 
