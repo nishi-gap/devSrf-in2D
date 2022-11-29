@@ -119,8 +119,12 @@ void MainWindow::fold_Sm(){
     //switchActivateCheckBox("MakeDevSrf");
     std::vector<glm::f64vec3> tmp;
     if(!model->outline->IsClosed())return;
-    if(!model->FL.empty()) ui->glWid3dim->setVertices(model->Faces, model->FL[0]->CtrlPts_res, model->FL[0]->Curve_res, model->FL[0]->CrossPts);
-    else ui->glWid3dim->setVertices(model->Faces, tmp, tmp, tmp);
+    if(model->FL.empty())ui->glWid3dim->setVertices(model->Faces, tmp, tmp, tmp);
+    else{
+        std::vector<glm::f64vec3> CrossPts;
+        for(auto&v: model->FL[0]->CrossPts)CrossPts.push_back(v->p3);
+        ui->glWid3dim->setVertices(model->Faces, model->FL[0]->CtrlPts_res, model->FL[0]->Curve_res, CrossPts);
+    }
 }
 
 void MainWindow::fold_FL(){
@@ -215,7 +219,7 @@ void MainWindow::switchActivateCheckBox(PaintTool active){
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *e){
-
+    ui->glWid3dim->receiveKeyEvent(e);
     if(e->key() == Qt::Key_Backspace){
         emit PressedBackSpace();
     }
@@ -223,6 +227,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     else{
 
     }
+    update();
 }
 
 void MainWindow::mouseMoveEvent(QMouseEvent *e){

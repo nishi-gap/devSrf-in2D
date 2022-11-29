@@ -127,6 +127,7 @@ public:
     Face(HalfEdge *_halfedge);
 };
 
+
 class CRV{
 public:
     CRV(int _crvNum, int DivSize);
@@ -242,10 +243,12 @@ double SignedArea(glm::f64vec3 a, glm::f64vec3 b, glm::f64vec3 p);
 
 std::vector<glm::f64vec3> TranslateGLMfromHE(Face *f);
 glm::f64vec3 GetCenter(std::vector<glm::f64vec3>& vertices);
-double basis(int j, int k, double t, std::vector<double>& T);
+
 glm::f64vec3 bspline(std::vector<glm::f64vec3>&CtrlPts, double t, int dim, std::vector<double>Knot);
 double factorial(int n);
 double cmb(int n, int i);
 
-std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<glm::f64vec3>& Q, std::vector<glm::f64vec3>& CtrlPts_res);
+double basis(int i, int p, double u, std::vector<double>& U);
+std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<Vertex*>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot);
+
 #endif // SETRULINGS_H

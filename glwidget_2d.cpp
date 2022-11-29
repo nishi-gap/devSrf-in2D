@@ -303,7 +303,7 @@ void GLWidget_2D::paintGL(){
                     ((drawtype == PaintTool::Bezier_r || drawtype == PaintTool::Bspline_r || drawtype == PaintTool::Line_r || drawtype == PaintTool::Arc_r)
                      && SelectedCurveIndex == i)
                     || drawtype == PaintTool::MoveCtrlPt || drawtype == PaintTool::InsertCtrlPt ||  drawtype == PaintTool::DeleteCtrlPt || drawtype == PaintTool::None){
-                glPolygonOffset(0.f,1.f);
+                //glPolygonOffset(0.f,1.f);
                 for (auto& c: model->crvs[i]->ControllPoints) {
                     glColor3d(1, 0, 0);
                     glPointSize(5.0f);
@@ -469,6 +469,21 @@ void GLWidget_2D::paintGL(){
         }
     }
 
+    if(model->FL.empty())return;
+    for(auto&p: model->FL[0]->CtrlPts_res){
+        glColor3d(1,0,1);
+        glPointSize(5);
+        glBegin(GL_POINTS);
+        //glVertex2d(p.x, p.y);
+        glEnd();
+    }
+
+    glColor3d(0,1,0);
+    glBegin(GL_LINE_STRIP);
+    for(auto&p: tmp_c){
+        glVertex2d(p.x, p.y);
+    }
+    glEnd();
 }
 
 void GLWidget_2D::DrawGrid(){
@@ -512,14 +527,42 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
         else if(drawtype == PaintTool::FoldLine){
             bool hasRulings = model->AddControlPoint_FL(p_ongrid, 0, curveDimention);
             update();
-            if(model->outline->IsClosed() && hasRulings){
+            if(/*model->outline->IsClosed() && */hasRulings){
                 bool res;
+                auto _CtrlPts = model->FL[0]->getCtrlPt();
+                auto _edges = model->outline->getEdges();
+                tmp_cp.clear();
+                //for(auto&v: _CtrlPts)tmp_cp.push_back(new Vertex(v));
+                //std::vector<double> Knot;
+                //tmp_c = GlobalSplineInterpolation(tmp_cp, model->FL[0]->CtrlPts_res, Knot);
                 //res = model->FL[0]->applyCurvedFolding(model->Faces, model->Edges, model->vertices, curveDimention);
                 res = model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, curveDimention);
-                if(res){
-                    std::cout<<"finish"<<std::endl;
-                    //emit foldingSignals();
+                double c2dlen = 0.0, c3dlen = 0.0;
+                for(int i = 1; i < (int)model->FL[0]->CurvePts.size(); i++){
+                    c3dlen += glm::distance(model->FL[0]->CurvePts[i-1], model->FL[0]->CurvePts[i]);
                 }
+                double t0, t1;
+                for(auto&e: _edges){
+                    std::vector<double>arcT = BezierClipping(_CtrlPts, e, curveDimention);
+                    auto _bezier = [](std::vector<glm::f64vec3>P, int dim, double t) {
+                        glm::f64vec3 v{0,0,0};for(int i = 0; i < (int)P.size();i++)v += cmb(dim, i)*std::pow(t,i)*std::pow(1-t,dim-i)*P[i]; return v;
+                    };
+                    if(arcT.empty())continue;
+                    t0 = std::min(arcT[0], arcT[1]); t1 = std::max(arcT[0], arcT[1]);
+                    glm::f64vec3 bef = _bezier(_CtrlPts,curveDimention,t0);
+                    double t = t0;
+                    for(int n = 0; n < (int)model->FL[0]->Curve_res.size(); n++){
+                        glm::f64vec3 v = _bezier(_CtrlPts,curveDimention,t);
+                        c3dlen += glm::distance(bef, v);
+                        bef = v;
+                        t += (t1- t0)/model->FL[0]->Curve_res.size();
+                    }
+                    for(int i = 1; i < (int)model->crvs[0]->CurvePoints.size(); i++){
+                        c2dlen += glm::distance(model->crvs[0]->CurvePoints[i-1].pt, model->crvs[0]->CurvePoints[i].pt);
+                    }
+                }
+
+                std::cout<< "length : 2d = " << c2dlen << " , 3d = " << c3dlen << " , " << t0 << " , " << t1 <<  std::endl;
             }
         }
         else if(drawtype == PaintTool::DeleteCurve){
@@ -683,8 +726,6 @@ void GLWidget_2D::wheelEvent(QWheelEvent *we){
         if(hasRulings){
             bool res;
             model->FL[0]->applyCurvedFolding(model->Faces, model->Edges, model->vertices, curveDimention);
-            emit foldingSignals();
-
         }
     }else if(drawtype == PaintTool::NewGradationMode){
         if(refHE == nullptr || std::find(model->Edges.begin(), model->Edges.end(), refHE) == model->Edges.end()){
@@ -694,10 +735,9 @@ void GLWidget_2D::wheelEvent(QWheelEvent *we){
         model->setGradationValue(DiffWheel, refHE, InterpolationType, CurvePath);
         emit ColorChangeFrom(0, refHE->r->Gradation);
         model->deform();
-        emit foldingSignals();
         if(isVisibleTo(gw)) emit CurvePathSet(CurvePath);
     }
-
+    emit foldingSignals();
     update();
 }
 
@@ -724,23 +764,16 @@ void GLWidget_2D::addPoints_intplation(QMouseEvent *e, QPointF& p){
             }
         }
         if(refHE == nullptr || std::find(model->Edges.begin(), model->Edges.end(), refHE) == model->Edges.end()){std::cout<<"not found" << std::endl; return;}
-
         model->setGradationValue(0, refHE, InterpolationType, CurvePath);
         emit ColorChangeFrom(0, refHE->r->Gradation);
         model->deform();
-        emit foldingSignals();
-    }else if(drawtype == PaintTool::FoldlineColor){
-    }
-
-
+    }else if(drawtype == PaintTool::FoldlineColor){}
+    emit foldingSignals();
     update();
 }
 
 void GLWidget_2D::ApplyNewGradationMode(){
     if(refHE == nullptr){std::cout << "you neeed to add gradation point"<<std::endl; return;}
-    //QPointF p{-1,-1};
-    //int color;
-    //model->setGradationValue(p, 0, refMeshNum, color, InterpolationType, CurvePath);
     emit foldingSignals();
     if(isVisibleTo(gw)) emit CurvePathSet(CurvePath);
     update();

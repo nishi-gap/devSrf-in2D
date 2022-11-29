@@ -7,6 +7,8 @@ GLWidget_3D::GLWidget_3D(QWidget *parent):QOpenGLWidget(parent)
     this->firstRotate = true;
     actionType = 0;
     center = glm::f64vec3{0,0,0};
+    eraseMesh = false;
+    eraseCP = false;
 }
 GLWidget_3D::~GLWidget_3D(){
 
@@ -28,7 +30,7 @@ void GLWidget_3D::setVertices(std::vector<std::vector<glm::f64vec3>>& _Vertices,
     std::vector<std::array<glm::f64vec3, 3>> TriMesh;
     TriMeshs.clear();
     for(auto& V : Vertices){
-       // std::cout << "vertices " << V.size() << std::endl;
+        // std::cout << "vertices " << V.size() << std::endl;
         Triangulation(V, TriMesh);
         for(auto&tri: TriMesh)TriMeshs.push_back(tri);
     }
@@ -123,29 +125,20 @@ void GLWidget_3D::paintGL(){
     glRotated(0.2 * RotY, 1.0, 0.0, 0.0);
     glScaled(0.1, 0.1, 0.1);
 
-    //DrawGrid();
-    DrawMesh(true);
-    DrawMesh(false);
-    DrawMeshLines();
-
-
-
+    if(!eraseMesh){
+        DrawMesh(true);
+        DrawMesh(false);
+        glPolygonOffset(0.2f,0.2f);
+        DrawMeshLines();
+    }
+    //glPolygonOffset(0.f,0.5f);
     glColor3d(1,0,0);
     glPointSize(5);
     for(auto&v: CtrlPts){
         glBegin(GL_POINTS);
-        //glVertex3d(v.x,v.y, v.z);
-        glEnd();
-    }
-
-    glColor3d(0,0,1);
-    glPointSize(5);
-    for(auto&v: CrossPts){
-        glBegin(GL_POINTS);
         glVertex3d(v.x,v.y, v.z);
         glEnd();
     }
-
 
     glColor3d(0,1,0);
     glLineWidth(2);
@@ -161,6 +154,15 @@ void GLWidget_3D::paintGL(){
     for(auto&v: CtrlPts) glVertex3d(v.x,v.y, v.z);
     glEnd();
     glDisable(GL_LINE_STIPPLE);
+
+    if(eraseCP)return;
+    glColor3d(0,0,1);
+    glPointSize(5);
+    for(auto&v: CrossPts){
+        glBegin(GL_POINTS);
+        glVertex3d(v.x,v.y, v.z);
+        glEnd();
+    }
 }
 
 void GLWidget_3D::DrawMesh(bool isFront){
@@ -194,7 +196,7 @@ void GLWidget_3D::DrawMeshLines(){
 
     for(auto& f: Vertices){
         glBegin(GL_LINE_LOOP);
-            for(auto& v: f){ glVertex3d(v.x, v.y, v.z);}
+        for(auto& v: f){ glVertex3d(v.x, v.y, v.z);}
         glEnd();
     }
 
@@ -256,11 +258,24 @@ void GLWidget_3D::ChangeTranslateZ(int _Z){
 void GLWidget_3D::mousePressEvent(QMouseEvent *e){
     actionType = (e->button() == Qt::LeftButton)? 1 : (e->button() == Qt::RightButton)? 2: 0;
     befPos = this->mapFromGlobal(QCursor::pos());
+    update();
 }
 
 void GLWidget_3D::wheelEvent(QWheelEvent *we){
     double z = (we->angleDelta().y() > 0) ? 0.1 : -0.1;
     TransZ += z;
+    update();
+}
+
+void GLWidget_3D::keyPressEvent(QKeyEvent *e){
+    if(e->key() == Qt::Key_M)eraseMesh = !eraseMesh;
+    if(e->key() == Qt::Key_C) eraseCP = !eraseCP;
+    update();
+}
+
+void GLWidget_3D::receiveKeyEvent(QKeyEvent *e){
+    if(e->key() == Qt::Key_M)eraseMesh = !eraseMesh;
+    if(e->key() == Qt::Key_C) eraseCP = !eraseCP;
     update();
 }
 

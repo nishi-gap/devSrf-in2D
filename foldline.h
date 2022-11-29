@@ -23,7 +23,8 @@ public:
     std::vector<glm::f64vec3> point;
     Vertex *vx, *vx2;
 
-    std::vector<glm::f64vec3> CtrlPts_res, Curve_res, CrossPts;
+    std::vector<glm::f64vec3> CtrlPts_res, Curve_res;
+    std::vector<Vertex*> CrossPts;
 private:
     double color;
     bool setCurve(int dim);
@@ -37,6 +38,7 @@ private:
     void cal2VecScale(glm::f64vec3 v1, glm::f64vec3 v2, glm::f64vec3 p, double& s, double& t);
     int type;
     int maxRsize;
+
 
 };
 

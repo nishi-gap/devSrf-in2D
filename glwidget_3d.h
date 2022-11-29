@@ -4,6 +4,7 @@
 #include <QWheelEvent>
 #include <QOpenGLFunctions_3_0>
 #include <QOpenGLWidget>
+#include <QKeyEvent>
 #include <QMouseEvent>
 #include <iostream>
 #include <vector>
@@ -21,6 +22,8 @@ public:
     void setVertices(std::vector<std::vector<glm::f64vec3>>& _Vertices, glm::f64vec3 center);
     void setVertices(std::vector<Face*>& Faces, std::vector<glm::f64vec3>& _CtrlPts, std::vector<glm::f64vec3>& _Curve, std::vector<glm::f64vec3>& _CrossPts);
     void receive(std::vector<std::vector<glm::f64vec3>>& l, std::vector<std::vector<glm::f64vec3>>& r, glm::f64vec3 center);
+    void receiveKeyEvent(QKeyEvent *e);
+
     std::vector<int>left;
     explicit GLWidget_3D(QWidget *parent = 0);
     ~GLWidget_3D();
@@ -32,6 +35,7 @@ protected:
     void mousePressEvent(QMouseEvent *e);
     void wheelEvent(QWheelEvent *we);
     void mouseMoveEvent(QMouseEvent *e);
+    void keyPressEvent(QKeyEvent *e);
 
 public slots:
     void RotationX(int _RotX);
@@ -39,6 +43,7 @@ public slots:
     void ChangeTranslateX(int _X);
     void ChangeTranslateY(int _Y);
     void ChangeTranslateZ(int _Z);
+
 
 private:
     void DrawGrid();
@@ -56,6 +61,7 @@ private:
     int actionType;//0: None, 1: Left Click, 2: Right click, 3: other
 
     QPointF befPos;
+    bool eraseMesh, eraseCP;
 
 };
 

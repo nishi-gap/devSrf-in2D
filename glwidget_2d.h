@@ -93,6 +93,10 @@ public slots:
     void switchGrid();
 
 private:
+
+    std::vector<glm::f64vec3> tmp_c;
+    std::vector<Vertex*> tmp_cp;
+
     void draw();
     int DivSize;
     int SelectedCurveIndex; //-1: 未参照

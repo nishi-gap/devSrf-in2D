@@ -77,8 +77,8 @@ CRV::CRV(int _crvNum, int DivSize){
         Rulings.push_back(r);
     }
     //for(int i = 0; i < DivSize-2;i++){
-        //meshline *l = new meshline();
-        //meshLines.push_back(l);
+    //meshline *l = new meshline();
+    //meshLines.push_back(l);
     //}
 
     isempty = true;
@@ -130,15 +130,6 @@ int CRV::movePtIndex(glm::f64vec3& p, double& dist){
 
 int CRV::getCurveType(){return curveType;}
 void CRV::setCurveType(int n){curveType = n;}
-
-double basis(int j, int k, double t, std::vector<double>& T){
-    if(k == 0) return (T[j] <= t && t < T[j + 1]) ? 1.0: 0.0;
-    double a = T[j + k] - T[j], a2 = T[j + k + 1] - T[j + 1];
-    double b = 0, b2 = 0;
-    if(a != 0) b = (t - T[j])/a;
-    if(a2 != 0)b2 = (T[j + k + 1] - t)/a2;
-    return b * basis(j,k-1,t,T) + b2 * basis(j+1,k-1,t,T);
-}
 
 void CRV::Bspline(int curveDimention,  int crvPtNum){
     //Rulings.clear();
@@ -228,7 +219,7 @@ bool CRV::setPoint(std::vector<Vertex*>&outline, glm::f64vec3 N, glm::f64vec3& c
     //P.push_back(crossPoint[2 * minInd]); P.push_back(crossPoint[2 * minInd + 1]);//原因ここ?
     for(int i = 0; i < (int)crossPoint.size(); i++){
         //if(i != minInd || i != minInd + 1)
-            P.push_back(crossPoint[i]);
+        P.push_back(crossPoint[i]);
     }
     return IsIntersected;
 }
@@ -439,7 +430,7 @@ void CRV::Arc(int crvPtNum){
     for(int i = 0; i < crvPtNum; i++){
         R = glm::rotate(phi * (double)i/(double)crvPtNum, axis);
         CurvePoints[i].pt = T * R * invT * glm::f64vec4{ControllPoints[1],1};
-    }
+}
 
 }
 
@@ -771,9 +762,10 @@ bool OUTLINE::IsClosed(){
     return true;
 }
 
+
 glm::f64vec3 bspline(std::vector<glm::f64vec3>&CtrlPts, double t, int dim, std::vector<double>Knot){
     glm::f64vec3 vec{0,0,0};
-    for(int j = 0; j < (int)CtrlPts.size();j++){
+    for(int j = 0; j < (int)CtrlPts.size(); j++){
         double b = basis(j,dim, t + FLT_EPSILON,Knot);
         vec += CtrlPts[j] *  b;
     }
@@ -1031,7 +1023,7 @@ std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, HalfEdge *
 
 std::vector<double> _bezierclipping(std::vector<glm::f64vec3>&CtrlPts_base, std::vector<glm::f64vec3>&CtrlPts_cur, std::array<glm::f64vec3, 2>& line, int dim){
     double t_min = 1, t_max = 0;
-    glm::f64vec3 p = line[0], q = line[1];   
+    glm::f64vec3 p = line[0], q = line[1];
     std::vector<glm::f64vec3> D = GrahamScan(CtrlPts_cur);
     //std::cout<< "line " << glm::to_string(p) << " , " << glm::to_string(q) << std::endl;
     int n = D.size();
@@ -1158,35 +1150,35 @@ std::pair<std::vector<glm::f64vec3>, std::vector<glm::f64vec3>> BezierSplit(std:
     return {lp, rp};
 
     {
-    using namespace Eigen;
-    MatrixXd Ux = create_Ux(dim);
-    std::cout<<Ux<<std::endl;
-    Eigen::JacobiSVD<Eigen::MatrixXd> svd(Ux,ComputeFullU | ComputeFullV);
-    VectorXd s = svd.singularValues();
-    s = s.array().inverse();
-    Eigen::MatrixXd Uinv = svd.matrixV() * s.asDiagonal() * svd.matrixU().transpose();
-    MatrixXd Z = Eigen::MatrixXd::Identity(dim+1,dim+1);
-    for (int i = 0; i < dim + 1; i++)Z(i,i) = Z(i,i) * std::pow(t,i);
+        using namespace Eigen;
+        MatrixXd Ux = create_Ux(dim);
+        std::cout<<Ux<<std::endl;
+        Eigen::JacobiSVD<Eigen::MatrixXd> svd(Ux,ComputeFullU | ComputeFullV);
+        VectorXd s = svd.singularValues();
+        s = s.array().inverse();
+        Eigen::MatrixXd Uinv = svd.matrixV() * s.asDiagonal() * svd.matrixU().transpose();
+        MatrixXd Z = Eigen::MatrixXd::Identity(dim+1,dim+1);
+        for (int i = 0; i < dim + 1; i++)Z(i,i) = Z(i,i) * std::pow(t,i);
 
-    MatrixXd Q = Uinv * Z * Ux;
-    MatrixXd X(CtrlPts.size(), 2);
-    for(int i = 0; i < (int)CtrlPts.size(); i++){
-        X(i,0) = CtrlPts[i].x; X(i,1) = CtrlPts[i].y;
-    }
+        MatrixXd Q = Uinv * Z * Ux;
+        MatrixXd X(CtrlPts.size(), 2);
+        for(int i = 0; i < (int)CtrlPts.size(); i++){
+            X(i,0) = CtrlPts[i].x; X(i,1) = CtrlPts[i].y;
+        }
 
-    MatrixXd _Q = MatrixXd::Zero(dim + 1, dim + 1);
-    for(int i = dim; i >= 0; i--)_Q.col(i) = Q.col(dim - i);
-    for(int i = 0; i < dim+1; i++)_Q.row(i).swap(_Q.row(dim - i));
-    MatrixXd left_bezier = Q * X;
-    MatrixXd right_bezier = _Q * X;
+        MatrixXd _Q = MatrixXd::Zero(dim + 1, dim + 1);
+        for(int i = dim; i >= 0; i--)_Q.col(i) = Q.col(dim - i);
+        for(int i = 0; i < dim+1; i++)_Q.row(i).swap(_Q.row(dim - i));
+        MatrixXd left_bezier = Q * X;
+        MatrixXd right_bezier = _Q * X;
 
-    auto cast_Eig2GLM = [](VectorXd v){return glm::f64vec3{v(0), v(1), 0};};
-    std::vector<glm::f64vec3> bezier_l(dim+1), bezier_r(dim+1);
-    for(int i = 0; i < dim + 1; i++){
-        bezier_l[i] = cast_Eig2GLM(left_bezier.row(i));
-        bezier_r[i] = cast_Eig2GLM(right_bezier.row(i));
-    }
-    return {bezier_l, bezier_r};
+        auto cast_Eig2GLM = [](VectorXd v){return glm::f64vec3{v(0), v(1), 0};};
+        std::vector<glm::f64vec3> bezier_l(dim+1), bezier_r(dim+1);
+        for(int i = 0; i < dim + 1; i++){
+            bezier_l[i] = cast_Eig2GLM(left_bezier.row(i));
+            bezier_r[i] = cast_Eig2GLM(right_bezier.row(i));
+        }
+        return {bezier_l, bezier_r};
     }
 }
 
@@ -1237,48 +1229,58 @@ glm::f64vec3 GetCenter(std::vector<glm::f64vec3>& vertices){
 
 //https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/INT-APP/CURVE-INT-global.html
 //http://www.cad.zju.edu.cn/home/zhx/GM/009/00-bsia.pdf
-std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<glm::f64vec3>& Q, std::vector<glm::f64vec3>& CtrlPts_res){
+std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<Vertex*>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot){
     using namespace Eigen;
     double L= 0.0;
-    int n = Q.size();
-    MatrixXd D(n,3);
-    for(int i = 0; i < n; i++){
-        D(i,0) = Q[i].x; D(i,1) = Q[i].y; D(i,2) = Q[i].z;
+    int n = Q.size() - 1;
+    if(n < 0)return std::vector<glm::f64vec3>{};
+    MatrixXd D(n + 1,3);
+    for(int i = 0; i <= n; i++){
+        D(i,0) = Q[i]->p3.x; D(i,1) = Q[i]->p3.y; D(i,2) = Q[i]->p3.z;
     }
 
     //The Centripetal Method
-    for(int i = 1; i < n; i++)L += std::sqrt(glm::distance(Q[i], Q[i - 1]));
-    std::vector<double> T(n); T[0] = 0; T[n - 1] = 1;
-    for(int i = 1; i < n - 1; i++)T[i] += T[i - 1] + std::sqrt(glm::distance(Q[i], Q[i-1]))/L;
+    for(int i = 1; i <= n; i++)L += sqrt(glm::distance(Q[i]->p3, Q[i - 1]->p3));
+    std::vector<double> T(n+1, 0); T[n] = 1;
+    for(int i = 1; i < n; i++)T[i] = T[i - 1] + sqrt(glm::distance(Q[i]->p3, Q[i-1]->p3))/L;
 
     //average method
     int dim = 3;
     int m = n + dim + 1;
-    std::vector<double> U(m, 0);
-    for(int i = 0; i <= dim; i++) U[m - i - 1] = 1;
-    for(int j = 1; j < n - dim; j++){
-        for(int i = j; i < j + dim; i++)U[j + dim] += T[i]/(double)dim;
+    Knot.assign(m+1,0);
+    for(int j = 1; j <= n - dim; j++){
+        for(int i = j; i < j + dim; i++)Knot[j + dim] += T[i]/(double)dim;
     }
+    for(int i = 0; i <= dim; i++) Knot[m - i] = 1;
     //Knot Matrix
-    MatrixXd N(n, n);
-    for(int i = 0; i < n; i++){
-        for(int j = 0; j < n; j++)N(i,j) = basis(j, dim, T[i], U);
+    MatrixXd N = MatrixXd::Zero(n+1, n+1);
+    for(int i = 0; i <= n; i++){
+        if(T[i] == Knot[0]){ N(i,0) = 1;continue;}
+        if(T[i] == Knot[m]){N(i,n) = 1; continue;}
+        for(int j = 0; j <= n; j++)N(i,j) = basis(j,dim,T[i],Knot);
+
     }
-
     MatrixXd P = N.fullPivLu().solve(D);
-
     //cast
-    CtrlPts_res.resize(n);
-    for(int i = 0; i < n; i++){
+    CtrlPts_res.resize(n+1);
+    for(int i = 0; i <= n; i++){
         CtrlPts_res[i].x = P(i,0); CtrlPts_res[i].y = P(i,1); CtrlPts_res[i].z = P(i,2);
     }
 
-    int num = 1000;
-    double t = T[dim];
+    int num = 5000;
+    double t = Knot[dim];
     std::vector<glm::f64vec3> BCurve(num);
     for(int i = 0; i < num; i++){
-        BCurve[i] = bspline(CtrlPts_res, t, dim, T);
-        t += (T[n - dim] - T[dim])/(double)(num);
+        BCurve[i] = bspline(CtrlPts_res, t, dim, Knot);
+        t += (Knot[CtrlPts_res.size()] - Knot[dim])/(double)(num);
     }
     return BCurve;
 }
+
+double basis(int i, int p, double u, std::vector<double>& U){
+    if(p == 0) return (U[i] <= u && u < U[i+1]) ? 1: 0;
+    double a = (U[i+p] != U[i])? (u - U[i])/(U[i+p] - U[i]): 0, b = (U[i+p+1] != U[i+1])? (U[i+p+1] - u)/(U[i+p+1] - U[i+1]): 0;
+    return a * basis(i,p-1,u,U) + b * basis(i+1,p-1,u,U);
+}
+
+
