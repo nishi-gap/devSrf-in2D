@@ -328,7 +328,8 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
         }
         std::vector<double>Knot;
         std::sort(T_crs.begin(), T_crs.end());
-        Curve_res = GlobalSplineInterpolation(T_crs, CtrlPts_res, Knot);
+        /*
+        //Curve_res = GlobalSplineInterpolation(T_crs, CtrlPts_res, Knot);
         double t_min = T_crs.begin()->s, t_max = (T_crs.end() - 1)->s;
         double c2len = 0.0, c3len = 0.0;
         glm::f64vec3 bef = *Curve_res.begin();
@@ -348,82 +349,43 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
             _t += (t_max - t_min)/Curve_res.size();
         }
         std::cout<<"c2len " << c2len << " , c3len " << c3len << std::endl;
+        */
+        for(auto& t: T_crs){
+             dr = -3. * (1 - t.s) * (1 - t.s) * CtrlPts_res[0] + (9 * t.s * t.s - 12 * t.s + 3) * CtrlPts_res[1] + (-9 * t.s * t.s + 6 * t.s) * CtrlPts_res[2] + 3 * t.s * t.s * CtrlPts_res[3];
+             dr2 = 6. * (1 - t.s) * CtrlPts_res[0] + (18 * t.s - 12) * CtrlPts_res[1] + (-18 * t.s + 6) * CtrlPts_res[2] + 6 * t.s * CtrlPts_res[3];
+             dr3 = -6. * (CtrlPts_res[0] - CtrlPts_res[3]) + 18. * (CtrlPts_res[1] - CtrlPts_res[2]);
+             T = glm::normalize(dr);
+             N = glm::normalize(glm::cross(dr, glm::cross(dr2, dr)));
+             B = glm::normalize(glm::cross(dr, dr2));
+             if(glm::dot(glm::f64vec3{0,0,-1}, B) < 0){B *= -1; N *= -1;}
 
-        for(int j = 0; j < (int)T_crs.size(); j++){
-            int ind = -1;
-            double dist = 1;
-            for(int i = 0; i < (int)Curve_res.size(); i++){
-                if(glm::distance(Curve_res[i], T_crs[j].p3) < dist){
-                    dist = glm::distance(Curve_res[i], T_crs[j].p3); ind = i;
-                }
-            }
-            if(ind < 3) ind = 3;
-            else if(ind + 4 > (int)Curve_res.size())ind = (int)Curve_res.size() - 4;
-            double t = Knot[dim] + ind*(Knot[CtrlPts_res.size()] - Knot[dim])/Curve_res.size();
-            d = bspline(CtrlPts_res, t, dim, Knot); dh_p = bspline(CtrlPts_res, t + eps, dim, Knot); dh_m = bspline(CtrlPts_res, t - eps, dim, Knot);
-            //dh_2p = bspline(CtrlPts_res, t + 2 * eps, dim, Knot); dh_2m = bspline(CtrlPts_res, t - 2 * eps, dim, Knot);
-            //dh_3p = bspline(CtrlPts_res, t + 3 * eps, dim, Knot); bspline(CtrlPts_res, t - 3 * eps, dim, Knot);
-            dr = (dh_p - dh_m)/ (2 * eps);
-            dr2 = (dh_p - 2. * d + dh_m)/(eps * eps);
-            dr3 = 3. * (dh_p - 2. * eps * dr - dh_m)/std::pow(eps, 3);
-            T = glm::normalize(dr);
-            N = glm::normalize(glm::cross(dr, glm::cross(dr2, dr)));
-            B = glm::normalize(glm::cross(dr, dr2));
-            if(glm::dot(glm::f64vec3{0,0,-1}, B) < 0){B *= -1; N *= -1;}
-            //std::cout << glm::to_string(T) << ", " << glm::to_string(N) << ", " << glm::to_string(B) << " , " << glm::dot(dr, glm::cross(dr2, dr3)) << " ,  "<<std::pow(glm::length(glm::cross(dr, dr2)), 2) <<std::endl;
-            tau = glm::dot(dr, glm::cross(dr2, dr3))/std::pow(glm::length(glm::cross(dr, dr2)), 2);
-            k3d = glm::length(glm::cross(dr, dr2))/std::pow(glm::length(dr), 3);
-            k3d = (T_crs[j].k2d > k3d) ? T_crs[j].k2d : k3d;
-            a = (k3d != 0) ? acos(T_crs[j].k2d/k3d): 0;
+             tau = glm::dot(dr, glm::cross(dr2, dr3))/std::pow(glm::length(glm::cross(dr, dr2)), 2);
+             k3d = glm::length(glm::cross(dr, dr2))/std::pow(glm::length(dr), 3);
+             k3d = (t.k2d > k3d) ? t.k2d : k3d;
+             a = (k3d != 0) ? acos(t.k2d/k3d): 0;
 
-            t -= eps;
-            d = bspline(CtrlPts_res, t, dim, Knot); dh_p = bspline(CtrlPts_res, t + eps, dim, Knot); dh_m = bspline(CtrlPts_res, t - eps, dim, Knot);
-            glm::f64vec3 dr_bef = (dh_p - dh_m)/ (2 * eps);
-            glm::f64vec3 dr2_bef = (dh_p - 2. * d + dh_m)/(eps * eps);
-            k3d_bef = glm::length(glm::cross(dr_bef, dr2_bef))/std::pow(glm::length(dr_bef), 3);
-            k3d_bef = (T_crs[j].k2d_bef > k3d_bef) ? T_crs[j].k2d_bef: k3d_bef;
-            a_bef = (k3d_bef != 0) ? acos(T_crs[j].k2d_bef/k3d_bef): 0;
-            double da = (a - a_bef)/eps;
-            double phi_bl = rad_2d(k3d, tau, a, -da), phi_br = rad_2d(k3d, tau, a, da);
+             double _t = t.s - eps;
+             glm::f64vec3 dr_bef = -3. * pow(1-_t, 2) * CtrlPts_res[0] + (9 * _t * _t - 12 * _t + 3) * CtrlPts_res[1] + (-9 * _t * _t + 6 * _t) * CtrlPts_res[2] + 3 * _t * _t * CtrlPts_res[3];
+             glm::f64vec3 dr2_bef = 6. * (1 - _t) * CtrlPts_res[0] + (18 * _t - 12) * CtrlPts_res[1] + (-18 * _t + 6) * CtrlPts_res[2] + 6 * _t * CtrlPts_res[3];
+             k3d_bef = glm::length(glm::cross(dr_bef, dr2_bef))/std::pow(glm::length(dr_bef), 3);
+             k3d_bef = (t.k2d_bef > k3d_bef) ? t.k2d_bef: k3d_bef;
+             a_bef = (k3d_bef != 0) ? acos(t.k2d_bef/k3d_bef): 0;
+             double da = (a - a_bef)/eps;
+             double phi_bl = rad_2d(k3d, tau, a, -da), phi_br = rad_2d(k3d, tau, a, da);
 
-            glm::f64vec3 rr3d = glm::normalize(cos(phi_br) * T + sin(phi_br) * cos(a) * N + sin(phi_br) * sin(a) * B);
-            glm::f64vec3 rl3d = glm::normalize(cos(phi_bl) * T - sin(phi_bl) * cos(a) * N + sin(phi_bl) * sin(a) * B);
-            glm::f64vec3 rl2d = glm::normalize(glm::rotate(phi_bl, glm::f64vec3{0,0,1}) * glm::f64vec4{T_crs[j].T2d,1});
-            glm::f64vec3 rr2d = glm::normalize(glm::rotate(phi_br, glm::f64vec3{0,0,1}) * glm::f64vec4{T_crs[j].T2d,1});
-            std::vector<HalfEdge*> H_new;
-            for(auto&h : Edges){
-                H_new = h->Split(&T_crs[j],Edges);
-                if(!H_new.empty())break;
-            }
-            std::cout<<j << " : H_new " << H_new.size() << std::endl;
-            /*
-            glm::f64vec3 pt_new;
-            bool res = setPoint(Faces, rl2d, CrossPts[j]->p,pt_new);
-            if(res){
-                double l = glm::distance(pt_new, CrossPts[j]->p3);
+             //glm::f64vec3 rr3d = glm::normalize(cos(phi_br) * T + sin(phi_br) * cos(a) * N + sin(phi_br) * sin(a) * B);
+             //glm::f64vec3 rl3d = glm::normalize(cos(phi_bl) * T - sin(phi_bl) * cos(a) * N + sin(phi_bl) * sin(a) * B);
+             //glm::f64vec3 rl2d = glm::normalize(glm::rotate(phi_bl, glm::f64vec3{0,0,1}) * glm::f64vec4{T_crs[j].T2d,1});
+             //glm::f64vec3 rr2d = glm::normalize(glm::rotate(phi_br, glm::f64vec3{0,0,1}) * glm::f64vec4{T_crs[j].T2d,1});
+             //std::vector<HalfEdge*> H_new;
+             //for(auto&h : Edges){
+                 //H_new = h->Split(&T_crs[j],Edges);
+                 //if(!H_new.empty())break;
+             //}
 
-                if(glm::dot(rl2d, glm::normalize(he_new[0]->next->vertex->p - pt_new)) > 0){
-                    he_new[0]->next->vertex->p3 = rl3d * l + CrossPts[j]->p3;
-                    he_new[0]->next->vertex->p = pt_new;
-                }else{
-                    he_new[1]->next->vertex->p3 = rl3d * l + CrossPts[j]->p3;
-                    he_new[1]->next->vertex->p = pt_new;
-                }
-            }
-            bool res2 = setPoint(Faces, rr2d, CrossPts[j]->p,pt_new);
-            if(res2){
-                double l = glm::distance(CrossPts[j]->p3, pt_new);
-                if(glm::dot(rr2d, glm::normalize(he_new[1]->next->vertex->p - pt_new)) > 0){
-                    he_new[1]->next->vertex->p3 = rr3d * l + CrossPts[j]->p3;
-                    he_new[1]->next->vertex->p = pt_new;
-                }else{
-                    he_new[0]->next->vertex->p3 = rr3d * l + CrossPts[j]->p3;
-                    he_new[0]->next->vertex->p = pt_new;
-                }
-            }*/
-            ofs << k3d << " , " << k3d_bef << ", "<<T_crs[j].k2d << " , " << tau << " , " << a << ", " << phi_bl << " , " << phi_br<<  std::endl;
+
+             ofs << k3d << " , " << k3d_bef << ", "<<t.k2d << " , " << tau << " , " << a << ", " << phi_bl << " , " << phi_br<<  std::endl;
         }
-
     }
 
     return false;
@@ -525,3 +487,36 @@ void FoldLine::devide(Vertex *v1, Vertex *v2, std::vector<Face*>& Faces, std::ve
     }
 }
 
+void FoldLine::ProjectBezierOn3d(int dim){
+    using namespace Eigen;
+    int t_size = T_crs.size();
+    int n = CtrlPts.size();
+    if(t_size < n)return;
+
+    MatrixXd A(t_size, n);
+    for(int i = 0; i < t_size; i++){
+        double t = T_crs[i].s;
+        for(int j = 0; j < n; j++){
+            A(i,j) = cmb(dim, j) * std::pow(t, j) * std::pow(1 - t, dim - j);
+        }
+    }
+
+    MatrixXd b(t_size, 3);
+    for(int i = 0; i < t_size; i++){
+        b(i, 0) = T_crs[i].p3.x; b(i,1) = T_crs[i].p3.y;  b(i,2) = T_crs[i].p3.z;
+    }
+    MatrixXd X = A.fullPivLu().solve(b);
+    CtrlPts_res.resize(n);
+    for(int i = 0; i < n; i++){
+        CtrlPts_res[i].x = X(i,0); CtrlPts_res[i].y = X(i,1); CtrlPts_res[i].z = X(i,2);
+    }
+
+    int csize = 5000;
+    double t = T_crs[0].s;
+    glm::f64vec3 v{0,0,0};
+    Curve_res.assign(csize, v);
+    for(int i = 0; i < csize; i++){
+        for(int j = 0; j < n; j++)Curve_res[i] += cmb(dim, j) * std::pow(t, j) * std::pow(1 - t, dim - j) * CtrlPts_res[j];
+        t += ((T_crs.end() - 1)->s - T_crs[0].s)/(double)(csize - 1);
+    }
+}

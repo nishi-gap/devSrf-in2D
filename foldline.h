@@ -2,6 +2,7 @@
 #define FOLDLINE_H
 #include <setrulings.h>
 #include <cmath>
+#include <Eigen/Dense>
 #include "mathtool.h"
 class FoldLine
 {
@@ -35,6 +36,8 @@ private:
     void cal2VecScale(glm::f64vec3 v1, glm::f64vec3 v2, glm::f64vec3 p, double& s, double& t);
     int type;
     int maxRsize;
+
+    void ProjectBezierOn3d(int dim);
 
 };
 
