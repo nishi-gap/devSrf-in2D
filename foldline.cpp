@@ -321,8 +321,10 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
                 P.N2d = glm::f64vec3{-P.T2d.y, P.T2d.x, 0};
                 P.B2d = glm::normalize(glm::cross(dr, dr2));
 
-                //if(glm::dot(P.B2d, glm::f64vec3{0,0,-1}) < 0)P.B2d *= -1;
-                //if(glm::dot(P.N2d, glm::f64vec3{0,1,0}) < 0)P.N2d *= -1;
+                if(!T_crs.empty()){
+                    if(glm::dot(T_crs.end()->N2d, P.N2d) < 0) P.N2d *= -1;
+                    if(glm::dot(T_crs.end()->B2d, P.B2d) < 0) P.B2d *= -1;
+                }
                 T_crs.push_back(P);
             }
         }
@@ -336,10 +338,13 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
              t.T3d = glm::normalize(dP[0]);
              t.N3d = glm::normalize(glm::cross(dP[0], glm::cross(dP[1], dP[0])));
              t.B3d = glm::normalize(glm::cross(dP[0], dP[1]));
-             glm::f64vec3 dh_p = bspline(CtrlPts_res, t.s + eps, dim, Knot);
-             glm::f64vec3 dh_m = bspline(CtrlPts_res, t.s - eps, dim, Knot);
-             glm::f64vec3 dh = bspline(CtrlPts_res, t.s, dim, Knot);
-             glm::f64vec3 dr = (dh_p  - dh_m)/(2.0 *eps), dr2 = (dh_p - 2.*dh  + dh_m)/(eps *eps);
+             int index = &t - &T_crs[0];
+             if(index > 0 && glm::dot(T_crs[index - 1].N3d, t.N3d) < 0) t.N3d *= -1;
+             if(index > 0 && glm::dot(T_crs[index - 1].B3d, t.B3d) < 0) t.B3d *= -1;
+             //glm::f64vec3 dh_p = bspline(CtrlPts_res, t.s + eps, dim, Knot);
+             //glm::f64vec3 dh_m = bspline(CtrlPts_res, t.s - eps, dim, Knot);
+             //glm::f64vec3 dh = bspline(CtrlPts_res, t.s, dim, Knot);
+             //glm::f64vec3 dr = (dh_p  - dh_m)/(2.0 *eps), dr2 = (dh_p - 2.*dh  + dh_m)/(eps *eps);
              //t.Td = glm::normalize(dr); t.Bd = glm::normalize(glm::cross(dr, glm::cross(dr2, dr))); t.Nd = glm::normalize(glm::cross(dr, dr2));
              //if(glm::dot(t.B3d, glm::f64vec3{0,0,-1}) < 0)t.B3d *= -1;
              //if(glm::dot(t.N3d, glm::f64vec3{0,1,0}) < 0)t.N3d *= -1;
