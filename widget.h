@@ -44,6 +44,8 @@ public slots:
     void ChangedDivSizeEdit();
     void ChangeDivSizeEditFromSlider(int val);
     void ChangeDivSizeEditFromSpinBox(int val);
+    void sendCurveType(CurveType &ct);
+    void Initialize();
 
     //new gradation mode
     void changeInterpolationType();

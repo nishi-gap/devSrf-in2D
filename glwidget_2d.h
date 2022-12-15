@@ -39,6 +39,9 @@ public:
     //new gradation mode
     int InterpolationType;//0:直線, 1:spline, 2:B-spline
 
+    void receiveKeyEvent(QKeyEvent *e);
+    bool eraseVec2d;
+
 protected:
     void initializeGL();
     void paintGL();
@@ -119,8 +122,8 @@ private:
     int DiffWheel;
     HalfEdge *refHE;
     int movePt;
-    int curvetype;
-    QList<std::pair<int, PaintTool>> CurveList;
+    CurveType curvetype;
+    QList<std::pair<CurveType, PaintTool>> CurveList;
 
     double gridsize;
     int visibleGrid;//1:enable, -1:disable
@@ -135,7 +138,7 @@ private:
 signals:
     void foldingSignals();
     void ColorChangeFrom(int wd, int color);//0:mouse, 1:LineEdit, 2:Slider
-    int signalCurveType();
+    void signalCurveType(CurveType &ct);
     void getDiviedNumber();
     int getEdgeNum();
     void SendNewActiveCheckBox(PaintTool _drawtype);

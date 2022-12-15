@@ -88,13 +88,8 @@
      <item>
       <widget class="QComboBox" name="CurveTypeBox">
        <property name="currentText">
-        <string>Bezier</string>
+        <string>B-spline</string>
        </property>
-       <item>
-        <property name="text">
-         <string>Bezier</string>
-        </property>
-       </item>
        <item>
         <property name="text">
          <string>B-spline</string>

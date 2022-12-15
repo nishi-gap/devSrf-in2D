@@ -15,7 +15,7 @@ public:
     std::vector<std::array<glm::f64vec3, 2>> Rulings_3dL, Rulings_3dR, Rulings_2dL, Rulings_2dR;
     bool ChangeColor(OUTLINE *outline, int val, int dim = 3);
     double getColor();
-    bool modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices,int dim);
+    bool modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<HalfEdge*>& edge_outline, int dim);
     bool applyCurvedFolding(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, int dim);
     void deform();
     HalfEdge *he, *he2;
@@ -32,12 +32,17 @@ private:
     bool BezierCrvOn3dSrf(std::vector<glm::f64vec3>& CtrlPts, double t, int dim, std::vector<Face*>& Faces, glm::f64vec3& v_3d);
     void devide2Faces(std::vector<HalfEdge*>& Inserted, std::vector<HalfEdge*>& Edges, std::vector<Face*>& Faces);
     std::vector<glm::f64vec3>CtrlPts;
-    bool setPoint(std::vector<Face*>& Faces, glm::f64vec3 N, glm::f64vec3& cp, glm::f64vec3& crossPoint);
+    bool setPoint(std::vector<HalfEdge*>& edge_outline, glm::f64vec3 N, glm::f64vec3& cp, glm::f64vec3& crossPoint);
     void cal2VecScale(glm::f64vec3 v1, glm::f64vec3 v2, glm::f64vec3 p, double& s, double& t);
     int type;
     int maxRsize;
 
     void ProjectBezierOn3d(int dim);
+
+    void setCoeff(std::vector<double>& a, double t, std::vector<double>& Knot, int j);
+
+    void diff(double t, std::vector<double>& Knot, std::vector<glm::f64vec3>& dP,const int n_times = 3);
+    inline double rad_2d(double k, double tau, double a, double da);
 
 };
 

@@ -28,6 +28,14 @@ enum class EdgeType{
     r_fl,//ruling(fold line)
 };
 
+enum class CurveType{
+    none,
+    bezier3,
+    bsp3,
+    line,
+    arc,
+};
+
 enum class PaintTool{
     None,
     Reset,
@@ -74,8 +82,10 @@ protected:
 
 class CrvPt_FL : public Vertex{
 public:
-    double s, k2d, k2d_bef;
-    glm::f64vec3 T2d;
+    double s, k2d, k3d;
+    double k2d_bef, k3d_bef, da;
+    glm::f64vec3 T2d, N2d, B2d, T3d, N3d, B3d;
+    glm::f64vec3 Td, Nd, Bd;
     CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3, double _s) : Vertex(_p2, _p3), s{_s} {}
     bool operator<(const CrvPt_FL& T) const { return s < T.s; }
 };
@@ -150,8 +160,8 @@ public:
     void SetNewPoint();
 
     int InsertPointSegment;
-    int getCurveType();
-    void setCurveType(int n);
+    CurveType getCurveType();
+    void setCurveType(CurveType n);
     std::vector<glm::f64vec3> ControllPoints;
     std::vector<crvpt> CurvePoints;
     std::vector<ruling*> Rulings;//偶数番目 ruling　奇数番目 グラデーションの多角形に使用
@@ -168,7 +178,7 @@ private:
 
     bool IsInsertNewPoint;
     int OnCurvesORLines(glm::f64vec3& p, int& ind);//-1：どこにものっかっていない　0：曲線上　1：制御点を結んだ線上
-    int curveType;
+    CurveType curveType;
     bool setPoint(std::vector<Vertex*>&outline, glm::f64vec3 N, glm::f64vec3& cp, std::vector<glm::f64vec3>& P);
     inline void swap(glm::f64vec3&a, glm::f64vec3& b);
 

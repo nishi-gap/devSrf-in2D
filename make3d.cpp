@@ -58,7 +58,10 @@ void Model::InsertVertex(Vertex *v){
     for(auto& f: Faces){
         HalfEdge *he = f->halfedge;
         do{
-            if ((glm::dot(glm::normalize(he->vertex->p - v->p), glm::normalize(he->next->vertex->p - v->p))) <= -1 + FLT_EPSILON){
+            if(glm::distance(v->p, he->vertex->p) <= FLT_EPSILON){
+                return;
+            }
+            if (is_point_on_line(v->p, he->vertex->p, he->next->vertex->p)){
                 HalfEdge *NewEdge = new HalfEdge(v, EdgeType::r);
                 HalfEdge *next = he->next;
                 he->next = NewEdge;
@@ -67,7 +70,7 @@ void Model::InsertVertex(Vertex *v){
                 NewEdge->next = next;
                 NewEdge->face = f;
                 Edges.push_back(NewEdge);
-                return;
+                return ;
             }
             he = he->next;
         }while(he != f->halfedge);
@@ -126,30 +129,6 @@ bool Model::devide(HalfEdge *he1, HalfEdge *he2, std::vector<Face*> &faces){
     return false;
 }
 
-bool Model::setRuling(std::vector<ruling*>& Rulings){
-    if(Rulings.empty()) return false;
-    for(auto& r: Rulings)if(r->IsCrossed != -1)return false;
-    Vertex *v1;
-    Vertex *v2;
-    for(auto* r: Rulings){
-        v1 = std::get<0>(r->r);
-        v2 = std::get<1>(r->r);
-
-        InsertVertex(v1);
-        InsertVertex(v2);
-        HalfEdge *he1 = new HalfEdge(v1, EdgeType::r);
-        he1->r = r;
-        HalfEdge *he2 = new HalfEdge(v2, EdgeType::r);
-        he2->r = r;
-        r->he[0] = he1; r->he[1] = he2;
-        Edges.push_back(he1); Edges.push_back(he2);
-        devide(he1, he2, Faces);
-        vertices.push_back(v1); vertices.push_back(v2);
-    }
-
-    return true;
-}
-
 void Model::setHalfEdgePair(HalfEdge*he){
     for(auto& f: Faces){
         HalfEdge*he_if = f->halfedge;
@@ -163,78 +142,6 @@ void Model::setHalfEdgePair(HalfEdge*he){
     }
 }
 
-void Model::deform(std::vector<std::vector<glm::f64vec3>>& output, std::vector<ruling*>& Rulings, glm::f64vec3& center){
-
-    glm::f64mat4x4 T, R, A;
-
-    std::queue<glm::f64mat4x4> MatQue;
-    std::queue<HalfEdge*> FacesQue;
-    std::vector<glm::f64vec3> mesh;
-    HalfEdge*Pos;
-    glm::f64vec3 v1, v2;
-    glm::f64mat4x4 Mirror = glm::mat4(1.0f); Mirror[1][1] = -1;
-    glm::f64mat4x4 Scale = glm::scale(glm::f64vec3{0.1f, 0.1f, 0.1f});
-
-    HalfEdge *he;
-
-    bool res = setRuling(Rulings);
-    if(!res){clear(); return;}
-    output.clear();
-    for(auto& h: Edges)h->vertex->deformed = false;
-    he = (*Faces.begin())->halfedge;
-    do{
-        T = glm::translate(he->vertex->p  - (*Faces.begin())->halfedge->vertex->p);
-        mesh.push_back(T * glm::f64vec4{0,0,0, 1});
-        if(he->pair != nullptr){
-            FacesQue.push(he->pair);
-            MatQue.push(T);
-        }
-        he = he->next;
-        he->vertex->deformed = true;
-    }while(he != (*Faces.begin())->halfedge);
-    he->face->bend = true;
-    output.push_back(mesh);
-    while(!FacesQue.empty()){
-        
-        Pos = FacesQue.front(); A = MatQue.front();
-        FacesQue.pop(); MatQue.pop();
-        if(Pos->face->bend)continue;
-        he = Pos;
-        mesh.clear();
-        v1 = Pos->pair->vertex->p;
-        v2 = Pos->vertex->p;
-        glm::f64vec3 axis = glm::normalize(v2 - v1);
-        //if(glm::dot(axis, glm::f64vec3{0,1,0}) < 0)axis *= -1;
-        R = glm::rotate(he->r->Gradation * M_PI/255.0, axis);
-        do{
-            T = glm::translate(he->vertex->p - v1);          
-            he->vertex->p3 = A * R * T * glm::f64vec4{0,0,0, 1};
-            mesh.push_back(he->vertex->p3);
-            he->vertex->deformed = true;
-            if(he->pair != nullptr && !he->pair->face->bend){
-                FacesQue.push(he->pair);
-                MatQue.push(A * R * T);
-            }
-            he = he->next;
-        }while(he != Pos);
-        Pos->face->bend = true;
-        output.push_back(mesh);
-    }
-    std::vector<glm::f64vec3>c;
-    for(auto& m:output){
-        center = {0,0,0};
-        for(auto&v:m){
-            v =   Scale * Mirror *  glm::f64vec4(v,1);
-            center += v;
-        }
-        center /= double(m.size());
-        c.push_back(center);
-    }
-    center = {0,0,0};
-    for(auto& v: c)center += v;
-    center /= double(c.size());
-    return;
-}
 
 void Model::deform(){
     if(Faces.empty())return;
@@ -506,7 +413,8 @@ void Model::SplineInterPolation(std::vector<HalfEdge*>& path, std::vector<glm::f
 }
 
 void Model::setGradationValue(int val, HalfEdge *refHE, int InterpolationType, std::vector<glm::f64vec2>& CurvePath){
-    if(Faces.size() == 0 || refHE == nullptr || std::find(Edges.begin(), Edges.end(), refHE) == Edges.end()){std::cout<<"no selected" << std::endl; return;}
+    if(Faces.size() == 0 || std::find(Edges.begin(), Edges.end(), refHE) == Edges.end()){std::cout<<"no selected" << std::endl; return;}
+    if(refHE->edgetype != EdgeType::r)return;
     refHE->r->Gradation += val;
     refHE->r->Gradation = (refHE->r->Gradation < -255)? -255 : (255 < refHE->r->Gradation)? 255 : refHE->r->Gradation;
 
@@ -705,8 +613,8 @@ void Model::DeleteControlPoint(QPointF pt, int curveDimention, int DivSize){
     int DelIndex = searchPointIndex(pt, ptInd, 0);
     if(DelIndex == -1)return;
     crvs[DelIndex]->ControllPoints.erase(crvs[DelIndex]->ControllPoints.begin() + ptInd);
-    if(crvs[DelIndex]->getCurveType() == 0)crvs[DelIndex]->Bezier(3, crvPtNum);
-    if(crvs[DelIndex]->getCurveType() == 1)crvs[DelIndex]->Bspline(3, crvPtNum);
+    if(crvs[DelIndex]->getCurveType() == CurveType::bezier3)crvs[DelIndex]->Bezier(3, crvPtNum);
+    if(crvs[DelIndex]->getCurveType() == CurveType::bsp3)crvs[DelIndex]->Bspline(3, crvPtNum);
     if(crvs[DelIndex]->ControllPoints.size() == 0){
         crvs.erase(crvs.begin() + DelIndex);
         refCrv.erase(refCrv.begin() + DelIndex);
@@ -715,8 +623,8 @@ void Model::DeleteControlPoint(QPointF pt, int curveDimention, int DivSize){
     crvs.shrink_to_fit();
     refCrv.shrink_to_fit();
     if(outline->IsClosed() && crvs[DelIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){
-        if(crvs[DelIndex]->getCurveType() == 0)crvs[DelIndex]->BezierRulings(outline, DivSize, crvPtNum);
-        if(crvs[DelIndex]->getCurveType() == 1)crvs[DelIndex]->BsplineRulings(outline, DivSize, crvPtNum, curveDimention);
+        if(crvs[DelIndex]->getCurveType() == CurveType::bezier3)crvs[DelIndex]->BezierRulings(outline, DivSize, crvPtNum);
+        if(crvs[DelIndex]->getCurveType() == CurveType::bsp3)crvs[DelIndex]->BsplineRulings(outline, DivSize, crvPtNum, curveDimention);
         addRulings();
     }
 }
@@ -724,10 +632,10 @@ void Model::DeleteControlPoint(QPointF pt, int curveDimention, int DivSize){
 void Model::Check4Param(int curveDimention, std::vector<int>& deleteIndex){
     deleteIndex.clear();
     for(int i = (int)crvs.size() - 1; i >= 0; i--){
-        if((crvs[i]->getCurveType() == 0 && (int)crvs[i]->ControllPoints.size() < curveDimention) ||
-                (crvs[i]->getCurveType() == 1 && (int)crvs[i]->ControllPoints.size() <= curveDimention) ||
-                (crvs[i]->getCurveType() == 2 && (int)crvs[i]->ControllPoints.size() < 2) ||
-                (crvs[i]->getCurveType() == 3 && (int)crvs[i]->ControllPoints.size() < 3)) {
+        if((crvs[i]->getCurveType() == CurveType::bezier3 && (int)crvs[i]->ControllPoints.size() < curveDimention) ||
+                (crvs[i]->getCurveType() == CurveType::bsp3 && (int)crvs[i]->ControllPoints.size() <= curveDimention) ||
+                (crvs[i]->getCurveType() == CurveType::line && (int)crvs[i]->ControllPoints.size() < 2) ||
+                (crvs[i]->getCurveType() == CurveType::arc && (int)crvs[i]->ControllPoints.size() < 3)) {
             deleteIndex.push_back(i);
             crvs.erase(crvs.begin() + i);
             refCrv.erase(refCrv.begin() + i);
@@ -743,7 +651,7 @@ void Model::Check4Param(int curveDimention, std::vector<int>& deleteIndex){
     Connect2Vertices[1] = nullptr;
 }
 
-int Model::AddNewCurve(int curveType, int DivSize){
+int Model::AddNewCurve(CurveType curveType, int DivSize){
     CRV *crv = new CRV(crvPtNum, DivSize);
     crv->setCurveType(curveType);
     crvs.insert(crvs.begin(), crv);
@@ -756,7 +664,7 @@ int Model::AddNewCurve(int curveType, int DivSize){
 void Model::AddControlPoint(glm::f64vec3& p, int curveDimention, int DivSize){
     int AddPtIndex = IsSelectedCurve();
     if(AddPtIndex == -1)return;
-    if(crvs[AddPtIndex]->getCurveType() == 1){
+    if(crvs[AddPtIndex]->getCurveType() == CurveType::bsp3){
         double dist = 5.0;
         int n = crvs[AddPtIndex]->movePtIndex(p, dist);
         if(n == -1){
@@ -764,21 +672,22 @@ void Model::AddControlPoint(glm::f64vec3& p, int curveDimention, int DivSize){
             crvs[AddPtIndex]->Bspline(curveDimention, crvPtNum);
         }
     }
-    else if(crvs[AddPtIndex]->getCurveType() == 2){        
+    else if(crvs[AddPtIndex]->getCurveType() == CurveType::line){
         if(crvs[AddPtIndex]->ControllPoints.size() < 2)crvs[AddPtIndex]->ControllPoints.push_back(p);
         if(crvs[AddPtIndex]->ControllPoints.size() == 2)crvs[AddPtIndex]->Line();
     }
-    else if(crvs[AddPtIndex]->getCurveType() == 3){
+    else if(crvs[AddPtIndex]->getCurveType() == CurveType::arc){
         if(crvs[AddPtIndex]->ControllPoints.size() == 0){
             if(outline->IsClosed()){
                 Face *f = outline->getFace();
                 bool PointOnLines = false;
+                bool PointInFace = f->IsPointInFace(p);
                 HalfEdge *h = f->halfedge;
                 do{
-                    if(glm::dot(glm::normalize(h->vertex->p - p),glm::normalize(h->next->vertex->p - p)) >= 1 - FLT_EPSILON)PointOnLines = true;
+                    if(is_point_on_line(p, h->vertex->p, h->next->vertex->p))PointOnLines = true;
                     h = h->next;
                 }while(h != f->halfedge);
-                if(!f->IsPointInFace(p) || PointOnLines)crvs[AddPtIndex]->ControllPoints.push_back(p);
+                if(!PointInFace || PointOnLines)crvs[AddPtIndex]->ControllPoints.push_back(p);
             }
             else crvs[AddPtIndex]->ControllPoints.push_back(p);
         }
@@ -794,26 +703,36 @@ void Model::AddControlPoint(glm::f64vec3& p, int curveDimention, int DivSize){
     }
     if(outline->IsClosed() && crvs[AddPtIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){
         //if(crv->getCurveType() == 0)crvs[AddPtIndex]->BezierRulings(outline->vertices, DivSize, crvPtNum);
-        if(crvs[AddPtIndex]->getCurveType() == 1)crvs[AddPtIndex]->BsplineRulings(outline, DivSize, crvPtNum, curveDimention);
-        if(crvs[AddPtIndex]->getCurveType() == 2)crvs[AddPtIndex]->LineRulings(outline, DivSize);
-        if(crvs[AddPtIndex]->getCurveType() == 3)crvs[AddPtIndex]->ArcRulings(outline, DivSize);
+        if(crvs[AddPtIndex]->getCurveType() == CurveType::bsp3)crvs[AddPtIndex]->BsplineRulings(outline, DivSize, crvPtNum, curveDimention);
+        if(crvs[AddPtIndex]->getCurveType() == CurveType::line)crvs[AddPtIndex]->LineRulings(outline, DivSize);
+        if(crvs[AddPtIndex]->getCurveType() == CurveType::arc)crvs[AddPtIndex]->ArcRulings(outline, DivSize);
         addRulings();
     }
 }
 
 void Model::MoveCurvePoint(glm::f64vec3& p, int MoveIndex, int ptInd, int curveDimention, int DivSize){
     if(MoveIndex == -1 || ptInd == -1)return;
-
-    crvs[MoveIndex]->ControllPoints[ptInd] = p;
-    if(crvs[MoveIndex]->getCurveType() == 1)crvs[MoveIndex]->Bspline(curveDimention, crvPtNum);
-    else if(crvs[MoveIndex]->getCurveType() == 2)crvs[MoveIndex]->Line();
-    else if(crvs[MoveIndex]->getCurveType() == 3)crvs[MoveIndex]->Arc(crvPtNum);
+    if(crvs[MoveIndex]->getCurveType() == CurveType::arc && ptInd == 0){
+        Face *f = outline->getFace();
+        bool PointOnLines = false;
+        bool PointInFace = f->IsPointInFace(p);
+        HalfEdge *h = f->halfedge;
+        do{
+            if(is_point_on_line(p, h->vertex->p, h->next->vertex->p))PointOnLines = true;
+            h = h->next;
+        }while(h != f->halfedge);
+        if(!PointInFace || PointOnLines) crvs[MoveIndex]->ControllPoints[ptInd] = p;
+    }
+    else crvs[MoveIndex]->ControllPoints[ptInd] = p;
+    if(crvs[MoveIndex]->getCurveType() == CurveType::bsp3)crvs[MoveIndex]->Bspline(curveDimention, crvPtNum);
+    else if(crvs[MoveIndex]->getCurveType() == CurveType::line)crvs[MoveIndex]->Line();
+    else if(crvs[MoveIndex]->getCurveType() == CurveType::arc)crvs[MoveIndex]->Arc(crvPtNum);
 
     if(outline->IsClosed() && crvs[MoveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){
         //if(crvs[MoveIndex]->getCurveType() == 0)crvs[MoveIndex]->BezierRulings(outline->vertices, DivSize, crvPtNum);
         //if(crvs[MoveIndex]->getCurveType() == 1)crvs[MoveIndex]->BsplineRulings(outline->vertices, DivSize, crvPtNum, curveDimention);
-        if(crvs[MoveIndex]->getCurveType() == 2)crvs[MoveIndex]->LineRulings(outline, DivSize);
-        if(crvs[MoveIndex]->getCurveType() == 3)crvs[MoveIndex]->ArcRulings(outline, DivSize);
+        if(crvs[MoveIndex]->getCurveType() == CurveType::line)crvs[MoveIndex]->LineRulings(outline, DivSize);
+        if(crvs[MoveIndex]->getCurveType() == CurveType::arc)crvs[MoveIndex]->ArcRulings(outline, DivSize);
         //addRulings();
     }
 }

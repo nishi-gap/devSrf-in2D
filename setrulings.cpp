@@ -29,15 +29,16 @@ HalfEdge::HalfEdge(Vertex *v, EdgeType _type){
 
 std::vector<HalfEdge*> HalfEdge::Split(Vertex *v, std::vector<HalfEdge*>& Edges){
     std::vector<HalfEdge*> res;
-    if(!MathTool::is_point_on_line(v->p, vertex->p, next->vertex->p))return res;
+    if(!MathTool::is_point_on_line(v->p, this->vertex->p, this->next->vertex->p))return res;
     double t = glm::length(v->p - vertex->p)/glm::length(next->vertex->p - vertex->p);
     v->p3 = vertex->p3 + t * (next->vertex->p3 - vertex->p3);
     HalfEdge *h_new = new HalfEdge(v, edgetype); h_new->r = r;
     h_new->face = face; h_new->next = next; h_new->prev = this; next = h_new;
+    HalfEdge *h2_new = new HalfEdge(v, edgetype); h2_new->r = r;
     res.push_back(h_new);
     Edges.push_back(h_new);
     if(pair != nullptr){
-        HalfEdge *h2_new = new HalfEdge(v, edgetype); h2_new->r = r;
+
         h2_new->face = pair->face;
         h2_new->next = pair->next; h2_new->prev = pair; pair->next = h2_new;
         h2_new->pair = this; h_new->pair = pair; pair->pair = h_new; pair = h2_new;
@@ -108,7 +109,7 @@ CRV::CRV(int _crvNum, int DivSize){
     }
 
     isempty = true;
-    curveType = -1;
+    curveType = CurveType::none;
     IsInsertNewPoint = false;
     InsertPointSegment = -1;
 }
@@ -128,11 +129,11 @@ void CRV::addCtrlPt(QPointF p){ControllPoints.push_back(glm::f64vec3{p.x(), p.y(
 void CRV::eraseCtrlPt(int curveDimention, int crvPtNum){
     if((int)ControllPoints.size() > 0)ControllPoints.erase(ControllPoints.end() - 1);
     ControllPoints.shrink_to_fit();
-    if(curveType == 0){
+    if(curveType == CurveType::bezier3){
         Bezier(curveDimention, crvPtNum);
-    }else if(curveType == 1){
+    }else if(curveType == CurveType::bsp3){
         Bspline(curveDimention, crvPtNum);
-    }else if(curveType == 2){
+    }else if(curveType == CurveType::line){
         Line();
     }
 }
@@ -154,8 +155,8 @@ int CRV::movePtIndex(glm::f64vec3& p, double& dist){
 
 }
 
-int CRV::getCurveType(){return curveType;}
-void CRV::setCurveType(int n){curveType = n;}
+CurveType CRV::getCurveType(){return curveType;}
+void CRV::setCurveType(CurveType n){curveType = n;}
 
 void CRV::Bspline(int curveDimention,  int crvPtNum){
     //Rulings.clear();
@@ -253,8 +254,7 @@ void CRV::BezierRulings(OUTLINE *outline, int& DivSize, int crvPtNum){
 
     //int m = std::min(2 * DivSize - 3, crvPtNum);//2 * DivSize - 1 ... DivSize: the number of mesh , DivSize - 1: rulings(folding line)
     int m = DivSize - 1;
-    int i = 0, rind = 0, mind = 0;
-    bool RulingSet = false;
+    int i = 0, rind = 0;
     std::vector<Vertex*> vertices = outline->getVertices();
 
     while(i < m){
@@ -328,12 +328,9 @@ void CRV::BsplineRulings(OUTLINE *outline, int& DivSize, int crvPtNum, int curve
         i++;
         t += (Knot[(int)ControllPoints.size()] - Knot[curveDimention]) * (1.0/ (double)crvPtNum);
     }
-
-    bool RulingSet = false;
     double n = double(sind);
-    int rind = 0, mind = 0;
+    int rind = 0;
     //ruling *r;
-    std::vector<ruling*> bef;
     while(n < eind){
         /*
         if(RulingSet){
@@ -402,9 +399,9 @@ void CRV::LineRulings(OUTLINE *outline, int DivSize){
         if(sind == -1 && IsIntersected)sind = i;
         if(!IsIntersected && sind != -1)eind = std::min(eind, i);
     }
-    bool RulingSet = false;
+    //bool RulingSet = false;
     double n = double(sind);
-    int mind = 0, rind = 0;
+    int rind = 0;
     while(n < eind){
         /*
         if(RulingSet){
@@ -505,7 +502,7 @@ void CRV::InsertControlPoint2(glm::f64vec3& p){
     }
     else if(d == 0){//曲線上
         for(int i = 0; i < (int)CurveIndexs.size() - 1; i++){
-            if(CurveIndexs[i] <= ind && ind < CurveIndexs[i + 1]){
+            if(ind >=CurveIndexs[i] && ind < CurveIndexs[i + 1]){
                 double s = (double)(ind - CurveIndexs[i])/(double)(CurveIndexs[i + 1] - CurveIndexs[i]);
                 InsertPoint = s * (ControllPoints[i + 1] - ControllPoints[i]) + ControllPoints[i];
                 InsertPointSegment = i;
@@ -700,7 +697,7 @@ void OUTLINE::MoveOutline(glm::f64vec3 p){
 }
 
 void OUTLINE::MoveVertex(glm::f64vec3 p, int ind){
-    if(ind < 0 || vertices.size() < ind)return;
+    if(ind < 0 || (int)vertices.size() < ind)return;
     vertices[ind]->p = p;
 }
 
@@ -749,12 +746,20 @@ bool OUTLINE::IsClosed(){
 void CrossDetection(Face *f, CRV *crvs){
     if(crvs->isempty)return;
     for(auto&r: crvs->Rulings)r->IsCrossed = -1;
+    if(crvs->getCurveType() == CurveType::arc || crvs->getCurveType() == CurveType::line)return;
     for(int in = 0; in < (int)crvs->Rulings.size(); in ++){
         for(int inn = in+1; inn < (int)crvs->Rulings.size(); inn++){
             bool rs = IsIntersect(std::get<0>(crvs->Rulings[in]->r)->p, std::get<1>(crvs->Rulings[in]->r)->p, std::get<0>(crvs->Rulings[inn]->r)->p,std::get<1>(crvs->Rulings[inn]->r)->p);
             if(rs){
-                auto p = getIntersectionPoint(std::get<0>(crvs->Rulings[in]->r)->p, std::get<1>(crvs->Rulings[in]->r)->p, std::get<0>(crvs->Rulings[inn]->r)->p,std::get<1>(crvs->Rulings[inn]->r)->p);
-                if(f->IsPointInFace(p)) crvs->Rulings[in]->IsCrossed = crvs->Rulings[inn]->IsCrossed = 0;
+                glm::f64vec3 p = getIntersectionPoint(std::get<0>(crvs->Rulings[in]->r)->p, std::get<1>(crvs->Rulings[in]->r)->p, std::get<0>(crvs->Rulings[inn]->r)->p,std::get<1>(crvs->Rulings[inn]->r)->p);
+                bool PointOnLines = false;
+                bool PointInFace = f->IsPointInFace(p);
+                HalfEdge *h = f->halfedge;
+                do{
+                    if(is_point_on_line(p, h->vertex->p, h->next->vertex->p))PointOnLines = true;
+                    h = h->next;
+                }while(h != f->halfedge);
+                if(PointInFace)crvs->Rulings[in]->IsCrossed = crvs->Rulings[inn]->IsCrossed = 0;
             }
         }
     }
@@ -829,7 +834,6 @@ std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, st
         if(T[i] == Knot[0]){ N(i,0) = 1;continue;}
         if(T[i] == Knot[m]){N(i,n) = 1; continue;}
         for(int j = 0; j <= n; j++)N(i,j) = basis(j,dim,T[i],Knot);
-
     }
     MatrixXd P = N.fullPivLu().solve(D);
     //cast
