@@ -733,7 +733,6 @@ void Model::MoveCurvePoint(glm::f64vec3& p, int MoveIndex, int ptInd, int curveD
         //if(crvs[MoveIndex]->getCurveType() == 1)crvs[MoveIndex]->BsplineRulings(outline->vertices, DivSize, crvPtNum, curveDimention);
         if(crvs[MoveIndex]->getCurveType() == CurveType::line)crvs[MoveIndex]->LineRulings(outline, DivSize);
         if(crvs[MoveIndex]->getCurveType() == CurveType::arc)crvs[MoveIndex]->ArcRulings(outline, DivSize);
-        //addRulings();
     }
 }
 

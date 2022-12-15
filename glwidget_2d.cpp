@@ -262,6 +262,26 @@ void GLWidget_2D::paintGL(){
     glOrtho(-0.5, (float)s.width() -0.5, (float)s.height() -0.5, -0.5, -1, 1);
 
     if(visibleGrid == 1)DrawGrid();
+    for(auto&edge: model->Edges){
+        if(edge->edgetype == EdgeType::ol || edge->edgetype == EdgeType::fl){
+            glColor3d(0, 0, 0);
+            glPointSize(3.0f);
+
+            glBegin(GL_POINTS);
+            glVertex2d(edge->vertex->p.x, edge->vertex->p.y);
+            glEnd();
+
+            glBegin(GL_LINES);
+            glVertex2d(edge->vertex->p.x, edge->vertex->p.y);
+            glVertex2d(edge->next->vertex->p.x, edge->next->vertex->p.y);
+            glEnd();
+        }else if(edge->edgetype == EdgeType::r){
+            if(edge->r->IsCrossed != -1){
+
+            }
+        }
+
+    }
     //rulingの描画
     {
         glm::f64vec2 p, p2;

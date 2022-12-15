@@ -82,8 +82,8 @@ protected:
 
 class CrvPt_FL : public Vertex{
 public:
-    double s, k2d, k3d;
-    double k2d_bef, k3d_bef, da;
+    double s, k2d, k3d, tau;
+    double a, da;
     glm::f64vec3 T2d, N2d, B2d, T3d, N3d, B3d;
     glm::f64vec3 Td, Nd, Bd;
     CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3, double _s) : Vertex(_p2, _p3), s{_s} {}
