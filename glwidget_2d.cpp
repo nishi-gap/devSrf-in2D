@@ -4,7 +4,7 @@
 GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
 {
 
-    CurveList = {{0, PaintTool::Bezier_r}, {1, PaintTool::Bspline_r}, {2, PaintTool::Line_r}, {3, PaintTool::Arc_r}};
+    CurveList = {{CurveType::bezier3, PaintTool::Bezier_r}, {CurveType::bsp3, PaintTool::Bspline_r}, {CurveType::line, PaintTool::Line_r}, {CurveType::arc, PaintTool::Arc_r}};
 
     curveDimention = 3;
     drawtype = PaintTool::None;
@@ -26,10 +26,14 @@ GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
     SelectedCurveIndex = -1;
     refHE = nullptr;
     KeyEvent = -1;
-    curvetype = 0;
+    curvetype = CurveType::none;
 
     gridsize = 10;
     visibleGrid = 1;
+
+    eraseVec2d = false;
+    visibleCurve = true;
+    model = new Model(crvPtNum);
 
 }
 GLWidget_2D::~GLWidget_2D(){}
@@ -40,7 +44,8 @@ void GLWidget_2D::InitializeDrawMode(int state){
 
 void GLWidget_2D::AddCurve(){
     std::vector<int>deleteIndex;
-    int _type = emit signalCurveType();
+    CurveType _type;
+    emit signalCurveType(_type);
     model->Check4Param(curveDimention, deleteIndex);
     if(model->crvs.empty()) SelectedCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
@@ -135,6 +140,7 @@ void GLWidget_2D::EditOutlineVertex(int state){
     if(model->crvs.empty()) SelectedCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     emit SendNewActiveCheckBox(PaintTool::EditVertex_ol);
+    update();
 }
 
 void GLWidget_2D::DeleteCtrlPt(){
@@ -200,15 +206,15 @@ void GLWidget_2D::recieveNewEdgeNum(int num){model->outline->VerticesNum = num; 
 void GLWidget_2D::ChangedDivSizeEdit(int n){
     this->DivSize = (n < 0)? DivSize: (maxDivSize < n)? maxDivSize: n;
     if(SelectedCurveIndex == -1) return;
-    if(curvetype == 0){
+    if(curvetype == CurveType::bezier3){
         model->crvs[SelectedCurveIndex]->Bezier(curveDimention, crvPtNum);
         //if(model->outline->isClosed  && model->crv->CurvePoints[0].pt != glm::f64vec2{-1,-1})model->crv->BezierRulings(model->outline->vertices,DivSize,crvPtNum);
     }
-    if(curvetype == 1){
+    if(curvetype == CurveType::bsp3){
         model->crvs[SelectedCurveIndex]->Bspline(curveDimention, crvPtNum);
         if(model->outline->IsClosed() && model->crvs[SelectedCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1, -1})model->crvs[SelectedCurveIndex]->BsplineRulings(model->outline,DivSize,crvPtNum, curveDimention);
     }
-    if(curvetype == 2){
+    if(curvetype == CurveType::line){
         model->crvs[SelectedCurveIndex]->Line();
         if(model->outline->IsClosed() && model->crvs[SelectedCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1})model->crvs[SelectedCurveIndex]->LineRulings(model->outline,DivSize);
     }
@@ -257,44 +263,113 @@ void GLWidget_2D::paintGL(){
     glOrtho(-0.5, (float)s.width() -0.5, (float)s.height() -0.5, -0.5, -1, 1);
 
     if(visibleGrid == 1)DrawGrid();
-    //rulingの描画
-    {
-        glm::f64vec2 p, p2;
+    if(model->outline->IsClosed()){
         float r, g, b = 0;
         glPolygonOffset(0.0,1.0);
         HalfEdge *_refHE = assignment_refHE();
-        for(auto& curve: model->crvs){
-            if(curve->isempty)continue;
-            for(auto&rl: curve->Rulings){
-                if(_refHE != nullptr && _refHE->r == rl)glColor3d(1,1,0);
-                else{
-                    if(rl->IsCrossed == 1)continue;
-                    if(rl->IsCrossed  != -1)glColor3d(0,1,0);
-                    else{
-                        if(rl->Gradation == 0) r = g = b = 0.4;
-                        else if(rl->Gradation > 0){
-                            r = 1; g = b =1 - rl->Gradation/255.;
+        for(auto&edge: model->Edges){
+            glColor3d(0,0,0);
+            glLineWidth(1);
+
+            if(edge->edgetype == EdgeType::r){
+                if(drawtype == PaintTool::NewGradationMode){
+                    glLineWidth(rulingWidth);
+                    if(edge->r->IsCrossed != -1)glColor3d(0,1,0);
+                    else {
+                        if(edge->r->Gradation == 0) r = g = b = 0.4;
+                        else if(edge->r->Gradation > 0){
+                            r = 1; g = b =1 - edge->r->Gradation/255.;
                         }else{
                             b = 1;
-                            g = r = 1 + rl->Gradation/255.;
+                            g = r = 1 + edge->r->Gradation/255.;
                         }
                         glColor3d(r,g,b);
                     }
-                }
-                if(drawtype == PaintTool::NewGradationMode)glLineWidth(rulingWidth);
-                else{
-                    if(rl->IsCrossed  != -1)glColor3d(0,1,0);
+                }else{
+                    if(edge->r->IsCrossed  != -1)glColor3d(0,1,0);
                     else glColor3d(0.4,0.4,0.4);
                     glLineWidth(1.f);
                 }
-                glBegin(GL_LINES);              
-                p = std::get<0>(rl->r)->p, p2 = std::get<1>(rl->r)->p;
-                glVertex2d(p.x, p.y);
-                glVertex2d(p2.x, p2.y);
+                if(edge == _refHE || edge->pair == _refHE)glColor3d(1,1,0);
+            }else if(edge->edgetype == EdgeType::ol || edge->edgetype == EdgeType::fl){
+                glColor3d(0, 0, 0);
+                glPointSize(3.0f);
+
+                glBegin(GL_POINTS);
+                glVertex2d(edge->vertex->p.x, edge->vertex->p.y);
+                glEnd();
+            }
+            glBegin(GL_LINES);
+            glVertex2d(edge->vertex->p.x, edge->vertex->p.y);
+            glVertex2d(edge->next->vertex->p.x, edge->next->vertex->p.y);
+            glEnd();
+
+        }
+    }else{
+        //可展面の輪郭描画
+        {
+            if(model->outline->type == "Rectangle" || model->outline->type == "Polyline"){
+                glColor3d(0, 0, 0);
+                glPointSize(3.0f);
+                for(auto& v: model->outline->getVertices()){
+                    glBegin(GL_POINTS);
+                    glVertex2d(v->p.x, v->p.y);
+                    glEnd();
+                }
+
+                if(model->outline->IsClosed()){
+                    glBegin(GL_LINE_LOOP);
+                    for(auto& r: model->outline->getVertices())glVertex2d(r->p.x, r->p.y);
+                    glEnd();
+                }else{
+                    glBegin(GL_LINE_STRIP);
+                    for(auto& v: model->outline->getVertices()) glVertex2d(v->p.x, v->p.y);
+                    glEnd();
+                }
+            }
+            if(model->outline->type == "Polygon"){
+                if(model->outline->hasPtNum > 0){
+                    glColor3d(0, 0, 0);
+                    glPointSize(5.0f);
+                    glBegin(GL_POINTS);
+                    glVertex2d(model->outline->origin.x, model->outline->origin.y);
+                    glEnd();
+
+                    glColor3d(0, 0, 0);
+                    glPointSize(4.0f);
+                    for(auto& v: model->outline->getVertices()){
+                        glBegin(GL_POINTS);
+                        glVertex2d(v->p.x, v->p.y);
+                        glEnd();
+                    }
+
+                    glBegin(GL_LINE_LOOP);
+                    for(auto& r: model->outline->getVertices())glVertex2d(r->p.x, r->p.y);
+                    glEnd();
+                }
+
+            }
+            glPointSize(4);
+            for(auto& Vertices: model->ol_vertices){
+                for(auto&v: Vertices){
+                    glBegin(GL_POINTS);
+                    glVertex2d(v->p.x, v->p.y);
+                    glEnd();
+                }
+            }
+
+            glColor3d(0, 0, 0);
+            for(auto& Vertices: model->ol_vertices){
+                glBegin(GL_LINE_STRIP);
+                for(auto&v: Vertices){
+                    glVertex2d(v->p.x, v->p.y);
+                }
                 glEnd();
             }
         }
+
     }
+
     glLineWidth(1.0);
     //曲線の制御点
     if(drawtype != PaintTool::NewGradationMode){
@@ -334,6 +409,102 @@ void GLWidget_2D::paintGL(){
             glEnd();
         }
     }
+    //折り線の描画
+    {
+        for(auto&fl: model->FL){
+
+            glBegin(GL_LINE_STRIP);
+            if(visibleCurve){glColor3d(0,0,0); for(auto&v: fl->CurvePts)glVertex2d(v.x, v.y);}
+            else{glColor3d(0,0,1); for(auto&v: fl->Curve_res2d)glVertex2d(v.x, v.y);}
+            glEnd();
+            std::vector<glm::f64vec3> Pts;
+            Pts = (visibleCurve)? fl->getCtrlPt() : fl->getCtrlPt2d();
+            glColor3d(1,0,0);
+            glPointSize(5);
+            for(auto&v: Pts){
+                glBegin(GL_POINTS);
+                glVertex2d(v.x,v.y);
+                glEnd();
+            }
+
+            if(fl->he2 != nullptr){
+                glColor3d(0,0,0);
+                glBegin(GL_LINES);
+                glVertex2d(fl->he->vertex->p.x, fl->he->vertex->p.y);
+                glVertex2d(fl->he2->vertex->p.x, fl->he2->vertex->p.y);
+                glEnd();
+            }
+            glPointSize(6);
+            glColor3d(0,0,1);
+            for(auto&p: model->resPts){
+                glBegin(GL_POINTS);
+                glVertex2d(p.x, p.y);
+                glEnd();
+            }
+
+            for(auto&t: fl->T_crs){
+                glPolygonOffset(0.7f, 1.f);
+                glColor3d(1,0,0);//T
+                glBegin(GL_LINES);
+                glVertex2d(t.p.x, t.p.y);
+                glVertex2d(t.p.x + 10. * t.T2d.x, t.p.y + 10. * t.T2d.y);
+                glEnd();
+
+                glColor3d(0,1,0);//N
+                glBegin(GL_LINES);
+                glVertex2d(t.p.x, t.p.y);
+                glVertex2d(t.p.x + 10. * t.N2d.x, t.p.y + 10. * t.N2d.y);
+                glEnd();
+
+                glColor3d(0,0,1);//B
+                glBegin(GL_LINES);
+                glVertex2d(t.p.x, t.p.y);
+                glVertex2d(t.p.x + 10. * t.B2d.x, t.p.y + 10. * t.B2d.y);
+                glEnd();
+            }
+        }
+
+    }
+#if 0
+    //rulingの描画
+    {
+        glm::f64vec2 p, p2;
+        float r, g, b = 0;
+        glPolygonOffset(0.0,1.0);
+        HalfEdge *_refHE = assignment_refHE();
+        for(auto& curve: model->crvs){
+            if(curve->isempty)continue;
+            for(auto&rl: curve->Rulings){
+                if(_refHE != nullptr && _refHE->r == rl)glColor3d(1,1,0);
+                else{
+                    if(rl->IsCrossed == 1)continue;
+                    if(rl->IsCrossed  != -1)glColor3d(0,1,0);
+                    else{
+                        if(rl->Gradation == 0) r = g = b = 0.4;
+                        else if(rl->Gradation > 0){
+                            r = 1; g = b =1 - rl->Gradation/255.;
+                        }else{
+                            b = 1;
+                            g = r = 1 + rl->Gradation/255.;
+                        }
+                        glColor3d(r,g,b);
+                    }
+                }
+                if(drawtype == PaintTool::NewGradationMode)glLineWidth(rulingWidth);
+                else{
+                    if(rl->IsCrossed  != -1)glColor3d(0,1,0);
+                    else glColor3d(0.4,0.4,0.4);
+                    glLineWidth(1.f);
+                }
+                glBegin(GL_LINES);              
+                p = std::get<0>(rl->r)->p, p2 = std::get<1>(rl->r)->p;
+                glVertex2d(p.x, p.y);
+                glVertex2d(p2.x, p2.y);
+                glEnd();
+            }
+        }
+    }
+
 
     //可展面の輪郭描画
     {
@@ -424,59 +595,10 @@ void GLWidget_2D::paintGL(){
         }
     }
 
-    //折り線の描画
 
-    for(auto&fl: model->FL){
-        glColor3d(0,0,0);
-        glBegin(GL_LINE_STRIP);
-        for(auto&v: fl->CurvePts)glVertex2d(v.x, v.y);
-        glEnd();
-        std::vector<glm::f64vec3> Pts = fl->getCtrlPt();
-        glColor3d(1,0,0);
-        glPointSize(5);
-        for(auto&v: Pts){
-            glBegin(GL_POINTS);
-            glVertex2d(v.x,v.y);
-            glEnd();
-        }
-        glColor3d(0,0,0);
-        for(auto&l2: fl->Rulings_2dL){
-            glBegin(GL_LINES);
-            glVertex2d(l2[0].x, l2[0].y);
-            glVertex2d(l2[1].x, l2[1].y);
-            glEnd();
-        }
-        for(auto&r2: fl->Rulings_2dR){
-            glBegin(GL_LINES);
-            glVertex2d(r2[0].x, r2[0].y);
-            glVertex2d(r2[1].x, r2[1].y);
-            glEnd();
-        }
-
-        if(fl->he2 != nullptr){
-            glColor3d(0,0,0);
-            glBegin(GL_LINES);
-            glVertex2d(fl->he->vertex->p.x, fl->he->vertex->p.y);
-            glVertex2d(fl->he2->vertex->p.x, fl->he2->vertex->p.y);
-            glEnd();
-        }
-        glPointSize(6);
-        glColor3d(0,0,1);
-        for(auto&p: model->resPts){
-            glBegin(GL_POINTS);
-            glVertex2d(p.x, p.y);
-            glEnd();
-        }
-    }
 
     if(model->FL.empty())return;
-    for(auto&p: model->FL[0]->CtrlPts_res){
-        glColor3d(1,0,1);
-        glPointSize(5);
-        glBegin(GL_POINTS);
-        //glVertex2d(p.x, p.y);
-        glEnd();
-    }
+
 
     glColor3d(0,1,0);
     glBegin(GL_LINE_STRIP);
@@ -484,6 +606,24 @@ void GLWidget_2D::paintGL(){
         glVertex2d(p.x, p.y);
     }
     glEnd();
+
+    if(!eraseVec2d && !model->FL.empty()){
+        glColor3d(1,0,0);
+        for(auto&v: model->FL[0]->Rulings_2dL){
+            glBegin(GL_LINE);
+            glVertex2d(v[0].x + v[1].x, v[0].y + v[1].y);
+            glVertex2d(v[1].x, v[1].y);
+            glEnd();
+        }
+        glColor3d(0,0,1);
+        for(auto&v: model->FL[0]->Rulings_2dR){
+            glBegin(GL_LINE);
+            glVertex2d(v[0].x + v[1].x, v[0].y + v[1].y);
+            glVertex2d(v[1].x, v[1].y);
+            glEnd();
+        }
+    }
+#endif
 }
 
 void GLWidget_2D::DrawGrid(){
@@ -510,6 +650,12 @@ void GLWidget_2D::DrawGrid(){
 
 }
 
+void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
+    if(e->key() == Qt::Key_V)eraseVec2d = !eraseVec2d;
+    if(e->key() == Qt::Key_A) visibleCurve = !visibleCurve;
+    update();
+}
+
 void GLWidget_2D::mousePressEvent(QMouseEvent *e){
     QPointF p = this->mapFromGlobal(QCursor::pos());
     glm::f64vec3 p_ongrid = SetOnGrid(p, gridsize);
@@ -529,47 +675,22 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
             update();
             if(/*model->outline->IsClosed() && */hasRulings){
                 bool res;
-                auto _CtrlPts = model->FL[0]->getCtrlPt();
-                auto _edges = model->outline->getEdges();
-                tmp_cp.clear();
+                //auto _CtrlPts = model->FL[0]->getCtrlPt();
+                //auto _edges = model->outline->getEdges();
+                //tmp_cp.clear();
                 //for(auto&v: _CtrlPts)tmp_cp.push_back(new Vertex(v));
                 //std::vector<double> Knot;
                 //tmp_c = GlobalSplineInterpolation(tmp_cp, model->FL[0]->CtrlPts_res, Knot);
                 //res = model->FL[0]->applyCurvedFolding(model->Faces, model->Edges, model->vertices, curveDimention);
-                res = model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, curveDimention);
-                double c2dlen = 0.0, c3dlen = 0.0;
-                for(int i = 1; i < (int)model->FL[0]->CurvePts.size(); i++){
-                    c3dlen += glm::distance(model->FL[0]->CurvePts[i-1], model->FL[0]->CurvePts[i]);
-                }
-                double t0, t1;
-                for(auto&e: _edges){
-                    std::vector<double>arcT = BezierClipping(_CtrlPts, e, curveDimention);
-                    auto _bezier = [](std::vector<glm::f64vec3>P, int dim, double t) {
-                        glm::f64vec3 v{0,0,0};for(int i = 0; i < (int)P.size();i++)v += cmb(dim, i)*std::pow(t,i)*std::pow(1-t,dim-i)*P[i]; return v;
-                    };
-                    if(arcT.empty())continue;
-                    t0 = std::min(arcT[0], arcT[1]); t1 = std::max(arcT[0], arcT[1]);
-                    glm::f64vec3 bef = _bezier(_CtrlPts,curveDimention,t0);
-                    double t = t0;
-                    for(int n = 0; n < (int)model->FL[0]->Curve_res.size(); n++){
-                        glm::f64vec3 v = _bezier(_CtrlPts,curveDimention,t);
-                        c3dlen += glm::distance(bef, v);
-                        bef = v;
-                        t += (t1- t0)/model->FL[0]->Curve_res.size();
-                    }
-                    for(int i = 1; i < (int)model->crvs[0]->CurvePoints.size(); i++){
-                        c2dlen += glm::distance(model->crvs[0]->CurvePoints[i-1].pt, model->crvs[0]->CurvePoints[i].pt);
-                    }
-                }
-
-                std::cout<< "length : 2d = " << c2dlen << " , 3d = " << c3dlen << " , " << t0 << " , " << t1 <<  std::endl;
+                auto oriedge = model->outline->getEdges();
+                res = model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention);
             }
         }
         else if(drawtype == PaintTool::DeleteCurve){
             model->SelectCurve(p);
             std::vector<int> n(1);
             n[0] = model->DeleteCurve();
-            deleteCrvSignal(n);
+            emit deleteCrvSignal(n);
             SelectedCurveIndex = -1;
         }
         if(drawtype == PaintTool::Bezier_r || drawtype == PaintTool::Bspline_r || drawtype == PaintTool::Line_r || drawtype == PaintTool::Arc_r){
@@ -581,7 +702,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
                 model->SelectCurve(p);
                 SelectedCurveIndex = model->IsSelectedCurve();
             }else{
-                if(model->crvs[SelectedCurveIndex]->getCurveType() == 1 && model->crvs[SelectedCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){
+                if(model->crvs[SelectedCurveIndex]->getCurveType() == CurveType::bsp3 && model->crvs[SelectedCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){
                     model->crvs[SelectedCurveIndex]->InsertControlPoint2(p_ongrid);
                     model->crvs[SelectedCurveIndex]->SetNewPoint();
                     model->crvs[SelectedCurveIndex]->Bspline(curveDimention,crvPtNum);
@@ -615,7 +736,6 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
 
     }
     if(model->outline->IsClosed()){
-
         //model->deform();
         emit foldingSignals();
     }
@@ -633,21 +753,26 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
         }
     }
     if(drawtype == PaintTool::Move_ol) model->outline->MoveOutline(p_ongrid);
-    else if(drawtype == PaintTool::EditVertex_ol) model->editOutlineVertex(p, gridsize, 1);
+    else if(drawtype == PaintTool::EditVertex_ol){
+        model->editOutlineVertex(p, gridsize, 1);
+        model->addRulings();
+        model->deform();
+        emit foldingSignals();
+    }
     else if(drawtype == PaintTool::NewGradationMode){}
 
     if(drawtype == PaintTool::MoveCtrlPt)model->MoveCurvePoint(p_ongrid,SelectedCurveIndex, movePt, curveDimention, DivSize);
 
     if(SelectedCurveIndex != -1){
-        if(drawtype == PaintTool::InsertCtrlPt &&  model->crvs[SelectedCurveIndex]->getCurveType() == 1 && model->crvs[SelectedCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){//制御点の挿入(B-spline)
+        if(drawtype == PaintTool::InsertCtrlPt &&  model->crvs[SelectedCurveIndex]->getCurveType() == CurveType::bsp3 && model->crvs[SelectedCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){//制御点の挿入(B-spline)
             model->crvs[SelectedCurveIndex]->InsertControlPoint2(p_ongrid);
         }
         
         if(drawtype != PaintTool::NewGradationMode && model->outline->IsClosed() && model->crvs[SelectedCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){
             //if(model->crvs[SelectedCurveIndex]->getCurveType() == 0)model->crvs[SelectedCurveIndex]->BezierRulings(model->outline->vertices,DivSize,crvPtNum);
-            if(model->crvs[SelectedCurveIndex]->getCurveType() == 1) model->crvs[SelectedCurveIndex]->BsplineRulings(model->outline,DivSize,crvPtNum, curveDimention);
-            if(model->crvs[SelectedCurveIndex]->getCurveType() == 2) model->crvs[SelectedCurveIndex]->LineRulings(model->outline,DivSize);
-            if(model->crvs[SelectedCurveIndex]->getCurveType() == 3) model->crvs[SelectedCurveIndex]->ArcRulings(model->outline,DivSize);
+            if(model->crvs[SelectedCurveIndex]->getCurveType() == CurveType::bsp3) model->crvs[SelectedCurveIndex]->BsplineRulings(model->outline,DivSize,crvPtNum, curveDimention);
+            if(model->crvs[SelectedCurveIndex]->getCurveType() == CurveType::line) model->crvs[SelectedCurveIndex]->LineRulings(model->outline,DivSize);
+            if(model->crvs[SelectedCurveIndex]->getCurveType() == CurveType::arc) model->crvs[SelectedCurveIndex]->ArcRulings(model->outline,DivSize);
             model->addRulings();
             model->deform();
         }
@@ -662,8 +787,10 @@ void GLWidget_2D::mouseReleaseEvent(QMouseEvent * e){
     movePt = -1;
     QPointF p = this->mapFromGlobal(QCursor::pos());
     if(SelectedCurveIndex != -1 && !model->crvs.empty()) model->crvs[SelectedCurveIndex]->InsertPointSegment = -1;
-    if(drawtype == PaintTool::EditVertex_ol) model->editOutlineVertex(p, gridsize, 2);
-    if(model->outline->IsClosed())model->deform();
+    if(drawtype == PaintTool::EditVertex_ol){
+        model->editOutlineVertex(p, gridsize, 2);
+        if(model->outline->IsClosed())model->deform();
+    }
     update();
 }
 
@@ -685,9 +812,11 @@ void GLWidget_2D::cb_DeleteCurve(){
 }
 
 void GLWidget_2D::Reset(){
-    model->Initialize();
+    delete model;
+    model = new Model(crvPtNum);
     emit SendNewActiveCheckBox(PaintTool::Reset);
     SelectedCurveIndex = -1;
+    emit foldingSignals();
     update();
 }
 
@@ -802,12 +931,14 @@ HalfEdge *GLWidget_2D::assignment_refHE(){
     HalfEdge *he = nullptr;
     double dist = 10;
     for(auto& _he: model->Edges){
-        if(_he->edgetype == EdgeType::ol || _he->edgetype == EdgeType::cl)continue;
+        if(_he->edgetype != EdgeType::r)continue;
+        //if(_he->next == nullptr)continue;
         double d = glm::length(glm::cross((curPos - _he->vertex->p), _he->vertex->p - _he->next->vertex->p))/glm::length(_he->vertex->p - _he->next->vertex->p);
         if(d < dist){
             dist = d; he = _he;
         }
     }
+    return he;
     for(auto&crv: model->crvs){
         if(crv->isempty)continue;
         for(auto&rl: crv->Rulings){
@@ -818,7 +949,6 @@ HalfEdge *GLWidget_2D::assignment_refHE(){
             }
         }
     }
-    return he;
 }
 
 glm::f64vec3 GLWidget_2D::SetOnGrid(QPointF& cursol, double gridsize){

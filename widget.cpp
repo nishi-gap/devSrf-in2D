@@ -10,8 +10,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->setupUi(this);
 
-    model = new Model(crvPtNum);
-    ui->glWid2dim->model = model;
+    //model = new Model(crvPtNum);
+    //ui->glWid2dim->model = model;
     CBoxlist = {{ui->SelectButton, PaintTool::None}, {ui->outline_rectangle, PaintTool::Rectangle_ol}, {ui->outline_polygon,  PaintTool::Polygon_ol},
                 {ui->outline_polyline, PaintTool::Polyline_ol}, {ui->EditVertexButton, PaintTool::EditVertex_ol}, {ui->MoveOutLineButton, PaintTool::Move_ol},
                 {ui->make_devsrf, PaintTool::deform}, {ui->Reset, PaintTool::Reset}
@@ -21,7 +21,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->make_devsrf, &QCheckBox::stateChanged, this , &MainWindow::fold_Sm);
     connect(ui->Reset, &QCheckBox::stateChanged,ui->glWid2dim,&GLWidget_2D::Reset);
-
+    connect(ui->Reset, &QCheckBox::stateChanged, this, &MainWindow::Initialize);
     connect(ui->DvidedSizeSlider, &QSlider::valueChanged, this, &MainWindow::ChangeDivSizeEditFromSlider);
     connect(ui->DivSizeSpinBox, &QSpinBox::valueChanged, this, &MainWindow::ChangeDivSizeEditFromSpinBox);
     connect(ui->glWid2dim, &GLWidget_2D::foldingSignals, this , &MainWindow::fold_Sm);
@@ -45,7 +45,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->curve_add, &QPushButton::clicked, this, &MainWindow::addCurveBtn);
     connect(ui->move_ctrl_pt, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::MoveCurvePt);
     //connect(ui->CurveTypeBox, &QComboBox::currentTextChanged, ui->glWid2dim, &GLWidget_2D::ChangeCurveType);
-    connect(ui->glWid2dim, &GLWidget_2D::signalCurveType, ui->CurveTypeBox, &QComboBox::currentIndex);
+    connect(ui->glWid2dim, &GLWidget_2D::signalCurveType, this, &MainWindow::sendCurveType);
     connect(ui->insert_ctrl_pt, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::InsertNewPoint);
     connect(ui->delete_ctrl_pt, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::DeleteCtrlPt);
     connect(this, &MainWindow::PressedEnter, ui->glWid2dim, &GLWidget_2D::cb_ApplyCurveEvent);
@@ -93,6 +93,12 @@ MainWindow::~MainWindow()
 
 void MainWindow::SymmetricConstraint(){ emit constraintType(0);}
 
+void MainWindow::Initialize(){
+    for(auto&v: LayerList)delete v;
+    LayerList.clear();
+    update();
+}
+
 void MainWindow::addFoldLine_l(){
     emit signalFLtype(0);
 }
@@ -117,21 +123,19 @@ void MainWindow::changeLineWidthFromSpinBox(double d){
 void MainWindow::fold_Sm(){
 
     //switchActivateCheckBox("MakeDevSrf");
-    std::vector<glm::f64vec3> tmp;
-    if(!model->outline->IsClosed())return;
-    if(model->FL.empty())ui->glWid3dim->setVertices(model->Faces, tmp, tmp, tmp);
+    if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
+    else if(ui->glWid2dim->model->FL.empty())ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces);
     else{
-        std::vector<glm::f64vec3> CrossPts;
-        for(auto&v: model->FL[0]->CrossPts)CrossPts.push_back(v->p3);
-        ui->glWid3dim->setVertices(model->Faces, model->FL[0]->CtrlPts_res, model->FL[0]->Curve_res, CrossPts);
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->FL[0]->CtrlPts_res, ui->glWid2dim->model->FL[0]->Curve_res,
+                ui->glWid2dim->model->FL[0]->T_crs);
     }
 }
 
 void MainWindow::fold_FL(){
     glm::f64mat4x4 Scale = glm::scale(glm::f64vec3{0.05, 0.05, 0.05});
     glm::f64mat4x4 Mirror = glm::mat4(1.0f); Mirror[1][1] = -1;
-    std::vector<std::array<glm::f64vec3, 2>> Ruling_l = model->FL[0]->Rulings_3dL;
-    std::vector<std::array<glm::f64vec3, 2>> Ruling_r = model->FL[0]->Rulings_3dR;
+    std::vector<std::array<glm::f64vec3, 2>> Ruling_l = ui->glWid2dim->model->FL[0]->Rulings_3dL;
+    std::vector<std::array<glm::f64vec3, 2>> Ruling_r = ui->glWid2dim->model->FL[0]->Rulings_3dR;
     output.clear();
     for(auto& m : Ruling_l){
         for(auto&v: m)
@@ -220,6 +224,7 @@ void MainWindow::switchActivateCheckBox(PaintTool active){
 
 void MainWindow::keyPressEvent(QKeyEvent *e){
     ui->glWid3dim->receiveKeyEvent(e);
+    ui->glWid2dim->receiveKeyEvent(e);
     if(e->key() == Qt::Key_Backspace){
         emit PressedBackSpace();
     }
@@ -260,7 +265,7 @@ void MainWindow::mouseMoveEvent(QMouseEvent *e){
 
 //https://nprogram.hatenablog.com/entry/2017/08/10/082236
 void MainWindow::exportobj(){
-    if(model->Faces.empty()){
+    if(ui->glWid2dim->model->Faces.empty()){
         QMessageBox msgBox;
         msgBox.setText("There is no developable surface.");
         msgBox.exec();
@@ -268,45 +273,30 @@ void MainWindow::exportobj(){
     }
 
     QStringList WriteList;
-    std::vector<std::array<glm::f64vec3, 3>> TriMeshs;
-    std::vector<std::array<glm::f64vec3, 3>> trimesh;
     std::vector<glm::f64vec3> Normals;
-    glm::f64vec3 befN = {0,0,0};
-
-    for(auto& f: model->Faces){
-        std::vector<glm::f64vec3> polygon;
+    glm::f64vec3 befN = {0,0,0}, N;
+    for(auto& f: ui->glWid2dim->model->Faces){
         HalfEdge *h = f->halfedge;
         do{
-            polygon.push_back(h->vertex->p3);
+            WriteList.append("v " + QString::number(h->vertex->p3.x) + " " + QString::number(h->vertex->p3.y) + " " + QString::number(h->vertex->p3.z) + "\n");
             h = h->next;
         }while(h != f->halfedge);
-        Triangulation(polygon, trimesh);
-        glm::f64vec3 N = glm::normalize(glm::cross(trimesh[0][2] - trimesh[0][0], trimesh[0][1] - trimesh[0][0]));
-        if(befN == glm::f64vec3{0,0,0}) Normals.push_back(N);
-        else{
-            if(glm::dot(befN, N) < 0) N *= -1;
-        }
+        N = glm::normalize(glm::cross(h->next->next->vertex->p3 - h->vertex->p3, h->next->vertex->p3 - h->vertex->p3));
+        if(glm::dot(befN, N) < 0) N *= -1;
+        Normals.push_back(N);
         befN = N;
-        std::vector<glm::f64vec3> _Normals((int)trimesh.size(), N);
-        Normals.insert(Normals.end(), _Normals.begin(), _Normals.end());
-        TriMeshs.insert(TriMeshs.end(), trimesh.begin(), trimesh.end());
     }
+    for(auto&n : Normals) WriteList.append("vn " + QString::number(n.x) + " " + QString::number(n.y) + " " + QString::number(n.z) + "\n");
 
-    for(auto& mesh: TriMeshs){
-        for(auto&v: mesh){
-            WriteList.append("v " + QString::number(v.x) + " " + QString::number(v.y) + " " + QString::number(v.z) + "\n");
-        }
-    }
-    for(auto&n : Normals){
-        WriteList.append("vn " + QString::number(n.x) + " " + QString::number(n.y) + " " + QString::number(n.z) + "\n");
-    }
     int cnt = 1;
-    for(int i = 1; i <= (int)TriMeshs.size(); i++){
+    for(int i = 0; i < (int)ui->glWid2dim->model->Faces.size(); i++){
         QString s = "f ";
-        for(int j = 0; j < (int)TriMeshs[i - 1].size(); j++){
-            s += QString::number(cnt) + "//" + QString::number(i) + " ";
+        HalfEdge *h = ui->glWid2dim->model->Faces[i]->halfedge;
+        do{
+            s += QString::number(cnt) + "//" + QString::number(i+1) + " ";
             cnt++;
-        }
+            h = h->next;
+        }while(h != ui->glWid2dim->model->Faces[i]->halfedge);
         s += "\n";
         WriteList.append(s);
     }
@@ -334,12 +324,12 @@ void MainWindow::addCurveBtn(){
     int pad = 5;
     int btn_w = geo.width() - 2 * pad, btn_h = 25;
     QString text;
-    if(model->crvs[0]->getCurveType() == 0)text = "Bezier" + QString::number(++CurvesNum[0]);
-    else if(model->crvs[0]->getCurveType()  == 1)text = "Bspline" + QString::number(++CurvesNum[1]);
-    else if(model->crvs[0]->getCurveType() == 2)text = "Line" + QString::number(++CurvesNum[2]);
-    else if(model->crvs[0]->getCurveType() == 3)text = "Arc"+QString::number(++CurvesNum[3]);
+    if(ui->glWid2dim->model->crvs[0]->getCurveType() == CurveType::bezier3)text = "Bezier" + QString::number(++CurvesNum[0]);
+    else if(ui->glWid2dim->model->crvs[0]->getCurveType()  == CurveType::bsp3)text = "Bspline" + QString::number(++CurvesNum[1]);
+    else if(ui->glWid2dim->model->crvs[0]->getCurveType() == CurveType::line)text = "Line" + QString::number(++CurvesNum[2]);
+    else if(ui->glWid2dim->model->crvs[0]->getCurveType() == CurveType::arc)text = "Arc"+QString::number(++CurvesNum[3]);
 
-    Btn4Crv *newbtn = new Btn4Crv(model->crvs[0],text, ui->LayerListWidget);
+    Btn4Crv *newbtn = new Btn4Crv(ui->glWid2dim->model->crvs[0],text, ui->LayerListWidget);
     connect(newbtn, &Btn4Crv::clicked, this, &MainWindow::SetHandleCrv);
     for(int i = 0; i < (int)LayerList.size(); i++) LayerList[i]->setGeometry(pad, btn_h + (i + 1) * (btn_h + pad), btn_w, btn_h);
     LayerList.insert(LayerList.begin(), newbtn);
@@ -385,3 +375,20 @@ void MainWindow::SetHandleCrv(Btn4Crv *btn, QMouseEvent *e){
     emit signalNewSelectedCrv(ind);
 }
 
+void MainWindow::sendCurveType(CurveType &ct){
+    int n = ui->CurveTypeBox->currentIndex();
+    switch(n){
+    case 0:
+        ct = CurveType::bsp3;
+        break;
+    case 1:
+        ct = CurveType::line;
+        break;
+    case 2:
+        ct = CurveType::arc;
+        break;
+    default:
+        ct = CurveType::none;
+        break;
+    }
+}

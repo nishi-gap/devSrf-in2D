@@ -14,6 +14,7 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    cbox.cpp \
     foldline.cpp \
     glwidget_2d.cpp \
     glwidget_3d.cpp \
@@ -21,17 +22,20 @@ SOURCES += \
     gtoolwnd.cpp \
     main.cpp \
     make3d.cpp \
+    mathtool.cpp \
     originalbutton.cpp \
     setrulings.cpp \
     widget.cpp
 
 HEADERS += \
+    cbox.h \
     foldline.h \
     glwidget_2d.h \
     glwidget_3d.h \
     gradationwidget.h \
     gtoolwnd.h \
     make3d.h \
+    mathtool.h \
     originalbutton.h \
     setrulings.h \
     widget.h

@@ -15,6 +15,7 @@
 #include <QPointF>
 #include "setrulings.h"
 #include "foldline.h"
+#include "mathtool.h"
 
 struct LinearRange{
     Face *face;//なし:nullptr
@@ -45,8 +46,7 @@ public:
 
     Model();
     Model(int _crvPtNum);
-    bool setRuling(std::vector<ruling*>& Rulings);
-    void deform(std::vector<std::vector<glm::f64vec3>>& output, std::vector<ruling*>& Rulings, glm::f64vec3& center);
+    //void deform(std::vector<std::vector<glm::f64vec3>>& output, std::vector<ruling*>& Rulings, glm::f64vec3& center);
     void deform();
     void Initialize();
     bool devide(HalfEdge* he1, HalfEdge* he2, std::vector<Face*>& faces);
@@ -72,7 +72,7 @@ public:
     //Smooth Surface
     void SelectCurve(QPointF pt);
     void AddControlPoint(glm::f64vec3& p, int curveDimention, int DivSize);
-    int AddNewCurve(int curveType, int DivSize);
+    int AddNewCurve(CurveType curveType, int DivSize);
     void DeleteControlPoint(QPointF pt, int curveDimention, int DivSize);
     int DeleteCurve();
     void Check4Param(int curveDimention, std::vector<int>&deleteIndex);
@@ -88,8 +88,7 @@ private:
     void setHalfEdgePair(HalfEdge *he);
     
     void LinkRulingAndGradationArea(Face *f);
-    void clear();
-    void deleteHE(HalfEdge *he);
+    inline void clear();
     void ConnectEdge(HalfEdge *he);
 
     glm::f64vec3 SetOnGrid(QPointF& cursol, double gridsize);

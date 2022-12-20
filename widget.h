@@ -17,6 +17,7 @@
 #include <QFileDialog>
 #include "make3d.h"
 #include "originalbutton.h"
+#include "mathtool.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -43,6 +44,8 @@ public slots:
     void ChangedDivSizeEdit();
     void ChangeDivSizeEditFromSlider(int val);
     void ChangeDivSizeEditFromSpinBox(int val);
+    void sendCurveType(CurveType &ct);
+    void Initialize();
 
     //new gradation mode
     void changeInterpolationType();
