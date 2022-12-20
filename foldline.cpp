@@ -293,7 +293,7 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
     using namespace MathTool;
     glm::f64vec3 dr, dr2;
     Rulings_3dL.clear(); Rulings_3dR.clear(); Rulings_2dL.clear(); Rulings_2dR.clear();
-
+    std::vector<double> K2D;
     std::vector<glm::f64vec3>edges_ol;
     for(auto&e: edge_outline){
         glm::f64vec3 p = e->vertex->p;
@@ -321,7 +321,8 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
                 dr = -3. * (1. - t) * (1. - t) * CtrlPts[0] + (9. * t * t - 12 * t + 3.) * CtrlPts[1] + (-9. * t * t + 6. * t) * CtrlPts[2] + 3. * t * t * CtrlPts[3];
                 dr2 = 6. * (1. - t) * CtrlPts[0] + (18. * t - 12.) * CtrlPts[1] + (-18. * t + 6.) * CtrlPts[2] + 6. * t * CtrlPts[3];
                 CrvPt_FL P(v2, v3, t);
-                P.k2d = glm::length(glm::cross(dr, dr2))/std::pow(glm::length(dr), 3);
+                K2D.push_back(glm::length(glm::cross(dr, dr2))/std::pow(glm::length(dr), 3));
+
                 P.T2d = glm::normalize(dr);
                 P.N2d = glm::f64vec3{-P.T2d.y, P.T2d.x, 0};
                 P.B2d = (glm::cross(P.T2d, P.N2d));
@@ -387,7 +388,7 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
 
              t.tau = glm::dot(dP3d[0], glm::cross(dP3d[1], dP3d[2]))/std::pow(glm::length(glm::cross(dP3d[0], dP3d[1])), 2);
              t.k3d = glm::length(glm::cross(dP3d[0], dP3d[1]))/std::pow(glm::length(dP3d[0]), 3);
-             t.k3d = (t.k2d > t.k3d) ? t.k2d : t.k3d;
+             //t.k3d = (t.k2d > t.k3d) ? t.k2d : t.k3d;
              t.a = (t.k3d != 0) ? acos(t.k2d/t.k3d): 0;
              t.da = (t.k2d != t.k3d) ? t.k2d*(t.k2d*glm::dot(t.T2d,t.N3d) - glm::dot(t.k3d*t.T3d - t.tau*t.B3d, t.N2d))/sqrt(t.k3d*t.k3d - t.k2d*t.k2d) : 0;
              double phi_bl = rad_2d(t.k3d, t.tau, t.a, -t.da), phi_br = rad_2d(t.k3d, t.tau, t.a, t.da);
@@ -426,7 +427,7 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
              }
 
 
-             ofs << t.k3d << ", "<<t.k2d << " , " << t.tau << " , " << t.a * 180/M_PI << " , " << t.da << ", " << phi_bl * 180/M_PI << " , " << phi_br * 180/M_PI<<  std::endl;
+             ofs << t.k3d << ", "<<t.k2d << " , " << t.tau << " , " << t.a * 180/M_PI << " , " << t.da << ", " << phi_bl * 180/M_PI << " , " << phi_br * 180/M_PI<< " ,  , " << K2D[index] <<  std::endl;
         }
         auto setface = [](HalfEdge *he, Face *f){HalfEdge *h = he; do{h->face = f; h = h->next;}while(he != h);};
         std::vector<Face*> Faces_new;
