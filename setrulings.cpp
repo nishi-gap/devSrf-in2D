@@ -962,5 +962,6 @@ optimizer::optimizer(){
 }
 
 void optimizer::apply(double wfit, double wfair){
+    double F = Fvert() + wfit * Ffit();
 
 }
