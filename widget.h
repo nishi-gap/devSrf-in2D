@@ -63,7 +63,7 @@ public slots:
 
     //fold line
     void addFoldLine_l();
-    void addFoldLine_bsp();
+    void addFoldLine_arc();
     void addFoldLine_bezier();
     void color_FL();
     void fold_FL();
@@ -95,7 +95,7 @@ signals:
     void signalNewSelectedCrv(int ind);
     void swapIndex(int n1, int n2);
     void constraintType(int state);
-    void signalFLtype(int state);
+    void signalFLtype(PaintTool state);
     void signalNewLineWidth(double d);
 
 };

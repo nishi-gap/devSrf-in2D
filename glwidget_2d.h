@@ -90,7 +90,7 @@ public slots:
     void swapCrvsOnLayer(int n1, int n2);
 
     //FoldLine
-    void changeFoldType(int state);
+    void changeFoldType(PaintTool state);
 
     //Line Width
     void receiveNewLineWidth(double d);
@@ -99,7 +99,7 @@ public slots:
 private:
 
     std::vector<glm::f64vec3> tmp_c;
-    std::vector<Vertex*> tmp_cp;
+    std::vector<CrvPt_FL> tmp_cp;
 
     void draw();
     int DivSize;

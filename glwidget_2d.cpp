@@ -9,8 +9,8 @@ GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
     curveDimention = 3;
     drawtype = PaintTool::None;
     DivSize = 30;
-    crvPtNum = 300;
-    maxDivSize = 100;
+    crvPtNum = 3000;
+    maxDivSize = 3000;
     standardDist = 2.5;
     gw = new GToolWnd(this);
     gw->hide();
@@ -164,14 +164,14 @@ void GLWidget_2D::DeleteCurve(){
 
 }
 
-void GLWidget_2D::changeFoldType(int state){
-    if(state < 3){
-        drawtype = PaintTool::FoldLine;
+void GLWidget_2D::changeFoldType(PaintTool state){
+    drawtype = state;
+    if(state != PaintTool::FoldlineColor){
         int rulingNum = 30;
         int crvNum = 1000;
         FoldLine *fl = new FoldLine(crvNum, rulingNum, state);
         model->FL.push_back(fl);
-    }else drawtype = PaintTool::FoldlineColor;
+    }
     setMouseTracking(false);
     update();
 }
@@ -263,6 +263,52 @@ void GLWidget_2D::paintGL(){
     glOrtho(-0.5, (float)s.width() -0.5, (float)s.height() -0.5, -0.5, -1, 1);
 
     if(visibleGrid == 1)DrawGrid();
+
+    //折り線の描画
+    {
+        for(auto&fl: model->FL){
+
+            glBegin(GL_LINE_STRIP);
+            if(visibleCurve){glColor3d(0,0,0); for(auto&v: fl->CurvePts)glVertex2d(v.x, v.y);}
+            else{glColor3d(0,0,1); for(auto&v: fl->Curve_res2d)glVertex2d(v.x, v.y);}
+            glEnd();
+            std::vector<glm::f64vec3> Pts;
+            Pts = (visibleCurve)? fl->getCtrlPt() : fl->getCtrlPt2d();
+            glColor3d(0,0.3,0.3);
+            glPointSize(5);
+            for(auto&v: Pts){
+                glBegin(GL_POINTS);
+                glVertex2d(v.x,v.y);
+                glEnd();
+            }
+
+            glColor3d(0.4,0.4,0.4);
+            glLineWidth(1);
+            glEnable(GL_LINE_STIPPLE);
+            glLineStipple(1 , 0xF0F0);
+            glBegin(GL_LINE_STRIP);
+            for(auto&v: Pts) glVertex2d(v.x,v.y);
+            glEnd();
+            glDisable(GL_LINE_STIPPLE);
+
+            if(fl->he2 != nullptr){
+                glColor3d(0,0,0);
+                glBegin(GL_LINES);
+                glVertex2d(fl->he->vertex->p.x, fl->he->vertex->p.y);
+                glVertex2d(fl->he2->vertex->p.x, fl->he2->vertex->p.y);
+                glEnd();
+            }
+            glPointSize(6);
+            glColor3d(0,0,1);
+            for(auto&p: model->resPts){
+                glBegin(GL_POINTS);
+                glVertex2d(p.x, p.y);
+                glEnd();
+            }
+            if(!visibleCurve)return;
+        }
+    }
+
     if(model->outline->IsClosed()){
         float r, g, b = 0;
         glPolygonOffset(0.0,1.0);
@@ -409,62 +455,7 @@ void GLWidget_2D::paintGL(){
             glEnd();
         }
     }
-    //折り線の描画
-    {
-        for(auto&fl: model->FL){
 
-            glBegin(GL_LINE_STRIP);
-            if(visibleCurve){glColor3d(0,0,0); for(auto&v: fl->CurvePts)glVertex2d(v.x, v.y);}
-            else{glColor3d(0,0,1); for(auto&v: fl->Curve_res2d)glVertex2d(v.x, v.y);}
-            glEnd();
-            std::vector<glm::f64vec3> Pts;
-            Pts = (visibleCurve)? fl->getCtrlPt() : fl->getCtrlPt2d();
-            glColor3d(1,0,0);
-            glPointSize(5);
-            for(auto&v: Pts){
-                glBegin(GL_POINTS);
-                glVertex2d(v.x,v.y);
-                glEnd();
-            }
-
-            if(fl->he2 != nullptr){
-                glColor3d(0,0,0);
-                glBegin(GL_LINES);
-                glVertex2d(fl->he->vertex->p.x, fl->he->vertex->p.y);
-                glVertex2d(fl->he2->vertex->p.x, fl->he2->vertex->p.y);
-                glEnd();
-            }
-            glPointSize(6);
-            glColor3d(0,0,1);
-            for(auto&p: model->resPts){
-                glBegin(GL_POINTS);
-                glVertex2d(p.x, p.y);
-                glEnd();
-            }
-
-            for(auto&t: fl->T_crs){
-                glPolygonOffset(0.7f, 1.f);
-                glColor3d(1,0,0);//T
-                glBegin(GL_LINES);
-                glVertex2d(t.p.x, t.p.y);
-                glVertex2d(t.p.x + 10. * t.T2d.x, t.p.y + 10. * t.T2d.y);
-                glEnd();
-
-                glColor3d(0,1,0);//N
-                glBegin(GL_LINES);
-                glVertex2d(t.p.x, t.p.y);
-                glVertex2d(t.p.x + 10. * t.N2d.x, t.p.y + 10. * t.N2d.y);
-                glEnd();
-
-                glColor3d(0,0,1);//B
-                glBegin(GL_LINES);
-                glVertex2d(t.p.x, t.p.y);
-                glVertex2d(t.p.x + 10. * t.B2d.x, t.p.y + 10. * t.B2d.y);
-                glEnd();
-            }
-        }
-
-    }
 #if 0
     //rulingの描画
     {
@@ -600,12 +591,7 @@ void GLWidget_2D::paintGL(){
     if(model->FL.empty())return;
 
 
-    glColor3d(0,1,0);
-    glBegin(GL_LINE_STRIP);
-    for(auto&p: tmp_c){
-        glVertex2d(p.x, p.y);
-    }
-    glEnd();
+
 
     if(!eraseVec2d && !model->FL.empty()){
         glColor3d(1,0,0);
@@ -624,6 +610,13 @@ void GLWidget_2D::paintGL(){
         }
     }
 #endif
+
+    glColor3d(0,1,0);
+    glBegin(GL_LINE_STRIP);
+    for(auto&p: tmp_c){
+        glVertex2d(p.x, p.y);
+    }
+    glEnd();
 }
 
 void GLWidget_2D::DrawGrid(){
@@ -670,17 +663,16 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
         else if(drawtype == PaintTool::Const_ol) model->addConstraint(p, 0, gridsize, model->Axis4Const);
         else if(drawtype ==PaintTool::ConnectVertices_ol)model->ConnectOutline(p, gridsize);
         else if(drawtype == PaintTool::NewGradationMode || drawtype ==PaintTool::FoldlineColor)addPoints_intplation(e, p);
-        else if(drawtype == PaintTool::FoldLine){
+        else if(drawtype == PaintTool::FoldLine_bezier || drawtype == PaintTool::FoldLine_arc || drawtype == PaintTool::FoldLine_line){
             bool hasRulings = model->AddControlPoint_FL(p_ongrid, 0, curveDimention);
             update();
             if(/*model->outline->IsClosed() && */hasRulings){
                 bool res;
-                //auto _CtrlPts = model->FL[0]->getCtrlPt();
-                //auto _edges = model->outline->getEdges();
-                //tmp_cp.clear();
-                //for(auto&v: _CtrlPts)tmp_cp.push_back(new Vertex(v));
-                //std::vector<double> Knot;
-                //tmp_c = GlobalSplineInterpolation(tmp_cp, model->FL[0]->CtrlPts_res, Knot);
+                auto _CtrlPts = model->FL[0]->getCtrlPt();
+                tmp_cp.clear();
+                for(auto&v: _CtrlPts)tmp_cp.push_back(CrvPt_FL(v, v, 0));
+                std::vector<double> Knot;
+                //tmp_c = GlobalSplineInterpolation(tmp_cp, model->FL[0]->CtrlPts_res2d, Knot, true);
                 //res = model->FL[0]->applyCurvedFolding(model->Faces, model->Edges, model->vertices, curveDimention);
                 auto oriedge = model->outline->getEdges();
                 res = model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention);
@@ -730,7 +722,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
         if(drawtype == PaintTool::Bezier_r || drawtype == PaintTool::Bspline_r || drawtype == PaintTool::Line_r || drawtype == PaintTool::Arc_r){
             if(SelectedCurveIndex != -1) model->crvs[SelectedCurveIndex]->eraseCtrlPt(curveDimention, crvPtNum);
         }
-        else if(drawtype == PaintTool::FoldLine){
+        else if(drawtype == PaintTool::FoldLine_line || drawtype == PaintTool::FoldLine_arc || drawtype == PaintTool::FoldLine_bezier){
             bool hasRulings = model->AddControlPoint_FL(p_ongrid, 1, curveDimention);
         }
 

@@ -37,8 +37,8 @@ void GLWidget_3D::setVertices(const Faces3d& Faces, const Curve3d& _CtrlPts, con
     glm::f64mat4x4 Scale = glm::scale(glm::f64vec3{0.1, 0.1, 0.1});
     std::vector<std::array<glm::f64vec3, 3>> trimesh;
     CtrlPts.clear(); Curve.clear(); CrossPts.clear();
-    //for(auto&v: _CtrlPts)CtrlPts.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(v,1)));
-    //for(auto&v: _Curve)Curve.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(v,1)));
+    for(auto&v: _CtrlPts)CtrlPts.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(v,1)));
+    for(auto&v: _Curve)Curve.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(v,1)));
     copy(_CrossPts.begin(), _CrossPts.end(), back_inserter(CrossPts) );
     for(auto&v: CrossPts){
         v.p3 = Scale * Mirror * glm::f64vec4(v.p3,1);
@@ -151,7 +151,7 @@ void GLWidget_3D::paintGL(){
 
     if(!eraseCtrlPt){
         glColor3d(1,0,0);
-        glPointSize(5);
+        glPointSize(4);
         for(auto&v: CtrlPts){
             glBegin(GL_POINTS);
             dispV(v);

@@ -711,7 +711,7 @@ void Model::MoveCurvePoint(glm::f64vec3& p, int MoveIndex, int ptInd, int curveD
 bool Model::AddControlPoint_FL(glm::f64vec3& p, int event, int curveDimention){
     bool res = false;
     if(event == 0){
-        res = FL[0]->addCtrlPt(p, curveDimention, outline, Faces, Edges, vertices);
+        res = FL[0]->addCtrlPt(p, curveDimention);
     }else if(event == 1){
         res = FL[0]->delCtrlPt(p, curveDimention, outline);
     }

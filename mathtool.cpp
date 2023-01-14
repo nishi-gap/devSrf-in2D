@@ -4,7 +4,7 @@ namespace MathTool{
 glm::f64vec3 bspline(std::vector<glm::f64vec3>&CtrlPts, double t, int dim, std::vector<double>Knot){
     glm::f64vec3 vec{0,0,0};
     for(int j = 0; j < (int)CtrlPts.size(); j++){
-        double b = basis(j,dim, t + FLT_EPSILON,Knot);
+        double b = basis((int)CtrlPts.size(), j,dim, t + FLT_EPSILON,Knot);
         vec += CtrlPts[j] *  b;
     }
     return vec;
@@ -117,13 +117,13 @@ std::vector<double> _bezierclipping(std::vector<glm::f64vec3>&CtrlPts_base, std:
     t_max = *std::max_element(T.begin(), T.end()); t_max = (t_max < 0) ? 0: (t_max > 1) ? 1:  t_max;
     std::array<glm::f64vec3, 2> next_line = std::array{glm::f64vec3{t_min, 0,0}, glm::f64vec3{t_max, 0,0}};
 
-    if(abs(t_max - t_min) < 1e-7){
+    if(abs(t_max - t_min) < FLT_EPSILON){
         return {(t_max + t_min)/2};
     }
     std::pair<std::vector<glm::f64vec3>, std::vector<glm::f64vec3>> _bez = BezierSplit(CtrlPts_base, t_max, dim);
     double bez_t = t_min / (t_max);
     _bez = BezierSplit(_bez.first, bez_t, dim);
-    if(abs(glm::distance(p,q) - abs(t_max - t_min)) < 1e-7){
+    if(abs(glm::distance(p,q) - abs(t_max - t_min)) < FLT_EPSILON){
 
         std::pair<std::vector<glm::f64vec3>, std::vector<glm::f64vec3>> bez_spl = BezierSplit(_bez.second, 0.5,  dim);
         std::vector<glm::f64vec3> b1 = bez_spl.first, b2 = bez_spl.second;
@@ -225,11 +225,14 @@ std::vector<std::vector<glm::f64vec3>> de_casteljau_algorithm(std::vector<glm::f
 }
 
 
-double basis(int i, int p, double u, std::vector<double>& U){
-    if(p == 0) return (U[i] <= u && u < U[i+1]) ? 1: 0;
+double basis(int n, int i, int p, double u, std::vector<double>& U){
+    //if((U[0] <= u && u <= U[i]) && (U[i+p] <= u && u <= U[n+p]))return 0;
+    if(p == 0){return (U[i] <= u && u < U[i+1]) ? 1: 0;}
+    //double a = (U[i+p] != U[i])? (u - U[i])/(U[i+p] - U[i]): (u == U[i+p] && U[i] != 0) ? 1: 0;
+    //double b = (U[i+p+1] != U[i+1])? (U[i+p+1] - u)/(U[i+p+1] - U[i+1])? (U[i+1] == u && U[i+p+1] != 0): 1: 0;
     double a = (U[i+p] != U[i])? (u - U[i])/(U[i+p] - U[i]): 0;
     double b = (U[i+p+1] != U[i+1])? (U[i+p+1] - u)/(U[i+p+1] - U[i+1]): 0;
-    return a * basis(i,p-1,u,U) + b * basis(i+1,p-1,u,U);
+    return a * basis(n,i,p-1,u,U) + b * basis(n,i+1,p-1,u,U);
 }
 
 double factorial(int n){
@@ -240,6 +243,108 @@ double cmb(int n , int i){
     return factorial(n) / (factorial(i) * factorial(n - i));
 }
 
+double BernsteinBasisFunc(int n, int i, double t){
+    return cmb(n, i) * std::pow(t, i) * std::pow(1 - t, n - i);
 }
+
+glm::f64vec3 bezier(std::vector<glm::f64vec3>& CtrlPts, double t, int dim){
+    glm::f64vec3 v = {0.f,0.f, 0.f};
+    for (int i = 0; i < dim+1; i++) v +=  BernsteinBasisFunc(dim, i, t)* CtrlPts[i];
+    return v;
+}
+
+void diffBezier(std::vector<glm::f64vec3>& dP, std::vector<glm::f64vec3>& CtrlPts, double t, int dim){
+    dP.resize(3);
+    double eps = 1e-5;
+    glm::f64vec3 v = bezier(CtrlPts, t, dim);
+    glm::f64vec3 vm = bezier(CtrlPts, t - eps, dim);
+    glm::f64vec3 vp = bezier(CtrlPts, t + eps, dim);
+    glm::f64vec3 vm2 = bezier(CtrlPts, t - 2.0 * eps, dim);
+    glm::f64vec3 vp2 = bezier(CtrlPts, t + 2.0 * eps, dim);
+    dP[0] = (vp - vm)/(2.0 * eps);
+    dP[1] = (vp - 2.0 * v + vm)/pow(eps, 2);
+    dP[2] = (-vm2 + 2.0 * vm - 2.0 * vp + vp2)/(2.0 * pow(eps, 3));
+}
+
+std::vector<double> LSM_apply(std::vector<double>&_y, int dim){
+    //type: 0->x, 1->y, 2->x*x, 3->xy
+    auto sum = [](std::vector<double>&y, int type){
+        double z = 0.0;
+        for(int i = 0; i < (int)y.size(); i++)z += (type == 0) ? i: (type==1)?y[i]: (type==2)?i*i: i*y[i];
+        return z;
+    };
+    std::string file = "result_lsm.csv";
+    std::ofstream ofs(file);
+    int n = _y.size();
+    std::vector<double> Y(n);
+
+    ofs << "row data(y), result(y)" << std::endl;
+    if(dim == 1){
+        double xy = sum(_y,3), xx = sum(_y,2), x = sum(_y,0), y = sum(_y,1);
+        double a = ((double)n*xy - x*y)/((double)n * xx - x*x);
+        double b = (xx*y - xy*x)/((double)n*xx - x*x);
+        for(int i = 0; i < n; i++){
+            Y[i] = a*(double)i + b;
+            ofs << _y[i] << ", " << Y[i] << std::endl;
+        }
+    }
+
+    return Y;
+}
+
+void PCA(std::vector<glm::f64vec3>& _X, std::vector<glm::f64vec3>& BasisVectors){
+    using namespace Eigen;
+
+    BasisVectors.resize(2);
+
+    int n = _X.size();
+    MatrixXd X(n, 3);
+    for(int i = 0; i < n; i++){X(i,0) = _X[i].x; X(i,1) = _X[i].y; X(i,2) = _X[i].z;}
+
+    MatrixXd Xstd = X.rowwise() - X.colwise().mean();
+    for (int c = 0; c < 3; c++) {
+      auto col = X.col(c).array();
+      double std_dev = sqrt((col - col.mean()).square().sum() / col.size() - 1);
+      std::cout <<"std_dev " << std_dev <<std::endl;
+      if(!std::isfinite(std_dev)){
+          if(c == 0){BasisVectors[0] = glm::f64vec3{0,1,0};BasisVectors[1] = glm::f64vec3{0,0,1};}
+          else if(c == 1){BasisVectors[0] = glm::f64vec3{1,0,0};BasisVectors[1] = glm::f64vec3{0,0,1};}
+          else{BasisVectors[0] = glm::f64vec3{1,0,0};BasisVectors[1] = glm::f64vec3{0,1,0};}
+          return;
+      }
+      Xstd.col(c) /= std_dev;
+    }
+
+    MatrixXd S = (Xstd.adjoint() * Xstd) / double(Xstd.rows() - 1);
+    std::cout<<"S" <<std::endl;
+    std::cout<<S <<std::endl;
+
+     SelfAdjointEigenSolver<MatrixXd> ES(S);
+     VectorXd e = ES.eigenvalues();
+     MatrixXd U = ES.eigenvectors();
+     std::cout<<"eigen value : " << e << std::endl;
+     std::cout<<"eigen vectors : " << U << std::endl;
+     int minIndex, ind = 0;
+     e.minCoeff(&minIndex);
+     for(int i = 0; i < 3; i++){
+         if(i == minIndex)continue;
+         std::cout <<"basis vector " << i << " : " << U.col(i) << std::endl;
+         BasisVectors[ind++] = glm::f64vec3{U(0,i), U(1,i), U(2,i)};
+     }
+}
+
+std::vector<glm::f64vec3> getPlaneFromCurvePoints(std::vector<glm::f64vec3>& Points, std::vector<glm::f64vec3>& BasisVectors){
+    std::vector<glm::f64vec3> PointsOnPlane;
+    PCA(Points, BasisVectors);
+    const glm::f64vec3 N = glm::normalize(glm::cross(BasisVectors[0], BasisVectors[1]));
+    for(const auto&p: Points)PointsOnPlane.push_back(p - glm::dot(p, N)*N);
+
+    return PointsOnPlane;
+}
+
+
+
+}
+
 
 

@@ -5,7 +5,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QWidget(parent), ui(new Ui::MainWindow)
 {
 
-    crvPtNum = 300;
+    crvPtNum = 3000;
     output.clear();
 
     ui->setupUi(this);
@@ -69,7 +69,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     //FoldLine
     connect(ui->addFL_line, &QPushButton::clicked, this, &MainWindow::addFoldLine_l);
-    connect(ui->addFL_bsp, &QPushButton::clicked, this, &MainWindow::addFoldLine_bsp);
+    connect(ui->addFL_arc, &QPushButton::clicked, this, &MainWindow::addFoldLine_arc);
     connect(ui->addFL_bezier, &QPushButton::clicked, this, &MainWindow::addFoldLine_bezier);
     connect(this, &MainWindow::signalFLtype, ui->glWid2dim, &GLWidget_2D::changeFoldType);
     connect(ui->glWid2dim, &GLWidget_2D::signalAddRulings_FL, this, &MainWindow::fold_FL);
@@ -100,15 +100,15 @@ void MainWindow::Initialize(){
 }
 
 void MainWindow::addFoldLine_l(){
-    emit signalFLtype(0);
+    emit signalFLtype(PaintTool::FoldLine_line);
 }
-void MainWindow::addFoldLine_bsp(){
-    emit signalFLtype(1);
+void MainWindow::addFoldLine_arc(){
+    emit signalFLtype(PaintTool::FoldLine_arc);
 }
 void MainWindow::addFoldLine_bezier(){
-    emit signalFLtype(2);
+    emit signalFLtype(PaintTool::FoldLine_bezier);
 }
-void MainWindow::color_FL(){emit signalFLtype(3);}
+void MainWindow::color_FL(){emit signalFLtype(PaintTool::FoldlineColor);}
 
 void MainWindow::changeLineWidthFromSlider(int n){
     double d = (double)n/10.;
@@ -379,10 +379,10 @@ void MainWindow::sendCurveType(CurveType &ct){
     int n = ui->CurveTypeBox->currentIndex();
     switch(n){
     case 0:
-        ct = CurveType::bsp3;
+        ct = CurveType::line;
         break;
     case 1:
-        ct = CurveType::line;
+        ct = CurveType::bsp3;
         break;
     case 2:
         ct = CurveType::arc;

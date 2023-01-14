@@ -2,12 +2,64 @@
 #define MATHTOOL_H
 
 #include <glm/gtx/transform.hpp>
+#include <glm/gtx/string_cast.hpp>
 #include <vector>
 #include <iostream>
 #include <tuple>
 #include <Eigen/Dense>
 #include <utility>
+#include <fstream>
+#include <sstream>
+#include <algorithm>
 
+enum class EdgeType{
+    ol,//outline
+    r,//ruling(from curve line)
+    cl,//curve line
+    fl,//fold line
+    r_fl,//ruling(fold line)
+};
+
+enum class CurveType{
+    none,
+    bezier3,
+    bsp3,
+    line,
+    arc,
+};
+
+enum class PaintTool{
+    None,
+    Reset,
+    deform,
+
+    AddCurve,
+    Bezier_r,
+    Bspline_r,
+    Line_r,
+    Arc_r,
+
+    SetColor,
+    NewGradationMode,
+
+    Rectangle_ol,
+    Polygon_ol,
+    Polyline_ol,
+    EditVertex_ol,
+    Move_ol,
+    Const_ol,
+    ConnectVertices_ol,
+
+    MoveCtrlPt,
+    InsertCtrlPt,
+    DeleteCtrlPt,
+    DeleteCurve,
+
+    FoldLine_bezier,
+    FoldLine_line,
+    FoldLine_arc,
+    FoldlineColor,
+};
 
 namespace MathTool{
 double distP2L(glm::f64vec3 la, glm::f64vec3 lb, glm::f64vec3& p, glm::f64vec3& q);//点と線分の距離, s:laからlbへの比率(垂線が内部にあれば0 ~ 1)
@@ -31,8 +83,20 @@ double SignedArea(glm::f64vec3 a, glm::f64vec3 b, glm::f64vec3 p);
 glm::f64vec3 bspline(std::vector<glm::f64vec3>&CtrlPts, double t, int dim, std::vector<double>Knot);
 double factorial(int n);
 double cmb(int n, int i);
-double basis(int i, int p, double u, std::vector<double>& U);
+double BernsteinBasisFunc(int n, int i, double t);
+glm::f64vec3 bezier(std::vector<glm::f64vec3>& CtrlPts, double t, int dim);
+void diffBezier(std::vector<glm::f64vec3>& dP, std::vector<glm::f64vec3>& CtrlPts, double t, int dim);
+
+double basis(int n, int i, int p, double u, std::vector<double>& U);
+
+std::vector<double> LSM_apply(std::vector<double>&y, int dim = 1);
+
+std::vector<glm::f64vec3> getPlaneFromCurvePoints(std::vector<glm::f64vec3>& Points, std::vector<glm::f64vec3>& BasisVectors);
+
 
 }
+
+
+
 
 #endif // MATHTOOL_H

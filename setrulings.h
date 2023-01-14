@@ -20,52 +20,7 @@ class Face;
 class ruling;
 class OUTLINE;
 
-enum class EdgeType{
-    ol,//outline
-    r,//ruling(from curve line)
-    cl,//curve line
-    fl,//fold line
-    r_fl,//ruling(fold line)
-};
 
-enum class CurveType{
-    none,
-    bezier3,
-    bsp3,
-    line,
-    arc,
-};
-
-enum class PaintTool{
-    None,
-    Reset,
-    deform,
-
-    AddCurve,
-    Bezier_r,
-    Bspline_r,
-    Line_r,
-    Arc_r,
-
-    SetColor,
-    NewGradationMode,
-
-    Rectangle_ol,
-    Polygon_ol,
-    Polyline_ol,
-    EditVertex_ol,
-    Move_ol,
-    Const_ol,
-    ConnectVertices_ol,
-
-    MoveCtrlPt,
-    InsertCtrlPt,
-    DeleteCtrlPt,
-    DeleteCurve,
-
-    FoldLine,
-    FoldlineColor,
-};
 
 
 class Vertex{
@@ -80,14 +35,24 @@ protected:
     std::vector<HalfEdge*> halfedge;
 };
 
+struct TNBdiff{
+    double td, nd, bd;
+    double kd;
+    double kappa;
+    TNBdiff(){
+        td = nd = bd = kd = 0;
+    }
+};
+
 class CrvPt_FL : public Vertex{
 public:
-    double s, k2d, k3d, tau;
+    double s, k2d, k3d, tau, k2d_bef, k2d_next;
     double a, da;
     glm::f64vec3 T2d, N2d, B2d, T3d, N3d, B3d;
     glm::f64vec3 Td, Nd, Bd;
     CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3, double _s) : Vertex(_p2, _p3), s{_s} {}
     bool operator<(const CrvPt_FL& T) const { return s < T.s; }
+    TNBdiff diff;
 };
 
 class crvpt{
@@ -137,6 +102,7 @@ public:
     Face(HalfEdge *_halfedge);
     bool IsPointInFace(glm::f64vec3 p);
     glm::f64vec3 getNormalVec();
+    double sgndist(glm::f64vec3 p);
 };
 
 class CRV{
@@ -221,6 +187,21 @@ void CrossDetection(Face *f, CRV *crvs);
 std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, HalfEdge *line, int dim);
 std::vector<glm::f64vec3> ConvertDistBasedBezier(std::vector<glm::f64vec3>& CtrlPts, HalfEdge *line);
 
-std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot, bool is3d = true);
+std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot, double& CurveLen, bool is3d = true, int dim = 3);
+
+
+std::vector<glm::f64vec3> TBCSplineInterpolation(std::vector<CrvPt_FL>& Q, double& CurveLen, bool is3d = true, double ten = 0, double bias = 0, double con = 0);
+
+
+class optimizer{
+    double Fvert();
+    double Ffit();
+    double Ffair(std::vector<CrvPt_FL>& FoldCurve);
+    double Fconv();
+public:
+    optimizer();
+    void initialize();
+    void apply(double wfit = 1, double wfair = 1e-4);
+};
 
 #endif // SETRULINGS_H
