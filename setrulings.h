@@ -194,12 +194,15 @@ std::vector<glm::f64vec3> TBCSplineInterpolation(std::vector<CrvPt_FL>& Q, doubl
 
 
 class optimizer{
-    double Fvert();
+    double Fvert(std::vector<double>& X);
     double Ffit();
-    double Ffair(std::vector<CrvPt_FL>& FoldCurve);
+    double Ffair();
     double Fconv();
+    std::vector<Face*>Faces;
+    std::vector<Vertex*>Vertices, FoldingCurve;
 public:
-    optimizer();
+
+    optimizer(std::vector<Face*>& _Faces, std::vector<Vertex*>& _Vertices, std::vector<Vertex*>& _FoldingCurve) : Faces{_Faces}, Vertices{_Vertices}, FoldingCurve{_FoldingCurve} {}
     void initialize();
     void apply(double wfit = 1, double wfair = 1e-4);
 };

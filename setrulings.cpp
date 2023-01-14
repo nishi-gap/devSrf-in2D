@@ -941,9 +941,32 @@ std::vector<glm::f64vec3> TBCSplineInterpolation(std::vector<CrvPt_FL>& Q, doubl
 }
 
 
-double optimizer::Fvert(){
-    double f = 0.0;
-    return f;
+double optimizer::Fvert(std::vector<double>& X){
+    double F = 0.0;
+    std::vector<glm::f64vec3> m_new;
+    int psize = 8;
+    double px, py;
+    glm::f64vec3 c, c2;
+    int i = 0;
+    for(auto&f: Faces){
+        HalfEdge *h = f->halfedge;
+        glm::f64vec3 o = h->vertex->p3;
+        glm::f64vec3 e1 = glm::normalize(h->next->vertex->p3 - o);
+        glm::f64vec3 e2 = glm::normalize(h->prev->vertex->p3 - o);
+        do{
+            px = X[psize * i]; py = X[psize * i + 1];
+            c = glm::f64vec3{X[psize * i + 2], X[psize * i + 3], X[psize * i + 4]};
+            c2 = glm::f64vec3{X[psize * i + 5], X[psize * i + 6], X[psize * i + 7]};
+            m_new.push_back(h->vertex->p3 + c2 + glm::cross(c, o) + px*glm::cross(c, e1) + py*glm::cross(c, e2));
+            h = h->next;
+            i++;
+        }while(h != f->halfedge);
+    }
+    int k = m_new.size();
+    for(int i = 0; i < k; i++){
+        for(int j = i+1; j < k; j++)F += pow(glm::length(m_new[i] - m_new[j]), 2);
+    }
+    return F;
 }
 
 double optimizer::Ffit(){
@@ -951,17 +974,26 @@ double optimizer::Ffit(){
     return f;
 }
 
-double optimizer::Ffair(std::vector<CrvPt_FL>& FoldCurve){
+double optimizer::Ffair(){
     double f = 0.0;
-    for(int i = 0; i < (int)FoldCurve.size() - 1; i++)f += pow(glm::length(FoldCurve[i-1].p - 2.0 * FoldCurve[i].p + FoldCurve[i+1].p), 2);
+    for(int i = 0; i < (int)FoldingCurve.size() - 1; i++)f += pow(glm::length(FoldingCurve[i-1]->p3 - 2.0 * FoldingCurve[i]->p3 + FoldingCurve[i+1]->p3), 2);
     return f;
 }
 
-optimizer::optimizer(){
+double optimizer::Fconv(){
+    auto sigTriArea = [](glm::f64vec3 a, glm::f64vec3 b, glm::f64vec3 c){};
+    double f = 0.0;
 
 }
 
 void optimizer::apply(double wfit, double wfair){
-    double F = Fvert() + wfit * Ffit();
+
+    double Px, Py, cx, cy, cz, c2x, c2y, c2z; //(px, py), c(cx, cy, cz), c-(c2x, c2y, c2z)
+    std::vector<double> X;
+    for(int i = 0; i < (int)Faces.size(); i++){
+        glm::f64vec3 o = Faces[i]->halfedge->vertex->p3;
+
+    }
+    double F = Fvert(X) + wfit * Ffit() + wfair * Ffair();
 
 }
