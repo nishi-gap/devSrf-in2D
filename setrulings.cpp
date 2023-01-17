@@ -822,7 +822,7 @@ std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, HalfEdge *
 
 //https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/INT-APP/CURVE-INT-global.html
 //http://www.cad.zju.edu.cn/home/zhx/GM/009/00-bsia.pdf
-std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot, double& CurveLen, bool is3d, int dim){
+std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>&Knot, double& CurveLen, bool is3d, int dim){
     using namespace Eigen;
 
     int n = Q.size() - 1;
@@ -849,22 +849,18 @@ std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, st
 
     //The Universal method
     for(int i = 0; i <= dim; i++)Knot[i] = 0;
-    for(int i = m - dim; i <= m; i++)Knot[i] = 1;
+    for(int i = 0; i <= dim; i++)Knot[m - dim + i] = 1;
     for(int i = 1; i <= n - dim; i++){
         double d = (double)s/(double)(s - dim);
         double a = i * d - 1;
         int _m = int(i * d);
-        Knot[dim + i] = (1.0 - a)*T[_m-1] + a*T[_m];
-        Knot[dim + i] = (double)i/(double)(s - dim);
-        Knot[dim+i] = 0;
+        //Knot[dim + i] = (1.0 - a)*T[_m-1] + a*T[_m];
+        //Knot[dim + i] = (double)i/(double)(s - dim);
+        //Knot[dim+i] = 0;
         for(int j = i; j < i+dim; j++){
             Knot[dim+i] += T[j];
         }Knot[dim+i] /= (double)dim;
     }
-
-    std::cout <<"Knot"<<std::endl;
-    for(auto&u: Knot)std::cout <<u <<", ";
-    std::cout<<std::endl;
 
     //Knot Matrix
     MatrixXd N = MatrixXd::Zero(s, s);
@@ -873,8 +869,8 @@ std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, st
         if(u == Knot[0]){ N(i,0) = 1;continue;}
         if(u == Knot[m]){N(i,n) = 1; continue;}
 
-        for(int j = 0; j < s; j++){N(i,j) = basis(n,j,dim,u,Knot);}
-        /*
+        //for(int j = 0; j < s; j++){N(i,j) = basis(n,j,dim,u,Knot);}
+
         for(int k = 0; k < m; k++){
             if(!(Knot[k] <= u && u < Knot[k+1]))continue;
             N(i,k) = 1;
@@ -887,13 +883,9 @@ std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, st
                 }
                 N(i,k) = (Knot[k+d] != Knot[k])? (u - Knot[k])/(Knot[k+d] - Knot[k])*N(i,k): 0;
             }
-        }*/
+        }
     }
-    //std::cout<<"N"<<std::endl;
-    for(int i = 0; i < s; i++){
-        //std::cout<< i <<" : " << N.row(i).sum() << std::endl;
-    }
-    //std::cout<<"----"<<std::endl;
+
     B = MatrixXd::Zero(n-1, n-1);
     for(int i = 0; i < n-1; i++){
         for(int j = 0; j < n-1; j++)B(i,j) = basis(n, j+1, dim, T[i+1], Knot);
@@ -912,21 +904,16 @@ std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, st
     }
     //CtrlPts_res[0] = glm::f64vec3{_D(0,0), _D(0,1), _D(0,2)};
     //CtrlPts_res[n] = glm::f64vec3{_D(n,0), _D(n,1), _D(n,2)};
-    for(int i = 0; i < s; i++){
-        glm::f64vec3 v{0,0,0};
-        for(int j = 0; j < s; j++)v += basis(n, j, dim, T[i], Knot)*CtrlPts_res[j];
-        std::cout<<i << " : " << glm::distance(v, glm::f64vec3{_D(i,0), _D(i,1), _D(i,2)}) << std::endl;
-    }
 
     int num = 10000;
     double t = Knot[dim];
     CurveLen = 0.0;
-    std::vector<glm::f64vec3> BCurve(num);
-    for(int i = 0; i < num; i++){
+    std::vector<glm::f64vec3> BCurve;
+    while(t <= 1){
         glm::f64vec3 v{0,0,0};
         for(int j = 0; j < s; j++)v += basis(n, j, dim, t, Knot)*CtrlPts_res[j];
-        BCurve[i] = v;
-        if(i != 0)CurveLen += glm::distance(v, BCurve[i-1]);
+        BCurve.push_back(v);
+        if(BCurve.size() > 1)CurveLen += glm::distance(v, BCurve[BCurve.size() -2]);
         t += (Knot[s] - Knot[dim])/(double)(num);
     }
     return BCurve;
@@ -940,60 +927,3 @@ std::vector<glm::f64vec3> TBCSplineInterpolation(std::vector<CrvPt_FL>& Q, doubl
 
 }
 
-
-double optimizer::Fvert(std::vector<double>& X){
-    double F = 0.0;
-    std::vector<glm::f64vec3> m_new;
-    int psize = 8;
-    double px, py;
-    glm::f64vec3 c, c2;
-    int i = 0;
-    for(auto&f: Faces){
-        HalfEdge *h = f->halfedge;
-        glm::f64vec3 o = h->vertex->p3;
-        glm::f64vec3 e1 = glm::normalize(h->next->vertex->p3 - o);
-        glm::f64vec3 e2 = glm::normalize(h->prev->vertex->p3 - o);
-        do{
-            px = X[psize * i]; py = X[psize * i + 1];
-            c = glm::f64vec3{X[psize * i + 2], X[psize * i + 3], X[psize * i + 4]};
-            c2 = glm::f64vec3{X[psize * i + 5], X[psize * i + 6], X[psize * i + 7]};
-            m_new.push_back(h->vertex->p3 + c2 + glm::cross(c, o) + px*glm::cross(c, e1) + py*glm::cross(c, e2));
-            h = h->next;
-            i++;
-        }while(h != f->halfedge);
-    }
-    int k = m_new.size();
-    for(int i = 0; i < k; i++){
-        for(int j = i+1; j < k; j++)F += pow(glm::length(m_new[i] - m_new[j]), 2);
-    }
-    return F;
-}
-
-double optimizer::Ffit(){
-    double f = 0.0;
-    return f;
-}
-
-double optimizer::Ffair(){
-    double f = 0.0;
-    for(int i = 0; i < (int)FoldingCurve.size() - 1; i++)f += pow(glm::length(FoldingCurve[i-1]->p3 - 2.0 * FoldingCurve[i]->p3 + FoldingCurve[i+1]->p3), 2);
-    return f;
-}
-
-double optimizer::Fconv(){
-    auto sigTriArea = [](glm::f64vec3 a, glm::f64vec3 b, glm::f64vec3 c){};
-    double f = 0.0;
-
-}
-
-void optimizer::apply(double wfit, double wfair){
-
-    double Px, Py, cx, cy, cz, c2x, c2y, c2z; //(px, py), c(cx, cy, cz), c-(c2x, c2y, c2z)
-    std::vector<double> X;
-    for(int i = 0; i < (int)Faces.size(); i++){
-        glm::f64vec3 o = Faces[i]->halfedge->vertex->p3;
-
-    }
-    double F = Fvert(X) + wfit * Ffit() + wfair * Ffair();
-
-}

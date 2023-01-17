@@ -46,7 +46,10 @@ struct TNBdiff{
 
 class CrvPt_FL : public Vertex{
 public:
-    double s, k2d, k3d, tau, k2d_bef, k2d_next;
+    double s;
+    //void digAlign(double& v, int dig = 11){ int n = pow(10, dig); int tmp = v * n; v = (double)tmp/(double)n; }
+
+    double k2d, k3d, tau, k2d_m, k2d_p, k3d_m, k3d_p;
     double a, da;
     glm::f64vec3 T2d, N2d, B2d, T3d, N3d, B3d;
     glm::f64vec3 Td, Nd, Bd;
@@ -193,18 +196,6 @@ std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, st
 std::vector<glm::f64vec3> TBCSplineInterpolation(std::vector<CrvPt_FL>& Q, double& CurveLen, bool is3d = true, double ten = 0, double bias = 0, double con = 0);
 
 
-class optimizer{
-    double Fvert(std::vector<double>& X);
-    double Ffit();
-    double Ffair();
-    double Fconv();
-    std::vector<Face*>Faces;
-    std::vector<Vertex*>Vertices, FoldingCurve;
-public:
 
-    optimizer(std::vector<Face*>& _Faces, std::vector<Vertex*>& _Vertices, std::vector<Vertex*>& _FoldingCurve) : Faces{_Faces}, Vertices{_Vertices}, FoldingCurve{_FoldingCurve} {}
-    void initialize();
-    void apply(double wfit = 1, double wfair = 1e-4);
-};
 
 #endif // SETRULINGS_H

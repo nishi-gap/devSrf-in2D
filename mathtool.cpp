@@ -117,13 +117,14 @@ std::vector<double> _bezierclipping(std::vector<glm::f64vec3>&CtrlPts_base, std:
     t_max = *std::max_element(T.begin(), T.end()); t_max = (t_max < 0) ? 0: (t_max > 1) ? 1:  t_max;
     std::array<glm::f64vec3, 2> next_line = std::array{glm::f64vec3{t_min, 0,0}, glm::f64vec3{t_max, 0,0}};
 
-    if(abs(t_max - t_min) < FLT_EPSILON){
-        return {(t_max + t_min)/2};
+    if(abs(t_max -  t_min) < DBL_EPSILON){
+        return {t_max};
+        //return {(t_max + t_min)/2.0};
     }
     std::pair<std::vector<glm::f64vec3>, std::vector<glm::f64vec3>> _bez = BezierSplit(CtrlPts_base, t_max, dim);
     double bez_t = t_min / (t_max);
     _bez = BezierSplit(_bez.first, bez_t, dim);
-    if(abs(glm::distance(p,q) - abs(t_max - t_min)) < FLT_EPSILON){
+    if(abs(glm::distance(p,q) - abs(t_max - t_min)) < DBL_EPSILON){
 
         std::pair<std::vector<glm::f64vec3>, std::vector<glm::f64vec3>> bez_spl = BezierSplit(_bez.second, 0.5,  dim);
         std::vector<glm::f64vec3> b1 = bez_spl.first, b2 = bez_spl.second;
@@ -244,7 +245,7 @@ double cmb(int n , int i){
 }
 
 double BernsteinBasisFunc(int n, int i, double t){
-    return cmb(n, i) * std::pow(t, i) * std::pow(1 - t, n - i);
+    return cmb(n, i) * std::pow(t, i) * std::pow(1.0 - t, n - i);
 }
 
 glm::f64vec3 bezier(std::vector<glm::f64vec3>& CtrlPts, double t, int dim){

@@ -5,6 +5,7 @@
 #include <Eigen/Dense>
 #include <fstream>
 #include <sstream>
+#include <iomanip>
 #include "mathtool.h"
 class FoldLine
 {
@@ -46,10 +47,30 @@ private:
 
     void setCoeff(std::vector<double>& a, double t, std::vector<double>& Knot, int j);
 
-    void diff(double t, std::vector<double>& Knot, std::vector<glm::f64vec3>& dP, std::vector<glm::f64vec3>& CtrlPts, const int n_times = 3);
+    void diff(double t, std::vector<double>& Knot, std::vector<glm::f64vec3>& dP, std::vector<glm::f64vec3>& CtrlPts, int index, const int n_times = 3);
     inline double rad_2d(double k, double tau, double a, double da);
 
     void LSM_apply_tau(int dim = 1);
+
+    std::vector<HalfEdge*> FoldingCurve;
+
 };
 
+class optimizer{
+    double Fvert(std::vector<double>& X);
+    double Ffit();
+    double Ffair();
+    double Fconv();
+    void alignedNewRulingDirection();
+    std::vector<Face*>Faces;//original
+    std::vector<Vertex*>Vertices;
+    std::vector<Vertex*> FoldingCurve;
+    std::vector<Face*> ptchDevSrf;//after optimization
+    HalfEdge* getEdge(Vertex* start, Vertex* end, const std::vector<Face*>& searchedFace);
+public:
+
+    optimizer(std::vector<Face*>& _Faces, std::vector<Vertex*>& _Vertices, std::vector<Vertex*>& _FoldingCurve) : Faces{_Faces}, Vertices{_Vertices}, FoldingCurve{_FoldingCurve} {}
+    void initialize();
+    void apply(double wfit = 1, double wfair = 1e-4);
+};
 #endif // FOLDLINE_H

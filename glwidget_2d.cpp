@@ -672,7 +672,8 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
                 tmp_cp.clear();
                 for(auto&v: _CtrlPts)tmp_cp.push_back(CrvPt_FL(v, v, 0));
                 std::vector<double> Knot;
-                //tmp_c = GlobalSplineInterpolation(tmp_cp, model->FL[0]->CtrlPts_res2d, Knot, true);
+                double CurvLen;
+                tmp_c = GlobalSplineInterpolation(tmp_cp, model->FL[0]->CtrlPts_res2d, Knot, CurvLen, true);
                 //res = model->FL[0]->applyCurvedFolding(model->Faces, model->Edges, model->vertices, curveDimention);
                 auto oriedge = model->outline->getEdges();
                 res = model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention);
