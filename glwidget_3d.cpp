@@ -130,7 +130,7 @@ void GLWidget_3D::paintGL(){
     if(!eraseMesh){
         DrawMesh(true);
         DrawMesh(false);
-        glPolygonOffset(0.2f,0.2f);
+        glPolygonOffset(1.0,1.0);
         DrawMeshLines();
     }
     //glPolygonOffset(0.f,0.5f);

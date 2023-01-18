@@ -857,6 +857,10 @@ void GLWidget_2D::wheelEvent(QWheelEvent *we){
         model->setGradationValue(DiffWheel, refHE, InterpolationType, CurvePath);
         emit ColorChangeFrom(0, refHE->r->Gradation);
         model->deform();
+        if(model->outline->IsClosed() && !model->FL.empty()){
+            auto oriedge = model->outline->getEdges();
+            model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention);
+        }
         if(isVisibleTo(gw)) emit CurvePathSet(CurvePath);
     }
     emit foldingSignals();
@@ -889,6 +893,10 @@ void GLWidget_2D::addPoints_intplation(QMouseEvent *e, QPointF& p){
         model->setGradationValue(0, refHE, InterpolationType, CurvePath);
         emit ColorChangeFrom(0, refHE->r->Gradation);
         model->deform();
+        if(model->outline->IsClosed() && !model->FL.empty()){
+            auto oriedge = model->outline->getEdges();
+            model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention);
+        }
     }else if(drawtype == PaintTool::FoldlineColor){}
     emit foldingSignals();
     update();

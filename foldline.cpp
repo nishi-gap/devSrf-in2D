@@ -293,17 +293,13 @@ inline double FoldLine::rad_2d(double k, double tau, double a, double da){
 }
 bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, const std::vector<HalfEdge*>& edge_outline, int dim){
     using namespace MathTool;
-    //auto diff1 =[](std::vector<glm::f64vec3>& P, double t){return -3. * std::pow(1.0 - t,2) * P[0] + (9.0*t*t - 12*t + 3.) * P[1] + (-9.0* t*t + 6.*t) * P[2] + 3.0*std::pow(t,2)*P[3];};
-    //auto diff2 =[](std::vector<glm::f64vec3>& P, double t){return 6. * (1. - t) * P[0] + (18. * t - 12.) * P[1] + (-18. * t + 6.) * P[2] + 6. * t * P[3];};
-    //auto diff3 =[](std::vector<glm::f64vec3>& P){return -6.0*P[0]+ 18.0*P[1] -18.0*P[2] + 6.0*P[3];};
-    //auto diffPts = [diff1, diff2, diff3](std::vector<glm::f64vec3>& P, double t){ return std::vector<glm::f64vec3>{diff1(P,t), diff2(P,t), diff3(P)};};
     auto setface = [](HalfEdge *he, Face *f){HalfEdge *h = he; do{h->face = f; h = h->next;}while(he != h);};
     auto VectorDigAlign = [](glm::f64vec3& v, int dig = 13){
         glm::f64vec3 vi = glm::f64vec3{(int)v.x, (int)v.y, (int)v.z};
         glm::f64vec3 vf = v - vi;
         int n = pow(10, dig); int x = vf.x * n, y = vf.y * n, z = vf.z * n;
         v = glm::f64vec3{vi.x + (double)x/(double)n, vi.y + (double)y/(double)n, vi.z + (double)z/(double)n}; };
-
+    T_crs.clear();
     std::string file = "result.csv"; std::ofstream resultfile(file);
     std::string file2 = "curvepoint.csv"; std::ofstream curvepointfile(file2);
     curvepointfile << "t, kappa2d,  kappa, tau, CtrlPtsx, CtrlPtsy, CtrlPtsz, Px, Py, Pz,Tx, Ty, Tz, Nx, Ny, Nz, Bx, By, Bz"<<std::endl;
@@ -374,36 +370,46 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
     for(auto&t: T_crs){
         int index = &t - &T_crs[0];
          diff(t.s, Knot, dP, CtrlPts_res, index, dim);
+
          t.T3d = glm::normalize(dP[0]);
-         t.N3d = glm::normalize(glm::cross(dP[0], glm::cross(dP[1], dP[0])));
-         t.B3d = glm::normalize(glm::cross(dP[0], dP[1]));
-         t.k3d = glm::length(glm::cross(dP[0], dP[1]))/std::pow(glm::length(dP[0]), 3); //t.digAlign(t.k3d);
-         t.tau = glm::dot(dP[0], glm::cross(dP[1], dP[2]))/std::pow(glm::length(glm::cross(dP[0], dP[1])), 2); // t.digAlign(t.tau);
+         t.k3d = glm::length(glm::cross(dP[0], dP[1]))/std::pow(glm::length(dP[0]), 3);
+         t.tau = glm::dot(dP[0], glm::cross(dP[1], dP[2]))/std::pow(glm::length(glm::cross(dP[0], dP[1])), 2);
+
+         diff(t.s - eps, Knot, dP, CtrlPts_res, index, dim); glm::f64vec3 Tm = glm::normalize(dP[0]);
+         diff(t.s + eps, Knot, dP, CtrlPts_res, index, dim); glm::f64vec3 Tp = glm::normalize(dP[0]);
+         t.N3d = glm::normalize((Tp - Tm)/(2.0*eps));
+         t.B3d = glm::normalize(glm::cross(t.T3d, t.N3d));
+         //t.N3d = glm::normalize(glm::cross(dP[0], glm::cross(dP[1], dP[0])));
+         //t.B3d = glm::normalize(glm::cross(dP[0], dP[1]));
+
+
          diff(t.s, Knot2d, dP, CtrlPts_res2d, index, dim);
          glm::f64vec3 T = glm::normalize(dP[0]), N = glm::f64vec3{-T.y, T.x, 0}, B = glm::cross(T, N);
-         t.k2d = glm::length(glm::cross(dP[0], dP[1]))/std::pow(glm::length(dP[0]), 3); //t.digAlign(t.k2d);
+         t.k2d = glm::length(glm::cross(dP[0], dP[1]))/std::pow(glm::length(dP[0]), 3);
          t.T2d = T;
          t.N2d = N;
          t.B2d = B;
-         diff(t.s - eps, Knot2d, dP, CtrlPts_res2d, index, dim); t.k2d_m = glm::length(glm::cross(dP[0], dP[1]))/std::pow(glm::length(dP[0]), 3);// t.digAlign(t.k2d_m);
-         diff(t.s + eps, Knot2d, dP, CtrlPts_res2d, index, dim); t.k2d_p = glm::length(glm::cross(dP[0], dP[1]))/std::pow(glm::length(dP[0]), 3); //t.digAlign(t.k2d_p);
+         diff(t.s - eps, Knot2d, dP, CtrlPts_res2d, index, dim); t.k2d_m = glm::length(glm::cross(dP[0], dP[1]))/std::pow(glm::length(dP[0]), 3);
+         diff(t.s + eps, Knot2d, dP, CtrlPts_res2d, index, dim); t.k2d_p = glm::length(glm::cross(dP[0], dP[1]))/std::pow(glm::length(dP[0]), 3);
 
         //弧長パラメータ上で中心差分法をおこなってみる -　今は０から１の範囲のｔ
          curvepointfile << t.s << ", " << t.k2d <<" , " << t.k3d << ", " << t.tau <<", " << t.p.x <<", " <<t.p.y <<", " <<t.p.z  <<", "<< t.p3.x << ", " <<t.p3.y <<", "<< t.p3.z <<", " << t.T3d.x << ", " << t.T3d.y <<", " << t.T3d.z <<", " << t.N3d.x << ", " << t.N3d.y<<", " << t.N3d.z << ", " << t.B3d.x << ", " << t.B3d.y << ", " << t.B3d.z << std::endl;
-         if(index == 0){
              for(auto&edge: Edges){
                  if(is_point_on_line(t.p,edge->vertex->p, edge->next->vertex->p)){
                      glm::f64vec3 f_front = edge->face->getNormalVec();
                      if(edge->edgetype == EdgeType::r){
                          glm::f64vec3 f_front2 = edge->pair->face->getNormalVec();
                          f_front = glm::normalize((f_front + f_front2)/2.0);
-                     }std::swap(t.B3d, t.N3d);
-                     if(glm::dot(t.B3d, f_front) < 0)t.B3d *= -1;
-                     if(abs(glm::dot(t.B3d, f_front)) < abs(glm::dot(t.N3d, f_front))){glm::f64vec3 tmp = t.B3d; t.B3d = t.N3d; t.N3d = tmp;}
+                     }//std::swap(t.B3d, t.N3d);
+                     //if(glm::dot(t.B3d, f_front) < 0)t.B3d *= -1;
+                     if(abs(glm::dot(t.B3d, f_front)) < abs(glm::dot(t.N3d, f_front))){
+                         std::cout<<"hello"<<std::endl;
+                         //glm::f64vec3 tmp = t.B3d; t.B3d = t.N3d; t.N3d = tmp;
+                     }
                  }
              }
-             if(glm::dot(glm::normalize(glm::cross(t.B3d, t.T3d)), t.N3d) < 0) t.N3d *= -1;
-         }
+             //if(glm::dot(glm::normalize(glm::cross(t.B3d, t.T3d)), t.N3d) < 0) t.N3d *= -1;
+
          if(index > 0 && glm::dot(T_crs[index - 1].N3d, t.N3d) < 0){ t.N3d *= -1;}
          if(index > 0 && glm::dot(T_crs[index - 1].B3d, t.B3d) < 0){ t.B3d *= -1;}
 
@@ -417,18 +423,17 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
          double a_m = (t.k3d_m != 0) ? acos((long double)t.k2d_m/(long double)t.k3d_m): 0;
          double a_p = (t.k3d_p != 0) ? acos((long double)t.k2d_p/(long double)t.k3d_p): 0;
          t.da = (a_p - a_m)/(2.0*eps);
+         double phi_bl = rad_2d(t.k3d, t.tau, t.a, -t.da), phi_br = rad_2d(t.k3d, t.tau, t.a, t.da);
+         resultfile <<std::setprecision(15) << t.k3d << ", "<<t.k2d << " , " << t.tau << " , " << t.a << " , " << t.da << ", " << phi_bl * 180/M_PI << " , " << phi_br * 180/M_PI  <<", " << glm::length(t.p - t.p3)<< ", " << t.k2d_m << ", " <<t.k3d_m << ", " << t.k2d_p << ", "<< t.k3d_p << std::endl;
     }
-    //T_crs[0].da = T_crs[1].da; T_crs[T_crs.size()-1].da = T_crs[T_crs.size()-2].da;
 
-    //LSM_apply_tau();
+    return true;
     for(auto&t: T_crs){
         double phi_bl = rad_2d(t.k3d, t.tau, t.a, -t.da), phi_br = rad_2d(t.k3d, t.tau, t.a, t.da);
          glm::f64vec3 rr3d = glm::normalize(cos(phi_br) * t.T3d + sin(phi_br) * cos(t.a) * t.N3d + sin(phi_br) * sin(t.a) * t.B3d);
          glm::f64vec3 rl3d = glm::normalize(cos(phi_bl) * t.T3d - sin(phi_bl) * cos(t.a) * t.N3d + sin(phi_bl) * sin(t.a) * t.B3d);
          glm::f64vec3 rl2d = (glm::rotate(phi_bl, t.B2d) * glm::f64vec4{t.T2d,1});
-         glm::f64vec3 rr2d = (glm::rotate(-phi_br, t.B2d) * glm::f64vec4{t.T2d,1});
-
-         resultfile <<std::setprecision(15) << t.k3d << ", "<<t.k2d << " , " << t.tau << " , " << t.a << " , " << t.da << ", " << phi_bl * 180/M_PI << " , " << phi_br * 180/M_PI  <<", " << glm::length(t.p - t.p3)<< ", " << t.k2d_m << ", " <<t.k3d_m << ", " << t.k2d_p << ", "<< t.k3d_p << std::endl;
+         glm::f64vec3 rr2d = (glm::rotate(-phi_br, t.B2d) * glm::f64vec4{t.T2d,1});       
 
          //Rulings_2dL.push_back({rl2d, t.p}); Rulings_2dR.push_back({rr2d, t.p}); Rulings_3dL.push_back({rl3d, t.p3}); Rulings_3dR.push_back({rr3d, t.p3});
          std::vector<HalfEdge*> H_new;
@@ -649,7 +654,7 @@ void FoldLine::diff(double t, std::vector<double>& Knot, std::vector<glm::f64vec
     if(index == 0) t += eps;
     else if(index == (int)T_crs.size() - 1) t -=  3.0*eps;
     dP.assign(n_times, glm::f64vec3{0,0,0});
-    if(n_times == 3){
+    if(false){
         std::vector<double>a;
         for(int j = 0; j < (int)CtrlPts.size(); j++){
 
