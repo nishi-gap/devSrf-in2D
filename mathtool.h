@@ -11,7 +11,8 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
-
+#include <setrulings.h>
+#include <numbers>
 enum class EdgeType{
     ol,//outline
     r,//ruling(from curve line)
@@ -62,6 +63,7 @@ enum class PaintTool{
 };
 
 namespace MathTool{
+
 double distP2L(glm::f64vec3 la, glm::f64vec3 lb, glm::f64vec3& p, glm::f64vec3& q);//点と線分の距離, s:laからlbへの比率(垂線が内部にあれば0 ~ 1)
 
 double set3pt(glm::f64vec3& p1, glm::f64vec3& p2, glm::f64vec3& p3);
@@ -93,7 +95,7 @@ double basis(int n, int i, int p, double u, std::vector<double>& U);
 std::vector<double> LSM_apply(std::vector<double>&y, int dim = 1);
 
 std::vector<glm::f64vec3> getPlaneFromCurvePoints(std::vector<glm::f64vec3>& Points, std::vector<glm::f64vec3>& BasisVectors);
-
+glm::f64vec3 ProjectionVector(glm::f64vec3 v, glm::f64vec3 n);
 
 }
 

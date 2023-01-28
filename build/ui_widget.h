@@ -242,7 +242,7 @@ public:
         DivSizeSpinBox = new QSpinBox(verticalLayoutWidget_4);
         DivSizeSpinBox->setObjectName(QString::fromUtf8("DivSizeSpinBox"));
         DivSizeSpinBox->setMinimum(10);
-        DivSizeSpinBox->setMaximum(1000);
+        DivSizeSpinBox->setMaximum(300);
         DivSizeSpinBox->setValue(30);
 
         verticalLayout_4->addWidget(DivSizeSpinBox);
@@ -250,7 +250,7 @@ public:
         DvidedSizeSlider = new QSlider(verticalLayoutWidget_4);
         DvidedSizeSlider->setObjectName(QString::fromUtf8("DvidedSizeSlider"));
         DvidedSizeSlider->setMinimum(10);
-        DvidedSizeSlider->setMaximum(1000);
+        DvidedSizeSlider->setMaximum(300);
         DvidedSizeSlider->setValue(30);
         DvidedSizeSlider->setOrientation(Qt::Horizontal);
 

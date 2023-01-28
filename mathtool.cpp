@@ -141,7 +141,7 @@ std::vector<double> _bezierclipping(std::vector<glm::f64vec3>&CtrlPts_base, std:
 //https://kajindowsxp.com/graham-algo/
 std::vector<glm::f64vec3> GrahamScan(std::vector<glm::f64vec3>& Q){
     std::vector<glm::f64vec3> S;
-    if(Q.size() < 3)return S;
+    if(Q.size() < 3)return Q;
     glm::f64vec3 p_ml = Q[0];
     for(auto&p: Q){
         if(p_ml.y > p.y)p_ml = p;
@@ -343,7 +343,14 @@ std::vector<glm::f64vec3> getPlaneFromCurvePoints(std::vector<glm::f64vec3>& Poi
     return PointsOnPlane;
 }
 
+glm::f64vec3 ProjectionVector(glm::f64vec3 v, glm::f64vec3 n){
+    return v - glm::dot(v,n)/pow(glm::length(n),2)* n;
+}
 
+double AngleIn2Edges(HalfEdge *p, HalfEdge *p2, bool Is3d){
+  if(Is3d)return acos(glm::dot(glm::normalize(p->next->vertex->p3 - p->vertex->p3), glm::normalize(p2->next->vertex->p3 - p2->vertex->p3)));
+  return acos(glm::dot(glm::normalize(p->next->vertex->p - p->vertex->p), glm::normalize(p2->next->vertex->p - p2->vertex->p)));
+}
 
 }
 

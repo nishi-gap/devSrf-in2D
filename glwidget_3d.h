@@ -19,6 +19,7 @@ typedef std::vector<std::array<glm::f64vec3, 2>> Ruling3d;
 typedef std::vector<Face*> Faces3d;
 typedef std::vector<glm::f64vec3> Curve3d;
 typedef std::vector<CrvPt_FL> CrvFL3d;
+typedef std::vector<HalfEdge*> FoldLine3d;
 
 enum class ArcBallMode{
     none,
@@ -31,8 +32,7 @@ class GLWidget_3D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
 {
     Q_OBJECT
 public:
-    void setVertices(const Faces3d& Faces = Faces3d(), const Curve3d& _CtrlPts = Curve3d(),
-                     const Curve3d& _Curve = Curve3d(), const CrvFL3d& _CrossPts = CrvFL3d(),
+    void setVertices(const Faces3d& Faces = Faces3d(), const FoldLine3d& _FoldLineVertices = FoldLine3d(),
                      const Ruling3d& _Vl = Ruling3d(),const Ruling3d& _Vr = Ruling3d());
     void receive(std::vector<std::vector<glm::f64vec3>>& l, std::vector<std::vector<glm::f64vec3>>& r, glm::f64vec3 center);
     void receiveKeyEvent(QKeyEvent *e);
@@ -41,8 +41,7 @@ public:
     explicit GLWidget_3D(QWidget *parent = 0);
     ~GLWidget_3D();
 
-    std::vector<glm::f64vec3> CtrlPts, Curve;
-    std::vector<CrvPt_FL> CrossPts;
+    std::vector<glm::f64vec3> FoldLineVertices;
     std::vector<std::array<glm::f64vec3, 2>> Vl, Vr;
 protected:
     void initializeGL();

@@ -27,7 +27,7 @@ void GLWidget_3D::initializeGL(){
     glEnable(GL_DEPTH_TEST);
 }
 
-void GLWidget_3D::setVertices(const Faces3d& Faces, const Curve3d& _CtrlPts, const Curve3d& _Curve, const CrvFL3d& _CrossPts, const Ruling3d& _Vl,const Ruling3d& _Vr){
+void GLWidget_3D::setVertices(const Faces3d& Faces, const FoldLine3d& _FoldLineVertices, const Ruling3d& _Vl,const Ruling3d& _Vr){
     std::vector<glm::f64vec3> vertices, centers;
     drawdist = 0.0;
     Vertices.clear();
@@ -36,15 +36,9 @@ void GLWidget_3D::setVertices(const Faces3d& Faces, const Curve3d& _CtrlPts, con
     glm::f64mat4x4 Mirror = glm::mat4(1.0f); Mirror[1][1] = -1;
     glm::f64mat4x4 Scale = glm::scale(glm::f64vec3{0.1, 0.1, 0.1});
     std::vector<std::array<glm::f64vec3, 3>> trimesh;
-    CtrlPts.clear(); Curve.clear(); CrossPts.clear();
-    for(auto&v: _CtrlPts)CtrlPts.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(v,1)));
-    for(auto&v: _Curve)Curve.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(v,1)));
-    copy(_CrossPts.begin(), _CrossPts.end(), back_inserter(CrossPts) );
-    for(auto&v: CrossPts){
-        v.p3 = Scale * Mirror * glm::f64vec4(v.p3,1);
-        v.T3d = Mirror * glm::f64vec4{v.T3d, 1};  v.N3d = Mirror * glm::f64vec4{v.N3d, 1}; v.B3d = Mirror * glm::f64vec4{v.B3d, 1};
-        v.Td = Mirror * glm::f64vec4{v.Td, 1};  v.Nd = Mirror * glm::f64vec4{v.Nd, 1}; v.Bd = Mirror * glm::f64vec4{v.Bd, 1};
-    }
+    FoldLineVertices.clear();
+    for(auto&h: _FoldLineVertices)FoldLineVertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(h->vertex->p3,1)));
+
     TriMeshs.clear();
     double Area = 0.0; center = glm::f64vec3{0,0,0};
     for(auto&f: Faces){
@@ -128,10 +122,10 @@ void GLWidget_3D::paintGL(){
     glRotated(0.2 * angleY, 1.0, 0.0, 0.0);
 
     if(!eraseMesh){
+        DrawMeshLines();
         DrawMesh(true);
         DrawMesh(false);
-        glPolygonOffset(1.0,1.0);
-        DrawMeshLines();
+
     }
     //glPolygonOffset(0.f,0.5f);
 
@@ -141,86 +135,23 @@ void GLWidget_3D::paintGL(){
     glVertex3d(center.x, center.y, center.z);
     glEnd();
 
-    if(!eraseCurve){
-        glColor3d(0,1,0);
-        glLineWidth(2);
-        glBegin(GL_LINE_STRIP);
-        for(auto&v: Curve)dispV(v);
-        glEnd();
-    }
+    glColor3d(0,0,1);
+    glLineWidth(5);
+    glPolygonOffset(1.f,0.5f);
+    glBegin(GL_LINE_STRIP);
+    for(auto&v: FoldLineVertices)dispV(v);
+    glEnd();
 
-    if(!eraseCtrlPt){
-        glColor3d(1,0,0);
-        glPointSize(4);
-        for(auto&v: CtrlPts){
-            glBegin(GL_POINTS);
-            dispV(v);
-            glEnd();
-        }
-
-        glColor3d(0.4,0.4,0.4);
-        glLineWidth(1);
-        glEnable(GL_LINE_STIPPLE);
-        glLineStipple(1 , 0xF0F0);
-        glBegin(GL_LINE_STRIP);
-        for(auto&v: CtrlPts) dispV(v);
-        glEnd();
-        glDisable(GL_LINE_STIPPLE);
-    }
-
-    if(!eraseCrossPt){
-        glColor3d(0,0,1);
-        glPointSize(5);
-        for(auto&v: CrossPts){
-            glBegin(GL_POINTS);
-            dispV(v.p3);
-            glEnd();
-        }
-    }
-
-    for(auto&c: CrossPts){
-        glPolygonOffset(1.f, 01.f);
-        if(switchTNB == 1){
-            glColor3d(1,0,0);//T
-            glBegin(GL_LINES);
-            dispV(c.p3);
-            dispV(c.T3d + c.p3);
-            glEnd();
-
-            glColor3d(0,1,0);//N
-            glBegin(GL_LINES);
-            dispV(c.p3);
-            dispV(c.N3d + c.p3);
-            glEnd();
-
-            glColor3d(0,0,1);//B
-            glBegin(GL_LINES);
-            dispV(c.p3);
-            dispV(c.B3d + c.p3);
-            glEnd();
-        }else if(switchTNB == 2){
-            glColor3d(1,0,0);//T
-            glBegin(GL_LINES);
-            dispV(c.p3);
-            dispV(c.Td + c.p3);
-            glEnd();
-
-            glColor3d(0,1,0);//N
-            glBegin(GL_LINES);
-            dispV(c.p3);
-            dispV(c.Nd + c.p3);
-            glEnd();
-            glColor3d(0,0,1);//B
-            glBegin(GL_LINES);
-            dispV(c.p3);
-            dispV(c.Bd + c.p3);
-            glEnd();
-        }
-
-    }
+    glColor3d(1,0,0);
+    glPointSize(5);
+    glPolygonOffset(1.f,0.5f);
+    glBegin(GL_POINTS);
+    for(auto&v: FoldLineVertices)dispV(v);
+    glEnd();
 }
 
 void GLWidget_3D::DrawMesh(bool isFront){
+    glPolygonOffset(1.f,0.5f);
     glEnable(GL_CULL_FACE);
     if(isFront){
         glCullFace(GL_FRONT);
@@ -240,21 +171,19 @@ void GLWidget_3D::DrawMesh(bool isFront){
     glDisable(GL_LIGHTING);
     glDisable(GL_LIGHT0);
     glDisable(GL_CULL_FACE);
+    glPolygonOffset(0.f,0.f);
 }
 
 void GLWidget_3D::DrawMeshLines(){
     //std::vector<std::vector<glm::f64vec3>> TriMeshs;
-
-    glLineWidth(1.0f);
-    glPolygonOffset(1.0f, 1.f);
     glColor3d(0.f, 0.f, 0.f);
+    glLineWidth(1.0f);
 
     for(auto& f: Vertices){
         glBegin(GL_LINE_LOOP);
         for(auto& v: f){ glVertex3d(v.x, v.y, v.z);}
         glEnd();
     }
-
 }
 
 void GLWidget_3D::DrawGrid(){

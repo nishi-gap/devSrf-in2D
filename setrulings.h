@@ -1,6 +1,8 @@
 #ifndef SETRULINGS_H
 #define SETRULINGS_H
 
+#include <fstream>
+#include <sstream>
 #include <iostream>
 #include <vector>
 #include "mathtool.h"
@@ -20,7 +22,8 @@ class Face;
 class ruling;
 class OUTLINE;
 
-
+enum class EdgeType;
+enum class CurveType;
 
 
 class Vertex{
@@ -31,18 +34,10 @@ public:
     Vertex(glm::f64vec3 _p);
     Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3);
     void addNewEdge(HalfEdge *he);
-protected:
     std::vector<HalfEdge*> halfedge;
 };
 
-struct TNBdiff{
-    double td, nd, bd;
-    double kd;
-    double kappa;
-    TNBdiff(){
-        td = nd = bd = kd = 0;
-    }
-};
+
 
 class CrvPt_FL : public Vertex{
 public:
@@ -55,7 +50,8 @@ public:
     glm::f64vec3 Td, Nd, Bd;
     CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3, double _s) : Vertex(_p2, _p3), s{_s} {}
     bool operator<(const CrvPt_FL& T) const { return s < T.s; }
-    TNBdiff diff;
+    double developability();
+
 };
 
 class crvpt{
@@ -190,12 +186,9 @@ void CrossDetection(Face *f, CRV *crvs);
 std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, HalfEdge *line, int dim);
 std::vector<glm::f64vec3> ConvertDistBasedBezier(std::vector<glm::f64vec3>& CtrlPts, HalfEdge *line);
 
-std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot, double& CurveLen, bool is3d = true, int dim = 3);
-
+std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot, double& CurveLen, bool is3d = true, int dim = 3, int t_type = 2);
 
 std::vector<glm::f64vec3> TBCSplineInterpolation(std::vector<CrvPt_FL>& Q, double& CurveLen, bool is3d = true, double ten = 0, double bias = 0, double con = 0);
-
-
 
 
 #endif // SETRULINGS_H

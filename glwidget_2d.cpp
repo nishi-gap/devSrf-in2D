@@ -611,12 +611,12 @@ void GLWidget_2D::paintGL(){
     }
 #endif
 
-    glColor3d(0,1,0);
-    glBegin(GL_LINE_STRIP);
-    for(auto&p: tmp_c){
-        glVertex2d(p.x, p.y);
-    }
-    glEnd();
+    //glColor3d(0,1,0);
+    //glBegin(GL_LINE_STRIP);
+    //for(auto&p: tmp_c){
+        //glVertex2d(p.x, p.y);
+    //}
+    //glEnd();
 }
 
 void GLWidget_2D::DrawGrid(){
@@ -644,8 +644,12 @@ void GLWidget_2D::DrawGrid(){
 }
 
 void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
+    auto oriedge = model->outline->getEdges();
     if(e->key() == Qt::Key_V)eraseVec2d = !eraseVec2d;
     if(e->key() == Qt::Key_A) visibleCurve = !visibleCurve;
+    //if(e->key() == Qt::Key_0){model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention, 0); emit foldingSignals();}
+    //if(e->key() == Qt::Key_1){model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention, 1); emit foldingSignals();}
+    if(e->key() == Qt::Key_2){model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention, 2); emit foldingSignals();}
     update();
 }
 
@@ -676,7 +680,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
                 tmp_c = GlobalSplineInterpolation(tmp_cp, model->FL[0]->CtrlPts_res2d, Knot, CurvLen, true);
                 //res = model->FL[0]->applyCurvedFolding(model->Faces, model->Edges, model->vertices, curveDimention);
                 auto oriedge = model->outline->getEdges();
-                res = model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention);
+                //res = model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention);
             }
         }
         else if(drawtype == PaintTool::DeleteCurve){
@@ -806,6 +810,7 @@ void GLWidget_2D::cb_DeleteCurve(){
 
 void GLWidget_2D::Reset(){
     delete model;
+    tmp_c.clear();
     model = new Model(crvPtNum);
     emit SendNewActiveCheckBox(PaintTool::Reset);
     SelectedCurveIndex = -1;

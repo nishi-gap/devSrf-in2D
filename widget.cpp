@@ -126,8 +126,7 @@ void MainWindow::fold_Sm(){
     if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
     else if(ui->glWid2dim->model->FL.empty())ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces);
     else{
-        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->FL[0]->CtrlPts_res, ui->glWid2dim->model->FL[0]->Curve_res,
-                ui->glWid2dim->model->FL[0]->T_crs);
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->FL[0]->FoldingCurve);
     }
 }
 

@@ -6,6 +6,7 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
+#include <numbers>
 #include "mathtool.h"
 class FoldLine
 {
@@ -19,7 +20,7 @@ public:
     std::vector<std::array<glm::f64vec3, 2>> Rulings_3dL, Rulings_3dR, Rulings_2dL, Rulings_2dR;
     bool ChangeColor(OUTLINE *outline, int val, int dim = 3);
     double getColor();
-    bool modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices,const std::vector<HalfEdge*>& edge_outline, int dim);
+    bool modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices,const std::vector<HalfEdge*>& edge_outline, int dim, int t_type = 2);
     bool applyCurvedFolding(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, int dim);
     void deform();
     HalfEdge *he, *he2;
@@ -28,8 +29,10 @@ public:
 
     std::vector<glm::f64vec3> CtrlPts_res, Curve_res, CtrlPts_res2d, Curve_res2d;
     std::vector<CrvPt_FL> T_crs;
-
+    std::vector<HalfEdge*> FoldingCurve;
     std::vector<glm::f64vec3>BasisVectors, PointsOnPlane;
+
+    double AngleIn2Edges(HalfEdge *p, HalfEdge *p2, bool Is3d = true);
 private:
     double color;
     bool setCurve(int dim);
@@ -52,7 +55,10 @@ private:
 
     void LSM_apply_tau(int dim = 1);
 
-    std::vector<HalfEdge*> FoldingCurve;
+
+    void applyAAAMethod(const std::vector<HalfEdge*>& edge_outline);
+    void _FoldingAAAMethod(double & a, double phi02, double phim1, const std::vector<glm::f64vec3>& edge_outline);
+    double getCurvetureFromDC(int i);
 
 };
 
