@@ -93,6 +93,7 @@ private:
 
 class Face{
 public:
+    int edgeNum();
     bool bend;
     //double Gradation;//範囲-255 ~ 255
     bool hasGradPt;

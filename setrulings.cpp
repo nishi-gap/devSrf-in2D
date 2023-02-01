@@ -82,6 +82,7 @@ ruling::ruling(){
 Face::Face(HalfEdge *_halfedge){
     //rulings.clear();
     halfedge = _halfedge;
+    _halfedge->face = this;
     bend = false;
     hasGradPt = false;
 }
@@ -122,6 +123,18 @@ double Face::sgndist(glm::f64vec3 p){
     return (glm::dot(v, N) > 0) ? abs(glm::dot(p, N) + d): -abs(glm::dot(p, N) + d);
 }
 
+int Face::edgeNum(){
+    int cnt = 0;
+    HalfEdge *h = halfedge;
+    do{
+        cnt++;
+        std::cout << glm::to_string(h->vertex->p) << " , " << h << " , " << this << std::endl;
+        h = h->next;
+
+    }while(h != halfedge);
+    std::cout << std::endl;
+    return cnt;
+}
 CRV::CRV(int _crvNum, int DivSize){
 
     curveNum = _crvNum;

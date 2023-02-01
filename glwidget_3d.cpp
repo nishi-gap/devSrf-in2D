@@ -45,7 +45,7 @@ void GLWidget_3D::setVertices(const Faces3d& Faces, const FoldLine3d& _FoldLineV
         vertices.clear();
         HalfEdge *he = f->halfedge;       
         do{
-            glm::f64vec3 v = glm::f64vec3(Scale * Mirror * glm::f64vec4(he->vertex->p3,1));            
+            glm::f64vec3 v = glm::f64vec3(Scale * Mirror * glm::f64vec4(he->vertex->p3,1));
             vertices.push_back(v);
             he = he->next;           
         }while(he != f->halfedge);
@@ -135,6 +135,7 @@ void GLWidget_3D::paintGL(){
     glVertex3d(center.x, center.y, center.z);
     glEnd();
 
+    /*
     glColor3d(0,0,1);
     glLineWidth(5);
     glPolygonOffset(1.f,0.5f);
@@ -148,6 +149,7 @@ void GLWidget_3D::paintGL(){
     glBegin(GL_POINTS);
     for(auto&v: FoldLineVertices)dispV(v);
     glEnd();
+    */
 }
 
 void GLWidget_3D::DrawMesh(bool isFront){
