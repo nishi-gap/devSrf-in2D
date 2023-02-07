@@ -74,6 +74,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this, &MainWindow::signalFLtype, ui->glWid2dim, &GLWidget_2D::changeFoldType);
     connect(ui->glWid2dim, &GLWidget_2D::signalAddRulings_FL, this, &MainWindow::fold_FL);
     connect(ui->color_FL, &QPushButton::clicked, this, &MainWindow::color_FL);
+    connect(ui->angleA, &QSpinBox::valueChanged, ui->glWid2dim, &GLWidget_2D::changeAngle4Debug);
 
     connect(ui->DebugWindow, &QPushButton::clicked,ui->glWid2dim,&GLWidget_2D::OpenDebugWindwow);
     connect(ui->SaveButton, &QPushButton::clicked,this, &MainWindow::exportobj);

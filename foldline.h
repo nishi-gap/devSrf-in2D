@@ -1,6 +1,7 @@
 #ifndef FOLDLINE_H
 #define FOLDLINE_H
 #include <setrulings.h>
+#include<glm/gtx/vector_angle.hpp>
 #include <cmath>
 #include <Eigen/Dense>
 #include <fstream>
@@ -33,6 +34,7 @@ public:
     std::vector<glm::f64vec3>BasisVectors, PointsOnPlane;
 
     double AngleIn2Edges(HalfEdge *p, HalfEdge *p2, bool Is3d = true);
+    void applyAAAMethod(const std::vector<glm::f64vec3>& edge_outline, double a = 2.0*std::numbers::pi/3.0);
 private:
     double color;
     bool setCurve(int dim);
@@ -56,7 +58,7 @@ private:
     void LSM_apply_tau(int dim = 1);
 
 
-    void applyAAAMethod(const std::vector<HalfEdge*>& edge_outline);
+
     void _FoldingAAAMethod(double & a, double phi02, double phim1, const std::vector<glm::f64vec3>& edge_outline);
     double getCurvetureFromDC(int i);
 

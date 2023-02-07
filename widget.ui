@@ -576,6 +576,19 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QSpinBox" name="angleA">
+   <property name="geometry">
+    <rect>
+     <x>720</x>
+     <y>460</y>
+     <width>42</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="maximum">
+    <number>359</number>
+   </property>
+  </widget>
  </widget>
  <customwidgets>
   <customwidget>

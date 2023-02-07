@@ -91,6 +91,7 @@ public slots:
 
     //FoldLine
     void changeFoldType(PaintTool state);
+    void changeAngle4Debug(int val);
 
     //Line Width
     void receiveNewLineWidth(double d);
