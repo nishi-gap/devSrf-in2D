@@ -8,7 +8,6 @@ GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
 
     curveDimention = 3;
     drawtype = PaintTool::None;
-    DivSize = 30;
     crvPtNum = 3000;
     maxDivSize = 3000;
     standardDist = 2.5;
@@ -111,6 +110,7 @@ void GLWidget_2D::DrawOutlinePolygon(int state){
     emit SendNewActiveCheckBox(PaintTool::Polygon_ol);
     this->setMouseTracking(true);
 }
+
 void GLWidget_2D::DrawOutlinePolyline(int state){
     if(state == 0)return;
     drawtype = PaintTool::Polyline_ol;
@@ -205,7 +205,7 @@ void GLWidget_2D::recieveNewEdgeNum(int num){model->outline->VerticesNum = num; 
 
 void GLWidget_2D::ChangedDivSizeEdit(int n){
     this->DivSize = (n < 0)? DivSize: (maxDivSize < n)? maxDivSize: n;
-    if(SelectedCurveIndex == -1) return;
+    if(SelectedCurveIndex == -1 || model->crvs.empty()) return;
     if(curvetype == CurveType::bezier3){
         model->crvs[SelectedCurveIndex]->Bezier(curveDimention, crvPtNum);
         //if(model->outline->isClosed  && model->crv->CurvePoints[0].pt != glm::f64vec2{-1,-1})model->crv->BezierRulings(model->outline->vertices,DivSize,crvPtNum);
@@ -246,13 +246,96 @@ void GLWidget_2D::receiveNewLineWidth(double d){
     update();
 }
 
-void GLWidget_2D::changeAngle4Debug(int val){
-    if(model->FL.empty())return;
-    double angle = (double)val * std::numbers::pi/180.0;
-    std::vector<Vertex*> _V = model->outline->getVertices();
-    std::vector<glm::f64vec3> Vertices;
-    for(auto&v: _V)Vertices.push_back(v->p);
-    model->FL[0]->applyAAAMethod(Vertices, angle);
+void GLWidget_2D::changeBetaValue(double val){
+    if(model->Faces.size() < 2)return;
+
+    bool hasFoldLine = false;
+    double angle;
+    int b, b2;
+    emit getAlphaBeta(angle,b, b2);
+    double a;
+    if(b == 0 || b == 180 || b2 == 0 || b2 == 180)return;
+
+    std::vector<HalfEdge*> _axis;
+    for(const auto& h: model->Edges){
+        if(h->edgetype == EdgeType::r){
+            hasFoldLine = true;
+            if(std::find(_axis.begin(), _axis.end(), h) == _axis.end() && std::find(_axis.begin(), _axis.end(), h->pair) == _axis.end()){
+                _axis.push_back(h);
+                //if((int)_axis.size() == 1)h->r->Gradation = double(180.0 - b)/180.*255.0;
+                //else h->r->Gradation = double(180.0 - b2)/180.*255.0;
+            }
+        }
+    }
+    if(!hasFoldLine)return;
+    model->deform();
+
+    auto IsSame = [](double c, double b){
+        return (abs(c - b) <= 1e-8)? true: false;
+    };
+    double a2 = 0;
+    glm::f64vec3 e, e2, x;
+    glm::f64vec3 N, r, n, r2;
+    glm::f64vec3 e_bef;
+    double vecLen = 50;
+    NewRuling.clear();NewRuling2d.clear(); RulingColor.clear();
+
+    a = angle*std::numbers::pi/180.0;
+    for(int i = 0; i < (int)model->Faces.size() - 1; i++){
+        x = _axis[i]->vertex->p3;
+        e = glm::normalize(_axis[i]->prev->vertex->p3 - x);
+        e2 = glm::normalize(_axis[i]->pair->next->next->vertex->p3 - x);
+        double beta = glm::angle(e, e2);
+        if(i != 0){
+            glm::f64vec3 e_next = glm::normalize(MathTool::ProjectionVector(e2,-e));
+            double tau = (glm::dot(e_bef, e_next) > 1) ? 0: (glm::dot(e_bef, e_next) < -1) ? std::numbers::pi: glm::angle(e_bef,e_next);
+            tau = glm::angle(e_bef, e_next);
+            if(glm::dot(glm::cross(e_bef, e_next), e) > 0) tau = 2.0*std::numbers::pi - tau;
+            a = (a2 - tau < 0) ? a2 - tau + 2.0 * std::numbers::pi: a2 - tau;
+            //std::cout << "---------------------------------" << std::endl;
+            if(!std::isfinite(a))std::cout << "a is not finite " << i << std::endl;
+            if(!std::isfinite(a2))std::cout << "a' is not finite " << i << std::endl;
+            std::cout << i << " : tau = " << tau << " , a = " <<  glm::degrees(a) << " , a' = " << glm::degrees(a2) << std::endl;
+
+        }
+
+        double phi3 = glm::angle(e2, glm::normalize(_axis[i]->next->vertex->p3 - x));
+        double phi4 = glm::angle(e, glm::normalize(_axis[i]->next->vertex->p3 - x));
+        double k = 2.0 * std::numbers::pi - phi3 - phi4;
+        if(!(beta <= phi3 + phi4 && phi3 + phi4 <= 2.0 * std::numbers::pi - beta)){std::cout <<"exceed boundary condition   " << beta << " , " << phi3+phi4<< std::endl; exit(0);}
+        double phi1 = IsSame(glm::sin(beta)*glm::cos(a), glm::sin(k))? std::numbers::pi/2.0: atan((glm::cos(k) - glm::cos(beta))/(glm::sin(beta)*glm::cos(a)- glm::sin(k)));
+        if(phi1 < 0)phi1 += std::numbers::pi;
+        double phi2 = k - phi1;
+        std::cout <<"angle "<< i << " : " << std::setprecision(10) <<  glm::degrees(phi1) << ", " << glm::degrees(phi2) << ", " << glm::degrees(phi3) << ", " << glm::degrees(phi4)<< " : " <<  beta <<  std::endl;
+        if(IsSame(phi1 + phi3, std::numbers::pi) && IsSame(phi2 + phi4, std::numbers::pi))std::cout << i << "  flat foldable state " << std::endl;
+        if(IsSame(phi1, std::numbers::pi/2.0) && IsSame(phi2, std::numbers::pi/2.0))std::cout << i << "  equal degin angles " << std::endl;
+        if(IsSame(phi1 + phi4, std::numbers::pi) && IsSame(phi2 + phi3, std::numbers::pi)) std::cout << i << "  continuation" << std::endl;
+        if(phi1 < std::numbers::pi/2.0)RulingColor.push_back(true); else RulingColor.push_back(false);
+        glm::f64vec3 axis_alpha = glm::normalize(glm::cross(e, e2));
+        N = glm::normalize(glm::rotate (a, e)  * glm::f64vec4{axis_alpha,1});//phi1の回転軸
+
+        r = glm::rotate(phi1, N) * glm::f64vec4{e,1};r = glm::normalize(r);//新しいruling方向
+        n = glm::rotate(phi1, glm::f64vec3{0,0,1})*glm::f64vec4{glm::normalize(_axis[i]->prev->vertex->p - _axis[i]->vertex->p),1};n = glm::normalize(n);//展開図のruling方向
+
+        //std::cout << a * 180.0/std::numbers::pi << " , " << beta*180.0/std::numbers::pi << "  ruling direction " << glm::to_string(r) << std::endl;
+
+        std::array<glm::f64vec3, 2> tmp = {vecLen*r + x, x}; NewRuling.push_back(tmp);
+        tmp = {vecLen*n + _axis[i]->vertex->p, _axis[i]->vertex->p}; NewRuling2d.push_back(tmp);
+
+        double sin_a = (sin(phi1)*sin(a)/sin(phi2) > 1) ? 1: (sin(phi1)*sin(a)/sin(phi2) < -1)? -1: (sin(phi1)*sin(a)/sin(phi2));
+        r2 = MathTool::ProjectionVector(r,e2); r2 = glm::normalize(r2);
+        glm::f64vec3 ax_beta = e;
+        ax_beta = MathTool::ProjectionVector(ax_beta, e2); ax_beta = glm::normalize(ax_beta);
+        double cos_a = (glm::dot(r2, ax_beta) > 1) ? 1: (glm::dot(r2, ax_beta) < -1)? -1: glm::dot(r2, ax_beta);//値が期待しているのと違う
+        cos_a = (cos(phi1) - cos(phi2)*cos(beta))/(sin(phi2)*sin(beta));
+        a2 = (sin_a >= 0 && cos_a >= 0)? asin(sin_a): (sin_a >= 0 && cos_a < 0)?std::numbers::pi - asin(sin_a): (sin_a < 0 && cos_a < 0)? std::numbers::pi + asin(sin_a): 2.0*std::numbers::pi + asin(sin_a);
+        //std::cout <<"sin " << glm::degrees(sin_a) << " , cos " << glm::degrees(cos_a) << " , a' =  " << glm::degrees(a2) << std::endl;
+        e_bef = (MathTool::ProjectionVector(e,e2)); e_bef = glm::normalize(e_bef);
+    }
+
+
+        std::cout <<"||||||||||||||||||||||||||||||" << std::endl;
+
     emit foldingSignals();
     update();
 }
@@ -451,12 +534,16 @@ void GLWidget_2D::paintGL(){
         }
     }
 
-    //glColor3d(0,1,0);
-    //glBegin(GL_LINE_STRIP);
-    //for(auto&p: tmp_c){
-        //glVertex2d(p.x, p.y);
-    //}
-    //glEnd();
+    for(int i = 0; i < (int)NewRuling2d.size(); i++){
+        auto r = NewRuling2d[i];
+        if(RulingColor[i])glColor3d(1,0,0);
+        else glColor3d(0,0,1);
+        glBegin(GL_LINES);
+        glVertex2d(r[0].x, r[0].y);
+        glVertex2d(r[1].x, r[1].y);
+        glEnd();
+    }
+
 }
 
 void GLWidget_2D::DrawGrid(){
@@ -507,21 +594,9 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
         else if(drawtype == PaintTool::Const_ol) model->addConstraint(p, 0, gridsize, model->Axis4Const);
         else if(drawtype ==PaintTool::ConnectVertices_ol)model->ConnectOutline(p, gridsize);
         else if(drawtype == PaintTool::NewGradationMode || drawtype ==PaintTool::FoldlineColor)addPoints_intplation(e, p);
-        else if(drawtype == PaintTool::FoldLine_bezier || drawtype == PaintTool::FoldLine_arc || drawtype == PaintTool::FoldLine_line){
+        else if(drawtype == PaintTool::FoldLine_bezier || drawtype == PaintTool::FoldLine_arc || drawtype == PaintTool::FoldLine_line || drawtype == PaintTool::FoldLine_test){
             bool hasRulings = model->AddControlPoint_FL(p_ongrid, 0, curveDimention);
             update();
-            if(/*model->outline->IsClosed() && */hasRulings){
-                bool res;
-                auto _CtrlPts = model->FL[0]->getCtrlPt();
-                tmp_cp.clear();
-                for(auto&v: _CtrlPts)tmp_cp.push_back(CrvPt_FL(v, v, 0));
-                std::vector<double> Knot;
-                double CurvLen;
-                tmp_c = GlobalSplineInterpolation(tmp_cp, model->FL[0]->CtrlPts_res2d, Knot, CurvLen, true);
-                //res = model->FL[0]->applyCurvedFolding(model->Faces, model->Edges, model->vertices, curveDimention);
-                auto oriedge = model->outline->getEdges();
-                //res = model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention);
-            }
         }
         else if(drawtype == PaintTool::DeleteCurve){
             model->SelectCurve(p);

@@ -141,9 +141,9 @@ CRV::CRV(int _crvNum, int DivSize){
     ControllPoints.clear();
     CurvePoints.clear();
     for(int i = 0; i < curveNum; i++)CurvePoints.push_back(crvpt(i));
+
     for(int i = 0; i < DivSize-1;i++){
-        ruling *r = new ruling();
-        Rulings.push_back(r);
+        Rulings.push_back(new ruling());
     }
 
     isempty = true;
@@ -933,7 +933,6 @@ std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, st
     for(int i = 0; i < n-1; i++){
         _Q.row(i) = _D.row(i+1) - basis(n,0,dim, T[i+1], Knot)*_D.row(0) - basis(n,n,dim,T[i+1],Knot)*_D.row(n);
     }
-    //P = (B.transpose()*B).inverse()*(B.transpose())*_Q;
     P = N.fullPivLu().solve(_D);
 
     //cast
@@ -941,9 +940,6 @@ std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, st
     for(int i = 0; i < (int)P.rows(); i++){
         CtrlPts_res[i].x = P(i,0); CtrlPts_res[i].y = P(i,1); CtrlPts_res[i].z = P(i,2);
     }
-    //CtrlPts_res[0] = glm::f64vec3{_D(0,0), _D(0,1), _D(0,2)};
-    //CtrlPts_res[n] = glm::f64vec3{_D(n,0), _D(n,1), _D(n,2)};
-
     int num = 10000;
     double t = Knot[dim];
     CurveLen = 0.0;
@@ -957,12 +953,3 @@ std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, st
     }
     return BCurve;
 }
-
-//https://www.geometrictools.com/Documentation/KBSplines.pdf
-//https://marina.sys.wakayama-u.ac.jp/~tokoi/?date=20150105
-//本来だと点ごとにtension, bias, continuityを定義するが簡単のため一定にする(全部0)
-std::vector<glm::f64vec3> TBCSplineInterpolation(std::vector<CrvPt_FL>& Q, double& CurveLen, bool is3d, double ten, double bias, double con){
-    int divSize = 100;//区間ごとの分割数
-
-}
-

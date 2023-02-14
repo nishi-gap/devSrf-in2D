@@ -35,6 +35,7 @@ public:
 
     double AngleIn2Edges(HalfEdge *p, HalfEdge *p2, bool Is3d = true);
     void applyAAAMethod(const std::vector<glm::f64vec3>& edge_outline, double a = 2.0*std::numbers::pi/3.0);
+    void TestFoldingAAAM(double& a, std::vector<Vertex*>& _Vertices, std::vector<HalfEdge*>& _Edges);
 private:
     double color;
     bool setCurve(int dim);

@@ -49,6 +49,7 @@ public:
     glm::f64vec3 T2d, N2d, B2d, T3d, N3d, B3d;
     glm::f64vec3 Td, Nd, Bd;
     CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3, double _s) : Vertex(_p2, _p3), s{_s} {}
+    CrvPt_FL(glm::f64vec3 _p2, double _s) : Vertex(_p2), s{_s} {}
     bool operator<(const CrvPt_FL& T) const { return s < T.s; }
     double developability();
 
@@ -71,7 +72,8 @@ class ruling
     crvpt *pt;
     double Gradation;
     bool hasGradPt;
-    ruling(Vertex *a, Vertex *b, crvpt *_pt);
+    ruling(Vertex *a, Vertex *b, crvpt *_pt = nullptr);
+
     ruling();
 };
 
@@ -188,8 +190,6 @@ std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, HalfEdge *
 std::vector<glm::f64vec3> ConvertDistBasedBezier(std::vector<glm::f64vec3>& CtrlPts, HalfEdge *line);
 
 std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot, double& CurveLen, bool is3d = true, int dim = 3, int t_type = 2);
-
-std::vector<glm::f64vec3> TBCSplineInterpolation(std::vector<CrvPt_FL>& Q, double& CurveLen, bool is3d = true, double ten = 0, double bias = 0, double con = 0);
 
 
 #endif // SETRULINGS_H

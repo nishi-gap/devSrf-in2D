@@ -9,7 +9,7 @@ MainWindow::MainWindow(QWidget *parent)
     output.clear();
 
     ui->setupUi(this);
-
+    ui->glWid2dim->DivSize = ui->DivSizeSpinBox->value();
     //model = new Model(crvPtNum);
     //ui->glWid2dim->model = model;
     CBoxlist = {{ui->SelectButton, PaintTool::None}, {ui->outline_rectangle, PaintTool::Rectangle_ol}, {ui->outline_polygon,  PaintTool::Polygon_ol},
@@ -73,8 +73,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->addFL_bezier, &QPushButton::clicked, this, &MainWindow::addFoldLine_bezier);
     connect(this, &MainWindow::signalFLtype, ui->glWid2dim, &GLWidget_2D::changeFoldType);
     connect(ui->glWid2dim, &GLWidget_2D::signalAddRulings_FL, this, &MainWindow::fold_FL);
-    connect(ui->color_FL, &QPushButton::clicked, this, &MainWindow::color_FL);
-    connect(ui->angleA, &QSpinBox::valueChanged, ui->glWid2dim, &GLWidget_2D::changeAngle4Debug);
+    connect(ui->color_FL, &QPushButton::clicked, this, &MainWindow::color_FL);  
+
+    connect(ui->addFL_test, &QPushButton::clicked, this, &MainWindow::addFoldLine_test);
+    connect(ui->angleA, &QDoubleSpinBox::valueChanged, ui->glWid2dim, &GLWidget_2D::changeBetaValue);
+    connect(ui->glWid2dim, &GLWidget_2D::getAlphaBeta, this, &MainWindow::sendAlphaBeta);
 
     connect(ui->DebugWindow, &QPushButton::clicked,ui->glWid2dim,&GLWidget_2D::OpenDebugWindwow);
     connect(ui->SaveButton, &QPushButton::clicked,this, &MainWindow::exportobj);
@@ -109,7 +112,18 @@ void MainWindow::addFoldLine_arc(){
 void MainWindow::addFoldLine_bezier(){
     emit signalFLtype(PaintTool::FoldLine_bezier);
 }
+
+void MainWindow::addFoldLine_test(){
+    emit signalFLtype(PaintTool::FoldLine_test);
+}
+
 void MainWindow::color_FL(){emit signalFLtype(PaintTool::FoldlineColor);}
+
+void MainWindow::sendAlphaBeta(double&_alpha, int& _beta, int& _beta2){
+    _alpha = ui->angleA->value();
+    _beta = ui->planeBeta->value();
+    _beta2 = ui->planeBeta_2->value();
+}
 
 void MainWindow::changeLineWidthFromSlider(int n){
     double d = (double)n/10.;
@@ -125,9 +139,9 @@ void MainWindow::fold_Sm(){
 
     //switchActivateCheckBox("MakeDevSrf");
     if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
-    else if(ui->glWid2dim->model->FL.empty())ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces);
+    else if(ui->glWid2dim->model->FL.empty())ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->NewRuling);
     else{
-        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->FL[0]->FoldingCurve);
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces);
     }
 }
 

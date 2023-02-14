@@ -65,8 +65,10 @@ public slots:
     void addFoldLine_l();
     void addFoldLine_arc();
     void addFoldLine_bezier();
+    void addFoldLine_test();
     void color_FL();
     void fold_FL();
+    void sendAlphaBeta(double&_alpha, int& _beta, int& _beta2);
 
     //Line Width
     void changeLineWidthFromSlider(int n);

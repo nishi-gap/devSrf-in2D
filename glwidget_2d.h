@@ -41,7 +41,9 @@ public:
 
     void receiveKeyEvent(QKeyEvent *e);
     bool eraseVec2d, visibleCurve;
-
+    std::vector<std::array<glm::f64vec3, 2>> NewRuling, NewRuling2d;
+    std::vector<bool> RulingColor;
+    int DivSize;
 protected:
     void initializeGL();
     void paintGL();
@@ -91,7 +93,7 @@ public slots:
 
     //FoldLine
     void changeFoldType(PaintTool state);
-    void changeAngle4Debug(int val);
+    void changeBetaValue(double val);
 
     //Line Width
     void receiveNewLineWidth(double d);
@@ -103,7 +105,7 @@ private:
     std::vector<CrvPt_FL> tmp_cp;
 
     void draw();
-    int DivSize;
+
     int SelectedCurveIndex; //-1: 未参照
     int KeyEvent; //-1:None  0:Enter  1: Back-Space  2:Other
     //OutlineRectangle, RulingBezier, RulingBspline, RulingLine, RulingArc,  OutlinePolygon, OutlinePolyline, MoveControlPoint, SetColor, NewGradationMode, InsertControlPoint,
@@ -146,6 +148,7 @@ signals:
     void CurvePathSet(std::vector<glm::f64vec2>CurvePath);
     void deleteCrvSignal(std::vector<int> n);
     void signalAddRulings_FL();
+    void getAlphaBeta(double& _alpha, int& _beta, int& _beta2);
 };
 
 #endif // GLWIDGET_2D_H

@@ -59,7 +59,9 @@ enum class PaintTool{
     FoldLine_bezier,
     FoldLine_line,
     FoldLine_arc,
+    FoldLine_test,
     FoldlineColor,
+
 };
 
 namespace MathTool{

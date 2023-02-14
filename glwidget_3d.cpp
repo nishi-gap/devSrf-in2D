@@ -27,7 +27,7 @@ void GLWidget_3D::initializeGL(){
     glEnable(GL_DEPTH_TEST);
 }
 
-void GLWidget_3D::setVertices(const Faces3d& Faces, const FoldLine3d& _FoldLineVertices, const Ruling3d& _Vl,const Ruling3d& _Vr){
+void GLWidget_3D::setVertices(const Faces3d& Faces, const Ruling3d& _Vl){
     std::vector<glm::f64vec3> vertices, centers;
     drawdist = 0.0;
     Vertices.clear();
@@ -37,8 +37,12 @@ void GLWidget_3D::setVertices(const Faces3d& Faces, const FoldLine3d& _FoldLineV
     glm::f64mat4x4 Scale = glm::scale(glm::f64vec3{0.1, 0.1, 0.1});
     std::vector<std::array<glm::f64vec3, 3>> trimesh;
     FoldLineVertices.clear();
-    for(auto&h: _FoldLineVertices)FoldLineVertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(h->vertex->p3,1)));
 
+    Vl.clear();
+    for(auto&v: _Vl){
+        std::array<glm::f64vec3, 2> tmpV{glm::f64vec3(Scale * Mirror * glm::f64vec4(v[0],1)), glm::f64vec3(Scale * Mirror * glm::f64vec4(v[1],1))};
+        Vl.push_back(tmpV);
+    }
     TriMeshs.clear();
     double Area = 0.0; center = glm::f64vec3{0,0,0};
     for(auto&f: Faces){
@@ -134,6 +138,24 @@ void GLWidget_3D::paintGL(){
     glBegin(GL_POINT);
     glVertex3d(center.x, center.y, center.z);
     glEnd();
+
+    double ss = Vl.size();
+    double ns = 0.0;
+    for(auto&v: Vl){
+        ns += 1.0/ss;
+        glColor3d(0,0, ns);
+        glBegin(GL_LINES);
+        glVertex3d(v[0].x, v[0].y, v[0].z);
+        glVertex3d(v[1].x, v[1].y, v[1].z);
+        glEnd();
+    }
+
+    //glColor3d(0,1,0);
+    //glLineWidth(3);
+    //glBegin(GL_LINE_STRIP);
+    //for(auto&v: Vl){
+    //    glVertex3d(v[0].x, v[0].y, v[0].z);
+    //}glEnd();
 
     /*
     glColor3d(0,0,1);
