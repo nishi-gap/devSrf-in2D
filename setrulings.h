@@ -16,29 +16,17 @@
 
 constexpr glm::f64vec3 NullVec = glm::f64vec3{-1,-1,-1};
 
-class HalfEdge;
-class Model;
-class Face;
-class ruling;
-class OUTLINE;
 
+//class ruling;
+class OUTLINE;
+class Vertex;
+class HalfEdge;
+class Face;
 enum class EdgeType;
 enum class CurveType;
 
 
-class Vertex{
-public:
-    glm::f64vec3 p;
-    glm::f64vec3 p3;
-    bool deformed;
-    Vertex(glm::f64vec3 _p);
-    Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3);
-    void addNewEdge(HalfEdge *he);
-    std::vector<HalfEdge*> halfedge;
-};
-
-
-
+/*
 class CrvPt_FL : public Vertex{
 public:
     double s;
@@ -54,6 +42,7 @@ public:
     double developability();
 
 };
+*/
 
 class crvpt{
 public:
@@ -63,6 +52,7 @@ public:
     crvpt( int _ind,glm::f64vec3 _pt = NullVec, int _color = 0);
 };
 
+/*
 class ruling
 {
     public:
@@ -76,36 +66,10 @@ class ruling
 
     ruling();
 };
+*/
 
-class HalfEdge{
-public:
-    Vertex *vertex;
-    Face *face;
-    HalfEdge *prev;
-    HalfEdge *next;
-    HalfEdge *pair;
 
-    HalfEdge(Vertex *v, EdgeType _type);
-    ruling *r;
-    EdgeType edgetype;
-    std::vector<HalfEdge*> Split(Vertex *v, std::vector<HalfEdge*>& Edges);
-private:
 
-};
-
-class Face{
-public:
-    int edgeNum();
-    bool bend;
-    //double Gradation;//範囲-255 ~ 255
-    bool hasGradPt;
-    //std::vector<ruling*> rulings;
-    HalfEdge* halfedge;
-    Face(HalfEdge *_halfedge);
-    bool IsPointInFace(glm::f64vec3 p);
-    glm::f64vec3 getNormalVec();
-    double sgndist(glm::f64vec3 p);
-};
 
 class CRV{
 public:
@@ -120,9 +84,9 @@ public:
     void Arc(int crvPtNum);//制御点 0,3,...: 原点. 1,4,...: 始点. 2,5,...: 終点
     void ArcRulings(OUTLINE *outline, int DivSize);
 
-    void addCtrlPt(QPointF p);
+    //void addCtrlPt(QPointF p);
     void eraseCtrlPt(int curveDimention, int crvPtNum);
-    void movePt(glm::f64vec3 p, int ind);
+    //void movePt(glm::f64vec3 p, int ind);
     int movePtIndex(glm::f64vec3& p, double& dist);
     void ClearPt();
     void InsertControlPoint2(glm::f64vec3& p);
@@ -133,7 +97,7 @@ public:
     void setCurveType(CurveType n);
     std::vector<glm::f64vec3> ControllPoints;
     std::vector<crvpt> CurvePoints;
-    std::vector<ruling*> Rulings;//偶数番目 ruling　奇数番目 グラデーションの多角形に使用
+    //std::vector<ruling*> Rulings;//偶数番目 ruling　奇数番目 グラデーションの多角形に使用
     //std::vector<meshline*> meshLines;
     glm::f64vec3 InsertPoint;
     bool isempty;
@@ -183,13 +147,13 @@ private:
     Face *face;
 };
 
-void CrossDetection(Face *f, CRV *crvs);
+//void CrossDetection(Face *f, CRV *crvs);
 
 
 std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, HalfEdge *line, int dim);
 std::vector<glm::f64vec3> ConvertDistBasedBezier(std::vector<glm::f64vec3>& CtrlPts, HalfEdge *line);
 
-std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot, double& CurveLen, bool is3d = true, int dim = 3, int t_type = 2);
+//std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot, double& CurveLen, bool is3d = true, int dim = 3, int t_type = 2);
 
 
 #endif // SETRULINGS_H

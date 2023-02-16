@@ -67,7 +67,7 @@ bool FoldLine::ChangeColor(OUTLINE *outline, int val, int dim){
 bool FoldLine::setCurve(int dim){
     using namespace MathTool;
     int crvPtNum = CurvePts.size();
-    if(type == PaintTool::FoldLine_line || type == PaintTool::FoldLine_test){
+    if(type == PaintTool::FoldLine_line){
         if(CtrlPts.size() < 2)return false;
         while(CtrlPts.size() != 2){
             CtrlPts.erase(CtrlPts.end() - 1);
@@ -262,14 +262,7 @@ inline double FoldLine::rad_2d(double k, double tau, double a, double da){
 
 bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, const std::vector<HalfEdge*>& edge_outline, int dim, int t_type){
     using namespace MathTool;
-    auto setface = [](HalfEdge *he, Face *f){
-        HalfEdge *h = he;
-        f->halfedge = he;
-       do{
-            h->face = f;
-            h = h->next;
-        }while(he != h);
-    };
+    /*
     auto VectorDigAlign = [](glm::f64vec3& v, int dig = 13){
         glm::f64vec3 vi = glm::f64vec3{(int)v.x, (int)v.y, (int)v.z};
         glm::f64vec3 vf = v - vi;
@@ -500,9 +493,8 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
             Edges.push_back(h1); Edges.push_back(h2);
 
             Face *fn = new Face(h2);
-            setface(h1,f);
-            setface(h2,fn);
-
+            f->ReConnect(h1);
+            fn->ReConnect(h2);
             Faces_new.push_back(fn);
             FoldingCurve.push_back(h1);
             if(f == Faces.back())FoldingCurve.push_back(h2);
@@ -511,6 +503,45 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
     }
 
     Faces.insert(Faces.end(), Faces_new.begin(), Faces_new.end()); // 連結
+    return true;
+    */
+}
+
+bool FoldLine::SplitFace4DebugAAAMethod(glm::f64vec3& NewPoint, std::vector<Face*> &faces, std::vector<HalfEdge*>& edges){
+    CtrlPts.push_back(NewPoint);
+    if(type != PaintTool::FoldLine_test || (int)CtrlPts.size() % 2 == 1 || CtrlPts.empty() || faces.empty())return false;
+    int newLineIndex = (int)CtrlPts.size()/2;
+    glm::f64vec3 p = CtrlPts[2 * (newLineIndex - 1)], q = CtrlPts[2 * (newLineIndex - 1) + 1];
+    glm::f64vec3 CrossPoint;
+
+    int faceSize = faces.size();
+    for(int i = 0; i < faceSize; i++){
+        Face *f = faces[i];
+        std::vector<HalfEdge*> _NewEdges;
+        for(auto&e: edges){
+            bool _hasCrossPoint = e->hasCrossPoint(p,q, CrossPoint, false);
+            if(_hasCrossPoint){
+                auto InsertedEdges = e->Split(new Vertex(CrossPoint), edges);
+                _NewEdges.push_back(InsertedEdges[0]);
+            }
+        }
+        if(_NewEdges.size() == 2){
+            HalfEdge *h1 = new HalfEdge(_NewEdges[0]->vertex, EdgeType::r);
+            HalfEdge *h2 = new HalfEdge(_NewEdges[1]->vertex, EdgeType::r);
+            //ruling *r = new ruling(_NewEdges[0]->vertex, _NewEdges[1]->vertex);
+            //h1->r = r; h2->r = r;
+            h1->pair = h2; h2->pair = h1;
+            _NewEdges[1]->prev->next = h2; _NewEdges[0]->prev->next = h1;
+            h1->prev = _NewEdges[0]->prev; h2->prev = _NewEdges[1]->prev;
+            h1->next = _NewEdges[1]; h2->next = _NewEdges[0];
+
+            Face *fn = new Face(h2);
+            f->ReConnect(h1);
+            fn->ReConnect(h2);
+            faces.push_back(fn); edges.push_back(h1); edges.push_back(h2);
+        }
+    }
+
     return true;
 }
 
@@ -683,7 +714,7 @@ void FoldLine::diff(double t, std::vector<double>& Knot, std::vector<glm::f64vec
     auto dr2 = [](double t, double a, double b, double c){return 2 * ((t-a) + (t-b) + (t-c));};
     auto dr3 = [](){return 6.0;};
     if(index == 0) t += eps;
-    else if(index == (int)T_crs.size() - 1) t -=  3.0*eps;
+    //else if(index == (int)T_crs.size() - 1) t -=  3.0*eps;
     dP.assign(n_times, glm::f64vec3{0,0,0});
     if(false){
         std::vector<double>a;
@@ -721,8 +752,6 @@ HalfEdge* optimizer::getEdge(Vertex* start, Vertex* end, const std::vector<Face*
     }
     return nullptr;
 }
-
-
 
 
 double FoldLine::AngleIn2Edges(HalfEdge *p, HalfEdge *p2, bool Is3d){

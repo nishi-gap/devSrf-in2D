@@ -62,6 +62,7 @@ public slots:
     void SetHandleCrv(Btn4Crv *btn, QMouseEvent *e);
 
     //fold line
+    void moveCtrlPts_fl();
     void addFoldLine_l();
     void addFoldLine_arc();
     void addFoldLine_bezier();

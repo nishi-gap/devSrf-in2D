@@ -18,7 +18,7 @@
 typedef std::vector<std::array<glm::f64vec3, 2>> Ruling3d;
 typedef std::vector<Face*> Faces3d;
 typedef std::vector<glm::f64vec3> Curve3d;
-typedef std::vector<CrvPt_FL> CrvFL3d;
+//typedef std::vector<CrvPt_FL> CrvFL3d;
 typedef std::vector<HalfEdge*> FoldLine3d;
 
 enum class ArcBallMode{

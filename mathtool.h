@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <setrulings.h>
 #include <numbers>
+
 enum class EdgeType{
     ol,//outline
     r,//ruling(from curve line)
@@ -27,6 +28,7 @@ enum class CurveType{
     bsp3,
     line,
     arc,
+    DebugTest,
 };
 
 enum class PaintTool{
@@ -61,6 +63,7 @@ enum class PaintTool{
     FoldLine_arc,
     FoldLine_test,
     FoldlineColor,
+    FoldLine_move,
 
 };
 
@@ -101,7 +104,93 @@ glm::f64vec3 ProjectionVector(glm::f64vec3 v, glm::f64vec3 n);
 
 }
 
+class HalfEdge;
+class Model;
+class Face;
 
+class Vertex{
+public:
+    glm::f64vec3 p;
+    glm::f64vec3 p3;
+    bool deformed;
+    Vertex(glm::f64vec3 _p);
+    Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3);
+    void addNewEdge(HalfEdge *he);
+    std::vector<HalfEdge*> halfedge;
+};
 
+class HalfEdge{
+public:
+    double color;
+    int IsCrossed;
+    Vertex *vertex;
+    Face *face;
+    HalfEdge *prev;
+    HalfEdge *next;
+    HalfEdge *pair;
+
+    HalfEdge(Vertex *v, EdgeType _type);
+    //ruling *r;
+    EdgeType edgetype;
+    std::vector<HalfEdge*> Split(Vertex *v, std::vector<HalfEdge*>& Edges);
+    bool hasCrossPoint(glm::f64vec3 p, glm::f64vec3 q, glm::f64vec3& CrossPoint, bool Is3d = true);
+private:
+
+};
+
+class Face{
+public:
+    int edgeNum();
+    bool bend;
+    bool hasGradPt;
+    HalfEdge* halfedge;
+    Face(HalfEdge *_halfedge);
+    bool IsPointInFace(glm::f64vec3 p);
+    glm::f64vec3 getNormalVec();
+    double sgndist(glm::f64vec3 p);
+    void ReConnect(HalfEdge *he);
+};
+
+class BaseCRV{
+public:
+    std::vector<glm::f64vec3> CtrlPts;
+    std::vector<glm::f64vec3> CurvePts;
+    bool isempty;
+    BaseCRV(PaintTool _type);
+    bool addCtrlPt(glm::f64vec3 p, int dim);
+    int movePtIndex(glm::f64vec3 p);
+    bool moveCtrlPt(glm::f64vec3 p, int moveIndex, int dim);
+    bool deleteCtrlPt(glm::f64vec3 p, int dim);
+    bool deleteCurve();
+    bool modifyRulingVector();
+protected:
+    bool setCurve(int dim);
+    bool updateCurve(int dim);
+    PaintTool type;
+    virtual void Arc();
+    void Line();
+};
+
+class SmoothCRV: BaseCRV{
+public:
+    SmoothCRV(PaintTool _type, int _DivSize): BaseCRV(_type), DivSize(_DivSize){}
+
+    glm::f64vec3 InsertPoint;
+    void InsertCtrlPt(glm::f64vec3& p);
+    void SetNewPoint();
+    bool setPoint(std::vector<HalfEdge*>&outline, glm::f64vec3 N, glm::f64vec3& cp, std::vector<glm::f64vec3>& P);
+    bool setRulingVector(std::vector<HalfEdge*>& SurfaceEdge, int dim);
+    bool updateRulingVector(std::vector<HalfEdge*>& SurfaceEdge, int dim);
+
+    std::vector<HalfEdge*>rulings;
+    std::vector<Vertex*> Vertices;
+private:
+    int InsertPointSegment;
+    int DivSize;
+};
+
+class FoldCRV: BaseCRV{
+
+};
 
 #endif // MATHTOOL_H

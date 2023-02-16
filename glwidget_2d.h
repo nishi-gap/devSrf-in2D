@@ -44,6 +44,10 @@ public:
     std::vector<std::array<glm::f64vec3, 2>> NewRuling, NewRuling2d;
     std::vector<bool> RulingColor;
     int DivSize;
+
+    //debug for curved folding
+    bool IsStopAtFF = false, IsStopAtEq = false, IsStopAtCon = false, IsStop4Debug = false;;
+    double angle = 0.0;
 protected:
     void initializeGL();
     void paintGL();
@@ -93,7 +97,12 @@ public slots:
 
     //FoldLine
     void changeFoldType(PaintTool state);
-    void changeBetaValue(double val);
+
+    void changeBetaValue(int val);
+    void changeStopAtFF(bool state);
+    void changeStopAtCon(bool state);
+    void changeStopAtEq(bool state);
+    void Start4Debug_CF();
 
     //Line Width
     void receiveNewLineWidth(double d);
@@ -102,8 +111,6 @@ public slots:
 private:
 
     std::vector<glm::f64vec3> tmp_c;
-    std::vector<CrvPt_FL> tmp_cp;
-
     void draw();
 
     int SelectedCurveIndex; //-1: 未参照
@@ -116,7 +123,7 @@ private:
     int maxDivSize;
     double standardDist;
 
-    int referencedRuling(QPointF p);
+    //int referencedRuling(QPointF p);
     void addPoints_intplation(QMouseEvent *e, QPointF& p);
     HalfEdge *assignment_refHE();
     std::vector<glm::f64vec2> CurvePath;

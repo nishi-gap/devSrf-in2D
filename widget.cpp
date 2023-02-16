@@ -74,10 +74,16 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this, &MainWindow::signalFLtype, ui->glWid2dim, &GLWidget_2D::changeFoldType);
     connect(ui->glWid2dim, &GLWidget_2D::signalAddRulings_FL, this, &MainWindow::fold_FL);
     connect(ui->color_FL, &QPushButton::clicked, this, &MainWindow::color_FL);  
+    connect(ui->move_ctrl_pt_fl, &QPushButton::clicked, this, &MainWindow::moveCtrlPts_fl);
 
+    //fold line debug
     connect(ui->addFL_test, &QPushButton::clicked, this, &MainWindow::addFoldLine_test);
-    connect(ui->angleA, &QDoubleSpinBox::valueChanged, ui->glWid2dim, &GLWidget_2D::changeBetaValue);
+    connect(ui->angleA, &QSlider::valueChanged, ui->glWid2dim, &GLWidget_2D::changeBetaValue);
     connect(ui->glWid2dim, &GLWidget_2D::getAlphaBeta, this, &MainWindow::sendAlphaBeta);
+    connect(ui->startButton, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::Start4Debug_CF);
+    connect(ui->stopAtCon, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::changeStopAtCon);
+    connect(ui->stopAtEq, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::changeStopAtEq);
+    connect(ui->stopAtFF,&QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::changeStopAtFF);
 
     connect(ui->DebugWindow, &QPushButton::clicked,ui->glWid2dim,&GLWidget_2D::OpenDebugWindwow);
     connect(ui->SaveButton, &QPushButton::clicked,this, &MainWindow::exportobj);
@@ -103,27 +109,17 @@ void MainWindow::Initialize(){
     update();
 }
 
-void MainWindow::addFoldLine_l(){
-    emit signalFLtype(PaintTool::FoldLine_line);
-}
-void MainWindow::addFoldLine_arc(){
-    emit signalFLtype(PaintTool::FoldLine_arc);
-}
-void MainWindow::addFoldLine_bezier(){
-    emit signalFLtype(PaintTool::FoldLine_bezier);
-}
-
-void MainWindow::addFoldLine_test(){
-    emit signalFLtype(PaintTool::FoldLine_test);
-}
-
-void MainWindow::color_FL(){emit signalFLtype(PaintTool::FoldlineColor);}
+void MainWindow::addFoldLine_l(){emit signalFLtype(PaintTool::FoldLine_line);}
+void MainWindow::addFoldLine_arc(){emit signalFLtype(PaintTool::FoldLine_arc);}
+void MainWindow::addFoldLine_bezier(){emit signalFLtype(PaintTool::FoldLine_bezier);}
+void MainWindow::addFoldLine_test(){emit signalFLtype(PaintTool::FoldLine_test);}
+void MainWindow::moveCtrlPts_fl(){emit signalFLtype(PaintTool::FoldLine_test);}
+void MainWindow::color_FL(){emit signalFLtype(PaintTool::FoldLine_move);}
 
 void MainWindow::sendAlphaBeta(double&_alpha, int& _beta, int& _beta2){
     _alpha = ui->angleA->value();
-    _beta = ui->planeBeta->value();
-    _beta2 = ui->planeBeta_2->value();
 }
+
 
 void MainWindow::changeLineWidthFromSlider(int n){
     double d = (double)n/10.;

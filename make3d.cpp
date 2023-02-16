@@ -176,7 +176,7 @@ void Model::deform(){
         v1 = Pos->pair->vertex->p;
         v2 = Pos->vertex->p;
         glm::f64vec3 axis = glm::normalize(v2 - v1);
-        double phi = he->r->Gradation * M_PI/255.0;
+        double phi = he->color * std::numbers::pi/255.0;
         R = glm::rotate(phi, axis);
         do{
             T = glm::translate(he->vertex->p - v1);
@@ -319,7 +319,7 @@ void Model::LinearInterPolation(std::vector<HalfEdge*>& path){
         len += glm::distance(center, befcenter);
         befcenter = center;
     }
-    double r = (GradationPoints[1]->r->Gradation - GradationPoints[0]->r->Gradation)/len;
+    double r = (GradationPoints[1]->color - GradationPoints[0]->color)/len;
     befcenter = glm::f64vec3{-1,-1,-1};
     HalfEdge *bef = nullptr;
     for(auto&l : path){
@@ -329,7 +329,7 @@ void Model::LinearInterPolation(std::vector<HalfEdge*>& path){
             continue;
         }
         center = (l->vertex->p + l->next->vertex->p)/2.0;
-        l->r->Gradation = r * glm::distance(center, befcenter) + bef->r->Gradation;
+        l->color = r * glm::distance(center, befcenter) + bef->color;
         bef = l;
         befcenter = center;
     }
@@ -345,7 +345,7 @@ void Model::SplineInterPolation(std::vector<HalfEdge*>& path, std::vector<glm::f
     std::vector<double>h(N);
     for(int i = 1; i < N + 1; i++)h[i - 1] = glm::distance(getCenter(GradationPoints[i]),getCenter(GradationPoints[i - 1]));
     for(int i = 1; i < N; i++){
-        double a = (h[i] != 0) ? (GradationPoints[i + 1]->r->Gradation - GradationPoints[i]->r->Gradation)/h[i] : 0, b = (h[i - 1] != 0) ? (GradationPoints[i]->r->Gradation - GradationPoints[i - 1]->r->Gradation)/h[i - 1]: 0;
+        double a = (h[i] != 0) ? (GradationPoints[i + 1]->color - GradationPoints[i]->color)/h[i] : 0, b = (h[i - 1] != 0) ? (GradationPoints[i]->color - GradationPoints[i - 1]->color)/h[i - 1]: 0;
         v(i - 1) = 6 * (a - b);
     }
     Eigen::VectorXd u;
@@ -360,8 +360,8 @@ void Model::SplineInterPolation(std::vector<HalfEdge*>& path, std::vector<glm::f
         dx3 = glm::distance(getCenter(GradationPoints[1]), getCenter(GradationPoints[0]));
         if(abs(dx1) < FLT_EPSILON) u(1) = 0;
         else{
-            double a = (dx2 == 0) ? 0: (GradationPoints[2]->r->Gradation - GradationPoints[1]->r->Gradation)/dx2;
-            double b = (dx3 == 0) ? 0: (GradationPoints[1]->r->Gradation - GradationPoints[0]->r->Gradation)/dx3;
+            double a = (dx2 == 0) ? 0: (GradationPoints[2]->color - GradationPoints[1]->color)/dx2;
+            double b = (dx3 == 0) ? 0: (GradationPoints[1]->color - GradationPoints[0]->color)/dx3;
             u(1) = 3 * (a - b)/dx1;
         }
     }
@@ -401,12 +401,12 @@ void Model::SplineInterPolation(std::vector<HalfEdge*>& path, std::vector<glm::f
         a = (den != 0)? (u(i + 1) - u(i))/(6 * den) : 0;
         b = u(i)/2;
         c = - den * (2 * u(i) + u(i + 1))/6.0;
-        c += (den != 0)? (GradationPoints[i + 1]->r->Gradation - GradationPoints[i]->r->Gradation)/den : 0;
-        d = GradationPoints[i]->r->Gradation;
+        c += (den != 0)? (GradationPoints[i + 1]->color - GradationPoints[i]->color)/den : 0;
+        d = GradationPoints[i]->color;
         for(int k = cur + 1; k < next; k++){
             x =  glm::distance(getCenter(path[k]), befcenter);
             y = a * std::pow(x, 3) + b * std::pow(x, 2) + c * x + d;
-            path[k]->r->Gradation = y;
+            path[k]->color = y;
             CurvePath.push_back(glm::f64vec2{cnt++,y});
         }
     }
@@ -415,8 +415,8 @@ void Model::SplineInterPolation(std::vector<HalfEdge*>& path, std::vector<glm::f
 void Model::setGradationValue(int val, HalfEdge *refHE, int InterpolationType, std::vector<glm::f64vec2>& CurvePath){
     if(Faces.size() == 0 || std::find(Edges.begin(), Edges.end(), refHE) == Edges.end()){std::cout<<"no selected" << std::endl; return;}
     if(refHE->edgetype != EdgeType::r)return;
-    refHE->r->Gradation += val;
-    refHE->r->Gradation = (refHE->r->Gradation < -255)? -255 : (255 < refHE->r->Gradation)? 255 : refHE->r->Gradation;
+    refHE->color += val;
+    refHE->color = (refHE->color < -255)? -255 : (255 < refHE->color)? 255 : refHE->color;
 
     if(InterpolationType == 0){
         if(GradationPoints.size() == 0)GradationPoints.push_back(refHE);
@@ -499,9 +499,11 @@ void Model::ConnectEdge(HalfEdge *he){
 void Model::addRulings(){
     if(!outline->IsClosed())return;
     setOutline();
-    for(auto&c: crvs)CrossDetection(outline->getFace(), c);
+    std::cout << "need to fix in Model::addRulings and CrossDetection" << std::endl;
+    //for(auto&c: crvs)CrossDetection(outline->getFace(), c);
     CrossDection4AllCurve();
 
+    /*
     for(auto& c: crvs){
         if(c->isempty)continue;
         for(auto rl: c->Rulings){
@@ -518,6 +520,7 @@ void Model::addRulings(){
             vertices.push_back(std::get<1>(rl->r));
         }
     }
+    */
 }
 
 void Model::SelectCurve(QPointF pt){
@@ -720,19 +723,20 @@ bool Model::AddControlPoint_FL(glm::f64vec3& p, int event, int curveDimention){
 
 bool Model::CrossDection4AllCurve(){
     if(crvs.empty() || crvs[0]->isempty)return false;
+    std::cout << "need to modify Model::CrossDetection4AllCurve" << std::endl;return false;
     for(int i = 0; i < (int)crvs.size(); i++){
         CRV *c1 = crvs[i];
         if(c1->isempty)continue;
         for(int j = i + 1; j < (int)crvs.size(); j++){
             CRV *c2 = crvs[j];
             if(c2->isempty)continue;
-            for(auto& r1: c1->Rulings){
-                for(auto& r2: c2->Rulings){
-                    if(IsIntersect(std::get<0>(r1->r)->p, std::get<1>(r1->r)->p, std::get<0>(r2->r)->p, std::get<1>(r2->r)->p)){
-                        r2->IsCrossed = 1;
-                    }
-                }
-            }
+            //for(auto& r1: c1->Rulings){
+                //for(auto& r2: c2->Rulings){
+                    //if(IsIntersect(std::get<0>(r1->r)->p, std::get<1>(r1->r)->p, std::get<0>(r2->r)->p, std::get<1>(r2->r)->p)){
+                       // r2->IsCrossed = 1;
+                    //}
+                //}
+            //}
         }
     }
     return true;
@@ -745,7 +749,7 @@ std::vector<HalfEdge*> Model::makePath(){
     for(int i = 0; i < (int)GradationPoints.size() - 1; i++){
         Face *f = GradationPoints[i]->face;
         HalfEdge *he, *nextHE;
-        glm::f64vec3 nextPos = (std::get<0>(GradationPoints[i+1]->r->r)->p + std::get<1>(GradationPoints[i+1]->r->r)->p)/2.0;
+        glm::f64vec3 nextPos = (GradationPoints[i+1]->vertex->p + GradationPoints[i+1]->next->vertex->p)/2.0;
         do{
             he = f->halfedge;
             double dist = 1000;
@@ -763,7 +767,7 @@ std::vector<HalfEdge*> Model::makePath(){
             if(nextHE != nullptr && std::find(Edges.begin(), Edges.end(), nextHE) != Edges.end()){
                 bool haspath = false;
                 for(auto& he: path){
-                    if(he->r == nextHE->r){
+                    if(he == nextHE || he->pair == nextHE){
                         haspath = true;
                         break;
                     }
@@ -771,7 +775,7 @@ std::vector<HalfEdge*> Model::makePath(){
                 if(!haspath)path.push_back(nextHE);
             }
             f = nextHE->pair->face;
-        }while(nextHE->r != GradationPoints[i+1]->r);
+        }while(nextHE != GradationPoints[i+1] || nextHE->pair != GradationPoints[i+1]);
     }
     return path;
 }
