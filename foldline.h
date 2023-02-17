@@ -39,7 +39,7 @@ public:
     void applyAAAMethod(const std::vector<glm::f64vec3>& edge_outline, double a = 2.0*M_PI/3.0);
     void TestFoldingAAAM(double& a, std::vector<Vertex*>& _Vertices, std::vector<HalfEdge*>& _Edges);
 
-    bool SplitFace4DebugAAAMethod(glm::f64vec3& NewPoint, std::vector<Face*> &faces, std::vector<HalfEdge*>& edges);
+    bool SplitFace4DebugAAAMethod(glm::f64vec3& NewPoint, std::vector<Face*> &faces, std::vector<HalfEdge*>& edges, std::vector<Vertex*>& vertices);
 private:
     double color;
     bool setCurve(int dim);

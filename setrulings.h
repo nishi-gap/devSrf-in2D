@@ -72,7 +72,7 @@ public:
     ruling *r;
     EdgeType edgetype;
     std::vector<HalfEdge*> Split(Vertex *v, std::vector<HalfEdge*>& Edges);
-    bool hasCrossPoint(glm::f64vec3 p, glm::f64vec3 q, glm::f64vec3& CrossPoint, bool Is3d = true);
+    bool hasCrossPoint2d(glm::f64vec3 p, glm::f64vec3 q, glm::f64vec3& CrossPoint,  bool ConsiderEnd = false);
 private:
 
 };

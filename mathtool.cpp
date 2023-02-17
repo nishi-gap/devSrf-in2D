@@ -28,17 +28,19 @@ glm::f64vec3 getIntersectionPoint(glm::f64vec3& p1, glm::f64vec3& p2, glm::f64ve
     return glm::f64vec3{ t * p1.x + (1.0 - t) * p2.x, t * p1.y + (1.0 - t) * p2.y, 0};
 }
 
-double set3pt(glm::f64vec3& p1, glm::f64vec3& p2, glm::f64vec3& p3) {
-    return (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
-}
-
-bool IsIntersect(glm::f64vec3&p1, glm::f64vec3&p2, glm::f64vec3&p3, glm::f64vec3&p4){
+bool IsIntersect(glm::f64vec3&p1, glm::f64vec3&p2, glm::f64vec3&p3, glm::f64vec3&p4, bool ConsiderEnd){
+    auto set3pt = [](glm::f64vec3& p1, glm::f64vec3& p2, glm::f64vec3& p3) {
+        return (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
+    };
     double t1 = set3pt(p1, p2, p3);
     double t2 = set3pt(p1, p2, p4);
     double t3 = set3pt(p3, p4, p1);
     double t4 = set3pt(p3, p4, p2);
-
-    if (t1 * t2 < 0 && t3 * t4 < 0) return true;//交点を持つ
+    if(ConsiderEnd)
+    if (t1 * t2 <= 0 && t3 * t4 <= 0) return true;//交点を持つ
+    else{
+        if (t1 * t2 < 0 && t3 * t4 < 0) return true;//交点を持つ
+    }
     return false;
 }
 
@@ -189,7 +191,8 @@ double SignedArea(glm::f64vec3 a, glm::f64vec3 b, glm::f64vec3 p){
 
 bool is_point_on_line(glm::f64vec3& p, glm::f64vec3& lp1, glm::f64vec3& lp2){
     double ac = glm::distance(p, lp1), bc = glm::distance(p, lp2), lp = glm::distance(lp1, lp2);
-    if(abs(lp - ac - bc) < 1e-5) return true;
+    if(ac < 1e-9 || bc < 1e-9)return true;
+    if(abs(lp - ac - bc) < 1e-9) return true;
     return false;
 }
 

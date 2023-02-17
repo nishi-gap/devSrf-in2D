@@ -62,11 +62,11 @@ void GLWidget_3D::setVertices(const Faces3d& Faces, const Ruling3d& _Vl){
     for(auto&tri : TriMeshs){
         _center = (tri[2] + tri[1] + tri[0])/3.0;
         double area = glm::length(glm::cross(tri[2] - tri[0], tri[1] - tri[0]))/2.0;
-        center += _center * area;
+        //center += _center * area;
         Area += area;
     }
-    center /= Area;
-
+    //center /= Area;
+    center = glm::f64vec3{0,0,0};
     for(auto&f: Faces){
         HalfEdge *he = f->halfedge;
         do{

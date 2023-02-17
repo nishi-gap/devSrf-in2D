@@ -49,11 +49,9 @@ std::vector<HalfEdge*> HalfEdge::Split(Vertex *v, std::vector<HalfEdge*>& Edges)
     return res;
 }
 
-bool HalfEdge::hasCrossPoint(glm::f64vec3 p, glm::f64vec3 q, glm::f64vec3& CrossPoint, bool Is3d){
-    bool res;
-    if(Is3d) res = MathTool::IsIntersect(p,q, vertex->p3, next->vertex->p3);
-    else res = MathTool::IsIntersect(p,q, vertex->p, next->vertex->p);
-    if(res)CrossPoint = (Is3d)? MathTool::getIntersectionPoint(p,q, vertex->p3, next->vertex->p3): MathTool::getIntersectionPoint(p,q, vertex->p, next->vertex->p);
+bool HalfEdge::hasCrossPoint2d(glm::f64vec3 p, glm::f64vec3 q, glm::f64vec3& CrossPoint, bool ConsiderEnd){
+    bool res = MathTool::IsIntersect(p,q, vertex->p, next->vertex->p, ConsiderEnd);
+    if(res)CrossPoint = MathTool::getIntersectionPoint(p,q, vertex->p, next->vertex->p);
     return res;
 }
 

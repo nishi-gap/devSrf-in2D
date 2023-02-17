@@ -507,29 +507,53 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
     */
 }
 
-bool FoldLine::SplitFace4DebugAAAMethod(glm::f64vec3& NewPoint, std::vector<Face*> &faces, std::vector<HalfEdge*>& edges){
+bool FoldLine::SplitFace4DebugAAAMethod(glm::f64vec3& NewPoint, std::vector<Face*> &faces, std::vector<HalfEdge*>& edges, std::vector<Vertex*>& vertices){
     CtrlPts.push_back(NewPoint);
-    if(type != PaintTool::FoldLine_test || (int)CtrlPts.size() % 2 == 1 || CtrlPts.empty() || faces.empty())return false;
-    int newLineIndex = (int)CtrlPts.size()/2;
-    glm::f64vec3 p = CtrlPts[2 * (newLineIndex - 1)], q = CtrlPts[2 * (newLineIndex - 1) + 1];
-    glm::f64vec3 CrossPoint;
+    if(type != PaintTool::FoldLine_test || faces.empty())return false;
 
+    glm::f64vec3 CrossPoint;
     int faceSize = faces.size();
+    glm::f64vec3 p = NewPoint, q = glm::f64vec3{p.x, p.y + 1000, 0}; p.y -= 200;
     for(int i = 0; i < faceSize; i++){
         Face *f = faces[i];
         std::vector<HalfEdge*> _NewEdges;
+        std::vector<glm::f64vec3> CrossPoints;
+
         for(auto&e: edges){
-            bool _hasCrossPoint = e->hasCrossPoint(p,q, CrossPoint, false);
+            bool _hasCrossPoint = e->hasCrossPoint2d(p,q, CrossPoint, true);
             if(_hasCrossPoint){
-                auto InsertedEdges = e->Split(new Vertex(CrossPoint), edges);
-                _NewEdges.push_back(InsertedEdges[0]);
+                if(std::find(CrossPoints.begin(), CrossPoints.end(), CrossPoint) == CrossPoints.end())CrossPoints.push_back(CrossPoint);
+            }
+       }
+
+        while(!CrossPoints.empty()){
+            CrossPoint = CrossPoints.back();
+            CrossPoints.pop_back();
+
+            HalfEdge *EndPoint = nullptr;
+            for(auto&_e: edges){
+                if(glm::distance(_e->vertex->p, CrossPoint) < 1e-5)EndPoint = _e;
+            }
+            if(EndPoint != nullptr){
+                _NewEdges.push_back(EndPoint);
+                continue;
+            }
+            for(auto&e: edges){
+                auto res = e->Split(new Vertex(CrossPoint), edges);
+                if(!res.empty()){
+                    double t = glm::length(res[0]->prev->vertex->p - res[0]->vertex->p)/glm::length(res[0]->prev->vertex->p - res[0]->next->vertex->p);
+                    res[0]->vertex->p3 = res[0]->prev->vertex->p3 + t * (res[0]->next->vertex->p3 - res[0]->prev->vertex->p3);
+                    _NewEdges.push_back(res[0]);
+                    break;
+                }
             }
         }
+
         if(_NewEdges.size() == 2){
             HalfEdge *h1 = new HalfEdge(_NewEdges[0]->vertex, EdgeType::r);
             HalfEdge *h2 = new HalfEdge(_NewEdges[1]->vertex, EdgeType::r);
-            //ruling *r = new ruling(_NewEdges[0]->vertex, _NewEdges[1]->vertex);
-            //h1->r = r; h2->r = r;
+            ruling *r = new ruling(_NewEdges[0]->vertex, _NewEdges[1]->vertex);
+            h1->r = r; h2->r = r;
             h1->pair = h2; h2->pair = h1;
             _NewEdges[1]->prev->next = h2; _NewEdges[0]->prev->next = h1;
             h1->prev = _NewEdges[0]->prev; h2->prev = _NewEdges[1]->prev;
@@ -539,10 +563,12 @@ bool FoldLine::SplitFace4DebugAAAMethod(glm::f64vec3& NewPoint, std::vector<Face
             f->ReConnect(h1);
             fn->ReConnect(h2);
             faces.push_back(fn); edges.push_back(h1); edges.push_back(h2);
+            vertices.push_back(_NewEdges[0]->vertex);vertices.push_back(_NewEdges[1]->vertex);
+            return true;
         }
     }
 
-    return true;
+    return false;
 }
 
 void FoldLine::applyAAAMethod(const std::vector<glm::f64vec3>& edges_ol, double a){
