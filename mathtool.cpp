@@ -355,10 +355,10 @@ double AngleIn2Edges(HalfEdge *p, HalfEdge *p2, bool Is3d){
 }
 
 BaseCRV::BaseCRV(PaintTool _type){
-    isempty = true;
     type = _type;
     CtrlPts.clear();
     CurvePts.clear();
+    InsertPointSegment = -1;
 }
 
 bool BaseCRV::addCtrlPt(glm::f64vec3 p, int dim){
@@ -397,6 +397,10 @@ bool BaseCRV::moveCtrlPt(glm::f64vec3 p, int moveIndex, int dim){
     CtrlPts[moveIndex] = p;
     bool res = updateCurve(dim);
     return res;
+}
+
+bool BaseCRV::moveCurve(){
+
 }
 
 bool BaseCRV::setCurve(int dim){
@@ -460,7 +464,7 @@ void BaseCRV::Line(){
     return;
 }
 
-void SmoothCRV::InsertCtrlPt(glm::f64vec3& p){
+void BaseCRV::InsertCtrlPt(glm::f64vec3& p){
     int ind;
 
     int InsertType;//-1：どこにものっかっていない　0：曲線上　1：制御点を結んだ線上
@@ -523,9 +527,11 @@ void SmoothCRV::InsertCtrlPt(glm::f64vec3& p){
     }
     return;
 }
-void SmoothCRV::SetNewPoint(){
+
+void BaseCRV::SetNewPoint(int dim){
     if(InsertPointSegment == -1)return;
     CtrlPts.insert(CtrlPts.begin() + InsertPointSegment + 1, InsertPoint);
+    updateCurve(dim);
 }
 
 bool SmoothCRV::setPoint(std::vector<HalfEdge*>&outline, glm::f64vec3 N, glm::f64vec3& cp, std::vector<glm::f64vec3>& P){
@@ -568,8 +574,8 @@ bool SmoothCRV::setPoint(std::vector<HalfEdge*>&outline, glm::f64vec3 N, glm::f6
 
 bool SmoothCRV::setRulingVector(std::vector<HalfEdge*>& SurfaceEdge, int dim){
     if((type == PaintTool::Bspline_r && (int)CtrlPts.size() <= dim) || (type == PaintTool::Arc_r && (int)CtrlPts.size() < 3) || (type == PaintTool::Line_r && (int)CtrlPts.size() < 2)) return false;
-    rulings.resize(DivSize - 1);
-    Vertices.resize(2*(DivSize-1));
+    rulings.clear();
+    Vertices.clear();
     double l = 1000;//適当に大きな値
     std::vector<glm::f64vec3> crossPoint;
     std::vector<std::vector<glm::f64vec3>> CrossPoints;
@@ -583,12 +589,11 @@ bool SmoothCRV::setRulingVector(std::vector<HalfEdge*>& SurfaceEdge, int dim){
             for(int j = 0; j < knotSize; j++)Knot[j] = (double)j/(double)knotSize;
             for(int j = 0;j< dim + 1;j++){ Knot[j] = 0; Knot[knotSize - 1 - j] = 1;}
             int i = 0;
-            int sind = -1, eind = (int)CurvePts.size();
-            t = Knot[dim] + (Knot[(int)CtrlPts.size()] - Knot[dim]) * (1.0 / (double)CurveSize);
+            t = Knot[dim] + (Knot[(int)CtrlPts.size()] - Knot[dim]) * (1.0 / (double)CurvePts.size());
             while(i < (int)CurvePts.size()){
                 glm::f64vec3 vec, vec2;
-                vec = bspline(CtrlPts, t  + FLT_EPSILON,dim, Knot);
-                vec2 = bspline(CtrlPts,t  - FLT_EPSILON,dim, Knot);
+                vec = MathTool::bspline(CtrlPts, t  + FLT_EPSILON,dim, Knot);
+                vec2 = MathTool::bspline(CtrlPts,t  - FLT_EPSILON,dim, Knot);
                 V = (vec - vec2)/(2.0 * FLT_EPSILON);
                 V = glm::normalize(V);
                 N = l * glm::f64vec3{ -V.y, V.x, 0};
@@ -598,7 +603,7 @@ bool SmoothCRV::setRulingVector(std::vector<HalfEdge*>& SurfaceEdge, int dim){
                 if(sind == -1 && IsIntersected)sind = i;
                 if(!IsIntersected && sind != -1)eind = std::min(eind, i);
                 i++;
-                t += (Knot[(int)ControllPoints.size()] - Knot[curveDimention]) * (1.0/ (double)crvPtNum);
+                t += (Knot[(int)CtrlPts.size()] - Knot[dim]) * (1.0/ (double)CurvePts.size());
             }
     }else if(type == PaintTool::Arc_r){
         for(int i = 0; i < (int)CurvePts.size(); i++){
@@ -612,8 +617,8 @@ bool SmoothCRV::setRulingVector(std::vector<HalfEdge*>& SurfaceEdge, int dim){
     }else if(type == PaintTool::Line_r){
           V = glm::normalize(CtrlPts[1] - CtrlPts[0]);
           glm::f64vec3 N = l * glm::f64vec3{-V.y, V.x, 0};
-          int sind = -1, eind = curveNum - 1;
-          for(int i = 0; i < CurveSize; i++){
+
+          for(int i = 0; i < (int)CurvePts.size(); i++){
               bool IsIntersected = setPoint(SurfaceEdge, N, CurvePts[i], crossPoint);
               CrossPoints.push_back(crossPoint);
               if(sind == -1 && IsIntersected)sind = i;
@@ -629,9 +634,84 @@ bool SmoothCRV::setRulingVector(std::vector<HalfEdge*>& SurfaceEdge, int dim){
         rulings.push_back(h1); rulings.push_back(h2);
         n += (double)(eind - sind + 1)/(double)(DivSize - 1);
     }
-    isempty = false;
+    RulingCrossDetection();
 }
 
-bool SmoothCRV::updateRulingVector(const std::vector<HalfEdge*>& SurfaceEdge, int dim){
+bool SmoothCRV::updateRulingVector(std::vector<HalfEdge*>& SurfaceEdge, int dim){
+    if((type == PaintTool::Bspline_r && (int)CtrlPts.size() <= dim) || (type == PaintTool::Arc_r && (int)CtrlPts.size() < 3) || (type == PaintTool::Line_r && (int)CtrlPts.size() < 2)) return false;
+    double l = 1000;//適当に大きな値
+    std::vector<glm::f64vec3> crossPoint;
+    std::vector<std::vector<glm::f64vec3>> CrossPoints;
+    int sind = -1, eind = (int)CurvePts.size() - 1;
+    glm::f64vec3 V, N;
 
+    if(type == PaintTool::Bspline_r){
+            double t = 0.0;
+            int knotSize = (int)CtrlPts.size() + dim + 1;
+            std::vector<double>Knot(knotSize);
+            for(int j = 0; j < knotSize; j++)Knot[j] = (double)j/(double)knotSize;
+            for(int j = 0;j< dim + 1;j++){ Knot[j] = 0; Knot[knotSize - 1 - j] = 1;}
+            int i = 0;
+
+            t = Knot[dim] + (Knot[(int)CtrlPts.size()] - Knot[dim]) * (1.0 / (double)CurvePts.size());
+            while(i < (int)CurvePts.size()){
+                glm::f64vec3 vec, vec2;
+                vec = MathTool::bspline(CtrlPts, t  + FLT_EPSILON,dim, Knot);
+                vec2 = MathTool::bspline(CtrlPts,t  - FLT_EPSILON,dim, Knot);
+                V = (vec - vec2)/(2.0 * FLT_EPSILON);
+                V = glm::normalize(V);
+                N = l * glm::f64vec3{ -V.y, V.x, 0};
+                if (glm::dot(glm::normalize(N), glm::f64vec3{0,1,0}) < 0) N *= -1;
+                bool IsIntersected = setPoint(SurfaceEdge, N, CurvePts[i], crossPoint);
+                CrossPoints.push_back(crossPoint);
+                if(sind == -1 && IsIntersected)sind = i;
+                if(!IsIntersected && sind != -1)eind = std::min(eind, i);
+                i++;
+                t += (Knot[(int)CtrlPts.size()] - Knot[dim]) * (1.0/ (double)CurvePts.size());
+            }
+    }else if(type == PaintTool::Arc_r){
+        for(int i = 0; i < (int)CurvePts.size(); i++){
+            if(i == 0)V = glm::normalize(CurvePts[1] - CurvePts[0]);
+            else V = glm::normalize(CurvePts[i] - CurvePts[i - 1]);
+            N = l * glm::f64vec3{-V.y, V.x, 0};
+            bool IsIntersected = setPoint(SurfaceEdge, N, CurvePts[i], crossPoint);
+            CrossPoints.push_back(crossPoint);
+            if(sind == -1 && IsIntersected)sind = i;
+            if(!IsIntersected && sind != -1)eind = std::min(eind, i);
+        }
+    }else if(type == PaintTool::Line_r){
+          V = glm::normalize(CtrlPts[1] - CtrlPts[0]);
+          N = l * glm::f64vec3{-V.y, V.x, 0};
+          for(int i = 0; i < (int)CurvePts.size(); i++){
+              bool IsIntersected = setPoint(SurfaceEdge, N, CurvePts[i], crossPoint);
+              CrossPoints.push_back(crossPoint);
+              if(sind == -1 && IsIntersected)sind = i;
+              if(!IsIntersected && sind != -1)eind = std::min(eind, i);
+          }
+    }
+
+    double n = double(sind);
+    int ind = 0;
+    while(n < eind){
+        if(glm::distance(CrossPoints[floor(n)][0], rulings[ind]->vertex->p) < glm::distance(CrossPoints[floor(n)][1], rulings[ind]->vertex->p)){
+            rulings[ind]->vertex->p = CrossPoints[floor(n)][0]; rulings[ind]->pair->vertex->p = CrossPoints[floor(n)][1];
+        }else{rulings[ind]->vertex->p = CrossPoints[floor(n)][1]; rulings[ind]->pair->vertex->p = CrossPoints[floor(n)][0]; }
+        ind++;
+        n += (double)(eind - sind + 1)/(double)(DivSize - 1);
+    }
+    RulingCrossDetection();
 }
+
+void SmoothCRV::RulingCrossDetection(){
+    glm::f64vec3 tmp;
+    for(auto&r: rulings)r->IsCrossed = -1;
+    if(type != PaintTool::Line_r){
+        for(int i = 0; i < (int)rulings.size(); i+=2){
+            for(int j = i+2; j < (int)rulings.size(); j+=2){
+                bool hasCrossPoint = rulings[i]->hasCrossPoint(rulings[j]->vertex->p, rulings[j]->pair->vertex->p, tmp, false);
+                if(hasCrossPoint){rulings[i]->IsCrossed = rulings[j]->IsCrossed = 0;}
+            }
+        }
+    }
+}
+

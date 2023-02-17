@@ -39,7 +39,8 @@ public:
     std::vector<HalfEdge*> Edges;
     OUTLINE *outline;
     std::vector<std::vector<Vertex*>> ol_vertices;
-    std::vector<CRV*> crvs;
+    //std::vector<CRV*> crvs;
+    std::vector<SmoothCRV*> crvs_sm;
     std::vector<FoldLine*> FL;
     glm::f64vec3 Axis4Const[2];
     Vertex* Connect2Vertices[2];
@@ -72,11 +73,11 @@ public:
     //Smooth Surface
     void SelectCurve(QPointF pt);
     void AddControlPoint(glm::f64vec3& p, int curveDimention, int DivSize);
-    int AddNewCurve(CurveType curveType, int DivSize);
+    int AddNewCurve(PaintTool _type, int DivSize);
     void DeleteControlPoint(QPointF pt, int curveDimention, int DivSize);
     int DeleteCurve();
     void Check4Param(int curveDimention, std::vector<int>&deleteIndex);
-    void MoveCurvePoint(glm::f64vec3& p, int MoveIndex, int ptInd, int curveDimention, int DivSize);
+    void MoveControlPoint(glm::f64vec3& p, int MoveIndex, int ptInd, int curveDimention, int DivSize);
     bool CrossDection4AllCurve();
     int IsSelectedCurve();
     int getSelectedCurveIndex(QPointF pt);

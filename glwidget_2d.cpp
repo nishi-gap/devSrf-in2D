@@ -46,7 +46,7 @@ void GLWidget_2D::AddCurve(){
     CurveType _type;
     emit signalCurveType(_type);
     model->Check4Param(curveDimention, deleteIndex);
-    if(model->crvs.empty()) SelectedCurveIndex = -1;
+    if(model->crvs_sm.empty()) SelectedCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     for(auto& c: CurveList){
         if(std::get<0>(c) == _type){
@@ -54,8 +54,8 @@ void GLWidget_2D::AddCurve(){
             curvetype = _type;
         }
     }
-
-    SelectedCurveIndex = model->AddNewCurve(curvetype, DivSize);
+    PaintTool type = (_type == CurveType::bsp3)? PaintTool::Bspline_r: (_type == CurveType::arc)?PaintTool::Arc_r: PaintTool::Line_r;
+    SelectedCurveIndex = model->AddNewCurve(type, DivSize);
     setMouseTracking(true);
     emit SendNewActiveCheckBox(PaintTool::AddCurve);
 }
@@ -66,7 +66,7 @@ void GLWidget_2D::InsertNewPoint(){
     setMouseTracking(true);
     std::vector<int>deleteIndex;
     model->Check4Param(curveDimention, deleteIndex);
-    if(model->crvs.empty()) SelectedCurveIndex = -1;
+    if(model->crvs_sm.empty()) SelectedCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     emit SendNewActiveCheckBox(PaintTool::InsertCtrlPt);
 }
@@ -76,7 +76,7 @@ void GLWidget_2D::MoveCurvePt(){
     drawtype = PaintTool::MoveCtrlPt;
     std::vector<int>deleteIndex;
     model->Check4Param(curveDimention, deleteIndex);
-    if(model->crvs.empty()) SelectedCurveIndex = -1;
+    if(model->crvs_sm.empty()) SelectedCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     SelectedCurveIndex = -1;
     setMouseTracking(true);
@@ -88,7 +88,7 @@ void GLWidget_2D::DrawOutlineRectangle(){
     drawtype = PaintTool::Rectangle_ol;
     std::vector<int>deleteIndex;
     model->Check4Param(curveDimention, deleteIndex);
-    if(model->crvs.empty()) SelectedCurveIndex = -1;
+    if(model->crvs_sm.empty()) SelectedCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     model->outline = new OUTLINE();
     model->outline->type = "Rectangle";
@@ -101,11 +101,11 @@ void GLWidget_2D::DrawOutlinePolygon(int state){
     drawtype = PaintTool::Polygon_ol;
     std::vector<int>deleteIndex;
     model->Check4Param(curveDimention, deleteIndex);
-    if(model->crvs.empty()) SelectedCurveIndex = -1;
+    if(model->crvs_sm.empty()) SelectedCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     model->outline = new OUTLINE();
     model->outline->type = "Polygon";
-    for(auto&c: model->crvs)c->isempty = true;
+
     emit getEdgeNum();
     emit SendNewActiveCheckBox(PaintTool::Polygon_ol);
     this->setMouseTracking(true);
@@ -116,11 +116,10 @@ void GLWidget_2D::DrawOutlinePolyline(int state){
     drawtype = PaintTool::Polyline_ol;
     std::vector<int>deleteIndex;
     model->Check4Param(curveDimention, deleteIndex);
-    if(model->crvs.empty()) SelectedCurveIndex = -1;
+    if(model->crvs_sm.empty()) SelectedCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     model->outline = new OUTLINE();
     model->outline->type = "Polyline";
-    for(auto&c: model->crvs)c->isempty = true;
     emit SendNewActiveCheckBox(PaintTool::Polyline_ol);
 }
 
@@ -128,7 +127,7 @@ void GLWidget_2D::MoveOutline(int state){
     if(state == 0)return; drawtype = PaintTool::Move_ol;
     std::vector<int>deleteIndex;
     model->Check4Param(curveDimention, deleteIndex);
-    if(model->crvs.empty()) SelectedCurveIndex = -1;
+    if(model->crvs_sm.empty()) SelectedCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     emit SendNewActiveCheckBox(PaintTool::Move_ol);
 }
@@ -137,7 +136,7 @@ void GLWidget_2D::EditOutlineVertex(int state){
     drawtype = PaintTool::EditVertex_ol;
     std::vector<int>deleteIndex;
     model->Check4Param(curveDimention, deleteIndex);
-    if(model->crvs.empty()) SelectedCurveIndex = -1;
+    if(model->crvs_sm.empty()) SelectedCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     emit SendNewActiveCheckBox(PaintTool::EditVertex_ol);
     update();
@@ -157,7 +156,7 @@ void GLWidget_2D::DeleteCurve(){
     drawtype = PaintTool::DeleteCurve;
     std::vector<int>deleteIndex;
     model->Check4Param(curveDimention, deleteIndex);
-    if(model->crvs.empty()) SelectedCurveIndex = -1;
+    if(model->crvs_sm.empty()) SelectedCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     setMouseTracking(true);
     emit SendNewActiveCheckBox(PaintTool::DeleteCurve);
@@ -205,19 +204,7 @@ void GLWidget_2D::recieveNewEdgeNum(int num){model->outline->VerticesNum = num; 
 
 void GLWidget_2D::ChangedDivSizeEdit(int n){
     this->DivSize = (n < 0)? DivSize: (maxDivSize < n)? maxDivSize: n;
-    if(SelectedCurveIndex == -1 || model->crvs.empty()) return;
-    if(curvetype == CurveType::bezier3){
-        model->crvs[SelectedCurveIndex]->Bezier(curveDimention, crvPtNum);
-        //if(model->outline->isClosed  && model->crv->CurvePoints[0].pt != glm::f64vec2{-1,-1})model->crv->BezierRulings(model->outline->vertices,DivSize,crvPtNum);
-    }
-    if(curvetype == CurveType::bsp3){
-        model->crvs[SelectedCurveIndex]->Bspline(curveDimention, crvPtNum);
-        if(model->outline->IsClosed() && model->crvs[SelectedCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1, -1})model->crvs[SelectedCurveIndex]->BsplineRulings(model->outline,DivSize,crvPtNum, curveDimention);
-    }
-    if(curvetype == CurveType::line){
-        model->crvs[SelectedCurveIndex]->Line();
-        if(model->outline->IsClosed() && model->crvs[SelectedCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1})model->crvs[SelectedCurveIndex]->LineRulings(model->outline,DivSize);
-    }
+    if(SelectedCurveIndex == -1 || model->crvs_sm.empty()) return;
 
     if(model->outline->IsClosed() && model->CrossDection4AllCurve()){
         model->addRulings();
@@ -232,7 +219,7 @@ void GLWidget_2D::changeSelectedCurve(int ind){SelectedCurveIndex = ind; drawtyp
 
 void GLWidget_2D::swapCrvsOnLayer(int n1, int n2){
     if(n1 == n2)return;
-    std::iter_swap(model->crvs.begin() + n1, model->crvs.begin() + n2);
+    std::iter_swap(model->crvs_sm.begin() + n1, model->crvs_sm.begin() + n2);
     if(SelectedCurveIndex == n1)SelectedCurveIndex = n2;
     else SelectedCurveIndex = n1;
     model->addRulings();
@@ -574,13 +561,13 @@ void GLWidget_2D::paintGL(){
     glLineWidth(1.0);
     //曲線の制御点
     if(drawtype != PaintTool::NewGradationMode){
-        for(int i = 0; i < (int)model->crvs.size(); i++){
+        for(int i = 0; i < (int)model->crvs_sm.size(); i++){
             if((i == model->getSelectedCurveIndex(mapFromGlobal(QCursor::pos()))) ||
                     ((drawtype == PaintTool::Bezier_r || drawtype == PaintTool::Bspline_r || drawtype == PaintTool::Line_r || drawtype == PaintTool::Arc_r)
                      && SelectedCurveIndex == i)
                     || drawtype == PaintTool::MoveCtrlPt || drawtype == PaintTool::InsertCtrlPt ||  drawtype == PaintTool::DeleteCtrlPt || drawtype == PaintTool::None){
                 //glPolygonOffset(0.f,1.f);
-                for (auto& c: model->crvs[i]->ControllPoints) {
+                for (auto& c: model->crvs_sm[i]->CtrlPts) {
                     glColor3d(1, 0, 0);
                     glPointSize(5.0f);
                     glBegin(GL_POINTS);
@@ -592,7 +579,7 @@ void GLWidget_2D::paintGL(){
                 glLineStipple(1 , 0xF0F0);
                 glBegin(GL_LINE_STRIP);
                 glColor3d(0.4, 0.4, 0.4);
-                for (auto& c: model->crvs[i]->ControllPoints)glVertex2d( c.x, c.y);
+                for (auto& c: model->crvs_sm[i]->CtrlPts)glVertex2d(c.x, c.y);
                 glEnd();
                 glDisable(GL_LINE_STIPPLE);
                 glPolygonOffset(0.f,0.f);
@@ -600,12 +587,12 @@ void GLWidget_2D::paintGL(){
         }
 
         //曲線の描画
-        for(int i = 0; i < (int)model->crvs.size(); i++){
+        for(int i = 0; i < (int)model->crvs_sm.size(); i++){
             if(i == SelectedCurveIndex)glColor3d(1, 0, 0);
             else glColor3d(0.4, 0.4, 0.4);
             glBegin(GL_LINE_STRIP);
-            for(auto &c: model->crvs[i]->CurvePoints){
-                glVertex2s(c.pt.x, c.pt.y);
+            for(auto &c: model->crvs_sm[i]->CurvePts){
+                glVertex2s(c.x, c.y);
             }
             glEnd();
         }
@@ -696,13 +683,13 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
                 model->SelectCurve(p);
                 SelectedCurveIndex = model->IsSelectedCurve();
             }else{
-                if(model->crvs[SelectedCurveIndex]->getCurveType() == CurveType::bsp3 && model->crvs[SelectedCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){
-                    model->crvs[SelectedCurveIndex]->InsertControlPoint2(p_ongrid);
-                    model->crvs[SelectedCurveIndex]->SetNewPoint();
-                    model->crvs[SelectedCurveIndex]->Bspline(curveDimention,crvPtNum);
+                if(model->crvs_sm[SelectedCurveIndex]->type == PaintTool::Bspline_r && !model->crvs_sm[SelectedCurveIndex]->CurvePts.empty()){
+                    model->crvs_sm[SelectedCurveIndex]->InsertCtrlPt(p_ongrid);
+                    model->crvs_sm[SelectedCurveIndex]->SetNewPoint(curveDimention);
                     if(model->outline->IsClosed()){
-                        model->crvs[SelectedCurveIndex]->BsplineRulings(model->outline,DivSize,crvPtNum, curveDimention);
-                        if(!model->crvs[SelectedCurveIndex]->isempty){
+                        auto SurfaceEdge = model->outline->getEdges();
+                        model->crvs_sm[SelectedCurveIndex]->updateRulingVector(SurfaceEdge, curveDimention);
+                        if(!model->crvs_sm[SelectedCurveIndex]->rulings.empty()){
                             model->addRulings();
                             model->deform();
                             //emit foldingSignals();
@@ -722,7 +709,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
     }else if(e->button() == Qt::RightButton){
         if(drawtype == PaintTool::Rectangle_ol || drawtype == PaintTool::Polyline_ol || drawtype == PaintTool::Polygon_ol) model->outline->eraseVertex();
         if(drawtype == PaintTool::Bezier_r || drawtype == PaintTool::Bspline_r || drawtype == PaintTool::Line_r || drawtype == PaintTool::Arc_r){
-            if(SelectedCurveIndex != -1) model->crvs[SelectedCurveIndex]->eraseCtrlPt(curveDimention, crvPtNum);
+            if(SelectedCurveIndex != -1) model->crvs_sm[SelectedCurveIndex]->deleteCtrlPt(p_ongrid,curveDimention);
         }
         else if(drawtype == PaintTool::FoldLine_line || drawtype == PaintTool::FoldLine_arc || drawtype == PaintTool::FoldLine_bezier){
             bool hasRulings = model->AddControlPoint_FL(p_ongrid, 1, curveDimention);
@@ -738,6 +725,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
 
 void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
     if(drawtype == PaintTool::None) {return;}
+
     QPointF p = this->mapFromGlobal(QCursor::pos());
     glm::f64vec3 p_ongrid = SetOnGrid(p, gridsize);
     if(drawtype == PaintTool::Polygon_ol){
@@ -749,25 +737,27 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
     if(drawtype == PaintTool::Move_ol) model->outline->MoveOutline(p_ongrid);
     else if(drawtype == PaintTool::EditVertex_ol){
         model->editOutlineVertex(p, gridsize, 1);
-        model->addRulings();
-        model->deform();
-        emit foldingSignals();
+        if(model->outline->IsClosed()){
+            std::vector<HalfEdge*> SurfaceEdge = model->outline->getEdges();
+            model->crvs_sm[SelectedCurveIndex]->updateRulingVector(SurfaceEdge, curveDimention);
+            model->deform();
+            emit foldingSignals();
+        }
+
     }
     else if(drawtype == PaintTool::NewGradationMode){}
 
-    if(drawtype == PaintTool::MoveCtrlPt)model->MoveCurvePoint(p_ongrid,SelectedCurveIndex, movePt, curveDimention, DivSize);
+    if(drawtype == PaintTool::MoveCtrlPt)model->MoveControlPoint(p_ongrid,SelectedCurveIndex, movePt, curveDimention, DivSize);
 
     if(SelectedCurveIndex != -1){
-        if(drawtype == PaintTool::InsertCtrlPt &&  model->crvs[SelectedCurveIndex]->getCurveType() == CurveType::bsp3 && model->crvs[SelectedCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){//制御点の挿入(B-spline)
-            model->crvs[SelectedCurveIndex]->InsertControlPoint2(p_ongrid);
+        if(drawtype == PaintTool::InsertCtrlPt &&  model->crvs_sm[SelectedCurveIndex]->type == PaintTool::Bspline_r && !model->crvs_sm[SelectedCurveIndex]->CtrlPts.empty()){//制御点の挿入(B-spline)
+            model->crvs_sm[SelectedCurveIndex]->InsertCtrlPt(p_ongrid);
         }
         
-        if(drawtype != PaintTool::NewGradationMode && model->outline->IsClosed() && model->crvs[SelectedCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){
-            //if(model->crvs[SelectedCurveIndex]->getCurveType() == 0)model->crvs[SelectedCurveIndex]->BezierRulings(model->outline->vertices,DivSize,crvPtNum);
-            if(model->crvs[SelectedCurveIndex]->getCurveType() == CurveType::bsp3) model->crvs[SelectedCurveIndex]->BsplineRulings(model->outline,DivSize,crvPtNum, curveDimention);
-            if(model->crvs[SelectedCurveIndex]->getCurveType() == CurveType::line) model->crvs[SelectedCurveIndex]->LineRulings(model->outline,DivSize);
-            if(model->crvs[SelectedCurveIndex]->getCurveType() == CurveType::arc) model->crvs[SelectedCurveIndex]->ArcRulings(model->outline,DivSize);
-            model->addRulings();
+        if(drawtype != PaintTool::NewGradationMode && model->outline->IsClosed() && !model->crvs_sm[SelectedCurveIndex]->CurvePts.empty()){
+            std::vector<HalfEdge*> SurfaceEdge = model->outline->getEdges();
+            model->crvs_sm[SelectedCurveIndex]->updateRulingVector(SurfaceEdge, curveDimention);
+            //model->addRulings();
             model->deform();
         }
     }
@@ -780,7 +770,7 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
 void GLWidget_2D::mouseReleaseEvent(QMouseEvent * e){
     movePt = -1;
     QPointF p = this->mapFromGlobal(QCursor::pos());
-    if(SelectedCurveIndex != -1 && !model->crvs.empty()) model->crvs[SelectedCurveIndex]->InsertPointSegment = -1;
+    if(SelectedCurveIndex != -1 && !model->crvs_sm.empty()) model->crvs_sm[SelectedCurveIndex]->InsertPointSegment = -1;
     if(drawtype == PaintTool::EditVertex_ol){
         model->editOutlineVertex(p, gridsize, 2);
         if(model->outline->IsClosed())model->deform();

@@ -5,7 +5,7 @@ OriginalButton::OriginalButton(QString &text, QWidget *parent) : QPushButton(tex
 }
 
 
-Btn4Crv::Btn4Crv(CRV *_crv, QString &text, QWidget *parent) : OriginalButton(text, parent)
+Btn4Crv::Btn4Crv(SmoothCRV *_crv, QString &text, QWidget *parent) : OriginalButton(text, parent)
 {
     crv = _crv;
 }

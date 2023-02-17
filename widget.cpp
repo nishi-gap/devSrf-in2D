@@ -334,12 +334,12 @@ void MainWindow::addCurveBtn(){
     int pad = 5;
     int btn_w = geo.width() - 2 * pad, btn_h = 25;
     QString text;
-    if(ui->glWid2dim->model->crvs[0]->getCurveType() == CurveType::bezier3)text = "Bezier" + QString::number(++CurvesNum[0]);
-    else if(ui->glWid2dim->model->crvs[0]->getCurveType()  == CurveType::bsp3)text = "Bspline" + QString::number(++CurvesNum[1]);
-    else if(ui->glWid2dim->model->crvs[0]->getCurveType() == CurveType::line)text = "Line" + QString::number(++CurvesNum[2]);
-    else if(ui->glWid2dim->model->crvs[0]->getCurveType() == CurveType::arc)text = "Arc"+QString::number(++CurvesNum[3]);
+    if(ui->glWid2dim->model->crvs_sm[0]->type == PaintTool::Bezier_r)text = "Bezier" + QString::number(++CurvesNum[0]);
+    else if(ui->glWid2dim->model->crvs_sm[0]->type  == PaintTool::Bspline_r)text = "Bspline" + QString::number(++CurvesNum[1]);
+    else if(ui->glWid2dim->model->crvs_sm[0]->type == PaintTool::Line_r)text = "Line" + QString::number(++CurvesNum[2]);
+    else if(ui->glWid2dim->model->crvs_sm[0]->type == PaintTool::Arc_r)text = "Arc"+QString::number(++CurvesNum[3]);
 
-    Btn4Crv *newbtn = new Btn4Crv(ui->glWid2dim->model->crvs[0],text, ui->LayerListWidget);
+    Btn4Crv *newbtn = new Btn4Crv(ui->glWid2dim->model->crvs_sm[0],text, ui->LayerListWidget);
     connect(newbtn, &Btn4Crv::clicked, this, &MainWindow::SetHandleCrv);
     for(int i = 0; i < (int)LayerList.size(); i++) LayerList[i]->setGeometry(pad, btn_h + (i + 1) * (btn_h + pad), btn_w, btn_h);
     LayerList.insert(LayerList.begin(), newbtn);

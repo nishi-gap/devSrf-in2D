@@ -3,7 +3,8 @@
 
 #include <QPushButton>
 #include <QMouseEvent>
-#include "setrulings.h"
+#include "mathtool.h"
+
 
 class OriginalButton : public QPushButton
 {
@@ -21,9 +22,9 @@ class Btn4Crv : public OriginalButton
 {
     Q_OBJECT
 public:
-    Btn4Crv(CRV *_crv, QString &text, QWidget *parent = nullptr);
+    Btn4Crv(SmoothCRV *_crv, QString &text, QWidget *parent = nullptr);
 protected:
-    CRV *crv;
+    SmoothCRV *crv;
     void mousePressEvent(QMouseEvent *e);
     void mouseReleaseEvent(QMouseEvent *e);
 signals:

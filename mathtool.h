@@ -122,7 +122,7 @@ public:
 class HalfEdge{
 public:
     double color;
-    int IsCrossed;
+    int IsCrossed;//-1交差なし, 0同じ曲線上で交差, 1:上レイヤーの曲線から伸びるrulingと交差
     Vertex *vertex;
     Face *face;
     HalfEdge *prev;
@@ -155,29 +155,30 @@ class BaseCRV{
 public:
     std::vector<glm::f64vec3> CtrlPts;
     std::vector<glm::f64vec3> CurvePts;
-    bool isempty;
+    PaintTool type;
     BaseCRV(PaintTool _type);
     bool addCtrlPt(glm::f64vec3 p, int dim);
     int movePtIndex(glm::f64vec3 p);
     bool moveCtrlPt(glm::f64vec3 p, int moveIndex, int dim);
     bool deleteCtrlPt(glm::f64vec3 p, int dim);
     bool deleteCurve();
-    bool modifyRulingVector();
+    bool moveCurve();
+    void InsertCtrlPt(glm::f64vec3& p);
+    void SetNewPoint(int dim);
+    int InsertPointSegment;
 protected:
+    glm::f64vec3 InsertPoint;
     bool setCurve(int dim);
     bool updateCurve(int dim);
-    PaintTool type;
+
     virtual void Arc();
     void Line();
 };
 
-class SmoothCRV: BaseCRV{
+class SmoothCRV: public BaseCRV{
 public:
     SmoothCRV(PaintTool _type, int _DivSize): BaseCRV(_type), DivSize(_DivSize){}
 
-    glm::f64vec3 InsertPoint;
-    void InsertCtrlPt(glm::f64vec3& p);
-    void SetNewPoint();
     bool setPoint(std::vector<HalfEdge*>&outline, glm::f64vec3 N, glm::f64vec3& cp, std::vector<glm::f64vec3>& P);
     bool setRulingVector(std::vector<HalfEdge*>& SurfaceEdge, int dim);
     bool updateRulingVector(std::vector<HalfEdge*>& SurfaceEdge, int dim);
@@ -185,8 +186,9 @@ public:
     std::vector<HalfEdge*>rulings;
     std::vector<Vertex*> Vertices;
 private:
-    int InsertPointSegment;
+
     int DivSize;
+    void RulingCrossDetection();
 };
 
 class FoldCRV: BaseCRV{

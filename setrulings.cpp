@@ -35,12 +35,13 @@ std::vector<HalfEdge*> HalfEdge::Split(Vertex *v, std::vector<HalfEdge*>& Edges)
     double t = glm::length(v->p - vertex->p)/glm::length(next->vertex->p - vertex->p);
     v->p3 = vertex->p3 + t * (next->vertex->p3 - vertex->p3);
     HalfEdge *h_new = new HalfEdge(v, edgetype); //h_new->r = r;
-    h_new->face = face; h_new->next = next; h_new->prev = this; next = h_new;
-    HalfEdge *h2_new = new HalfEdge(v, edgetype); //h2_new->r = r;
-    h_new->color = h2_new->color = color;
+    h_new->face = face; h_new->next = next; h_new->prev = this; next = h_new;   
+    h_new->color = color;
     res.push_back(h_new);
     Edges.push_back(h_new);
     if(pair != nullptr){
+        HalfEdge *h2_new = new HalfEdge(v, edgetype);
+        h2_new->color = color;
         h2_new->face = pair->face;
         h2_new->next = pair->next; h2_new->prev = pair; pair->next = h2_new;
         h2_new->pair = this; h_new->pair = pair; pair->pair = h_new; pair = h2_new;
