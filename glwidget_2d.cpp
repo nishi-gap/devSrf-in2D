@@ -281,7 +281,7 @@ void GLWidget_2D::Start4Debug_CF(){
             x = _axis[i]->vertex->p3;
             e = glm::normalize(_axis[i]->prev->vertex->p3 - x);
             e2 = glm::normalize(_axis[i]->pair->next->next->vertex->p3 - x);
-            double beta = (1.0 - abs(_axis[i]->color/255.0)) * std::numbers::pi;
+            double beta = (1.0 - abs(_axis[i]->r->Gradation/255.0)) * std::numbers::pi;
             if(i != 0){
                 glm::f64vec3 e_next = glm::normalize(MathTool::ProjectionVector(e2,-e));
                 double tau = glm::angle(e_bef, e_next);
@@ -364,8 +364,8 @@ void GLWidget_2D::changeBetaValue(int val){
         bool IsVallyFoldLine = false;
         e = glm::normalize(_axis[i]->prev->vertex->p3 - x);
         e2 = glm::normalize(_axis[i]->pair->next->next->vertex->p3 - x);
-        double beta = (1.0 - abs(_axis[i]->color/255.0)) * std::numbers::pi;
-        if(_axis[i]->color < 0)IsVallyFoldLine = true;
+        double beta = (1.0 - abs(_axis[i]->r->Gradation/255.0)) * std::numbers::pi;
+        if(_axis[i]->r->Gradation < 0)IsVallyFoldLine = true;
         if(i != 0){
             glm::f64vec3 e_next = glm::normalize(MathTool::ProjectionVector(e2,-e));
             double tau = (glm::dot(e_bef, e_next) > 1) ? 0: (glm::dot(e_bef, e_next) < -1) ? std::numbers::pi: glm::angle(e_bef,e_next);
@@ -475,19 +475,19 @@ void GLWidget_2D::paintGL(){
             if(edge->edgetype == EdgeType::r){
                 if(drawtype == PaintTool::NewGradationMode){
                     glLineWidth(rulingWidth);
-                    if(edge->IsCrossed != -1)glColor3d(0,1,0);
+                    if(edge->r->IsCrossed != -1)glColor3d(0,1,0);
                     else {
-                        if(edge->color == 0) r = g = b = 0.4;
-                        else if(edge->color > 0){
-                            r = 1; g = b =1 - edge->color/255.0;
+                        if(edge->r->Gradation == 0) r = g = b = 0.4;
+                        else if(edge->r->Gradation > 0){
+                            r = 1; g = b =1 - edge->r->Gradation/255.0;
                         }else{
                             b = 1;
-                            g = r = 1 + edge->color/255.0;
+                            g = r = 1 + edge->r->Gradation/255.0;
                         }
                         glColor3d(r,g,b);
                     }
                 }else{
-                    if(edge->IsCrossed  != -1)glColor3d(0,1,0);
+                    if(edge->r->IsCrossed  != -1)glColor3d(0,1,0);
                     else glColor3d(0.4,0.4,0.4);
                     glLineWidth(1.f);
                 }
@@ -857,7 +857,7 @@ void GLWidget_2D::wheelEvent(QWheelEvent *we){
             return;
         }
         model->setGradationValue(DiffWheel, refHE, InterpolationType, CurvePath);
-        emit ColorChangeFrom(0, refHE->color);
+        emit ColorChangeFrom(0, refHE->r->Gradation);
         model->deform();
         if(model->outline->IsClosed() && !model->FL.empty()){
             auto oriedge = model->outline->getEdges();
@@ -883,7 +883,7 @@ void GLWidget_2D::addPoints_intplation(QMouseEvent *e, QPointF& p){
         }
         if(refHE == nullptr || std::find(model->Edges.begin(), model->Edges.end(), refHE) == model->Edges.end()){std::cout<<"not found" << std::endl; return;}
         model->setGradationValue(0, refHE, InterpolationType, CurvePath);
-        emit ColorChangeFrom(0, refHE->color);
+        emit ColorChangeFrom(0, refHE->r->Gradation);
         model->deform();
         if(model->outline->IsClosed() && !model->FL.empty()){
             auto oriedge = model->outline->getEdges();
@@ -903,7 +903,7 @@ void GLWidget_2D::ApplyNewGradationMode(){
 
 void GLWidget_2D::getGradationFromSlider(int val){
     if(refHE == nullptr) return;
-    refHE->color = val;
+    refHE->r->Gradation = val;
     emit ColorChangeFrom(2, val);
     model->setGradationValue(0, refHE, InterpolationType, CurvePath);
     emit foldingSignals();

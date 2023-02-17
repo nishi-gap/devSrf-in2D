@@ -43,7 +43,6 @@ public:
     std::vector<FoldLine*> FL;
     glm::f64vec3 Axis4Const[2];
     Vertex* Connect2Vertices[2];
-
     Model();
     Model(int _crvPtNum);
     //void deform(std::vector<std::vector<glm::f64vec3>>& output, std::vector<ruling*>& Rulings, glm::f64vec3& center);

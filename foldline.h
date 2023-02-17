@@ -36,7 +36,7 @@ public:
     std::vector<glm::f64vec3>BasisVectors, PointsOnPlane;
 
     double AngleIn2Edges(HalfEdge *p, HalfEdge *p2, bool Is3d = true);
-    void applyAAAMethod(const std::vector<glm::f64vec3>& edge_outline, double a = 2.0*std::numbers::pi/3.0);
+    void applyAAAMethod(const std::vector<glm::f64vec3>& edge_outline, double a = 2.0*M_PI/3.0);
     void TestFoldingAAAM(double& a, std::vector<Vertex*>& _Vertices, std::vector<HalfEdge*>& _Edges);
 
     bool SplitFace4DebugAAAMethod(glm::f64vec3& NewPoint, std::vector<Face*> &faces, std::vector<HalfEdge*>& edges);

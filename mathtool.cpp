@@ -354,6 +354,7 @@ double AngleIn2Edges(HalfEdge *p, HalfEdge *p2, bool Is3d){
 
 }
 
+/*
 BaseCRV::BaseCRV(PaintTool _type){
     isempty = true;
     type = _type;
@@ -635,3 +636,4 @@ bool SmoothCRV::setRulingVector(std::vector<HalfEdge*>& SurfaceEdge, int dim){
 bool SmoothCRV::updateRulingVector(const std::vector<HalfEdge*>& SurfaceEdge, int dim){
 
 }
+*/

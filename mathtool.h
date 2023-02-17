@@ -104,52 +104,7 @@ glm::f64vec3 ProjectionVector(glm::f64vec3 v, glm::f64vec3 n);
 
 }
 
-class HalfEdge;
-class Model;
-class Face;
-
-class Vertex{
-public:
-    glm::f64vec3 p;
-    glm::f64vec3 p3;
-    bool deformed;
-    Vertex(glm::f64vec3 _p);
-    Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3);
-    void addNewEdge(HalfEdge *he);
-    std::vector<HalfEdge*> halfedge;
-};
-
-class HalfEdge{
-public:
-    double color;
-    int IsCrossed;
-    Vertex *vertex;
-    Face *face;
-    HalfEdge *prev;
-    HalfEdge *next;
-    HalfEdge *pair;
-
-    HalfEdge(Vertex *v, EdgeType _type);
-    //ruling *r;
-    EdgeType edgetype;
-    std::vector<HalfEdge*> Split(Vertex *v, std::vector<HalfEdge*>& Edges);
-    bool hasCrossPoint(glm::f64vec3 p, glm::f64vec3 q, glm::f64vec3& CrossPoint, bool Is3d = true);
-private:
-
-};
-
-class Face{
-public:
-    int edgeNum();
-    bool bend;
-    bool hasGradPt;
-    HalfEdge* halfedge;
-    Face(HalfEdge *_halfedge);
-    bool IsPointInFace(glm::f64vec3 p);
-    glm::f64vec3 getNormalVec();
-    double sgndist(glm::f64vec3 p);
-    void ReConnect(HalfEdge *he);
-};
+/*
 
 class BaseCRV{
 public:
@@ -192,5 +147,6 @@ private:
 class FoldCRV: BaseCRV{
 
 };
+*/
 
 #endif // MATHTOOL_H
