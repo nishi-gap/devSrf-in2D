@@ -50,7 +50,7 @@ public:
     void Initialize();
     bool devide(HalfEdge* he1, HalfEdge* he2, std::vector<Face*>& faces);
 
-    void InsertVertex(Vertex *v);
+    HalfEdge* InsertVertex(Vertex *v);
     void setGradationValue(int val, HalfEdge *refHE,int InterpolationType, std::vector<glm::f64vec2>& CurvePath);
 
     void setOutline();

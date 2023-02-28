@@ -41,12 +41,12 @@ public:
 
     void receiveKeyEvent(QKeyEvent *e);
     bool eraseVec2d, visibleCurve;
-    std::vector<std::array<glm::f64vec3, 2>> NewRuling, NewRuling2d;
+    std::vector<std::array<glm::f64vec3, 2>> SingleRuling, AllRulings, NewRuling2d;
     std::vector<bool> RulingColor;
     int DivSize;
 
     //debug for curved folding
-    bool IsStopAtFF = false, IsStopAtEq = false, IsStopAtCon = false, IsStop4Debug = false;;
+    bool IsStopAtFF = false, IsStopAtEq = false, IsStopAtCon = false, IsStop4Debug = false;
     double angle = 0.0;
 protected:
     void initializeGL();

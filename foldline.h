@@ -22,9 +22,8 @@ public:
     std::vector<std::array<glm::f64vec3, 2>> Rulings_3dL, Rulings_3dR, Rulings_2dL, Rulings_2dR;
     bool ChangeColor(OUTLINE *outline, int val, int dim = 3);
     double getColor();
-    bool modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices,const std::vector<HalfEdge*>& edge_outline, int dim, int t_type = 2);
+    bool modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices,const std::vector<Vertex*>& Poly_v, int dim, int t_type = 2);
 
-    bool applyCurvedFolding(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, int dim);
     void deform();
     HalfEdge *he, *he2;
     std::vector<glm::f64vec3> point;
@@ -32,14 +31,17 @@ public:
 
     std::vector<glm::f64vec3> CtrlPts_res, Curve_res, CtrlPts_res2d, Curve_res2d;
     //std::vector<CrvPt_FL> T_crs;
-    std::vector<HalfEdge*> FoldingCurve;
+    std::vector<HalfEdge_FL*> FoldingCurve;
     std::vector<glm::f64vec3>BasisVectors, PointsOnPlane;
 
     double AngleIn2Edges(HalfEdge *p, HalfEdge *p2, bool Is3d = true);
-    void applyAAAMethod(const std::vector<glm::f64vec3>& edge_outline, double a = 2.0*M_PI/3.0);
+    void applyAAAMethod(std::vector<Vertex*>& Poly_v,  std::vector<Face*>& Faces, std::vector<HalfEdge*>& edges, double a = 2.0*M_PI/3.0);
     void TestFoldingAAAM(double& a, std::vector<Vertex*>& _Vertices, std::vector<HalfEdge*>& _Edges);
 
     bool SplitFace4DebugAAAMethod(glm::f64vec3& NewPoint, std::vector<Face*> &faces, std::vector<HalfEdge*>& edges, std::vector<Vertex*>& vertices);
+
+    std::vector<std::array<glm::f64vec3, 2>> SingleRuling, AllRulings, NewRuling2d;
+    void drawRulingInAllAngles(std::vector<std::array<glm::f64vec3, 2>>& _Rulings);
 private:
     double color;
     bool setCurve(int dim);
@@ -48,24 +50,19 @@ private:
     bool BezierCrvOn3dSrf(std::vector<glm::f64vec3>& CtrlPts, double t, int dim, std::vector<Face*>& Faces, glm::f64vec3& v_3d);
     void devide2Faces(std::vector<HalfEdge*>& Inserted, std::vector<HalfEdge*>& Edges, std::vector<Face*>& Faces);
     std::vector<glm::f64vec3>CtrlPts;
-    bool setPoint(const std::vector<glm::f64vec3>& edge_outline, glm::f64vec3 N, glm::f64vec3& cp, glm::f64vec3& crossPoint);
+    bool setPoint(const std::vector<Vertex*>& Poly_v, glm::f64vec3 N, glm::f64vec3& cp, glm::f64vec3& crossPoint);
     void cal2VecScale(glm::f64vec3 v1, glm::f64vec3 v2, glm::f64vec3 p, double& s, double& t);
     PaintTool type;
     int maxRsize;
 
     void ProjectBezierOn3d(int dim);
 
-    void setCoeff(std::vector<double>& a, double t, std::vector<double>& Knot, int j);
-
     void diff(double t, std::vector<double>& Knot, std::vector<glm::f64vec3>& dP, std::vector<glm::f64vec3>& CtrlPts, int index, const int n_times = 3);
     inline double rad_2d(double k, double tau, double a, double da);
 
-    void LSM_apply_tau(int dim = 1);
 
-
-
-    void _FoldingAAAMethod(double & a, double phi02, double phim1, const std::vector<glm::f64vec3>& edge_outline);
-    double getCurvetureFromDC(int i);
+    void _FoldingAAAMethod(double & a, double phi02, double phim1, std::vector<Vertex*>& Poly_v,  std::vector<Face*>& Faces, std::vector<HalfEdge*>& edges);
+    void EdgeRecconection(std::vector<Vertex*>& Poly_V,  std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges);
 
 };
 

@@ -17,6 +17,12 @@ void Vertex::addNewEdge(HalfEdge *he){
     if(std::find(halfedge.begin(), halfedge.end(), he) == halfedge.end())halfedge.push_back(he);
 }
 
+Vertex::Vertex(const Vertex &v){
+    p = v.p; p3 = v.p3;
+
+}
+
+
 HalfEdge::HalfEdge(Vertex *v, EdgeType _type){
     vertex = v;
     pair = nullptr;
@@ -33,16 +39,18 @@ std::vector<HalfEdge*> HalfEdge::Split(Vertex *v, std::vector<HalfEdge*>& Edges)
     if(!MathTool::is_point_on_line(v->p, this->vertex->p, this->next->vertex->p))return res;
     double t = glm::length(v->p - vertex->p)/glm::length(next->vertex->p - vertex->p);
     v->p3 = vertex->p3 + t * (next->vertex->p3 - vertex->p3);
-    HalfEdge *h_new = new HalfEdge(v, edgetype); //h_new->r = r;
-    h_new->face = face; h_new->next = next; h_new->prev = this; next = h_new;
-    HalfEdge *h2_new = new HalfEdge(v, edgetype); //h2_new->r = r;
-
+    HalfEdge *h_new = new HalfEdge(v, edgetype); h_new->r = r;
+    h_new->face = face; h_new->next = next; next->prev = h_new;
+    h_new->prev = this; next = h_new;
     res.push_back(h_new);
     Edges.push_back(h_new);
     if(pair != nullptr){
+        HalfEdge *h2_new = new HalfEdge(v, edgetype); h2_new->r = r;
         h2_new->face = pair->face;
-        h2_new->next = pair->next; h2_new->prev = pair; pair->next = h2_new;
-        h2_new->pair = this; h_new->pair = pair; pair->pair = h_new; pair = h2_new;
+        h2_new->next = pair->next; h2_new->prev = pair;
+        pair->next->prev = h2_new; pair->next = h2_new;
+        h_new->pair = pair; h2_new->pair = this;
+        pair->pair = h_new; pair = h2_new;
         Edges.push_back(h2_new);
         res.push_back(h2_new);
     }
@@ -55,7 +63,7 @@ bool HalfEdge::hasCrossPoint2d(glm::f64vec3 p, glm::f64vec3 q, glm::f64vec3& Cro
     return res;
 }
 
-/*
+
 double CrvPt_FL::developability(){
     if(halfedge.size() <= 4)return -1;
     double phi = 0.0;
@@ -64,7 +72,7 @@ double CrvPt_FL::developability(){
 
     }
 }
-*/
+
 
 crvpt::crvpt(int _ind, glm::f64vec3 _pt, int _color){
     pt = _pt;
@@ -96,6 +104,11 @@ Face::Face(HalfEdge *_halfedge){
     _halfedge->face = this;
     bend = false;
     hasGradPt = false;
+}
+
+Face::Face(const Face& face){
+  auto _h = face.halfedge;
+  halfedge->edgetype = _h->edgetype;
 }
 
 bool Face::IsPointInFace(glm::f64vec3 p){
@@ -147,9 +160,9 @@ int Face::edgeNum(){
     return cnt;
 }
 
-void Face::ReConnect(HalfEdge *he){
-    HalfEdge *h = he;
+void Face::ReConnect(HalfEdge *he){    
     halfedge = he;
+    HalfEdge *h = he;
    do{
         h->face = this;
         h = h->next;
@@ -272,8 +285,13 @@ bool CRV::setPoint(std::vector<Vertex*>&outline, glm::f64vec3 N, glm::f64vec3& c
     for(int i = 0; i < onum; i++){
         v = outline[i]->p;
         v2 = outline[(i + 1) % onum]->p;
-        if (IsIntersect(v, v2, N0, N1)) {
-            crossPoint.push_back(getIntersectionPoint(v, v2, N0, N1));
+        if (IsIntersect(v, v2, N0, N1, true)) {
+            auto tmp = getIntersectionPoint(v, v2, N0, N1);
+            bool hasSamePoint = false;
+            for(auto&c: crossPoint){
+                if(glm::distance(c, tmp) < 1e-5)hasSamePoint = true;
+            }
+            if(!hasSamePoint)crossPoint.push_back(tmp);
             IsIntersected = true;
         }
     }
@@ -636,9 +654,12 @@ void OUTLINE::addVertex(glm::f64vec3& p){
     if(type == "Rectangle"){
         vertices.push_back(new Vertex(p));
         if((int)vertices.size() == 2){
-            vertices.insert(vertices.begin() + 1, new Vertex(glm::f64vec3{vertices[0]->p.x, p.y, 0}));
-            vertices.push_back(new Vertex(glm::f64vec3{p.x, vertices[0]->p.y, 0}));
+            vertices.insert(vertices.begin() + 1, new Vertex(glm::f64vec3{p.x, vertices[0]->p.y, 0}));
+            vertices.push_back(new Vertex(glm::f64vec3{vertices[0]->p.x, p.y, 0}));
             ConnectEdges();
+            if(glm::dot(getFace()->getNormalVec(), glm::f64vec3{0,0,1}) > 0){
+                //vertices[1]->p = vertices[1]->p3 = glm::f64vec3{p.x, vertices[0]->p.y, 0}; vertices[3]->p = vertices[3]->p3 = glm::f64vec3{vertices[0]->p.x, p.y, 0};
+            }
         }
     }else if(type == "Polyline"){
         double d = 5;
@@ -772,8 +793,8 @@ void OUTLINE::ConnectEdges(bool IsConnected){
     if(IsConnected){
         face = new Face(edges[0]);
         for(int i = 0; i < (int)edges.size(); i++){
-            edges[i]->next = edges[(i + 1) % edges.size()];
-            edges[i]->prev = edges[(i - 1) % edges.size()];
+            edges[i]->prev = edges[(i + 1) % edges.size()];
+            edges[i]->next = edges[(i - 1) % edges.size()];
             edges[i]->face = face;
         }
         //isClosed = true;
@@ -806,7 +827,7 @@ void CrossDetection(Face *f, CRV *crvs){
     if(crvs->getCurveType() == CurveType::arc || crvs->getCurveType() == CurveType::line)return;
     for(int in = 0; in < (int)crvs->Rulings.size(); in ++){
         for(int inn = in+1; inn < (int)crvs->Rulings.size(); inn++){
-            bool rs = IsIntersect(std::get<0>(crvs->Rulings[in]->r)->p, std::get<1>(crvs->Rulings[in]->r)->p, std::get<0>(crvs->Rulings[inn]->r)->p,std::get<1>(crvs->Rulings[inn]->r)->p);
+            bool rs = IsIntersect(std::get<0>(crvs->Rulings[in]->r)->p, std::get<1>(crvs->Rulings[in]->r)->p, std::get<0>(crvs->Rulings[inn]->r)->p,std::get<1>(crvs->Rulings[inn]->r)->p, false);
             if(rs){
                 glm::f64vec3 p = getIntersectionPoint(std::get<0>(crvs->Rulings[in]->r)->p, std::get<1>(crvs->Rulings[in]->r)->p, std::get<0>(crvs->Rulings[inn]->r)->p,std::get<1>(crvs->Rulings[inn]->r)->p);
                 bool PointOnLines = false;

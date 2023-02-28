@@ -13,26 +13,23 @@
 #include<GL/glu.h>
 #include <QKeyEvent>
 #include <glm/gtx/string_cast.hpp>
+#include "arcball.h"
 #include "setrulings.h"
 
 typedef std::vector<std::array<glm::f64vec3, 2>> Ruling3d;
 typedef std::vector<Face*> Faces3d;
+typedef std::vector<Vertex*> Polygon_V;
+typedef std::vector<HalfEdge*> HalfEdges;
 typedef std::vector<glm::f64vec3> Curve3d;
 //typedef std::vector<CrvPt_FL> CrvFL3d;
 typedef std::vector<HalfEdge*> FoldLine3d;
 
-enum class ArcBallMode{
-    none,
-    translate,
-    rotate,
-    scale,
-};
 
 class GLWidget_3D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
 {
     Q_OBJECT
 public:
-    void setVertices(const Faces3d& Faces = Faces3d(), const Ruling3d& _Vl = Ruling3d());
+    void setVertices(const Faces3d Faces = Faces3d(), const Polygon_V Poly_V = Polygon_V(), const HalfEdges Edges = HalfEdges(), const Ruling3d& _SingleRuling = Ruling3d(), const Ruling3d& _AllRulings = Ruling3d());
     void receive(std::vector<std::vector<glm::f64vec3>>& l, std::vector<std::vector<glm::f64vec3>>& r, glm::f64vec3 center);
     void receiveKeyEvent(QKeyEvent *e);
 
@@ -41,7 +38,7 @@ public:
     ~GLWidget_3D();
 
     std::vector<glm::f64vec3> FoldLineVertices;
-    Ruling3d Vl, Vr;
+    Ruling3d SingleRuling, AllRulings;
 protected:
     void initializeGL();
     void paintGL(); 
@@ -68,7 +65,6 @@ private:
     void DrawMesh(bool isFront);
     int actionType;//0: None, 1: Left Click, 2: Right click, 3: other
 
-    ArcBallMode arcballMode = ArcBallMode::none;
     glm::f64vec3 getVec(float x, float y);
 
     QPointF befPos;
@@ -78,6 +74,8 @@ private:
 
     inline void dispV(glm::f64vec3 p);
     void updateRotate();
+
+    ArcBallCam arccam;
 };
 
 #endif // GLWIDGET_3D_H

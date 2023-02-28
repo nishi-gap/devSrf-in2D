@@ -33,6 +33,8 @@ public:
     bool deformed;
     Vertex(glm::f64vec3 _p);
     Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3);
+    Vertex(const Vertex& v);
+    ~Vertex(){}
     void addNewEdge(HalfEdge *he);
     std::vector<HalfEdge*> halfedge;
 };
@@ -69,12 +71,18 @@ public:
     HalfEdge *pair;
 
     HalfEdge(Vertex *v, EdgeType _type);
+    HalfEdge(const HalfEdge& he): IsCrossed(he.IsCrossed), face(he.face), prev(he.prev), next(he.next), pair(he.pair), r(he.r), edgetype(he.edgetype){}
+    HalfEdge(){}
+    ~HalfEdge(){}
     ruling *r;
     EdgeType edgetype;
     std::vector<HalfEdge*> Split(Vertex *v, std::vector<HalfEdge*>& Edges);
     bool hasCrossPoint2d(glm::f64vec3 p, glm::f64vec3 q, glm::f64vec3& CrossPoint,  bool ConsiderEnd = false);
-private:
 
+protected:
+    void edgeSwap(HalfEdge *h);
+private:
+    HalfEdge& operator =(const HalfEdge& he){}
 };
 
 class Face{
@@ -83,14 +91,21 @@ public:
     bool bend;
     bool hasGradPt;
     HalfEdge* halfedge;
+
     Face(HalfEdge *_halfedge);
+    Face(){}
+    Face(const Face& face);
+    Face& operator =(const Face& f){}
+    ~Face(){}
+
     bool IsPointInFace(glm::f64vec3 p);
     glm::f64vec3 getNormalVec();
     double sgndist(glm::f64vec3 p);
     void ReConnect(HalfEdge *he);
+
 };
 
-/*
+
 class CrvPt_FL : public Vertex{
 public:
     double s;
@@ -102,12 +117,25 @@ public:
     glm::f64vec3 Td, Nd, Bd;
     CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3, double _s) : Vertex(_p2, _p3), s{_s} {}
     CrvPt_FL(glm::f64vec3 _p2, double _s) : Vertex(_p2), s{_s} {}
-    bool operator<(const CrvPt_FL& T) const { return s < T.s; }
+    bool operator>(const CrvPt_FL& T) const { return s > T.s; }
     double developability();
 
 };
-*/
 
+struct PointOnLine{
+public:
+   double t;
+   Vertex *v;
+   PointOnLine(double _t, Vertex *_v): t(_t), v(_v){}
+   bool operator<(const PointOnLine& P) const { return t < P.t; }
+};
+
+class HalfEdge_FL: public HalfEdge{
+public:
+    CrvPt_FL *v;
+    HalfEdge_FL(CrvPt_FL *_v, EdgeType _type): HalfEdge(_v, _type), v(_v){}
+    HalfEdge_FL(HalfEdge *h): HalfEdge(h->vertex, h->edgetype){}
+};
 
 
 

@@ -3,6 +3,7 @@ using namespace MathTool;
 
 GLWidget_3D::GLWidget_3D(QWidget *parent):QOpenGLWidget(parent)
 {
+
     this->Vertices.clear();
     TriMeshs.clear();
     this->firstRotate = true;
@@ -10,6 +11,8 @@ GLWidget_3D::GLWidget_3D(QWidget *parent):QOpenGLWidget(parent)
     center = glm::f64vec3{0,0,0};
     eraseMesh = eraseCtrlPt = eraseCrossPt = eraseVec = eraseCurve = false;
     switchTNB = 0;
+    glm::f64vec3 up{0,1,0};
+    arccam = ArcBallCam(glm::f64vec3{0,0,-100}, center, up);
     drawdist = 0.0;
 }
 GLWidget_3D::~GLWidget_3D(){
@@ -20,14 +23,87 @@ void GLWidget_3D::initializeGL(){
     initializeOpenGLFunctions();
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     QSize s = this->size();
-    TransX = 0.f, TransY = 0.f, TransZ = 0.f;
+    TransX = 50.f, TransY = 0.f, TransZ = -200.f;
     angleY = 90;
+    glm::f64vec3 up{0,1,0};
+    arccam = ArcBallCam(glm::f64vec3{0,0,-100}, center, up);
     glViewport(s.width(),0,s.width(),s.height());
     glEnable(GL_POLYGON_OFFSET_FILL);
     glEnable(GL_DEPTH_TEST);
 }
 
-void GLWidget_3D::setVertices(const Faces3d& Faces, const Ruling3d& _Vl){
+void EdgeRecconection(const std::vector<Vertex*>& Poly_V, std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges){
+    int n = Poly_V.size();
+    std::vector<std::vector<Vertex>> surface;
+    for(auto&f: Faces){
+        std::vector<Vertex> mesh;
+        HalfEdge *he = f->halfedge;
+        do{
+            Vertex v(he->vertex->p, he->vertex->p3);
+            mesh.push_back(v);
+            he = he->next;
+        }while(he != f->halfedge);
+        surface.push_back(mesh);
+    }
+    for(int i = 0; i < n; i++){
+        Vertex *v1 = Poly_V[i], *v2 = Poly_V[(i + 1) % n];
+        HalfEdge *h1 = nullptr, *h2 = nullptr;
+        std::vector<PointOnLine> PoL;
+        for(auto&e: Edges){
+            if((e->vertex == v1) && e->edgetype == EdgeType::ol)h1 = e;
+            if((e->vertex == v2) && e->edgetype == EdgeType::ol)h2 = e;
+
+            if((e->vertex == v1 || e->vertex == v2) || e->edgetype != EdgeType::ol)continue;
+            if(abs(glm::distance(e->vertex->p, v1->p) + glm::distance(e->vertex->p, v2->p) - glm::distance(v1->p, v2->p)) < 1e-5){
+                double t = glm::distance(e->vertex->p, v2->p)/glm::distance(v1->p, v2->p);
+                auto p = PointOnLine(t, e->vertex);
+                PoL.push_back(p);
+            }
+        }
+        std::sort(PoL.begin(), PoL.end());
+
+        if(PoL.empty()){//polygon同士の頂点で一度つなぎなおす
+            h1->prev = h2; h2->next = h1;
+        }else{
+            for(int j = 1; j < (int)PoL.size(); j++){
+                HalfEdge *edge1 = nullptr, *edge2= nullptr;
+                for(auto&h: PoL[j-1].v->halfedge){
+                    if(h->edgetype == EdgeType::ol)edge1 = h;
+                }
+                for(auto&h: PoL[j].v->halfedge){
+                    if(h->edgetype != EdgeType::ol)edge2 = h;
+                }
+                edge1->next = edge2; edge2->prev = edge1;
+            }
+            for(auto&e: PoL.front().v->halfedge){
+                if(e->edgetype == EdgeType::ol)continue;
+                e->prev = h2;
+                h2->next = e;
+            }
+            for(auto&e: PoL.back().v->halfedge){
+                if(e->edgetype != EdgeType::ol)continue;
+                e->next = h1;
+                h1->prev = e;
+            }
+        }
+    }
+    std::vector<bool> IsReconnected(Edges.size(), false);
+    int faceIndex = 0;
+
+    for(int i = 0; i < (int)IsReconnected.size(); i++){
+        if(IsReconnected[i])continue;
+        HalfEdge *h = Edges[i];
+        do{
+            int j = std::distance(Edges.begin(), std::find(Edges.begin(), Edges.end(), h));
+            IsReconnected[j] = true;
+            Edges[j]->face = Faces[faceIndex];
+            h = h->next;
+        }while(h != Edges[i]);
+        faceIndex++;
+    }
+}
+
+void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const HalfEdges Edges, const Ruling3d& _SingleRuling, const Ruling3d& _AllRulings){
     std::vector<glm::f64vec3> vertices, centers;
     drawdist = 0.0;
     Vertices.clear();
@@ -38,14 +114,33 @@ void GLWidget_3D::setVertices(const Faces3d& Faces, const Ruling3d& _Vl){
     std::vector<std::array<glm::f64vec3, 3>> trimesh;
     FoldLineVertices.clear();
 
-    Vl.clear();
-    for(auto&v: _Vl){
+    SingleRuling.clear();
+    for(auto&v: _SingleRuling){
         std::array<glm::f64vec3, 2> tmpV{glm::f64vec3(Scale * Mirror * glm::f64vec4(v[0],1)), glm::f64vec3(Scale * Mirror * glm::f64vec4(v[1],1))};
-        Vl.push_back(tmpV);
+        SingleRuling.push_back(tmpV);
     }
+
+    AllRulings.clear();
+    for(auto&v: _AllRulings){
+        std::array<glm::f64vec3, 2> tmpV{glm::f64vec3(Scale * Mirror * glm::f64vec4(v[0],1)), glm::f64vec3(Scale * Mirror * glm::f64vec4(v[1],1))};
+        AllRulings.push_back(tmpV);
+    }
+
     TriMeshs.clear();
-    double Area = 0.0; center = glm::f64vec3{0,0,0};
-    for(auto&f: Faces){
+    Faces3d _faces;
+    Face *f;
+    for(auto _f: Faces){
+        f = _f;
+        _faces.push_back(f);
+    }
+    HalfEdges _edges;
+    HalfEdge *h;
+    for(auto _h: Edges){
+        h = _h;
+        _edges.push_back(h);
+    }
+    //EdgeRecconection(Poly_V, _faces, _edges);
+    for(auto&f: _faces){
         vertices.clear();
         HalfEdge *he = f->halfedge;       
         do{
@@ -62,18 +157,10 @@ void GLWidget_3D::setVertices(const Faces3d& Faces, const Ruling3d& _Vl){
     for(auto&tri : TriMeshs){
         _center = (tri[2] + tri[1] + tri[0])/3.0;
         double area = glm::length(glm::cross(tri[2] - tri[0], tri[1] - tri[0]))/2.0;
-        //center += _center * area;
-        Area += area;
+        center += _center * area;
     }
-    //center /= Area;
+
     center = glm::f64vec3{0,0,0};
-    for(auto&f: Faces){
-        HalfEdge *he = f->halfedge;
-        do{
-            if(glm::distance(he->vertex->p3, center) > drawdist)drawdist = glm::distance(he->vertex->p3, center);
-        }while(he != f->halfedge);
-    }
-    //std::cout<<glm::to_string(center)<< drawdist <<std::endl;
     update();
 }
 
@@ -100,6 +187,7 @@ void GLWidget_3D::receive(std::vector<std::vector<glm::f64vec3>>& l, std::vector
     TransX = 0.1 * center.x;
     TransY = 0.05 * center.y;
     this->center = 0.1 * center;
+
 
     update();
 }
@@ -131,47 +219,34 @@ void GLWidget_3D::paintGL(){
         DrawMesh(false);
 
     }
-    //glPolygonOffset(0.f,0.5f);
+    //
 
-    glPointSize(5.f);
-    glColor3d(1,0,0);
-    glBegin(GL_POINT);
-    glVertex3d(center.x, center.y, center.z);
-    glEnd();
-
-    double ss = Vl.size();
-    double ns = 0.0;
-    for(auto&v: Vl){
-        ns += 1.0/ss;
-        glColor3d(0,0, ns);
+    glPolygonOffset(0.5f,1.f);
+    for(int i = 0; i < (int)AllRulings.size(); i++){
+        glColor3d(0,0, (double)i/AllRulings.size());
         glBegin(GL_LINES);
-        glVertex3d(v[0].x, v[0].y, v[0].z);
-        glVertex3d(v[1].x, v[1].y, v[1].z);
+        glVertex3d(AllRulings[i][0].x, AllRulings[i][0].y, AllRulings[i][0].z);
+        glVertex3d(AllRulings[i][1].x, AllRulings[i][1].y, AllRulings[i][1].z);
         glEnd();
     }
 
-    //glColor3d(0,1,0);
-    //glLineWidth(3);
-    //glBegin(GL_LINE_STRIP);
-    //for(auto&v: Vl){
-    //    glVertex3d(v[0].x, v[0].y, v[0].z);
-    //}glEnd();
+    glPolygonOffset(1.f,2.f);
 
-    /*
-    glColor3d(0,0,1);
-    glLineWidth(5);
-    glPolygonOffset(1.f,0.5f);
-    glBegin(GL_LINE_STRIP);
-    for(auto&v: FoldLineVertices)dispV(v);
-    glEnd();
+    for(int i = 0; i < (int)SingleRuling.size(); i++){
+        if(SingleRuling.size()% 3 == 0){
+            if(i% 3 == 0)glColor3d(1,0, 0);//e
+            else if(i% 3 == 1)glColor3d(0,1, 0);//N
+            else if(i% 3 == 2)glColor3d(0,0, 1);//r
+        }else glColor3d(0,0, (double)i/SingleRuling.size());
+        glLineWidth(3);
+        glBegin(GL_LINES);
 
-    glColor3d(1,0,0);
-    glPointSize(5);
-    glPolygonOffset(1.f,0.5f);
-    glBegin(GL_POINTS);
-    for(auto&v: FoldLineVertices)dispV(v);
-    glEnd();
-    */
+        glVertex3d(SingleRuling[i][0].x, SingleRuling[i][0].y, SingleRuling[i][0].z);
+        glVertex3d(SingleRuling[i][1].x, SingleRuling[i][1].y, SingleRuling[i][1].z);
+        glEnd();
+    }
+    glPolygonOffset(0.f,0.f);
+
 }
 
 void GLWidget_3D::DrawMesh(bool isFront){
@@ -179,17 +254,19 @@ void GLWidget_3D::DrawMesh(bool isFront){
     glEnable(GL_CULL_FACE);
     if(isFront){
         glCullFace(GL_FRONT);
-        glColor3d(0.9,0.9,0.9);
+        glColor3d(0.6,0.6,0.6);
     }
     else {
         glCullFace(GL_BACK);
-        glColor3d(0.6,0.6,0.6);
+        glColor3d(0.9,0.9,0.9);
     }
     for(int i = 0; i < (int)TriMeshs.size(); i++){
         //if(left[i] == 1)glColor3d(0.8, 0.2, 0.2);
         //else glColor3d(0.2, 0.2, 0.8);
         glBegin(GL_POLYGON);
-        for (auto& v : TriMeshs[i]) glVertex3d(v.x, v.y, v.z);
+        for (auto& v : TriMeshs[i]) {
+            glVertex3d(v.x, v.y, v.z);
+        }
         glEnd();
     }
     glDisable(GL_LIGHTING);
@@ -241,13 +318,14 @@ void GLWidget_3D::perspective(GLdouble fovy, GLdouble aspect, GLdouble zNear, GL
 
 void GLWidget_3D::mousePressEvent(QMouseEvent *e){
     actionType = (e->button() == Qt::LeftButton)? 1 : (e->button() == Qt::RightButton)? 2: 0;
-    arcballMode = (e->button() == Qt::LeftButton) ? ArcBallMode::translate : (e->button() == Qt::RightButton)? ArcBallMode::rotate: ArcBallMode::none;
+
     befPos = this->mapFromGlobal(QCursor::pos());
     update();
 }
 
 void GLWidget_3D::wheelEvent(QWheelEvent *we){
     double z = (we->angleDelta().y() > 0) ? 5 : -5;
+    arccam.zoom(z);
     TransZ += z;
     update();
 }
@@ -279,9 +357,11 @@ void GLWidget_3D::mouseMoveEvent(QMouseEvent *e){
     if(actionType == 1){//平行移動
         TransX -=  0.3 * diff.x();
         TransY +=  0.3 * diff.y();
+        arccam.pan(glm::f64vec2{diff.x(), diff.y()});
     }else if(actionType == 2){//回転
         angleX += diff.x();
         angleY += diff.y();
+        arccam.rotate(glm::f64vec2{befPos.x(), befPos.y()}, glm::f64vec2{curPos.x(), curPos.y()});
     }
     befPos = curPos;
     update();

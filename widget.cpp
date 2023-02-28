@@ -78,7 +78,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     //fold line debug
     connect(ui->addFL_test, &QPushButton::clicked, this, &MainWindow::addFoldLine_test);
-    connect(ui->angleA, &QSlider::valueChanged, ui->glWid2dim, &GLWidget_2D::changeBetaValue);
+    connect(ui->angleA, &QSpinBox::valueChanged, ui->glWid2dim, &GLWidget_2D::changeBetaValue);
     connect(ui->glWid2dim, &GLWidget_2D::getAlphaBeta, this, &MainWindow::sendAlphaBeta);
     connect(ui->startButton, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::Start4Debug_CF);
     connect(ui->stopAtCon, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::changeStopAtCon);
@@ -109,7 +109,7 @@ void MainWindow::Initialize(){
     update();
 }
 
-void MainWindow::addFoldLine_l(){emit signalFLtype(PaintTool::FoldLine_line);}
+void MainWindow::addFoldLine_l(){emit signalFLtype(PaintTool::FoldLine_test);}
 void MainWindow::addFoldLine_arc(){emit signalFLtype(PaintTool::FoldLine_arc);}
 void MainWindow::addFoldLine_bezier(){emit signalFLtype(PaintTool::FoldLine_bezier);}
 void MainWindow::addFoldLine_test(){emit signalFLtype(PaintTool::FoldLine_test);}
@@ -135,9 +135,11 @@ void MainWindow::fold_Sm(){
 
     //switchActivateCheckBox("MakeDevSrf");
     if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
-    else if(ui->glWid2dim->model->FL.empty())ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->NewRuling);
+    else if(!ui->glWid2dim->model->FL.empty()){
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->FL[0]->SingleRuling, ui->glWid2dim->AllRulings);
+    }
     else{
-        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces);
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges);
     }
 }
 

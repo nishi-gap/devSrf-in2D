@@ -54,12 +54,12 @@ glm::f64vec3 Model::SetOnGrid(QPointF& cursol, double gridsize){
     return glm::f64vec3{x,y,0};
 }
 
-void Model::InsertVertex(Vertex *v){
+HalfEdge* Model::InsertVertex(Vertex *v){
     for(auto& f: Faces){
         HalfEdge *he = f->halfedge;
         do{
             if(glm::distance(v->p, he->vertex->p) <= FLT_EPSILON){
-                return;
+                return he;
             }
             if (is_point_on_line(v->p, he->vertex->p, he->next->vertex->p)){
                 HalfEdge *NewEdge = new HalfEdge(v, EdgeType::ol);
@@ -70,13 +70,13 @@ void Model::InsertVertex(Vertex *v){
                 NewEdge->next = next;
                 NewEdge->face = f;
                 Edges.push_back(NewEdge);
-                return ;
+                return NewEdge;
             }
             he = he->next;
         }while(he != f->halfedge);
     }
 
-    return;
+    return nullptr;
 }
 
 bool Model::devide(HalfEdge *he1, HalfEdge *he2, std::vector<Face*> &faces){
@@ -117,11 +117,7 @@ bool Model::devide(HalfEdge *he1, HalfEdge *he2, std::vector<Face*> &faces){
             }while(h1 != he1);
             Face* face2 = new Face(he2);
             faces.push_back(face2);
-            face2->halfedge = he2;
-            do{
-                h2->face = face2;
-                h2 = h2->next;
-            }while(h2 != he2);
+            face2->ReConnect(he2);
             //Edges.push_back(NewEdge1); Edges.push_back(NewEdge2);
             return true;
         }
@@ -217,8 +213,8 @@ void Model::setOutline(){
     }
 
     Face *face = new Face(Edges[0]);
+    face->ReConnect(Edges[0]);
     Faces.push_back(face);
-    for(auto& he: Edges)he->face = face;
 }
 
 void Model:: addConstraint(QPointF& cursol, int type, int gridsize, glm::f64vec3 (&axis)[2]){
@@ -508,19 +504,38 @@ void Model::addRulings(){
         if(c->isempty)continue;
         for(auto rl: c->Rulings){
             if(rl->IsCrossed != -1)continue;
-            InsertVertex(std::get<0>(rl->r));
-            InsertVertex(std::get<1>(rl->r));
-            HalfEdge *he1 = new HalfEdge(std::get<0>(rl->r), EdgeType::r);
-            HalfEdge *he2 = new HalfEdge(std::get<1>(rl->r), EdgeType::r);
+            auto h1 = InsertVertex(std::get<0>(rl->r));
+            auto h2 = InsertVertex(std::get<1>(rl->r));
+            if(h1 == nullptr || h2 == nullptr)return;
+            HalfEdge *he1 = new HalfEdge(h1->vertex, EdgeType::r);
+            HalfEdge *he2 = new HalfEdge(h2->vertex, EdgeType::r);
             he1->r = rl; he2->r = rl;
-            rl->he[0] = he1; rl->he[1] = he2;
-            devide(he1, he2, Faces);
+            he2->pair = he1; he1->pair = he2;
+            he1->prev = h1->prev;
+            he1->next = h2;
+            he2->prev = h2->prev;
+            he2->next = h1; 
+            h1->prev->next = he1;
+            h2->prev->next = he2;
+            h1->prev = he2;
+            h2->prev = he1;
+            h2->face->ReConnect(h1);
+            Face* face2 = new Face(h2);
+            Faces.push_back(face2);
+            face2->ReConnect(h2);
             Edges.push_back(he1); Edges.push_back(he2);
-            vertices.push_back(std::get<0>(rl->r));
-            vertices.push_back(std::get<1>(rl->r));
+            if(std::find(vertices.begin(), vertices.end(), std::get<0>(rl->r)) == vertices.end())vertices.push_back(std::get<0>(rl->r));
+            if(std::find(vertices.begin(), vertices.end(), std::get<1>(rl->r)) == vertices.end())vertices.push_back(std::get<1>(rl->r));
         }
     }
-
+    for(auto&v: vertices){//各vertexが持つhalfedgeのうち、edgesにないものを削除
+        for (auto itr = v->halfedge.begin(); itr != v->halfedge.end();) {
+            if(std::find(Edges.begin(), Edges.end(), *itr) == Edges.end()){
+                //delete *itr;
+                itr = v->halfedge.erase(itr);
+            }else ++itr;
+        }
+    }
 }
 
 void Model::SelectCurve(QPointF pt){
@@ -681,7 +696,7 @@ void Model::AddControlPoint(glm::f64vec3& p, int curveDimention, int DivSize){
         if(crvs[AddPtIndex]->getCurveType() == CurveType::bsp3)crvs[AddPtIndex]->BsplineRulings(outline, DivSize, crvPtNum, curveDimention);
         if(crvs[AddPtIndex]->getCurveType() == CurveType::line)crvs[AddPtIndex]->LineRulings(outline, DivSize);
         if(crvs[AddPtIndex]->getCurveType() == CurveType::arc)crvs[AddPtIndex]->ArcRulings(outline, DivSize);
-        addRulings();
+        //addRulings();
     }
 }
 
@@ -743,38 +758,38 @@ bool Model::CrossDection4AllCurve(){
 
 std::vector<HalfEdge*> Model::makePath(){
     std::vector<HalfEdge*> path;
-    if(GradationPoints.empty())return path;
-    path.push_back(GradationPoints[0]);
-    for(int i = 0; i < (int)GradationPoints.size() - 1; i++){
-        Face *f = GradationPoints[i]->face;
-        HalfEdge *he, *nextHE;
-        glm::f64vec3 nextPos = (GradationPoints[i+1]->vertex->p + GradationPoints[i+1]->next->vertex->p)/2.0;
-        do{
-            he = f->halfedge;
-            double dist = 1000;
-            nextHE = nullptr;
-            do{
-                if(he->pair != nullptr){
-                    double d = glm::length(glm::cross((nextPos - he->vertex->p), (he->vertex->p - he->pair->vertex->p)))/glm::length(he->vertex->p - he->pair->vertex->p);
-                    if(d < dist){
-                        dist = d;
-                        nextHE = he;
-                    }
-                }
-                he = he->next;
-            }while(he != f->halfedge);
-            if(nextHE != nullptr && std::find(Edges.begin(), Edges.end(), nextHE) != Edges.end()){
-                bool haspath = false;
-                for(auto& he: path){
-                    if(he == nextHE || he->pair == nextHE){
-                        haspath = true;
-                        break;
-                    }
-                }
-                if(!haspath)path.push_back(nextHE);
-            }
-            f = nextHE->pair->face;
-        }while(nextHE != GradationPoints[i+1] || nextHE->pair != GradationPoints[i+1]);
-    }
-    return path;
+       if(GradationPoints.empty())return path;
+       path.push_back(GradationPoints[0]);
+       for(int i = 0; i < (int)GradationPoints.size() - 1; i++){
+           Face *f = GradationPoints[i]->face;
+           HalfEdge *he, *nextHE;
+           glm::f64vec3 nextPos = (std::get<0>(GradationPoints[i+1]->r->r)->p + std::get<1>(GradationPoints[i+1]->r->r)->p)/2.0;
+           do{
+               he = f->halfedge;
+               double dist = 1000;
+               nextHE = nullptr;
+               do{
+                   if(he->pair != nullptr){
+                       double d = glm::length(glm::cross((nextPos - he->vertex->p), (he->vertex->p - he->pair->vertex->p)))/glm::length(he->vertex->p - he->pair->vertex->p);
+                       if(d < dist){
+                           dist = d;
+                           nextHE = he;
+                       }
+                   }
+                   he = he->next;
+               }while(he != f->halfedge);
+               if(nextHE != nullptr && std::find(Edges.begin(), Edges.end(), nextHE) != Edges.end()){
+                   bool haspath = false;
+                   for(auto& he: path){
+                       if(he->r == nextHE->r){
+                           haspath = true;
+                           break;
+                       }
+                   }
+                   if(!haspath)path.push_back(nextHE);
+               }
+               f = nextHE->pair->face;
+           }while(nextHE->r != GradationPoints[i+1]->r);
+       }
+       return path;
 }

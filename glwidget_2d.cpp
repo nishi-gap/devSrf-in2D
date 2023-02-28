@@ -250,94 +250,14 @@ void GLWidget_2D::changeStopAtFF(bool state){IsStopAtFF = state;}
 void GLWidget_2D::changeStopAtCon(bool state){IsStopAtCon = state;}
 void GLWidget_2D::changeStopAtEq(bool state){IsStopAtEq = state;}
 void GLWidget_2D::Start4Debug_CF(){
-    if(model->Faces.size() < 2)return;
-    model->FL.resize(1);
+    if(model->Faces.size() < 2 )return;
+    if(model->FL.empty())return;
+    model->FL[0]->drawRulingInAllAngles(AllRulings);
+    /*
+    if(model->FL.empty())model->FL.push_back(new FoldLine(1, 1, PaintTool::FoldLine_test) );
     auto IsSame = [](double c, double b){return (abs(c - b) <= 1e-6)? true: false;};
     std::string file = "result_AAADebug.csv"; std::ofstream res(file);
     bool hasFoldLine = false;
-    std::vector<HalfEdge*> _axis;
-    for(const auto& h: model->Edges){
-        if(h->edgetype == EdgeType::r){
-            hasFoldLine = true;
-            if(std::find(_axis.begin(), _axis.end(), h) == _axis.end() && std::find(_axis.begin(), _axis.end(), h->pair) == _axis.end()){
-                _axis.push_back(h);
-            }
-        }
-    }
-    if(!hasFoldLine)return;
-    model->deform();
-
-    angle = 0.0;
-    NewRuling.clear();NewRuling2d.clear(); RulingColor.clear();
-    while(angle <= 2.0*std::numbers::pi){
-        double a2 = 0;
-        double a = angle;
-        glm::f64vec3 e, e2, x;
-        glm::f64vec3 N, r, n, r2;
-        glm::f64vec3 e_bef;
-        double vecLen = 50;
-
-        for(int i = 0; i < _axis.size(); i++){
-            x = _axis[i]->vertex->p3;
-            e = glm::normalize(_axis[i]->prev->vertex->p3 - x);
-            e2 = glm::normalize(_axis[i]->pair->next->next->vertex->p3 - x);
-            double beta = (1.0 - abs(_axis[i]->r->Gradation/255.0)) * std::numbers::pi;
-            if(i != 0){
-                glm::f64vec3 e_next = glm::normalize(MathTool::ProjectionVector(e2,-e));
-                double tau = glm::angle(e_bef, e_next);
-                if(glm::dot(glm::cross(e_bef, e_next), e) > 0) tau = 2.0*std::numbers::pi - tau;
-                a = (a2 - tau < 0) ? a2 - tau + 2.0 * std::numbers::pi: a2 - tau;
-                //std::cout << i << " : tau = " << tau << " , a = " <<  glm::degrees(a) << " , a' = " << glm::degrees(a2) << std::endl;
-
-            }
-
-            double phi3 = glm::angle(e2, glm::normalize(_axis[i]->next->vertex->p3 - x));
-            double phi4 = glm::angle(e, glm::normalize(_axis[i]->next->vertex->p3 - x));
-            double k = 2.0 * std::numbers::pi - phi3 - phi4;
-            if(!(beta <= phi3 + phi4 && phi3 + phi4 <= 2.0 * std::numbers::pi - beta)){std::cout <<"exceed boundary condition   " << beta << " , " << phi3+phi4<< std::endl; exit(0);}
-            double phi1 = IsSame(sin(beta)*cos(a), sin(k))? std::numbers::pi/2.0: atan((cos(k) - cos(beta))/(sin(beta)*cos(a)- sin(k)));
-            if(phi1 < 0)phi1 += std::numbers::pi;
-            double phi2 = k - phi1;
-
-            if((abs(phi1 + phi3 - std::numbers::pi) < 1e-4 && abs(phi2 + phi4 - std::numbers::pi) < 1e-4)){IsStopAtFF = true; std::cout << a << "  flat foldable state " << std::endl;}
-            if((abs(phi1 - k/2.0) < 1e-4 && abs(phi2 -  k/2.0) < 1e-4)){IsStopAtEq = true; std::cout << a << "  equal degin angles " << std::endl;}
-            if((abs((phi1 + phi4) - std::numbers::pi) < 1e-4 && abs((phi2 + phi3) - std::numbers::pi) < 1e-4)){IsStopAtCon = true; std::cout << a << "  continuation" << std::endl;}
-            if(phi1 < std::numbers::pi/2.0)RulingColor.push_back(true); else RulingColor.push_back(false);
-            glm::f64vec3 axis_alpha = glm::normalize(glm::cross(e, e2));
-            N = glm::normalize(glm::rotate (a, e)  * glm::f64vec4{axis_alpha,1});//phi1の回転軸
-
-            r = glm::rotate(phi1, N) * glm::f64vec4{e,1};r = glm::normalize(r);//新しいruling方向
-            n = glm::rotate(phi1, glm::f64vec3{0,0,1})*glm::f64vec4{glm::normalize(_axis[i]->prev->vertex->p - _axis[i]->vertex->p),1};n = glm::normalize(n);//展開図のruling方向
-
-
-            std::array<glm::f64vec3, 2> tmp = {vecLen*r + x, x}; NewRuling.push_back(tmp);
-            tmp = {vecLen*n + _axis[i]->vertex->p, _axis[i]->vertex->p}; //NewRuling2d.push_back(tmp);
-
-            double sin_a = (sin(phi1)*sin(a)/sin(phi2) > 1) ? 1: (sin(phi1)*sin(a)/sin(phi2) < -1)? -1: (sin(phi1)*sin(a)/sin(phi2));
-            r2 = MathTool::ProjectionVector(r,e2); r2 = glm::normalize(r2);
-            glm::f64vec3 ax_beta = e;
-            ax_beta = MathTool::ProjectionVector(ax_beta, e2); ax_beta = glm::normalize(ax_beta);
-            double cos_a = (glm::dot(r2, ax_beta) > 1) ? 1: (glm::dot(r2, ax_beta) < -1)? -1: glm::dot(r2, ax_beta);//値が期待しているのと違う
-            cos_a = (cos(phi1) - cos(phi2)*cos(beta))/(sin(phi2)*sin(beta));
-            a2 = (sin_a >= 0 && cos_a >= 0)? asin(sin_a): (sin_a >= 0 && cos_a < 0)?std::numbers::pi - asin(sin_a): (sin_a < 0 && cos_a < 0)? std::numbers::pi + asin(sin_a): 2.0*std::numbers::pi + asin(sin_a);
-            e_bef = (MathTool::ProjectionVector(e,e2)); e_bef = glm::normalize(e_bef);
-        res << beta << ", " << a <<  ", " << phi1 << ", " << phi2 <<", " << phi3 << ", " << phi4 << ", " << k <<
-               ", " << (phi1 + phi3- std::numbers::pi) << ", " << (phi2 + phi4 - std::numbers::pi) << ", " << (phi1- k/2.0) <<", "<< (phi2- k/2.0) <<", " << (phi1 + phi4- std::numbers::pi)<<", " << (phi2 + phi3- std::numbers::pi)<<  std::endl;
-        }
-
-        angle += 1e-4;
-    }
-    update();
-    emit foldingSignals();
-}
-
-
-void GLWidget_2D::changeBetaValue(int val){
-    if(model->Faces.size() < 2 || IsStop4Debug)return;
-    model->FL.resize(1);
-    bool hasFoldLine = false;
-
-    double a = (double)val * std::numbers::pi/180000.0;
     std::vector<HalfEdge*> _axis;
     for(const auto& h: model->Edges){
         if(h->edgetype == EdgeType::r){
@@ -351,20 +271,115 @@ void GLWidget_2D::changeBetaValue(int val){
     if(!hasFoldLine)return;
     model->deform();
 
-    auto IsSame = [](double c, double b){
-        return (abs(c - b) <= 1e-8)? true: false;
-    };
-    double a2 = 0;
-    glm::f64vec3 e, e2, x, x2d;
+    angle = 0.0;
+    AllRulings.clear();
+    while(angle <= 2.0*std::numbers::pi){
+        double a2 = 0;
+        double a = angle;
+        glm::f64vec3 e, e2, x;
+        glm::f64vec3 N, r, n, r2;
+        glm::f64vec3 e_bef;
+        double vecLen = 40;
+        bool IsVallyFoldLine = false;
+        for(int i = 0; i < (int)_axis.size(); i++){
+            x = _axis[i]->vertex->p3;
+            e = glm::normalize(_axis[i]->next->vertex->p3 - x);
+            e2 = glm::normalize(_axis[i]->pair->prev->vertex->p3 - x);
+            double beta = (1.0 - abs(_axis[i]->r->Gradation/255.0)) * std::numbers::pi;
+            if(_axis[i]->r->Gradation < 0)IsVallyFoldLine = true;
+            if(i != 0){
+                glm::f64vec3 e_next = glm::normalize(MathTool::ProjectionVector(e2,-e));
+                double tau = (glm::dot(e_bef, e_next) > 1) ? 0: (glm::dot(e_bef, e_next) < -1) ? std::numbers::pi: glm::angle(e_bef,e_next);
+                tau = glm::angle(e_bef, e_next);
+                if(glm::dot(glm::cross(e_bef, e_next), e) > 0) tau = 2.0*std::numbers::pi - tau;
+                a = (a2 - tau < 0) ? a2 - tau + 2.0 * std::numbers::pi: a2 - tau;
+                a = std::fmod(a2 + 2.0*std::numbers::pi - tau, 2.0*std::numbers::pi);
+                //std::cout << "---------------------------------" << std::endl;
+                if(!std::isfinite(a))std::cout << "a is not finite " << i << std::endl;
+                if(!std::isfinite(a2))std::cout << "a' is not finite " << i << std::endl;
+                //std::cout << i << " : tau = " << glm::degrees(tau) << " , a = " <<  glm::degrees(a) << " , a' = " << glm::degrees(a2) << std::endl;
+            }
+            double phi3 = glm::angle(e2, glm::normalize(_axis[i]->prev->vertex->p3 - x));
+            double phi4 = glm::angle(e, glm::normalize(_axis[i]->prev->vertex->p3 - x));
+            double k = 2.0 * std::numbers::pi - phi3 - phi4;
+
+            double phi1 = IsSame(glm::sin(beta)*glm::cos(a), glm::sin(k))? std::numbers::pi/2.0: atan2((glm::cos(k) - glm::cos(beta)),(glm::sin(beta)*glm::cos(a)- glm::sin(k)));
+
+            if(phi1 < 0){phi1 = std::numbers::pi + phi1;}
+            double phi2 = k - phi1;
+            if(phi2 < 0){
+                //phi2 *= -1; //phi1 = 2 * atan2(sin(beta)*cos(a) - sqrt(pow(sin(beta)*cos(a),2) + pow(cos(beta),2) - pow(cos(_phi2), 2)), cos(beta) + cos(_phi2));
+                //phi1 = k - phi2;
+                //std::cout << "result " << cos(phi2) - cos(phi1)*cos(beta) - sin(phi1)*sin(beta)*cos(a) << std::endl;
+            }
+
+            if((abs(phi1 + phi3 - std::numbers::pi) < 1e-4 && abs(phi2 + phi4 - std::numbers::pi) < 1e-4)){IsStopAtFF = true; std::cout << i << " : " <<  glm::degrees(a) << "  flat foldable state " << std::endl;}
+            if((abs(phi1 - k/2.0) < 1e-4 && abs(phi2 -  k/2.0) < 1e-4)){IsStopAtEq = true; std::cout << i << " : " <<  glm::degrees(a) << "  equal degin angles " << std::endl;}
+            if((abs((phi1 + phi4) - std::numbers::pi) < 1e-4 && abs((phi2 + phi3) - std::numbers::pi) < 1e-4)){IsStopAtCon = true; std::cout <<  i << " : " << glm::degrees(a) << "  continuation" << std::endl;}
+            if(phi1 < std::numbers::pi/2.0)RulingColor.push_back(true); else RulingColor.push_back(false);
+            glm::f64vec3 axis_alpha = glm::normalize(glm::cross(e2, e));
+            if(!IsVallyFoldLine){
+                N = glm::normalize(glm::rotate (a, -e)  * glm::f64vec4{axis_alpha,1});
+            }else{
+                //axis_alpha = glm::normalize(glm::cross(e, e2));
+                N = glm::normalize(glm::rotate (a, -e)  * glm::f64vec4{axis_alpha,1});
+            }
+            r = glm::rotate(phi1, -N) * glm::f64vec4{e,1};r = glm::normalize(r);//新しいruling方向
+            n = glm::rotate(phi1, glm::f64vec3{0,0,1})*glm::f64vec4{glm::normalize(_axis[i]->prev->vertex->p - _axis[i]->vertex->p),1};
+            std::array<glm::f64vec3, 2> tmp = {vecLen*r + x, x}; AllRulings.push_back(tmp);
+
+            double sin_a = (sin(phi1)*sin(a)/sin(phi2) > 1) ? 1: (sin(phi1)*sin(a)/sin(phi2) < -1)? -1: (sin(phi1)*sin(a)/sin(phi2));
+            r2 = MathTool::ProjectionVector(r,e2); r2 = glm::normalize(r2);
+            glm::f64vec3 ax_beta = e;
+            ax_beta = MathTool::ProjectionVector(ax_beta, e2); ax_beta = glm::normalize(ax_beta);
+            double cos_a = (glm::dot(r2, ax_beta) > 1) ? 1: (glm::dot(r2, ax_beta) < -1)? -1: glm::dot(r2, ax_beta);//値が期待しているのと違う
+            cos_a = (cos(phi1) - cos(phi2)*cos(beta))/(sin(phi2)*sin(beta));
+            a2 = (sin_a >= 0 && cos_a >= 0)? asin(sin_a): (sin_a >= 0 && cos_a < 0)?std::numbers::pi - asin(sin_a): (sin_a < 0 && cos_a < 0)? std::numbers::pi + asin(sin_a): 2.0*std::numbers::pi + asin(sin_a);
+            e_bef = (MathTool::ProjectionVector(e,e2)); e_bef = glm::normalize(e_bef);
+        res << beta << ", " << a <<  ", " << phi1 << ", " << phi2 <<", " << phi3 << ", " << phi4 << ", " << k <<
+               ", " << (phi1 + phi3- std::numbers::pi) << ", " << (phi2 + phi4 - std::numbers::pi) << ", " << (phi1- k/2.0) <<", "<< (phi2- k/2.0) <<", " << (phi1 + phi4- std::numbers::pi)<<", " << (phi2 + phi3- std::numbers::pi)<<  std::endl;
+        }
+
+        angle += 1e-3;
+    }*/
+    update();
+    emit foldingSignals();
+}
+
+
+void GLWidget_2D::changeBetaValue(int val){
+    auto IsSame = [](double c, double b){ return (abs(c - b) <= 1e-8)? true: false;};
+
+    if(model->Faces.size() < 2 || IsStop4Debug)return;
+    if(model->FL.empty())model->FL.push_back(new FoldLine(1, 1, PaintTool::FoldLine_test) );
+
+    double a = val * std::numbers::pi/180.0;
+    std::vector<Vertex*> Poly_v = model->outline->getVertices();
+    model->FL[0]->applyAAAMethod(Poly_v, model->Faces, model->Edges, a);
+    {
+#if 0
+    glm::f64vec3 e, e2, e_bef, x, x2d;
     glm::f64vec3 N, r, n, r2;
-    glm::f64vec3 e_bef;
-    double vecLen = 50;
-    NewRuling.clear();NewRuling2d.clear(); RulingColor.clear();
-    for(int i = 0; i < _axis.size(); i++){
+    double vecLen = 70, a2 = 0;
+
+    std::vector<HalfEdge*> _axis;
+    for(const auto& h: model->Edges){
+        if(h->edgetype == EdgeType::r){          
+            if(std::find(_axis.begin(), _axis.end(), h) == _axis.end() && std::find(_axis.begin(), _axis.end(), h->pair) == _axis.end()){
+                if(h->vertex->p.y < h->pair->vertex->p.y)_axis.push_back(h);
+                else _axis.push_back(h->pair);
+            }
+        }
+    }
+    if(_axis.empty())return;
+    model->deform();
+    SingleRuling.clear();NewRuling2d.clear(); RulingColor.clear();
+    std::vector<glm::f64vec3> Ruling3d, Ruling2d;
+    for(int i = 0; i < (int)_axis.size(); i++){
         x = _axis[i]->vertex->p3; x2d = _axis[i]->vertex->p;
         bool IsVallyFoldLine = false;
-        e = glm::normalize(_axis[i]->prev->vertex->p3 - x);
-        e2 = glm::normalize(_axis[i]->pair->next->next->vertex->p3 - x);
+        e = glm::normalize(_axis[i]->pair->next->next->vertex->p3 - x);
+        e2 = glm::normalize(_axis[i]->prev->vertex->p3 - x);
         double beta = (1.0 - abs(_axis[i]->r->Gradation/255.0)) * std::numbers::pi;
         if(_axis[i]->r->Gradation < 0)IsVallyFoldLine = true;
         if(i != 0){
@@ -373,75 +388,126 @@ void GLWidget_2D::changeBetaValue(int val){
             tau = glm::angle(e_bef, e_next);
             if(glm::dot(glm::cross(e_bef, e_next), e) > 0) tau = 2.0*std::numbers::pi - tau;
             a = (a2 - tau < 0) ? a2 - tau + 2.0 * std::numbers::pi: a2 - tau;
+            a = std::fmod(a2 + 2.0*std::numbers::pi - tau, 2.0*std::numbers::pi);
             //std::cout << "---------------------------------" << std::endl;
             if(!std::isfinite(a))std::cout << "a is not finite " << i << std::endl;
             if(!std::isfinite(a2))std::cout << "a' is not finite " << i << std::endl;
-            std::cout << i << " : tau = " << tau << " , a = " <<  glm::degrees(a) << " , a' = " << glm::degrees(a2) << std::endl;
+            //std::cout << i << " : tau = " << glm::degrees(tau) << " , a = " <<  glm::degrees(a) << " , a' = " << glm::degrees(a2) << std::endl;
         }
         double phi3 = glm::angle(e2, glm::normalize(_axis[i]->next->vertex->p3 - x));
         double phi4 = glm::angle(e, glm::normalize(_axis[i]->next->vertex->p3 - x));
         double k = 2.0 * std::numbers::pi - phi3 - phi4;
 
         double phi1 = IsSame(glm::sin(beta)*glm::cos(a), glm::sin(k))? std::numbers::pi/2.0: atan2((glm::cos(k) - glm::cos(beta)),(glm::sin(beta)*glm::cos(a)- glm::sin(k)));
+
         if(phi1 < 0){phi1 = std::numbers::pi + phi1;}
-        double phi2 = k - phi1;
-        std::cout <<"angle "<< i << " :  " << "phi1 = " <<  std::setprecision(10) <<  glm::degrees(phi1) << ", phi2 = " << glm::degrees(phi2) << ", phi3 = " << glm::degrees(phi3) << ", phi4 = " << glm::degrees(phi4)<< " : " <<  glm::degrees(a) <<  std::endl;
-        //if(!(beta <= phi3 + phi4 && phi3 + phi4 <= 2.0 * std::numbers::pi - beta)){std::cout <<"exceed boundary condition   " << beta << " , " << phi3+phi4<< std::endl; exit(0);}
+        double phi2 = k - phi1;        
+        if(phi2 < 0){
+            //phi2 *= -1; //phi1 = 2 * atan2(sin(beta)*cos(a) - sqrt(pow(sin(beta)*cos(a),2) + pow(cos(beta),2) - pow(cos(_phi2), 2)), cos(beta) + cos(_phi2));
+            //phi1 = k - phi2;
+            std::cout << "result " << cos(phi2) - cos(phi1)*cos(beta) - sin(phi1)*sin(beta)*cos(a) << std::endl;
+        }
+        std::cout <<"angle "<< i << " :  " << "phi1 = " <<  std::setprecision(10) <<  glm::degrees(phi1) << ", phi2 = " << glm::degrees(phi2) << ", phi3 = " <<
+                    glm::degrees(phi3) << ", phi4 = " << glm::degrees(phi4)<< " : k = " <<  glm::degrees(k) << " , beta = " << glm::degrees(beta) << " , sum = " << phi1+phi2+phi3+phi4 - 2.0*M_PI<<  std::endl;
+        if(!(beta <= k && k <= 2.0 * std::numbers::pi - beta)){std::cout <<"exceed boundary condition   " << beta << " , " << k<< std::endl;}
 
         if(IsSame(phi1 + phi3, std::numbers::pi) && IsSame(phi2 + phi4, std::numbers::pi)){IsStopAtFF = true; std::cout << i << "  flat foldable state " << std::endl;}
         if(IsSame(phi1, std::numbers::pi/2.0) && IsSame(phi2, std::numbers::pi/2.0)){IsStopAtEq = true; std::cout << i << "  equal degin angles " << std::endl;}
         if(IsSame(phi1 + phi4, std::numbers::pi) && IsSame(phi2 + phi3, std::numbers::pi)){IsStopAtCon = true; std::cout << i << "  continuation" << std::endl;}
         if(phi1 < std::numbers::pi/2.0)RulingColor.push_back(true); else RulingColor.push_back(false);
-        glm::f64vec3 axis_alpha = glm::normalize(glm::cross(e, e2));
-        if(IsVallyFoldLine){N = glm::normalize(glm::rotate (a, e2)  * glm::f64vec4{-axis_alpha,1});}//phi1の回転軸
-        else {N = glm::normalize(glm::rotate (a, e)  * glm::f64vec4{axis_alpha,1});}//phi1の回転軸
-
-        r = glm::rotate(phi1, N) * glm::f64vec4{e,1};r = glm::normalize(r);//新しいruling方向
-        n = glm::rotate(phi1, glm::f64vec3{0,0,1})*glm::f64vec4{glm::normalize(_axis[i]->prev->vertex->p - x2d),1};n = glm::normalize(n);//展開図のruling方向
-
-        std::array<glm::f64vec3, 2> tmp = {vecLen*N + x, x}; NewRuling.push_back(tmp);
-        Vertex *v1 = new Vertex(x2d + vecLen*n, vecLen*r + x);
-        Vertex *v2 = new Vertex(vecLen*n + _axis[i]->prev->vertex->p, vecLen*r + _axis[i]->prev->vertex->p3);
-        Vertex *v3 = new Vertex(vecLen*n + _axis[i]->pair->next->next->vertex->p, vecLen*r + _axis[i]->pair->next->next->vertex->p3);
-        tmp = {vecLen*n + x2d, x2d}; NewRuling2d.push_back(tmp);
-        if(model->Faces.size() == 2){
-            HalfEdge *Ruling1 = new HalfEdge(v1, EdgeType::ol), *Ruling2 = new HalfEdge(_axis[i]->vertex, EdgeType::ol);
-            HalfEdge *Edgeend1 = new HalfEdge(_axis[i]->prev->vertex, EdgeType::ol), *Edgeend2 = new HalfEdge(v3, EdgeType::ol);
-            HalfEdge *EdgePair1 = new HalfEdge(_axis[i]->vertex, EdgeType::ol), *EdgePair2 = new HalfEdge(_axis[i]->pair->next->next->vertex, EdgeType::ol);
-            HalfEdge *Top1 = new HalfEdge(v2,EdgeType::ol), *Top2 = new HalfEdge(v1, EdgeType::ol);
-
-            Edgeend1->next = Ruling1->prev = Top1; Edgeend2->prev = Ruling2->next = Top2;
-            Top1->next = EdgePair1->prev = Ruling1; Top2->prev = EdgePair2->next = Ruling2;
-            Edgeend1->prev = Ruling1->next = EdgePair1; Edgeend2->next = Ruling2->prev = EdgePair2;
-            Top1->prev = EdgePair1->next = Edgeend1; Top2->next = EdgePair2->prev = Edgeend2;
-
-            Face *f = new Face(Top1), *f2 = new Face(Edgeend2); f->ReConnect(Top1); f2->ReConnect(Edgeend2);
-            model->vertices.push_back(v1); model->vertices.push_back(v2); model->vertices.push_back(v3);
-            model->Edges.push_back(Ruling1); model->Edges.push_back(Ruling2); model->Edges.push_back(Edgeend1); model->Edges.push_back(Edgeend2);
-            model->Edges.push_back(EdgePair1); model->Edges.push_back(EdgePair2); model->Edges.push_back(Top1); model->Edges.push_back(Top2);
-            model->Faces.push_back(f);
-            model->Faces.push_back(f2);
+        glm::f64vec3 axis_alpha = glm::normalize(glm::cross(e2, e));
+        if(!IsVallyFoldLine){
+            N = glm::normalize(glm::rotate (a, -e)  * glm::f64vec4{axis_alpha,1});
         }else{
-            model->Faces[2]->halfedge->next->vertex->p = v1->p; model->Faces[2]->halfedge->next->vertex->p3 = v1->p3;
-            model->Faces[2]->halfedge->vertex->p = v2->p; model->Faces[2]->halfedge->vertex->p3 = v2->p3;
-            model->Faces[3]->halfedge ->vertex->p = v3->p; model->Faces[3]->halfedge ->vertex->p3 = v3->p3;
+            //axis_alpha = glm::normalize(glm::cross(e, e2));
+            N = glm::normalize(glm::rotate (a, -e)  * glm::f64vec4{axis_alpha,1});
         }
-        //tmp = {vecLen*N + x, x}; NewRuling.push_back(tmp);
+        r = glm::rotate(phi1, -N) * glm::f64vec4{e,1};r = glm::normalize(r);//新しいruling方向
+        n = glm::rotate(phi1, glm::f64vec3{0,0,1})*glm::f64vec4{glm::normalize(_axis[i]->prev->vertex->p - x2d),1};
 
-
+        if(k < std::numbers::pi) n = glm::rotate(phi1, glm::f64vec3{0,0,-1})*glm::f64vec4{glm::normalize(_axis[i]->pair->next->next->vertex->p - x2d),1};
+        else n = glm::rotate(phi1, glm::f64vec3{0,0,1})*glm::f64vec4{glm::normalize(_axis[i]->pair->next->next->vertex->p - x2d),1};
+        n = glm::rotate(phi1, glm::f64vec3{0,0,1})*glm::f64vec4{glm::normalize(_axis[i]->pair->next->next->vertex->p - x2d),1};
+        n = glm::normalize(n);//展開図のruling方向
+        Ruling3d.push_back(r); Ruling2d.push_back(n);
+        std::array<glm::f64vec3, 2> tmp;
+        tmp = {vecLen* e + x, x}; SingleRuling.push_back(tmp);//r
+        tmp= {vecLen * N + x, x}; SingleRuling.push_back(tmp);//g
+        tmp = {vecLen* r + x, x}; SingleRuling.push_back(tmp);//b
+        tmp = {vecLen*n + x2d, x2d}; NewRuling2d.push_back(tmp);
 
         double sin_a = (sin(phi1)*sin(a)/sin(phi2) > 1) ? 1: (sin(phi1)*sin(a)/sin(phi2) < -1)? -1: (sin(phi1)*sin(a)/sin(phi2));
         r2 = MathTool::ProjectionVector(r,e2); r2 = glm::normalize(r2);
         glm::f64vec3 ax_beta = e;
         ax_beta = MathTool::ProjectionVector(ax_beta, e2); ax_beta = glm::normalize(ax_beta);
-        double cos_a = (glm::dot(r2, ax_beta) > 1) ? 1: (glm::dot(r2, ax_beta) < -1)? -1: glm::dot(r2, ax_beta);//値が期待しているのと違う
-        cos_a = (cos(phi1) - cos(phi2)*cos(beta))/(sin(phi2)*sin(beta));
+        double cos_a = (glm::dot(r2, ax_beta) > 1) ? 1: (glm::dot(r2, ax_beta) < -1)? -1: glm::dot(r2, ax_beta);
+        //cos_a = (cos(phi1) - cos(phi2)*cos(beta))/(sin(phi2)*sin(beta));
         a2 = (sin_a >= 0 && cos_a >= 0)? asin(sin_a): (sin_a >= 0 && cos_a < 0)?std::numbers::pi - asin(sin_a): (sin_a < 0 && cos_a < 0)? std::numbers::pi + abs(asin(sin_a)): 2.0*std::numbers::pi + asin(sin_a);
-        //std::cout <<"sin " << glm::degrees(sin_a) << " , cos " << glm::degrees(cos_a) << " , a' =  " << glm::degrees(a2) << std::endl;
         e_bef = (MathTool::ProjectionVector(e,e2)); e_bef = glm::normalize(e_bef);
        }
-        //std::cout <<"||||||||||||||||||||||||||||||" << std::endl;
 
+    /*{
+       if(model->Faces.size() == _axis.size() + 1){
+           Vertex *v = new Vertex({vecLen * Ruling2d.front() + _axis.front()->vertex->p, vecLen * Ruling3d.front() + _axis.front()->vertex->p3});
+           Vertex *v2 = new Vertex(vecLen * Ruling2d.back() + _axis.back()->vertex->p, vecLen * Ruling3d.back() + _axis.back()->vertex->p3);
+           Vertex *vl = new Vertex(vecLen * Ruling2d.front() + _axis.front()->pair->next->next->vertex->p, vecLen * Ruling3d.front() + _axis.front()->pair->next->next->vertex->p3);
+           Vertex *vr = new Vertex(vecLen * Ruling2d.back() + _axis.back()->prev->vertex->p, vecLen * Ruling3d.back() + _axis.back()->prev->vertex->p3);
+           HalfEdge *Ruling1 = new HalfEdge(_axis.front()->vertex, EdgeType::ol), *Ruling2 = new HalfEdge(v2, EdgeType::ol);
+           HalfEdge *Edgeend1 = new HalfEdge(vl, EdgeType::ol), *Edgeend2 = new HalfEdge(_axis.back()->prev->vertex, EdgeType::ol);
+           HalfEdge *Top1 = new HalfEdge(v,EdgeType::ol), *Top2 = new HalfEdge(vr, EdgeType::ol);
+           HalfEdge *EdgePair1 = new HalfEdge(_axis.front()->pair->next->next->vertex, EdgeType::ol), *EdgePair2 = new HalfEdge(_axis.back()->vertex, EdgeType::ol);
+           Edgeend1->next = Ruling1->prev = EdgePair1; Edgeend2->prev = Ruling2->next = EdgePair2;
+           Top1->next = EdgePair1->prev = Edgeend1; Top2->prev = EdgePair2->next = Edgeend2;
+           Edgeend1->prev = Ruling1->next = Top1; Edgeend2->next = Ruling2->prev = Top2;
+           Top1->prev = EdgePair1->next = Ruling1; Top2->next = EdgePair2->prev = Ruling2;
+           model->Edges.push_back(EdgePair1); model->Edges.push_back(EdgePair2);
+           Face *f = new Face(Top1), *f2 = new Face(Ruling2); f->ReConnect(Top1); f2->ReConnect(Ruling2);
+           model->Faces.push_back(f); model->Faces.push_back(f2);
+       }else{
+           //v
+           model->Faces[_axis.size() + 1]->halfedge->vertex->p = vecLen * Ruling2d.front() + _axis.front()->vertex->p;
+           model->Faces[_axis.size() + 1]->halfedge->vertex->p3 = vecLen * Ruling3d.front() + _axis.front()->vertex->p3;
+           //vl
+           model->Faces[_axis.size() + 1]->halfedge->next->vertex->p = vecLen * Ruling3d.front() + _axis.front()->pair->next->next->vertex->p;
+           model->Faces[_axis.size() + 1]->halfedge->next->vertex->p3 = vecLen * Ruling3d.front() + _axis.front()->pair->next->next->vertex->p3;
+           //v2
+           model->Faces[_axis.size() + 2]->halfedge->vertex->p = vecLen * Ruling2d.back() + _axis.back()->vertex->p;
+           model->Faces[_axis.size() + 2]->halfedge->vertex->p3 = vecLen * Ruling3d.back() + _axis.back()->vertex->p3;
+           //vr
+           model->Faces[_axis.size() + 2]->halfedge->prev ->vertex->p = vecLen * Ruling3d.back() + _axis.back()->prev->vertex->p;
+           model->Faces[_axis.size() + 2]->halfedge->prev ->vertex->p3 = vecLen * Ruling3d.back() + _axis.back()->prev->vertex->p3;
+       }
+
+    }*/
+
+    for(int i = 0; i < (int)_axis.size()-1; i++){
+        int addFace = 1;
+        Vertex *v1 = new Vertex(vecLen * Ruling2d[i] + _axis[i]->vertex->p, vecLen * Ruling3d[i] + _axis[i]->vertex->p3);
+        Vertex *v2 = new Vertex(vecLen * Ruling2d[i+1] + _axis[i+1]->vertex->p, vecLen * Ruling3d[i+1] + _axis[i+1]->vertex->p3);
+        if(model->Faces.size() == _axis.size() + addFace){
+
+                HalfEdge *Ruling1 = new HalfEdge(v1, EdgeType::ol), *Ruling2 = new HalfEdge(_axis[i+1]->vertex, EdgeType::ol);
+                HalfEdge *Top = new HalfEdge(v2,EdgeType::ol);
+                HalfEdge *EdgePair = new HalfEdge(_axis[i]->vertex, EdgeType::ol);
+                Ruling1->prev = Ruling2->next = Top; Top->next = EdgePair->prev = Ruling1; Ruling2->prev = Ruling1->next = EdgePair; EdgePair->next = Top->prev = Ruling2;
+                model->Edges.push_back(Ruling1); model->Edges.push_back(Ruling2);
+                model->Edges.push_back(Top); model->Edges.push_back(EdgePair);
+                Face *f = new Face(Top); f->ReConnect(Top);
+                model->vertices.push_back(v1); model->vertices.push_back(v2);
+                model->Edges.push_back(Ruling1); model->Edges.push_back(Ruling2); model->Edges.push_back(EdgePair); model->Edges.push_back(Top);
+                model->Faces.push_back(f);
+
+        }else{
+            //v1
+            model->Faces[_axis.size() + addFace]->halfedge->next->vertex->p = vecLen * Ruling2d[i] + _axis[i]->vertex->p;
+            model->Faces[_axis.size() + addFace]->halfedge->next->vertex->p3 = vecLen * Ruling3d[i] + _axis[i]->vertex->p3;
+            //v2
+            model->Faces[_axis.size() + addFace]->halfedge->vertex->p = vecLen * Ruling2d[i+1] + _axis[i+1]->vertex->p;
+            model->Faces[_axis.size() + addFace]->halfedge->vertex->p3 = vecLen * Ruling3d[i+1] + _axis[i+1]->vertex->p3;
+        }
+    }
+#endif
+    }
     emit foldingSignals();
     update();
 }
@@ -470,7 +536,6 @@ void GLWidget_2D::paintGL(){
 
             glBegin(GL_LINE_STRIP);
             if(visibleCurve){glColor3d(0,0,0); for(auto&v: fl->CurvePts)glVertex2d(v.x, v.y);}
-            else{glColor3d(0,0,1); for(auto&v: fl->Curve_res2d)glVertex2d(v.x, v.y);}
             glEnd();
             std::vector<glm::f64vec3> Pts;
             Pts = fl->getCtrlPt();
@@ -640,15 +705,19 @@ void GLWidget_2D::paintGL(){
         }
     }
 
-    for(int i = 0; i < (int)NewRuling2d.size(); i++){
-        auto r = NewRuling2d[i];
-        if(RulingColor[i])glColor3d(1,0,0);
-        else glColor3d(0,0,1);
+    if(model->FL.empty())return;
+    for(int i = 0; i < (int)model->FL[0]->NewRuling2d.size(); i++){
+        auto r = model->FL[0]->NewRuling2d[i];
+        if(i % 3 == 0)glColor3d(1,0,0);
+        if(i % 3 == 1)glColor3d(0,1,0);
+        if(i % 3 == 2)glColor3d(0,0,1);
         glBegin(GL_LINES);
         glVertex2d(r[0].x, r[0].y);
         glVertex2d(r[1].x, r[1].y);
         glEnd();
     }
+    glColor3d(0,0,0);
+
 
 }
 
@@ -677,12 +746,18 @@ void GLWidget_2D::DrawGrid(){
 }
 
 void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
-    auto oriedge = model->outline->getEdges();
+    auto Poly_v = model->outline->getVertices();
+    bool res;
     if(e->key() == Qt::Key_V)eraseVec2d = !eraseVec2d;
     if(e->key() == Qt::Key_A) visibleCurve = !visibleCurve;
     //if(e->key() == Qt::Key_0){model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention, 0); emit foldingSignals();}
     //if(e->key() == Qt::Key_1){model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention, 1); emit foldingSignals();}
-    if(e->key() == Qt::Key_2){model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention, 2); emit foldingSignals();}
+    if(e->key() == Qt::Key_2){ res = model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, Poly_v, curveDimention, 2);
+        if(res){
+            emit foldingSignals();
+        }
+
+    }
     update();
 }
 
@@ -876,10 +951,6 @@ void GLWidget_2D::wheelEvent(QWheelEvent *we){
     if(drawtype == PaintTool::FoldlineColor){
         bool hasRulings = model->FL[0]->ChangeColor(model->outline, DiffWheel, curveDimention);
         emit ColorChangeFrom(0, model->FL[0]->getColor());
-        if(hasRulings){
-            bool res;
-            model->FL[0]->applyCurvedFolding(model->Faces, model->Edges, model->vertices, curveDimention);
-        }
     }else if(drawtype == PaintTool::NewGradationMode){
         if(refHE == nullptr || std::find(model->Edges.begin(), model->Edges.end(), refHE) == model->Edges.end()){
             std::cout<<"there is no refHE"<<std::endl;
@@ -915,8 +986,8 @@ void GLWidget_2D::addPoints_intplation(QMouseEvent *e, QPointF& p){
         emit ColorChangeFrom(0, refHE->r->Gradation);
         model->deform();
         if(model->outline->IsClosed() && !model->FL.empty()){
-            auto oriedge = model->outline->getEdges();
-            model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention);
+            //auto oriedge = model->outline->getEdges();
+            //model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention);
         }
     }else if(drawtype == PaintTool::FoldlineColor){}
     emit foldingSignals();
@@ -954,7 +1025,7 @@ HalfEdge *GLWidget_2D::assignment_refHE(){
     double dist = 10;
     for(auto& _he: model->Edges){
         if(_he->edgetype != EdgeType::r)continue;
-        //if(_he->next == nullptr)continue;
+        if(_he->next == nullptr)continue;
         double d = glm::length(glm::cross((curPos - _he->vertex->p), _he->vertex->p - _he->next->vertex->p))/glm::length(_he->vertex->p - _he->next->vertex->p);
         if(d < dist){
             dist = d; he = _he;
