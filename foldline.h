@@ -51,11 +51,8 @@ private:
     void devide2Faces(std::vector<HalfEdge*>& Inserted, std::vector<HalfEdge*>& Edges, std::vector<Face*>& Faces);
     std::vector<glm::f64vec3>CtrlPts;
     bool setPoint(const std::vector<Vertex*>& Poly_v, glm::f64vec3 N, glm::f64vec3& cp, glm::f64vec3& crossPoint);
-    void cal2VecScale(glm::f64vec3 v1, glm::f64vec3 v2, glm::f64vec3 p, double& s, double& t);
     PaintTool type;
     int maxRsize;
-
-    void ProjectBezierOn3d(int dim);
 
     void diff(double t, std::vector<double>& Knot, std::vector<glm::f64vec3>& dP, std::vector<glm::f64vec3>& CtrlPts, int index, const int n_times = 3);
     inline double rad_2d(double k, double tau, double a, double da);

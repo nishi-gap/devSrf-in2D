@@ -16,7 +16,6 @@
 #include <QMessageBox>
 #include <gtoolwnd.h>
 #include <QString>
-
 #include <QPushButton>
 #include "setrulings.h"
 #include "make3d.h"
@@ -97,8 +96,9 @@ public slots:
 
     //FoldLine
     void changeFoldType(PaintTool state);
+    void checkDevelopability(bool state);
 
-    void changeBetaValue(int val);
+    void changeBetaValue(double val);
     void changeStopAtFF(bool state);
     void changeStopAtCon(bool state);
     void changeStopAtEq(bool state);
@@ -113,7 +113,8 @@ private:
     std::vector<glm::f64vec3> tmp_c;
     void draw();
 
-    int SelectedCurveIndex; //-1: 未参照
+    int SmoothCurveIndex; //-1: 未参照
+    int FoldCurveIndex;
     int KeyEvent; //-1:None  0:Enter  1: Back-Space  2:Other
     //OutlineRectangle, RulingBezier, RulingBspline, RulingLine, RulingArc,  OutlinePolygon, OutlinePolyline, MoveControlPoint, SetColor, NewGradationMode, InsertControlPoint,
     //None(select mode), EditVertex(outline), MoveOutline, DeleteCntrlPt, DeleteCurve, OutlineConst, ConnectVertices, FoldLine, FoldlineColor
@@ -125,12 +126,16 @@ private:
 
     //int referencedRuling(QPointF p);
     void addPoints_intplation(QMouseEvent *e, QPointF& p);
-    HalfEdge *assignment_refHE();
+    int assignment_refHE();
     std::vector<glm::f64vec2> CurvePath;
 
     //std::vector<int> ControllPoints_gradation;//0~510 色の範囲, -1指定なし
     int DiffWheel;
     HalfEdge *refHE;
+
+    Vertex *refV;
+    Vertex *closestVertex(QPointF p, std::vector<Vertex*>& Vertices);
+
     int movePt;
     CurveType curvetype;
     QList<std::pair<CurveType, PaintTool>> CurveList;

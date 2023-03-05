@@ -1,6 +1,8 @@
 #include "glwidget_3d.h"
 using namespace MathTool;
 
+
+
 GLWidget_3D::GLWidget_3D(QWidget *parent):QOpenGLWidget(parent)
 {
 
@@ -10,10 +12,12 @@ GLWidget_3D::GLWidget_3D(QWidget *parent):QOpenGLWidget(parent)
     actionType = 0;
     center = glm::f64vec3{0,0,0};
     eraseMesh = eraseCtrlPt = eraseCrossPt = eraseVec = eraseCurve = false;
+    VisiblePlanarity = false;
     switchTNB = 0;
     glm::f64vec3 up{0,1,0};
     arccam = ArcBallCam(glm::f64vec3{0,0,-100}, center, up);
     drawdist = 0.0;
+    drawEdgePlane = -1;
 }
 GLWidget_3D::~GLWidget_3D(){
 
@@ -32,78 +36,8 @@ void GLWidget_3D::initializeGL(){
     glEnable(GL_DEPTH_TEST);
 }
 
-void EdgeRecconection(const std::vector<Vertex*>& Poly_V, std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges){
-    int n = Poly_V.size();
-    std::vector<std::vector<Vertex>> surface;
-    for(auto&f: Faces){
-        std::vector<Vertex> mesh;
-        HalfEdge *he = f->halfedge;
-        do{
-            Vertex v(he->vertex->p, he->vertex->p3);
-            mesh.push_back(v);
-            he = he->next;
-        }while(he != f->halfedge);
-        surface.push_back(mesh);
-    }
-    for(int i = 0; i < n; i++){
-        Vertex *v1 = Poly_V[i], *v2 = Poly_V[(i + 1) % n];
-        HalfEdge *h1 = nullptr, *h2 = nullptr;
-        std::vector<PointOnLine> PoL;
-        for(auto&e: Edges){
-            if((e->vertex == v1) && e->edgetype == EdgeType::ol)h1 = e;
-            if((e->vertex == v2) && e->edgetype == EdgeType::ol)h2 = e;
-
-            if((e->vertex == v1 || e->vertex == v2) || e->edgetype != EdgeType::ol)continue;
-            if(abs(glm::distance(e->vertex->p, v1->p) + glm::distance(e->vertex->p, v2->p) - glm::distance(v1->p, v2->p)) < 1e-5){
-                double t = glm::distance(e->vertex->p, v2->p)/glm::distance(v1->p, v2->p);
-                auto p = PointOnLine(t, e->vertex);
-                PoL.push_back(p);
-            }
-        }
-        std::sort(PoL.begin(), PoL.end());
-
-        if(PoL.empty()){//polygon同士の頂点で一度つなぎなおす
-            h1->prev = h2; h2->next = h1;
-        }else{
-            for(int j = 1; j < (int)PoL.size(); j++){
-                HalfEdge *edge1 = nullptr, *edge2= nullptr;
-                for(auto&h: PoL[j-1].v->halfedge){
-                    if(h->edgetype == EdgeType::ol)edge1 = h;
-                }
-                for(auto&h: PoL[j].v->halfedge){
-                    if(h->edgetype != EdgeType::ol)edge2 = h;
-                }
-                edge1->next = edge2; edge2->prev = edge1;
-            }
-            for(auto&e: PoL.front().v->halfedge){
-                if(e->edgetype == EdgeType::ol)continue;
-                e->prev = h2;
-                h2->next = e;
-            }
-            for(auto&e: PoL.back().v->halfedge){
-                if(e->edgetype != EdgeType::ol)continue;
-                e->next = h1;
-                h1->prev = e;
-            }
-        }
-    }
-    std::vector<bool> IsReconnected(Edges.size(), false);
-    int faceIndex = 0;
-
-    for(int i = 0; i < (int)IsReconnected.size(); i++){
-        if(IsReconnected[i])continue;
-        HalfEdge *h = Edges[i];
-        do{
-            int j = std::distance(Edges.begin(), std::find(Edges.begin(), Edges.end(), h));
-            IsReconnected[j] = true;
-            Edges[j]->face = Faces[faceIndex];
-            h = h->next;
-        }while(h != Edges[i]);
-        faceIndex++;
-    }
-}
-
-void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const HalfEdges Edges, const Ruling3d& _SingleRuling, const Ruling3d& _AllRulings){
+void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const HalfEdges Edges, const Surface_V _vertices,
+                              const Ruling3d& _SingleRuling, const Ruling3d& _AllRulings, bool switchDraw){
     std::vector<glm::f64vec3> vertices, centers;
     drawdist = 0.0;
     Vertices.clear();
@@ -127,29 +61,58 @@ void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const
     }
 
     TriMeshs.clear();
-    Faces3d _faces;
-    Face *f;
-    for(auto _f: Faces){
-        f = _f;
-        _faces.push_back(f);
+
+    if(!switchDraw){
+        _faces.clear();
+       _edges = EdgeCopy(Edges, _vertices);
+       PlanarityColor.clear();
+       EdgeRecconection(Poly_V, _faces, _edges);
+        for(auto&f: _faces){
+            vertices.clear();
+            HalfEdge *he = f->halfedge;
+            do{
+                glm::f64vec3 v = glm::f64vec3(Scale * Mirror * glm::f64vec4(he->vertex->p3,1));
+                vertices.push_back(v);
+                he = he->next;
+            }while(he != f->halfedge);
+            double c;
+            if(vertices.size() == 3)c = 0.0;
+            else{
+                std::vector<glm::f64vec3> QuadPlane;
+                for(auto&v: vertices){
+                    bool IsOutlineVertices = false;
+                    for(auto&p: Poly_V){
+                        if(p->p3 == v)IsOutlineVertices = true;
+                    }
+                    if(!IsOutlineVertices)QuadPlane.push_back(v);
+                }
+                double l_avg = (glm::distance(QuadPlane[0], QuadPlane[2]) + glm::distance(QuadPlane[1], QuadPlane[3]))/2.0;
+                double d;
+                glm::f64vec3 u1 = glm::normalize(QuadPlane[0] - QuadPlane[2]), u2 = glm::normalize(QuadPlane[1]-  QuadPlane[3]);
+                if(glm::length(glm::cross(u1, u2)) < DBL_EPSILON){
+                    glm::f64vec3 H = QuadPlane[3] + glm::dot(QuadPlane[1] - QuadPlane[3], u2)*u2;
+                    d = glm::distance(H, QuadPlane[1]);
+                }else{
+                    d = glm::length(glm::dot(glm::cross(u1,u2),  QuadPlane[2] - QuadPlane[3]))/glm::length(glm::cross(u1, u2));
+                }
+                c = d/l_avg;
+            }
+            PlanarityColor.push_back(c);
+            Vertices.push_back(vertices);
+        }
+    }else{
+        for(auto&f: Faces){
+            vertices.clear();
+            HalfEdge *he = f->halfedge;
+            do{
+                glm::f64vec3 v = glm::f64vec3(Scale * Mirror * glm::f64vec4(he->vertex->p3,1));
+                vertices.push_back(v);
+                he = he->next;
+            }while(he != f->halfedge);
+            Vertices.push_back(vertices);
+        }
     }
-    HalfEdges _edges;
-    HalfEdge *h;
-    for(auto _h: Edges){
-        h = _h;
-        _edges.push_back(h);
-    }
-    //EdgeRecconection(Poly_V, _faces, _edges);
-    for(auto&f: _faces){
-        vertices.clear();
-        HalfEdge *he = f->halfedge;       
-        do{
-            glm::f64vec3 v = glm::f64vec3(Scale * Mirror * glm::f64vec4(he->vertex->p3,1));
-            vertices.push_back(v);
-            he = he->next;           
-        }while(he != f->halfedge);
-        Vertices.push_back(vertices);      
-    }
+
     for(auto&V: Vertices){
         Triangulation(V, trimesh);
         TriMeshs.insert(TriMeshs.end(), trimesh.begin(), trimesh.end());
@@ -164,37 +127,10 @@ void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const
     update();
 }
 
-void GLWidget_3D::receive(std::vector<std::vector<glm::f64vec3>>& l, std::vector<std::vector<glm::f64vec3>>& r, glm::f64vec3 center){
-    std::vector<std::array<glm::f64vec3, 3>> TriMesh;
-    TriMeshs.clear();
-    Vertices = l;
-    for(auto& V : l){
-        Triangulation(V, TriMesh);
-        for(auto&tri: TriMesh){
-            TriMeshs.push_back(tri);
-            left.push_back(1);
-        }
-    }
-    for(auto&V: r){
-        Triangulation(V, TriMesh);
-        for(auto&tri: TriMesh){
-            TriMeshs.push_back(tri);
-            left.push_back(0);
-        }
-        Vertices.push_back(V);
-    }
-
-    TransX = 0.1 * center.x;
-    TransY = 0.05 * center.y;
-    this->center = 0.1 * center;
-
-
-    update();
-}
-
 inline void GLWidget_3D::dispV(glm::f64vec3 p){
     glVertex3d(p.x, p.y, p.z);
 }
+
 void GLWidget_3D::paintGL(){
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -223,7 +159,7 @@ void GLWidget_3D::paintGL(){
 
     glPolygonOffset(0.5f,1.f);
     for(int i = 0; i < (int)AllRulings.size(); i++){
-        glColor3d(0,0, (double)i/AllRulings.size());
+        glColor3d(0, (double)i/AllRulings.size(), (double)i/AllRulings.size());
         glBegin(GL_LINES);
         glVertex3d(AllRulings[i][0].x, AllRulings[i][0].y, AllRulings[i][0].z);
         glVertex3d(AllRulings[i][1].x, AllRulings[i][1].y, AllRulings[i][1].z);
@@ -251,27 +187,55 @@ void GLWidget_3D::paintGL(){
 
 void GLWidget_3D::DrawMesh(bool isFront){
     glPolygonOffset(1.f,0.5f);
-    glEnable(GL_CULL_FACE);
-    if(isFront){
-        glCullFace(GL_FRONT);
-        glColor3d(0.6,0.6,0.6);
-    }
-    else {
-        glCullFace(GL_BACK);
-        glColor3d(0.9,0.9,0.9);
-    }
-    for(int i = 0; i < (int)TriMeshs.size(); i++){
-        //if(left[i] == 1)glColor3d(0.8, 0.2, 0.2);
-        //else glColor3d(0.2, 0.2, 0.8);
-        glBegin(GL_POLYGON);
-        for (auto& v : TriMeshs[i]) {
-            glVertex3d(v.x, v.y, v.z);
+
+    if(VisiblePlanarity){
+        for(int i = 0; i < (int)Vertices.size(); i++){
+            if(drawEdgePlane == i)continue;
+            if(PlanarityColor[i] >= th_planarity){
+                glColor3d(1,0,0);
+            }else{
+                glColor3d(PlanarityColor[i]/th_planarity, 1 - PlanarityColor[i]/th_planarity, 0);
+            }
+
+            glBegin(GL_POLYGON);
+            for (auto& v : Vertices[i]) {
+                glVertex3d(v.x, v.y, v.z);
+            }
+            glEnd();
         }
-        glEnd();
+    }else{
+        glEnable(GL_CULL_FACE);
+        if(isFront){
+            glCullFace(GL_FRONT);
+            glColor3d(0.6,0.6,0.6);
+        }
+        else {
+            glCullFace(GL_BACK);
+            glColor3d(0.9,0.9,0.9);
+
+        }
+        for(int i = 0; i < (int)Vertices.size(); i++){
+            if(drawEdgePlane == i)continue;
+            glBegin(GL_POLYGON);
+            for (auto& v : Vertices[i]) {
+                glVertex3d(v.x, v.y, v.z);
+            }
+            glEnd();
+        }
+        glDisable(GL_LIGHTING);
+        glDisable(GL_LIGHT0);
+        glDisable(GL_CULL_FACE);
     }
-    glDisable(GL_LIGHTING);
-    glDisable(GL_LIGHT0);
-    glDisable(GL_CULL_FACE);
+
+    //for(int i = 0; i < (int)TriMeshs.size(); i++){
+      //  glBegin(GL_POLYGON);
+        //for (auto& v : TriMeshs[i]) {
+          //  glVertex3d(v.x, v.y, v.z);
+        //}
+        //glEnd();
+    //}
+
+
     glPolygonOffset(0.f,0.f);
 }
 
@@ -280,11 +244,17 @@ void GLWidget_3D::DrawMeshLines(){
     glColor3d(0.f, 0.f, 0.f);
     glLineWidth(1.0f);
 
-    for(auto& f: Vertices){
+     for(int i = 0; i < (int)Vertices.size(); i++){
+        if(drawEdgePlane == i)continue;
         glBegin(GL_LINE_LOOP);
-        for(auto& v: f){ glVertex3d(v.x, v.y, v.z);}
+        for(auto& v: Vertices[i]){ glVertex3d(v.x, v.y, v.z);}
         glEnd();
     }
+}
+
+void GLWidget_3D::PlanarityDispay(bool state){
+    VisiblePlanarity = !VisiblePlanarity;
+    update();
 }
 
 void GLWidget_3D::DrawGrid(){
@@ -330,12 +300,6 @@ void GLWidget_3D::wheelEvent(QWheelEvent *we){
     update();
 }
 
-void GLWidget_3D::keyPressEvent(QKeyEvent *e){
-    if(e->key() == Qt::Key_M)eraseMesh = !eraseMesh;
-    if(e->key() == Qt::Key_C) eraseCtrlPt = !eraseCtrlPt;
-    update();
-}
-
 void GLWidget_3D::receiveKeyEvent(QKeyEvent *e){
     if(e->key() == Qt::Key_M)eraseMesh = !eraseMesh;
     if(e->key() == Qt::Key_C)eraseCtrlPt = !eraseCtrlPt;
@@ -345,6 +309,11 @@ void GLWidget_3D::receiveKeyEvent(QKeyEvent *e){
         switchTNB = (switchTNB + 1) % 3;
        if(switchTNB == 1) std::cout<<"Now analysis "<<std::endl;
        if(switchTNB == 2) std::cout<<"Now diff "<<std::endl;
+    }
+    if(e->key() == Qt::Key_O)drawEdgePlane = -1;
+    if(e->key() == Qt::Key_P){
+        if(Vertices.empty())drawEdgePlane = -1;
+        else drawEdgePlane = (drawEdgePlane + 1) % (int)Vertices.size();
     }
     update();
 }

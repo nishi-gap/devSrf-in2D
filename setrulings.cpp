@@ -19,9 +19,36 @@ void Vertex::addNewEdge(HalfEdge *he){
 
 Vertex::Vertex(const Vertex &v){
     p = v.p; p3 = v.p3;
-
 }
 
+double Vertex::developability(){
+    if(halfedge.size() < 4)return -1;
+    //並び替え
+    struct EdgeAndAnlge{
+        double a;
+        HalfEdge *h;
+        EdgeAndAnlge(double _a, HalfEdge *_h): a(_a), h(_h){}
+        bool operator<(const EdgeAndAnlge& H) const { return a < H.a; }
+    };
+
+    HalfEdge *head = halfedge.front();
+
+    glm::f64vec3 e = glm::normalize(head->next->vertex->p - head->vertex->p);
+    std::vector<EdgeAndAnlge> EAA;
+    EAA.push_back(EdgeAndAnlge(0, head));
+    for(int i = 1; i < (int)halfedge.size(); i++){
+        double a = glm::orientedAngle(e, glm::normalize(halfedge[i]->next->vertex->p - halfedge[i]->vertex->p), glm::f64vec3{0,0,1});
+        if(a < 0) a += 2.0 * std::numbers::pi;
+        EAA.push_back(EdgeAndAnlge(a, halfedge[i]));
+    }
+    std::sort(EAA.begin(), EAA.end());
+    int edgeNum = halfedge.size();
+    double sum = 0.0;
+    for(int i = 0; i < (int)EAA.size(); i++){
+        sum += glm::angle(glm::normalize(EAA[i].h->next->vertex->p - EAA[i].h->vertex->p),glm::normalize(EAA[(i + 1) % edgeNum].h->next->vertex->p - EAA[(i + 1) % edgeNum].h->vertex->p) );
+    }
+    return abs(2.0*std::numbers::pi - sum);
+}
 
 HalfEdge::HalfEdge(Vertex *v, EdgeType _type){
     vertex = v;
@@ -63,6 +90,9 @@ bool HalfEdge::hasCrossPoint2d(glm::f64vec3 p, glm::f64vec3 q, glm::f64vec3& Cro
     return res;
 }
 
+double HalfEdge::diffEdgeLength(){
+    return abs(glm::length(next->vertex->p - vertex->p) - glm::length(next->vertex->p3 - vertex->p3));
+}
 
 double CrvPt_FL::developability(){
     if(halfedge.size() <= 4)return -1;
@@ -147,12 +177,12 @@ double Face::sgndist(glm::f64vec3 p){
     return (glm::dot(v, N) > 0) ? abs(glm::dot(p, N) + d): -abs(glm::dot(p, N) + d);
 }
 
-int Face::edgeNum(){
+int Face::edgeNum(bool PrintVertex){
     int cnt = 0;
     HalfEdge *h = halfedge;
     do{
         cnt++;
-        std::cout << glm::to_string(h->vertex->p) << " , " << h << " , " << this << std::endl;
+        if(PrintVertex)std::cout << glm::to_string(h->vertex->p) << " , " << h << " , " << this << std::endl;
         h = h->next;
 
     }while(h != halfedge);
@@ -719,7 +749,7 @@ void OUTLINE::drawPolygon(glm::f64vec3& p, bool IsClicked){
         Eigen::Matrix3d R = Eigen::Matrix3d::Identity();
 
         vertices.push_back(new Vertex(p));
-        double a = 2 * M_PI /VerticesNum;
+        double a = 2 * std::numbers::pi /VerticesNum;
 
         R(0,0) = R(1,1) = cos(a); R(0,1) = -sin(a); R(1,0) = sin(a);
         T(0,2) = origin.x; T(1,2) = origin.y;
@@ -895,6 +925,96 @@ std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, HalfEdge *
     }ofs.close();
 
     return res;
+}
+
+void EdgeRecconection(const std::vector<Vertex*>& Poly_V, std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges){
+    int n = Poly_V.size();
+    for(int i = 0; i < n; i++){
+        Vertex *v1 = Poly_V[i], *v2 = Poly_V[(i + 1) % n];
+        HalfEdge *h1 = nullptr, *h2 = nullptr;
+        std::vector<PointOnLine> PoL;
+        for(auto&e: Edges){
+            if((e->vertex->p == v1->p) && e->edgetype == EdgeType::ol)h1 = e;
+            if((e->vertex->p == v2->p) && e->edgetype == EdgeType::ol)h2 = e;
+
+            if((e->vertex->p == v1->p || e->vertex->p == v2->p) || e->edgetype != EdgeType::ol)continue;
+            if(abs(glm::distance(e->vertex->p, v1->p) + glm::distance(e->vertex->p, v2->p) - glm::distance(v1->p, v2->p)) < 1e-5){
+                double t = glm::distance(e->vertex->p, v2->p)/glm::distance(v1->p, v2->p);
+                auto p = PointOnLine(t, e->vertex);
+                PoL.push_back(p);
+            }
+        }
+        std::sort(PoL.begin(), PoL.end());
+
+        if(PoL.empty()){//polygon同士の頂点で一度つなぎなおす
+            h1->prev = h2; h2->next = h1;
+        }else{
+            for(int j = 1; j < (int)PoL.size(); j++){
+                HalfEdge *edge1 = nullptr, *edge2= nullptr;
+                for(auto&h: PoL[j-1].v->halfedge){
+                    if(h->edgetype == EdgeType::ol)edge1 = h;
+                }
+                for(auto&h: PoL[j].v->halfedge){
+                    if(h->edgetype != EdgeType::ol)edge2 = h;
+                }
+                edge1->next = edge2; edge2->prev = edge1;
+            }
+            for(auto&e: PoL.front().v->halfedge){
+                if(e->edgetype == EdgeType::ol)continue;
+                e->prev = h2;
+                h2->next = e;
+            }
+            for(auto&e: PoL.back().v->halfedge){
+                if(e->edgetype != EdgeType::ol)continue;
+                e->next = h1;
+                h1->prev = e;
+            }
+        }
+    }
+    std::vector<bool> IsReconnected(Edges.size(), false);
+    int faceIndex = 0;
+
+    for(int i = 0; i < (int)IsReconnected.size(); i++){
+        if(IsReconnected[i])continue;
+        auto h = Edges[i];
+        Face *f = new Face(h);
+        Faces.push_back(f);
+        do{
+            int j = std::distance(Edges.begin(), std::find(Edges.begin(), Edges.end(), h));
+            IsReconnected[j] = true;
+            Edges[j]->face = f;
+            h = h->next;
+        }while(h != Edges[i]);
+        faceIndex++;
+    }
+}
+
+std::vector<HalfEdge*> EdgeCopy(const std::vector<HalfEdge*> Edges, const std::vector<Vertex*> V){
+    std::vector<HalfEdge*> Edges_cp;
+    std::vector<Vertex*> srfV;
+    for(auto&_v: V){
+        Vertex *v = new Vertex(_v->p, _v->p3);
+        srfV.push_back(v);
+    }
+
+    for(auto e: Edges){
+        int VInd = std::distance(V.begin(), std::find(V.begin(), V.end(), e->vertex));
+        HalfEdge *h = new HalfEdge(srfV[VInd], e->edgetype);
+        h->r = e->r;
+        Edges_cp.push_back(h);
+    }
+    for(int i = 0; i < (int)Edges.size(); i++){
+        auto prevItr = std::find(Edges.begin(), Edges.end(), Edges[i]->prev);
+        auto nextItr = std::find(Edges.begin(), Edges.end(), Edges[i]->next);
+        auto pairItr = std::find(Edges.begin(), Edges.end(), Edges[i]->pair);
+        int prevInd = (prevItr != Edges.end())? std::distance(Edges.begin(), prevItr): -1;
+        int nextInd = (nextItr != Edges.end())?std::distance(Edges.begin(), nextItr): -1;
+        int pairInd = (pairItr != Edges.end())?std::distance(Edges.begin(), pairItr): -1;
+        Edges_cp[i]->prev = (prevInd != -1)?Edges_cp[prevInd]: nullptr;
+        Edges_cp[i]->next = (nextInd != -1)?Edges_cp[nextInd]: nullptr;
+        Edges_cp[i]->pair = (pairInd != -1)? Edges_cp[pairInd]: nullptr;
+    }
+    return Edges_cp;
 }
 
 

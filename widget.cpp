@@ -76,14 +76,17 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->color_FL, &QPushButton::clicked, this, &MainWindow::color_FL);  
     connect(ui->move_ctrl_pt_fl, &QPushButton::clicked, this, &MainWindow::moveCtrlPts_fl);
 
+
     //fold line debug
-    connect(ui->addFL_test, &QPushButton::clicked, this, &MainWindow::addFoldLine_test);
-    connect(ui->angleA, &QSpinBox::valueChanged, ui->glWid2dim, &GLWidget_2D::changeBetaValue);
+    connect(ui->addFL_test, &QPushButton::clicked, this, &MainWindow::addFoldLine_test);    
     connect(ui->glWid2dim, &GLWidget_2D::getAlphaBeta, this, &MainWindow::sendAlphaBeta);
     connect(ui->startButton, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::Start4Debug_CF);
     connect(ui->stopAtCon, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::changeStopAtCon);
     connect(ui->stopAtEq, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::changeStopAtEq);
     connect(ui->stopAtFF,&QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::changeStopAtFF);
+    connect(ui->angleSlider, &QSlider::sliderMoved, this, &MainWindow::changeAngleFromSlider);
+    connect(ui->angleA, &QDoubleSpinBox::valueChanged, this, &MainWindow::changeAngleFromSpinBox);
+    connect(this, &MainWindow::sendAngle, ui->glWid2dim, &GLWidget_2D::changeBetaValue);
 
     connect(ui->DebugWindow, &QPushButton::clicked,ui->glWid2dim,&GLWidget_2D::OpenDebugWindwow);
     connect(ui->SaveButton, &QPushButton::clicked,this, &MainWindow::exportobj);
@@ -92,6 +95,13 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->glWid2dim, &GLWidget_2D::deleteCrvSignal, this, &MainWindow::RemoveBtnFromLayerCrv);
     connect(this, &MainWindow::signalNewSelectedCrv, ui->glWid2dim, &GLWidget_2D::changeSelectedCurve);
     connect(this, &MainWindow::swapIndex, ui->glWid2dim, &GLWidget_2D::swapCrvsOnLayer);
+
+    //developability
+    connect(ui->DevelopabilityButton, &QCheckBox::clicked, ui->glWid2dim, &GLWidget_2D::checkDevelopability);
+    //planarity
+    connect(ui->PlanarityButton, &QCheckBox::clicked, ui->glWid3dim, &GLWidget_3D::PlanarityDispay);
+
+
     CurvesNum[0] = MainWindow::CurvesNum[1] = MainWindow::CurvesNum[2] = MainWindow::CurvesNum[3] = 0;
     SelectedBtn = nullptr;
 }
@@ -115,6 +125,18 @@ void MainWindow::addFoldLine_bezier(){emit signalFLtype(PaintTool::FoldLine_bezi
 void MainWindow::addFoldLine_test(){emit signalFLtype(PaintTool::FoldLine_test);}
 void MainWindow::moveCtrlPts_fl(){emit signalFLtype(PaintTool::FoldLine_test);}
 void MainWindow::color_FL(){emit signalFLtype(PaintTool::FoldLine_move);}
+void MainWindow::changeAngleFromSlider(int val){
+    ui->angleA->setValue((double)val/100);
+    double a = (double)val/18000.0 * std::numbers::pi;
+    emit sendAngle(a);
+
+}
+void MainWindow::changeAngleFromSpinBox(double val){
+    ui->angleSlider->setValue(val*100);
+    double a = (double)val*std::numbers::pi/180.0;
+    emit sendAngle(a);
+
+}
 
 void MainWindow::sendAlphaBeta(double&_alpha, int& _beta, int& _beta2){
     _alpha = ui->angleA->value();
@@ -136,10 +158,10 @@ void MainWindow::fold_Sm(){
     //switchActivateCheckBox("MakeDevSrf");
     if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
     else if(!ui->glWid2dim->model->FL.empty()){
-        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->FL[0]->SingleRuling, ui->glWid2dim->AllRulings);
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->SingleRuling, ui->glWid2dim->AllRulings);
     }
     else{
-        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges);
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
     }
 }
 
@@ -185,7 +207,7 @@ void MainWindow::fold_FL(){
         center += c /s;
     }
     center /= (Left.size() + Right.size());
-    ui->glWid3dim->receive(Left, Right, center);
+
 }
 
 void MainWindow::ChangedDivSizeEdit(){
@@ -235,12 +257,24 @@ void MainWindow::switchActivateCheckBox(PaintTool active){
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *e){
+    static bool switchDraw = false;
+    switchDraw = (!switchDraw)? true: false;
     ui->glWid3dim->receiveKeyEvent(e);
     ui->glWid2dim->receiveKeyEvent(e);
     if(e->key() == Qt::Key_Backspace){
         emit PressedBackSpace();
     }
     else if(e->key() == Qt::Key_Return){emit PressedEnter();}
+    else if(e->key() == Qt::Key_Q){
+        if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
+        else if(!ui->glWid2dim->model->FL.empty()){
+            ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
+                                       ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->SingleRuling, ui->glWid2dim->AllRulings, switchDraw);
+        }
+        else{
+            ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
+        }
+    }
     else{
 
     }
@@ -287,13 +321,23 @@ void MainWindow::exportobj(){
     QStringList WriteList;
     std::vector<glm::f64vec3> Normals;
     glm::f64vec3 befN = {0,0,0}, N;
-    for(auto& f: ui->glWid2dim->model->Faces){
+    glm::f64mat4x4 Mirror = glm::mat4(1.0f); Mirror[1][1] = -1;
+   std::vector<Face*> outputFace;
+   auto Poly_V = ui->glWid2dim->model->outline->getVertices();
+   auto _edges = EdgeCopy(ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
+   EdgeRecconection(Poly_V, outputFace, _edges);
+
+    for(auto& f: outputFace){
         HalfEdge *h = f->halfedge;
         do{
-            WriteList.append("v " + QString::number(h->vertex->p3.x) + " " + QString::number(h->vertex->p3.y) + " " + QString::number(h->vertex->p3.z) + "\n");
+            glm::f64vec3 v = Mirror * glm::f64vec4{h->vertex->p3, 1};
+            WriteList.append("v " + QString::number(v.x) + " " + QString::number(v.y) + " " + QString::number(v.z) + "\n");
             h = h->next;
         }while(h != f->halfedge);
-        N = glm::normalize(glm::cross(h->next->next->vertex->p3 - h->vertex->p3, h->next->vertex->p3 - h->vertex->p3));
+        glm::f64vec3 v = Mirror * glm::f64vec4{h->vertex->p3, 1};
+        glm::f64vec3 v2 = Mirror * glm::f64vec4{h->next->vertex->p3, 1};
+        glm::f64vec3 v3 = Mirror * glm::f64vec4{h->next->next->vertex->p3, 1};
+        N = glm::normalize(glm::cross(v3 - v, v2 - v));
         if(glm::dot(befN, N) < 0) N *= -1;
         Normals.push_back(N);
         befN = N;
@@ -301,14 +345,14 @@ void MainWindow::exportobj(){
     for(auto&n : Normals) WriteList.append("vn " + QString::number(n.x) + " " + QString::number(n.y) + " " + QString::number(n.z) + "\n");
 
     int cnt = 1;
-    for(int i = 0; i < (int)ui->glWid2dim->model->Faces.size(); i++){
+    for(int i = 0; i < (int)outputFace.size(); i++){
         QString s = "f ";
-        HalfEdge *h = ui->glWid2dim->model->Faces[i]->halfedge;
+        HalfEdge *h = outputFace[i]->halfedge;
         do{
             s += QString::number(cnt) + "//" + QString::number(i+1) + " ";
             cnt++;
             h = h->next;
-        }while(h != ui->glWid2dim->model->Faces[i]->halfedge);
+        }while(h != outputFace[i]->halfedge);
         s += "\n";
         WriteList.append(s);
     }
@@ -326,6 +370,21 @@ void MainWindow::exportobj(){
         out << item;
     }
 
+    //平面性の結果
+    QFile QuantitativeResult_file(fileName.split(u'.')[0] + "QuantitativeResult.csv");
+    if (!QuantitativeResult_file.open(QIODevice::WriteOnly)) {
+            QMessageBox::information(this, tr("Unable to open file"), file.errorString());
+            return;
+    }
+
+    QTextStream QuantitativeResult(&QuantitativeResult_file);
+    QuantitativeResult << "Planarity\n" ;
+    for(auto&c: ui->glWid3dim->PlanarityColor)QuantitativeResult << c << ", ";
+    QuantitativeResult << "\nDevelopability\n" ;
+    for(auto&v: ui->glWid2dim->model->vertices){
+        double a = v->developability();
+        if(a != -1)QuantitativeResult << a << ", ";
+    }
 
 }
 

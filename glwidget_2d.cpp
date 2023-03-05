@@ -22,7 +22,8 @@ GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
     //ControllPoints_gradation.clear();
     DiffWheel = 0;
     movePt = -1;
-    SelectedCurveIndex = -1;
+    FoldCurveIndex = SmoothCurveIndex = -1;
+    refV = nullptr;
     refHE = nullptr;
     KeyEvent = -1;
     curvetype = CurveType::none;
@@ -38,7 +39,7 @@ GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
 GLWidget_2D::~GLWidget_2D(){}
 
 void GLWidget_2D::InitializeDrawMode(int state){
-    if(state == 0)return; drawtype = PaintTool::None; SelectedCurveIndex = -1; emit SendNewActiveCheckBox(PaintTool::None);
+    if(state == 0)return; drawtype = PaintTool::None; SmoothCurveIndex = -1; emit SendNewActiveCheckBox(PaintTool::None);
 }
 
 void GLWidget_2D::AddCurve(){
@@ -46,7 +47,7 @@ void GLWidget_2D::AddCurve(){
     CurveType _type;
     emit signalCurveType(_type);
     model->Check4Param(curveDimention, deleteIndex);
-    if(model->crvs.empty()) SelectedCurveIndex = -1;
+    if(model->crvs.empty()) SmoothCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     for(auto& c: CurveList){
         if(std::get<0>(c) == _type){
@@ -55,18 +56,18 @@ void GLWidget_2D::AddCurve(){
         }
     }
 
-    SelectedCurveIndex = model->AddNewCurve(curvetype, DivSize);
+    SmoothCurveIndex = model->AddNewCurve(curvetype, DivSize);
     setMouseTracking(true);
     emit SendNewActiveCheckBox(PaintTool::AddCurve);
 }
 
 void GLWidget_2D::InsertNewPoint(){
     drawtype = PaintTool::InsertCtrlPt;
-    SelectedCurveIndex = -1;
+    SmoothCurveIndex = -1;
     setMouseTracking(true);
     std::vector<int>deleteIndex;
     model->Check4Param(curveDimention, deleteIndex);
-    if(model->crvs.empty()) SelectedCurveIndex = -1;
+    if(model->crvs.empty()) SmoothCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     emit SendNewActiveCheckBox(PaintTool::InsertCtrlPt);
 }
@@ -76,9 +77,9 @@ void GLWidget_2D::MoveCurvePt(){
     drawtype = PaintTool::MoveCtrlPt;
     std::vector<int>deleteIndex;
     model->Check4Param(curveDimention, deleteIndex);
-    if(model->crvs.empty()) SelectedCurveIndex = -1;
+    if(model->crvs.empty()) SmoothCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
-    SelectedCurveIndex = -1;
+    SmoothCurveIndex = -1;
     setMouseTracking(true);
     emit SendNewActiveCheckBox(PaintTool::MoveCtrlPt);
 }
@@ -88,7 +89,7 @@ void GLWidget_2D::DrawOutlineRectangle(){
     drawtype = PaintTool::Rectangle_ol;
     std::vector<int>deleteIndex;
     model->Check4Param(curveDimention, deleteIndex);
-    if(model->crvs.empty()) SelectedCurveIndex = -1;
+    if(model->crvs.empty()) SmoothCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     model->outline = new OUTLINE();
     model->outline->type = "Rectangle";
@@ -101,7 +102,7 @@ void GLWidget_2D::DrawOutlinePolygon(int state){
     drawtype = PaintTool::Polygon_ol;
     std::vector<int>deleteIndex;
     model->Check4Param(curveDimention, deleteIndex);
-    if(model->crvs.empty()) SelectedCurveIndex = -1;
+    if(model->crvs.empty()) SmoothCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     model->outline = new OUTLINE();
     model->outline->type = "Polygon";
@@ -116,7 +117,7 @@ void GLWidget_2D::DrawOutlinePolyline(int state){
     drawtype = PaintTool::Polyline_ol;
     std::vector<int>deleteIndex;
     model->Check4Param(curveDimention, deleteIndex);
-    if(model->crvs.empty()) SelectedCurveIndex = -1;
+    if(model->crvs.empty()) SmoothCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     model->outline = new OUTLINE();
     model->outline->type = "Polyline";
@@ -128,7 +129,7 @@ void GLWidget_2D::MoveOutline(int state){
     if(state == 0)return; drawtype = PaintTool::Move_ol;
     std::vector<int>deleteIndex;
     model->Check4Param(curveDimention, deleteIndex);
-    if(model->crvs.empty()) SelectedCurveIndex = -1;
+    if(model->crvs.empty()) SmoothCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     emit SendNewActiveCheckBox(PaintTool::Move_ol);
 }
@@ -137,7 +138,7 @@ void GLWidget_2D::EditOutlineVertex(int state){
     drawtype = PaintTool::EditVertex_ol;
     std::vector<int>deleteIndex;
     model->Check4Param(curveDimention, deleteIndex);
-    if(model->crvs.empty()) SelectedCurveIndex = -1;
+    if(model->crvs.empty()) SmoothCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     emit SendNewActiveCheckBox(PaintTool::EditVertex_ol);
     update();
@@ -148,7 +149,7 @@ void GLWidget_2D::DeleteCtrlPt(){
     std::vector<int>deleteIndex;
     model->Check4Param(curveDimention, deleteIndex);
     emit deleteCrvSignal(deleteIndex);
-    SelectedCurveIndex = -1;
+    SmoothCurveIndex = -1;
     setMouseTracking(true);
     emit SendNewActiveCheckBox(PaintTool::DeleteCtrlPt);
 }
@@ -157,7 +158,7 @@ void GLWidget_2D::DeleteCurve(){
     drawtype = PaintTool::DeleteCurve;
     std::vector<int>deleteIndex;
     model->Check4Param(curveDimention, deleteIndex);
-    if(model->crvs.empty()) SelectedCurveIndex = -1;
+    if(model->crvs.empty()) SmoothCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     setMouseTracking(true);
     emit SendNewActiveCheckBox(PaintTool::DeleteCurve);
@@ -166,11 +167,13 @@ void GLWidget_2D::DeleteCurve(){
 
 void GLWidget_2D::changeFoldType(PaintTool state){
     drawtype = state;
+    if(model->FL.empty())FoldCurveIndex = -1;
     if(state != PaintTool::FoldlineColor){
         int rulingNum = 30;
         int crvNum = 1000;
         FoldLine *fl = new FoldLine(crvNum, rulingNum, state);
         model->FL.push_back(fl);
+        FoldCurveIndex++;
     }
     setMouseTracking(false);
     update();
@@ -197,7 +200,7 @@ void GLWidget_2D::switchGetmetricConstraint(int state){
 void GLWidget_2D::setNewGradationMode(){
     std::vector<int> deleteIndex;
     drawtype = PaintTool::NewGradationMode;
-    model->Check4Param(curveDimention, deleteIndex); SelectedCurveIndex = -1;
+    model->Check4Param(curveDimention, deleteIndex); SmoothCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     update();
 }
@@ -205,18 +208,18 @@ void GLWidget_2D::recieveNewEdgeNum(int num){model->outline->VerticesNum = num; 
 
 void GLWidget_2D::ChangedDivSizeEdit(int n){
     this->DivSize = (n < 0)? DivSize: (maxDivSize < n)? maxDivSize: n;
-    if(SelectedCurveIndex == -1 || model->crvs.empty()) return;
+    if(SmoothCurveIndex == -1 || model->crvs.empty()) return;
     if(curvetype == CurveType::bezier3){
-        model->crvs[SelectedCurveIndex]->Bezier(curveDimention, crvPtNum);
+        model->crvs[SmoothCurveIndex]->Bezier(curveDimention, crvPtNum);
         //if(model->outline->isClosed  && model->crv->CurvePoints[0].pt != glm::f64vec2{-1,-1})model->crv->BezierRulings(model->outline->vertices,DivSize,crvPtNum);
     }
     if(curvetype == CurveType::bsp3){
-        model->crvs[SelectedCurveIndex]->Bspline(curveDimention, crvPtNum);
-        if(model->outline->IsClosed() && model->crvs[SelectedCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1, -1})model->crvs[SelectedCurveIndex]->BsplineRulings(model->outline,DivSize,crvPtNum, curveDimention);
+        model->crvs[SmoothCurveIndex]->Bspline(curveDimention, crvPtNum);
+        if(model->outline->IsClosed() && model->crvs[SmoothCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1, -1})model->crvs[SmoothCurveIndex]->BsplineRulings(model->outline,DivSize,crvPtNum, curveDimention);
     }
     if(curvetype == CurveType::line){
-        model->crvs[SelectedCurveIndex]->Line();
-        if(model->outline->IsClosed() && model->crvs[SelectedCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1})model->crvs[SelectedCurveIndex]->LineRulings(model->outline,DivSize);
+        model->crvs[SmoothCurveIndex]->Line();
+        if(model->outline->IsClosed() && model->crvs[SmoothCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1})model->crvs[SmoothCurveIndex]->LineRulings(model->outline,DivSize);
     }
 
     if(model->outline->IsClosed() && model->CrossDection4AllCurve()){
@@ -228,13 +231,13 @@ void GLWidget_2D::ChangedDivSizeEdit(int n){
     update();
 }
 
-void GLWidget_2D::changeSelectedCurve(int ind){SelectedCurveIndex = ind; drawtype = PaintTool::None; update();}
+void GLWidget_2D::changeSelectedCurve(int ind){SmoothCurveIndex = ind; drawtype = PaintTool::None; update();}
 
 void GLWidget_2D::swapCrvsOnLayer(int n1, int n2){
     if(n1 == n2)return;
     std::iter_swap(model->crvs.begin() + n1, model->crvs.begin() + n2);
-    if(SelectedCurveIndex == n1)SelectedCurveIndex = n2;
-    else SelectedCurveIndex = n1;
+    if(SmoothCurveIndex == n1)SmoothCurveIndex = n2;
+    else SmoothCurveIndex = n1;
     model->addRulings();
     model->deform();
     emit foldingSignals();
@@ -249,265 +252,31 @@ void GLWidget_2D::receiveNewLineWidth(double d){
 void GLWidget_2D::changeStopAtFF(bool state){IsStopAtFF = state;}
 void GLWidget_2D::changeStopAtCon(bool state){IsStopAtCon = state;}
 void GLWidget_2D::changeStopAtEq(bool state){IsStopAtEq = state;}
+void GLWidget_2D::checkDevelopability(bool state){
+    if(state)drawtype = PaintTool::CheckDevelopability;
+    else{
+        drawtype = PaintTool::None;
+        refV = nullptr;
+    }
+
+}
 void GLWidget_2D::Start4Debug_CF(){
     if(model->Faces.size() < 2 )return;
     if(model->FL.empty())return;
     model->FL[0]->drawRulingInAllAngles(AllRulings);
-    /*
-    if(model->FL.empty())model->FL.push_back(new FoldLine(1, 1, PaintTool::FoldLine_test) );
-    auto IsSame = [](double c, double b){return (abs(c - b) <= 1e-6)? true: false;};
-    std::string file = "result_AAADebug.csv"; std::ofstream res(file);
-    bool hasFoldLine = false;
-    std::vector<HalfEdge*> _axis;
-    for(const auto& h: model->Edges){
-        if(h->edgetype == EdgeType::r){
-            hasFoldLine = true;
-            if(std::find(_axis.begin(), _axis.end(), h) == _axis.end() && std::find(_axis.begin(), _axis.end(), h->pair) == _axis.end()){
-                if(h->vertex->p.y < h->pair->vertex->p.y)_axis.push_back(h);
-                else _axis.push_back(h->pair);
-            }
-        }
-    }
-    if(!hasFoldLine)return;
-    model->deform();
-
-    angle = 0.0;
-    AllRulings.clear();
-    while(angle <= 2.0*std::numbers::pi){
-        double a2 = 0;
-        double a = angle;
-        glm::f64vec3 e, e2, x;
-        glm::f64vec3 N, r, n, r2;
-        glm::f64vec3 e_bef;
-        double vecLen = 40;
-        bool IsVallyFoldLine = false;
-        for(int i = 0; i < (int)_axis.size(); i++){
-            x = _axis[i]->vertex->p3;
-            e = glm::normalize(_axis[i]->next->vertex->p3 - x);
-            e2 = glm::normalize(_axis[i]->pair->prev->vertex->p3 - x);
-            double beta = (1.0 - abs(_axis[i]->r->Gradation/255.0)) * std::numbers::pi;
-            if(_axis[i]->r->Gradation < 0)IsVallyFoldLine = true;
-            if(i != 0){
-                glm::f64vec3 e_next = glm::normalize(MathTool::ProjectionVector(e2,-e));
-                double tau = (glm::dot(e_bef, e_next) > 1) ? 0: (glm::dot(e_bef, e_next) < -1) ? std::numbers::pi: glm::angle(e_bef,e_next);
-                tau = glm::angle(e_bef, e_next);
-                if(glm::dot(glm::cross(e_bef, e_next), e) > 0) tau = 2.0*std::numbers::pi - tau;
-                a = (a2 - tau < 0) ? a2 - tau + 2.0 * std::numbers::pi: a2 - tau;
-                a = std::fmod(a2 + 2.0*std::numbers::pi - tau, 2.0*std::numbers::pi);
-                //std::cout << "---------------------------------" << std::endl;
-                if(!std::isfinite(a))std::cout << "a is not finite " << i << std::endl;
-                if(!std::isfinite(a2))std::cout << "a' is not finite " << i << std::endl;
-                //std::cout << i << " : tau = " << glm::degrees(tau) << " , a = " <<  glm::degrees(a) << " , a' = " << glm::degrees(a2) << std::endl;
-            }
-            double phi3 = glm::angle(e2, glm::normalize(_axis[i]->prev->vertex->p3 - x));
-            double phi4 = glm::angle(e, glm::normalize(_axis[i]->prev->vertex->p3 - x));
-            double k = 2.0 * std::numbers::pi - phi3 - phi4;
-
-            double phi1 = IsSame(glm::sin(beta)*glm::cos(a), glm::sin(k))? std::numbers::pi/2.0: atan2((glm::cos(k) - glm::cos(beta)),(glm::sin(beta)*glm::cos(a)- glm::sin(k)));
-
-            if(phi1 < 0){phi1 = std::numbers::pi + phi1;}
-            double phi2 = k - phi1;
-            if(phi2 < 0){
-                //phi2 *= -1; //phi1 = 2 * atan2(sin(beta)*cos(a) - sqrt(pow(sin(beta)*cos(a),2) + pow(cos(beta),2) - pow(cos(_phi2), 2)), cos(beta) + cos(_phi2));
-                //phi1 = k - phi2;
-                //std::cout << "result " << cos(phi2) - cos(phi1)*cos(beta) - sin(phi1)*sin(beta)*cos(a) << std::endl;
-            }
-
-            if((abs(phi1 + phi3 - std::numbers::pi) < 1e-4 && abs(phi2 + phi4 - std::numbers::pi) < 1e-4)){IsStopAtFF = true; std::cout << i << " : " <<  glm::degrees(a) << "  flat foldable state " << std::endl;}
-            if((abs(phi1 - k/2.0) < 1e-4 && abs(phi2 -  k/2.0) < 1e-4)){IsStopAtEq = true; std::cout << i << " : " <<  glm::degrees(a) << "  equal degin angles " << std::endl;}
-            if((abs((phi1 + phi4) - std::numbers::pi) < 1e-4 && abs((phi2 + phi3) - std::numbers::pi) < 1e-4)){IsStopAtCon = true; std::cout <<  i << " : " << glm::degrees(a) << "  continuation" << std::endl;}
-            if(phi1 < std::numbers::pi/2.0)RulingColor.push_back(true); else RulingColor.push_back(false);
-            glm::f64vec3 axis_alpha = glm::normalize(glm::cross(e2, e));
-            if(!IsVallyFoldLine){
-                N = glm::normalize(glm::rotate (a, -e)  * glm::f64vec4{axis_alpha,1});
-            }else{
-                //axis_alpha = glm::normalize(glm::cross(e, e2));
-                N = glm::normalize(glm::rotate (a, -e)  * glm::f64vec4{axis_alpha,1});
-            }
-            r = glm::rotate(phi1, -N) * glm::f64vec4{e,1};r = glm::normalize(r);//新しいruling方向
-            n = glm::rotate(phi1, glm::f64vec3{0,0,1})*glm::f64vec4{glm::normalize(_axis[i]->prev->vertex->p - _axis[i]->vertex->p),1};
-            std::array<glm::f64vec3, 2> tmp = {vecLen*r + x, x}; AllRulings.push_back(tmp);
-
-            double sin_a = (sin(phi1)*sin(a)/sin(phi2) > 1) ? 1: (sin(phi1)*sin(a)/sin(phi2) < -1)? -1: (sin(phi1)*sin(a)/sin(phi2));
-            r2 = MathTool::ProjectionVector(r,e2); r2 = glm::normalize(r2);
-            glm::f64vec3 ax_beta = e;
-            ax_beta = MathTool::ProjectionVector(ax_beta, e2); ax_beta = glm::normalize(ax_beta);
-            double cos_a = (glm::dot(r2, ax_beta) > 1) ? 1: (glm::dot(r2, ax_beta) < -1)? -1: glm::dot(r2, ax_beta);//値が期待しているのと違う
-            cos_a = (cos(phi1) - cos(phi2)*cos(beta))/(sin(phi2)*sin(beta));
-            a2 = (sin_a >= 0 && cos_a >= 0)? asin(sin_a): (sin_a >= 0 && cos_a < 0)?std::numbers::pi - asin(sin_a): (sin_a < 0 && cos_a < 0)? std::numbers::pi + asin(sin_a): 2.0*std::numbers::pi + asin(sin_a);
-            e_bef = (MathTool::ProjectionVector(e,e2)); e_bef = glm::normalize(e_bef);
-        res << beta << ", " << a <<  ", " << phi1 << ", " << phi2 <<", " << phi3 << ", " << phi4 << ", " << k <<
-               ", " << (phi1 + phi3- std::numbers::pi) << ", " << (phi2 + phi4 - std::numbers::pi) << ", " << (phi1- k/2.0) <<", "<< (phi2- k/2.0) <<", " << (phi1 + phi4- std::numbers::pi)<<", " << (phi2 + phi3- std::numbers::pi)<<  std::endl;
-        }
-
-        angle += 1e-3;
-    }*/
     update();
     emit foldingSignals();
 }
 
 
-void GLWidget_2D::changeBetaValue(int val){
-    auto IsSame = [](double c, double b){ return (abs(c - b) <= 1e-8)? true: false;};
-
-    if(model->Faces.size() < 2 || IsStop4Debug)return;
+void GLWidget_2D::changeBetaValue(double val){
+    if(model->Faces.size() < 2 || IsStop4Debug || model->FL.empty())return;
     if(model->FL.empty())model->FL.push_back(new FoldLine(1, 1, PaintTool::FoldLine_test) );
 
     double a = val * std::numbers::pi/180.0;
     std::vector<Vertex*> Poly_v = model->outline->getVertices();
-    model->FL[0]->applyAAAMethod(Poly_v, model->Faces, model->Edges, a);
-    {
-#if 0
-    glm::f64vec3 e, e2, e_bef, x, x2d;
-    glm::f64vec3 N, r, n, r2;
-    double vecLen = 70, a2 = 0;
+    model->FL[FoldCurveIndex]->applyAAAMethod(Poly_v, model->Faces, model->Edges, val);
 
-    std::vector<HalfEdge*> _axis;
-    for(const auto& h: model->Edges){
-        if(h->edgetype == EdgeType::r){          
-            if(std::find(_axis.begin(), _axis.end(), h) == _axis.end() && std::find(_axis.begin(), _axis.end(), h->pair) == _axis.end()){
-                if(h->vertex->p.y < h->pair->vertex->p.y)_axis.push_back(h);
-                else _axis.push_back(h->pair);
-            }
-        }
-    }
-    if(_axis.empty())return;
-    model->deform();
-    SingleRuling.clear();NewRuling2d.clear(); RulingColor.clear();
-    std::vector<glm::f64vec3> Ruling3d, Ruling2d;
-    for(int i = 0; i < (int)_axis.size(); i++){
-        x = _axis[i]->vertex->p3; x2d = _axis[i]->vertex->p;
-        bool IsVallyFoldLine = false;
-        e = glm::normalize(_axis[i]->pair->next->next->vertex->p3 - x);
-        e2 = glm::normalize(_axis[i]->prev->vertex->p3 - x);
-        double beta = (1.0 - abs(_axis[i]->r->Gradation/255.0)) * std::numbers::pi;
-        if(_axis[i]->r->Gradation < 0)IsVallyFoldLine = true;
-        if(i != 0){
-            glm::f64vec3 e_next = glm::normalize(MathTool::ProjectionVector(e2,-e));
-            double tau = (glm::dot(e_bef, e_next) > 1) ? 0: (glm::dot(e_bef, e_next) < -1) ? std::numbers::pi: glm::angle(e_bef,e_next);
-            tau = glm::angle(e_bef, e_next);
-            if(glm::dot(glm::cross(e_bef, e_next), e) > 0) tau = 2.0*std::numbers::pi - tau;
-            a = (a2 - tau < 0) ? a2 - tau + 2.0 * std::numbers::pi: a2 - tau;
-            a = std::fmod(a2 + 2.0*std::numbers::pi - tau, 2.0*std::numbers::pi);
-            //std::cout << "---------------------------------" << std::endl;
-            if(!std::isfinite(a))std::cout << "a is not finite " << i << std::endl;
-            if(!std::isfinite(a2))std::cout << "a' is not finite " << i << std::endl;
-            //std::cout << i << " : tau = " << glm::degrees(tau) << " , a = " <<  glm::degrees(a) << " , a' = " << glm::degrees(a2) << std::endl;
-        }
-        double phi3 = glm::angle(e2, glm::normalize(_axis[i]->next->vertex->p3 - x));
-        double phi4 = glm::angle(e, glm::normalize(_axis[i]->next->vertex->p3 - x));
-        double k = 2.0 * std::numbers::pi - phi3 - phi4;
-
-        double phi1 = IsSame(glm::sin(beta)*glm::cos(a), glm::sin(k))? std::numbers::pi/2.0: atan2((glm::cos(k) - glm::cos(beta)),(glm::sin(beta)*glm::cos(a)- glm::sin(k)));
-
-        if(phi1 < 0){phi1 = std::numbers::pi + phi1;}
-        double phi2 = k - phi1;        
-        if(phi2 < 0){
-            //phi2 *= -1; //phi1 = 2 * atan2(sin(beta)*cos(a) - sqrt(pow(sin(beta)*cos(a),2) + pow(cos(beta),2) - pow(cos(_phi2), 2)), cos(beta) + cos(_phi2));
-            //phi1 = k - phi2;
-            std::cout << "result " << cos(phi2) - cos(phi1)*cos(beta) - sin(phi1)*sin(beta)*cos(a) << std::endl;
-        }
-        std::cout <<"angle "<< i << " :  " << "phi1 = " <<  std::setprecision(10) <<  glm::degrees(phi1) << ", phi2 = " << glm::degrees(phi2) << ", phi3 = " <<
-                    glm::degrees(phi3) << ", phi4 = " << glm::degrees(phi4)<< " : k = " <<  glm::degrees(k) << " , beta = " << glm::degrees(beta) << " , sum = " << phi1+phi2+phi3+phi4 - 2.0*M_PI<<  std::endl;
-        if(!(beta <= k && k <= 2.0 * std::numbers::pi - beta)){std::cout <<"exceed boundary condition   " << beta << " , " << k<< std::endl;}
-
-        if(IsSame(phi1 + phi3, std::numbers::pi) && IsSame(phi2 + phi4, std::numbers::pi)){IsStopAtFF = true; std::cout << i << "  flat foldable state " << std::endl;}
-        if(IsSame(phi1, std::numbers::pi/2.0) && IsSame(phi2, std::numbers::pi/2.0)){IsStopAtEq = true; std::cout << i << "  equal degin angles " << std::endl;}
-        if(IsSame(phi1 + phi4, std::numbers::pi) && IsSame(phi2 + phi3, std::numbers::pi)){IsStopAtCon = true; std::cout << i << "  continuation" << std::endl;}
-        if(phi1 < std::numbers::pi/2.0)RulingColor.push_back(true); else RulingColor.push_back(false);
-        glm::f64vec3 axis_alpha = glm::normalize(glm::cross(e2, e));
-        if(!IsVallyFoldLine){
-            N = glm::normalize(glm::rotate (a, -e)  * glm::f64vec4{axis_alpha,1});
-        }else{
-            //axis_alpha = glm::normalize(glm::cross(e, e2));
-            N = glm::normalize(glm::rotate (a, -e)  * glm::f64vec4{axis_alpha,1});
-        }
-        r = glm::rotate(phi1, -N) * glm::f64vec4{e,1};r = glm::normalize(r);//新しいruling方向
-        n = glm::rotate(phi1, glm::f64vec3{0,0,1})*glm::f64vec4{glm::normalize(_axis[i]->prev->vertex->p - x2d),1};
-
-        if(k < std::numbers::pi) n = glm::rotate(phi1, glm::f64vec3{0,0,-1})*glm::f64vec4{glm::normalize(_axis[i]->pair->next->next->vertex->p - x2d),1};
-        else n = glm::rotate(phi1, glm::f64vec3{0,0,1})*glm::f64vec4{glm::normalize(_axis[i]->pair->next->next->vertex->p - x2d),1};
-        n = glm::rotate(phi1, glm::f64vec3{0,0,1})*glm::f64vec4{glm::normalize(_axis[i]->pair->next->next->vertex->p - x2d),1};
-        n = glm::normalize(n);//展開図のruling方向
-        Ruling3d.push_back(r); Ruling2d.push_back(n);
-        std::array<glm::f64vec3, 2> tmp;
-        tmp = {vecLen* e + x, x}; SingleRuling.push_back(tmp);//r
-        tmp= {vecLen * N + x, x}; SingleRuling.push_back(tmp);//g
-        tmp = {vecLen* r + x, x}; SingleRuling.push_back(tmp);//b
-        tmp = {vecLen*n + x2d, x2d}; NewRuling2d.push_back(tmp);
-
-        double sin_a = (sin(phi1)*sin(a)/sin(phi2) > 1) ? 1: (sin(phi1)*sin(a)/sin(phi2) < -1)? -1: (sin(phi1)*sin(a)/sin(phi2));
-        r2 = MathTool::ProjectionVector(r,e2); r2 = glm::normalize(r2);
-        glm::f64vec3 ax_beta = e;
-        ax_beta = MathTool::ProjectionVector(ax_beta, e2); ax_beta = glm::normalize(ax_beta);
-        double cos_a = (glm::dot(r2, ax_beta) > 1) ? 1: (glm::dot(r2, ax_beta) < -1)? -1: glm::dot(r2, ax_beta);
-        //cos_a = (cos(phi1) - cos(phi2)*cos(beta))/(sin(phi2)*sin(beta));
-        a2 = (sin_a >= 0 && cos_a >= 0)? asin(sin_a): (sin_a >= 0 && cos_a < 0)?std::numbers::pi - asin(sin_a): (sin_a < 0 && cos_a < 0)? std::numbers::pi + abs(asin(sin_a)): 2.0*std::numbers::pi + asin(sin_a);
-        e_bef = (MathTool::ProjectionVector(e,e2)); e_bef = glm::normalize(e_bef);
-       }
-
-    /*{
-       if(model->Faces.size() == _axis.size() + 1){
-           Vertex *v = new Vertex({vecLen * Ruling2d.front() + _axis.front()->vertex->p, vecLen * Ruling3d.front() + _axis.front()->vertex->p3});
-           Vertex *v2 = new Vertex(vecLen * Ruling2d.back() + _axis.back()->vertex->p, vecLen * Ruling3d.back() + _axis.back()->vertex->p3);
-           Vertex *vl = new Vertex(vecLen * Ruling2d.front() + _axis.front()->pair->next->next->vertex->p, vecLen * Ruling3d.front() + _axis.front()->pair->next->next->vertex->p3);
-           Vertex *vr = new Vertex(vecLen * Ruling2d.back() + _axis.back()->prev->vertex->p, vecLen * Ruling3d.back() + _axis.back()->prev->vertex->p3);
-           HalfEdge *Ruling1 = new HalfEdge(_axis.front()->vertex, EdgeType::ol), *Ruling2 = new HalfEdge(v2, EdgeType::ol);
-           HalfEdge *Edgeend1 = new HalfEdge(vl, EdgeType::ol), *Edgeend2 = new HalfEdge(_axis.back()->prev->vertex, EdgeType::ol);
-           HalfEdge *Top1 = new HalfEdge(v,EdgeType::ol), *Top2 = new HalfEdge(vr, EdgeType::ol);
-           HalfEdge *EdgePair1 = new HalfEdge(_axis.front()->pair->next->next->vertex, EdgeType::ol), *EdgePair2 = new HalfEdge(_axis.back()->vertex, EdgeType::ol);
-           Edgeend1->next = Ruling1->prev = EdgePair1; Edgeend2->prev = Ruling2->next = EdgePair2;
-           Top1->next = EdgePair1->prev = Edgeend1; Top2->prev = EdgePair2->next = Edgeend2;
-           Edgeend1->prev = Ruling1->next = Top1; Edgeend2->next = Ruling2->prev = Top2;
-           Top1->prev = EdgePair1->next = Ruling1; Top2->next = EdgePair2->prev = Ruling2;
-           model->Edges.push_back(EdgePair1); model->Edges.push_back(EdgePair2);
-           Face *f = new Face(Top1), *f2 = new Face(Ruling2); f->ReConnect(Top1); f2->ReConnect(Ruling2);
-           model->Faces.push_back(f); model->Faces.push_back(f2);
-       }else{
-           //v
-           model->Faces[_axis.size() + 1]->halfedge->vertex->p = vecLen * Ruling2d.front() + _axis.front()->vertex->p;
-           model->Faces[_axis.size() + 1]->halfedge->vertex->p3 = vecLen * Ruling3d.front() + _axis.front()->vertex->p3;
-           //vl
-           model->Faces[_axis.size() + 1]->halfedge->next->vertex->p = vecLen * Ruling3d.front() + _axis.front()->pair->next->next->vertex->p;
-           model->Faces[_axis.size() + 1]->halfedge->next->vertex->p3 = vecLen * Ruling3d.front() + _axis.front()->pair->next->next->vertex->p3;
-           //v2
-           model->Faces[_axis.size() + 2]->halfedge->vertex->p = vecLen * Ruling2d.back() + _axis.back()->vertex->p;
-           model->Faces[_axis.size() + 2]->halfedge->vertex->p3 = vecLen * Ruling3d.back() + _axis.back()->vertex->p3;
-           //vr
-           model->Faces[_axis.size() + 2]->halfedge->prev ->vertex->p = vecLen * Ruling3d.back() + _axis.back()->prev->vertex->p;
-           model->Faces[_axis.size() + 2]->halfedge->prev ->vertex->p3 = vecLen * Ruling3d.back() + _axis.back()->prev->vertex->p3;
-       }
-
-    }*/
-
-    for(int i = 0; i < (int)_axis.size()-1; i++){
-        int addFace = 1;
-        Vertex *v1 = new Vertex(vecLen * Ruling2d[i] + _axis[i]->vertex->p, vecLen * Ruling3d[i] + _axis[i]->vertex->p3);
-        Vertex *v2 = new Vertex(vecLen * Ruling2d[i+1] + _axis[i+1]->vertex->p, vecLen * Ruling3d[i+1] + _axis[i+1]->vertex->p3);
-        if(model->Faces.size() == _axis.size() + addFace){
-
-                HalfEdge *Ruling1 = new HalfEdge(v1, EdgeType::ol), *Ruling2 = new HalfEdge(_axis[i+1]->vertex, EdgeType::ol);
-                HalfEdge *Top = new HalfEdge(v2,EdgeType::ol);
-                HalfEdge *EdgePair = new HalfEdge(_axis[i]->vertex, EdgeType::ol);
-                Ruling1->prev = Ruling2->next = Top; Top->next = EdgePair->prev = Ruling1; Ruling2->prev = Ruling1->next = EdgePair; EdgePair->next = Top->prev = Ruling2;
-                model->Edges.push_back(Ruling1); model->Edges.push_back(Ruling2);
-                model->Edges.push_back(Top); model->Edges.push_back(EdgePair);
-                Face *f = new Face(Top); f->ReConnect(Top);
-                model->vertices.push_back(v1); model->vertices.push_back(v2);
-                model->Edges.push_back(Ruling1); model->Edges.push_back(Ruling2); model->Edges.push_back(EdgePair); model->Edges.push_back(Top);
-                model->Faces.push_back(f);
-
-        }else{
-            //v1
-            model->Faces[_axis.size() + addFace]->halfedge->next->vertex->p = vecLen * Ruling2d[i] + _axis[i]->vertex->p;
-            model->Faces[_axis.size() + addFace]->halfedge->next->vertex->p3 = vecLen * Ruling3d[i] + _axis[i]->vertex->p3;
-            //v2
-            model->Faces[_axis.size() + addFace]->halfedge->vertex->p = vecLen * Ruling2d[i+1] + _axis[i+1]->vertex->p;
-            model->Faces[_axis.size() + addFace]->halfedge->vertex->p3 = vecLen * Ruling3d[i+1] + _axis[i+1]->vertex->p3;
-        }
-    }
-#endif
-    }
     emit foldingSignals();
     update();
 }
@@ -532,37 +301,45 @@ void GLWidget_2D::paintGL(){
 
     //折り線の描画
     {
-        for(auto&fl: model->FL){
-
-            glBegin(GL_LINE_STRIP);
-            if(visibleCurve){glColor3d(0,0,0); for(auto&v: fl->CurvePts)glVertex2d(v.x, v.y);}
-            glEnd();
-            std::vector<glm::f64vec3> Pts;
-            Pts = fl->getCtrlPt();
-            glColor3d(0,0.3,0.3);
-            glPointSize(5);
-            for(auto&v: Pts){
-                glBegin(GL_POINTS);
-                glVertex2d(v.x,v.y);
+        if(visibleCurve){
+            for(auto&fl: model->FL){
+                glBegin(GL_LINE_STRIP);
+                glColor3d(0,0,0); for(auto&v: fl->CurvePts)glVertex2d(v.x, v.y);
                 glEnd();
-            }
+                std::vector<glm::f64vec3> Pts;
+                Pts = fl->getCtrlPt();
+                glColor3d(0,0.3,0.3);
+                glPointSize(5);
+                for(auto&v: Pts){
+                    glBegin(GL_POINTS);
+                    glVertex2d(v.x,v.y);
+                    glEnd();
+                }
 
-            glColor3d(0,1,0);
-            glPointSize(5);
-            for(auto&h: fl->FoldingCurve){
-                glBegin(GL_POINTS);
-                glVertex2d(h->vertex->p.x, h->vertex->p.y);
-                glEnd();
-            }
+                glColor3d(0,1,0);
+                glPointSize(5);
+                for(auto&h: fl->FoldingCurve){
+                    glBegin(GL_POINTS);
+                    glVertex2d(h->vertex->p.x, h->vertex->p.y);
+                    glEnd();
+                }
 
+            }
         }
+
     }
 
     if(model->outline->IsClosed()){
+
+        const std::vector<Vertex*> Poly_V = model->outline->getVertices();
+        std::vector<HalfEdge*> _edges = EdgeCopy(model->Edges, model->vertices);
+        std::vector<Face*> _faces;
+        EdgeRecconection(Poly_V, _faces, _edges);
         float r, g, b = 0;
         glPolygonOffset(0.0,1.0);
-        HalfEdge *_refHE = assignment_refHE();
-        for(auto&edge: model->Edges){
+        int ind = assignment_refHE();
+        for(int i = 0; i < _edges.size(); i++){
+            HalfEdge *edge = _edges[i];
             glColor3d(0,0,0);
             glLineWidth(1);
 
@@ -585,15 +362,23 @@ void GLWidget_2D::paintGL(){
                     else glColor3d(0.4,0.4,0.4);
                     glLineWidth(1.f);
                 }
-                if(edge == _refHE || edge->pair == _refHE)glColor3d(1,1,0);
-            }else if(edge->edgetype == EdgeType::ol || edge->edgetype == EdgeType::fl){
-                glColor3d(0, 0, 0);
-                glPointSize(3.0f);
-
+                auto itr = (ind != -1)? std::find(_edges.begin(), _edges.end(), _edges[ind]->pair): _edges.end();
+                int pairInd = (itr != _edges.end())?std::distance(_edges.begin(), itr): -1;
+                if(ind == i || pairInd == i)glColor3d(1,1,0);
+            }else if(edge->edgetype == EdgeType::fl || edge->edgetype == EdgeType::ol){
+                if(edge->vertex == refV){
+                    glColor3d(1, 0, 0);
+                    glPointSize(6.0f);
+                }else{
+                    glColor3d(0, 0, 0);
+                    glPointSize(3.0f);
+                }
                 glBegin(GL_POINTS);
                 glVertex2d(edge->vertex->p.x, edge->vertex->p.y);
                 glEnd();
+                glColor3d(0, 0, 0);
             }
+
             glBegin(GL_LINES);
             glVertex2d(edge->vertex->p.x, edge->vertex->p.y);
             glVertex2d(edge->next->vertex->p.x, edge->next->vertex->p.y);
@@ -666,12 +451,13 @@ void GLWidget_2D::paintGL(){
     }
 
     glLineWidth(1.0);
+    if(!visibleCurve)return;
     //曲線の制御点
     if(drawtype != PaintTool::NewGradationMode){
         for(int i = 0; i < (int)model->crvs.size(); i++){
             if((i == model->getSelectedCurveIndex(mapFromGlobal(QCursor::pos()))) ||
                     ((drawtype == PaintTool::Bezier_r || drawtype == PaintTool::Bspline_r || drawtype == PaintTool::Line_r || drawtype == PaintTool::Arc_r)
-                     && SelectedCurveIndex == i)
+                     && SmoothCurveIndex == i)
                     || drawtype == PaintTool::MoveCtrlPt || drawtype == PaintTool::InsertCtrlPt ||  drawtype == PaintTool::DeleteCtrlPt || drawtype == PaintTool::None){
                 //glPolygonOffset(0.f,1.f);
                 for (auto& c: model->crvs[i]->ControllPoints) {
@@ -695,7 +481,7 @@ void GLWidget_2D::paintGL(){
 
         //曲線の描画
         for(int i = 0; i < (int)model->crvs.size(); i++){
-            if(i == SelectedCurveIndex)glColor3d(1, 0, 0);
+            if(i == SmoothCurveIndex)glColor3d(1, 0, 0);
             else glColor3d(0.4, 0.4, 0.4);
             glBegin(GL_LINE_STRIP);
             for(auto &c: model->crvs[i]->CurvePoints){
@@ -705,19 +491,21 @@ void GLWidget_2D::paintGL(){
         }
     }
 
+    /*
     if(model->FL.empty())return;
-    for(int i = 0; i < (int)model->FL[0]->NewRuling2d.size(); i++){
-        auto r = model->FL[0]->NewRuling2d[i];
-        if(i % 3 == 0)glColor3d(1,0,0);
-        if(i % 3 == 1)glColor3d(0,1,0);
-        if(i % 3 == 2)glColor3d(0,0,1);
-        glBegin(GL_LINES);
-        glVertex2d(r[0].x, r[0].y);
-        glVertex2d(r[1].x, r[1].y);
-        glEnd();
-    }
-    glColor3d(0,0,0);
-
+    for(const auto&fl : model->FL){
+        for(int i = 0; i < fl->NewRuling2d.size(); i++){
+            auto r = fl->NewRuling2d[i];
+            if(i % 3 == 0)glColor3d(1,0,0);
+            if(i % 3 == 1)glColor3d(0,1,0);
+            if(i % 3 == 2)glColor3d(0,0,1);
+            glBegin(GL_LINES);
+            glVertex2d(r[0].x, r[0].y);
+            glVertex2d(r[1].x, r[1].y);
+            glEnd();
+        }
+        glColor3d(0,0,0);
+    }*/
 
 }
 
@@ -752,13 +540,36 @@ void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
     if(e->key() == Qt::Key_A) visibleCurve = !visibleCurve;
     //if(e->key() == Qt::Key_0){model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention, 0); emit foldingSignals();}
     //if(e->key() == Qt::Key_1){model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention, 1); emit foldingSignals();}
-    if(e->key() == Qt::Key_2){ res = model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, Poly_v, curveDimention, 2);
+    if(e->key() == Qt::Key_2){ res = model->FL[FoldCurveIndex]->modify2DRulings(model->Faces, model->Edges, model->vertices, Poly_v, curveDimention, 2);
         if(res){
             emit foldingSignals();
         }
 
     }
+    if(e->key() == Qt::Key_F){
+        std::vector<Vertex*> Poly_V = model->outline->getVertices();
+        std::vector<HalfEdge*> _edges = EdgeCopy(model->Edges, model->vertices);
+        std::vector<Face*> _faces;
+        EdgeRecconection(Poly_V, _faces, _edges);
+        for(auto&_e: _edges){
+            if( _e->diffEdgeLength() > 1e-4)
+                std::cout << _e->diffEdgeLength() << " : " << glm::to_string(_e->next->vertex->p) << " , " << glm::to_string(_e->vertex->p) << std::endl;
+        }
+        std::cout << "---------------------------" << std::endl;
+    }
     update();
+}
+
+Vertex *GLWidget_2D::closestVertex(QPointF p, std::vector<Vertex*>& Vertices){
+    Vertex *clstV = nullptr;
+    double d = 10;
+    for(auto&v: Vertices){
+        if(d > glm::distance(glm::f64vec3{p.x(), p.y(), 0}, v->p)){
+            d = glm::distance(glm::f64vec3{p.x(), p.y(), 0}, v->p);
+            clstV = v;
+        }
+    }
+    return clstV;
 }
 
 void GLWidget_2D::mousePressEvent(QMouseEvent *e){
@@ -778,35 +589,35 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
         else if(drawtype ==PaintTool::ConnectVertices_ol)model->ConnectOutline(p, gridsize);
         else if(drawtype == PaintTool::NewGradationMode || drawtype ==PaintTool::FoldlineColor)addPoints_intplation(e, p);
         else if(drawtype == PaintTool::FoldLine_bezier || drawtype == PaintTool::FoldLine_arc || drawtype == PaintTool::FoldLine_line ){
-            bool hasRulings = model->AddControlPoint_FL(p_ongrid, 0, curveDimention);
+            bool hasRulings = model->AddControlPoint_FL(p_ongrid, 0, curveDimention, FoldCurveIndex);
             update();
         }
         else if(drawtype == PaintTool::FoldLine_test){
-            bool res = model->FL[0]->SplitFace4DebugAAAMethod(p_ongrid, model->Faces, model->Edges, model->vertices);
+            bool res = model->FL[FoldCurveIndex]->SplitFace4DebugAAAMethod(p_ongrid, model->Faces, model->Edges, model->vertices);
         }
         else if(drawtype == PaintTool::DeleteCurve){
             model->SelectCurve(p);
             std::vector<int> n(1);
             n[0] = model->DeleteCurve();
             emit deleteCrvSignal(n);
-            SelectedCurveIndex = -1;
+            SmoothCurveIndex = -1;
         }
         if(drawtype == PaintTool::Bezier_r || drawtype == PaintTool::Bspline_r || drawtype == PaintTool::Line_r || drawtype == PaintTool::Arc_r){
             model->AddControlPoint(p_ongrid, curveDimention, DivSize);
             model->addRulings();
         }
         else if(drawtype == PaintTool::InsertCtrlPt){
-            if(SelectedCurveIndex == -1){
+            if(SmoothCurveIndex == -1){
                 model->SelectCurve(p);
-                SelectedCurveIndex = model->IsSelectedCurve();
+                SmoothCurveIndex = model->IsSelectedCurve();
             }else{
-                if(model->crvs[SelectedCurveIndex]->getCurveType() == CurveType::bsp3 && model->crvs[SelectedCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){
-                    model->crvs[SelectedCurveIndex]->InsertControlPoint2(p_ongrid);
-                    model->crvs[SelectedCurveIndex]->SetNewPoint();
-                    model->crvs[SelectedCurveIndex]->Bspline(curveDimention,crvPtNum);
+                if(model->crvs[SmoothCurveIndex]->getCurveType() == CurveType::bsp3 && model->crvs[SmoothCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){
+                    model->crvs[SmoothCurveIndex]->InsertControlPoint2(p_ongrid);
+                    model->crvs[SmoothCurveIndex]->SetNewPoint();
+                    model->crvs[SmoothCurveIndex]->Bspline(curveDimention,crvPtNum);
                     if(model->outline->IsClosed()){
-                        model->crvs[SelectedCurveIndex]->BsplineRulings(model->outline,DivSize,crvPtNum, curveDimention);
-                        if(!model->crvs[SelectedCurveIndex]->isempty){
+                        model->crvs[SmoothCurveIndex]->BsplineRulings(model->outline,DivSize,crvPtNum, curveDimention);
+                        if(!model->crvs[SmoothCurveIndex]->isempty){
                             model->addRulings();
                             model->deform();
                             //emit foldingSignals();
@@ -819,17 +630,21 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
             model->SelectCurve(p);
             model->DeleteControlPoint(p, curveDimention, DivSize);
         }else if(drawtype == PaintTool::MoveCtrlPt){
-            SelectedCurveIndex = model->searchPointIndex(p, movePt, 0);
+            SmoothCurveIndex = model->searchPointIndex(p, movePt, 0);
 
+        }
+        else if(drawtype == PaintTool::CheckDevelopability){
+            refV = closestVertex(p, model->vertices);
+            std::cout << "Referenced vertex  " << refV << " ,  developability = " << refV->developability() << std::endl;
         }
 
     }else if(e->button() == Qt::RightButton){
         if(drawtype == PaintTool::Rectangle_ol || drawtype == PaintTool::Polyline_ol || drawtype == PaintTool::Polygon_ol) model->outline->eraseVertex();
         if(drawtype == PaintTool::Bezier_r || drawtype == PaintTool::Bspline_r || drawtype == PaintTool::Line_r || drawtype == PaintTool::Arc_r){
-            if(SelectedCurveIndex != -1) model->crvs[SelectedCurveIndex]->eraseCtrlPt(curveDimention, crvPtNum);
+            if(SmoothCurveIndex != -1) model->crvs[SmoothCurveIndex]->eraseCtrlPt(curveDimention, crvPtNum);
         }
         else if(drawtype == PaintTool::FoldLine_line || drawtype == PaintTool::FoldLine_arc || drawtype == PaintTool::FoldLine_bezier){
-            bool hasRulings = model->AddControlPoint_FL(p_ongrid, 1, curveDimention);
+            bool hasRulings = model->AddControlPoint_FL(p_ongrid, 1, curveDimention, FoldCurveIndex);
         }
 
     }
@@ -859,18 +674,18 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
     }
     else if(drawtype == PaintTool::NewGradationMode){}
 
-    if(drawtype == PaintTool::MoveCtrlPt)model->MoveCurvePoint(p_ongrid,SelectedCurveIndex, movePt, curveDimention, DivSize);
+    if(drawtype == PaintTool::MoveCtrlPt)model->MoveCurvePoint(p_ongrid,SmoothCurveIndex, movePt, curveDimention, DivSize);
 
-    if(SelectedCurveIndex != -1){
-        if(drawtype == PaintTool::InsertCtrlPt &&  model->crvs[SelectedCurveIndex]->getCurveType() == CurveType::bsp3 && model->crvs[SelectedCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){//制御点の挿入(B-spline)
-            model->crvs[SelectedCurveIndex]->InsertControlPoint2(p_ongrid);
+    if(SmoothCurveIndex != -1){
+        if(drawtype == PaintTool::InsertCtrlPt &&  model->crvs[SmoothCurveIndex]->getCurveType() == CurveType::bsp3 && model->crvs[SmoothCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){//制御点の挿入(B-spline)
+            model->crvs[SmoothCurveIndex]->InsertControlPoint2(p_ongrid);
         }
         
-        if(drawtype != PaintTool::NewGradationMode && model->outline->IsClosed() && model->crvs[SelectedCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){
-            //if(model->crvs[SelectedCurveIndex]->getCurveType() == 0)model->crvs[SelectedCurveIndex]->BezierRulings(model->outline->vertices,DivSize,crvPtNum);
-            if(model->crvs[SelectedCurveIndex]->getCurveType() == CurveType::bsp3) model->crvs[SelectedCurveIndex]->BsplineRulings(model->outline,DivSize,crvPtNum, curveDimention);
-            if(model->crvs[SelectedCurveIndex]->getCurveType() == CurveType::line) model->crvs[SelectedCurveIndex]->LineRulings(model->outline,DivSize);
-            if(model->crvs[SelectedCurveIndex]->getCurveType() == CurveType::arc) model->crvs[SelectedCurveIndex]->ArcRulings(model->outline,DivSize);
+        if(drawtype != PaintTool::NewGradationMode && model->outline->IsClosed() && model->crvs[SmoothCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){
+
+            if(model->crvs[SmoothCurveIndex]->getCurveType() == CurveType::bsp3) model->crvs[SmoothCurveIndex]->BsplineRulings(model->outline,DivSize,crvPtNum, curveDimention);
+            if(model->crvs[SmoothCurveIndex]->getCurveType() == CurveType::line) model->crvs[SmoothCurveIndex]->LineRulings(model->outline,DivSize);
+            if(model->crvs[SmoothCurveIndex]->getCurveType() == CurveType::arc) model->crvs[SmoothCurveIndex]->ArcRulings(model->outline,DivSize);
             model->addRulings();
             model->deform();
         }
@@ -883,8 +698,8 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
 
 void GLWidget_2D::mouseReleaseEvent(QMouseEvent * e){
     movePt = -1;
-    QPointF p = this->mapFromGlobal(QCursor::pos());
-    if(SelectedCurveIndex != -1 && !model->crvs.empty()) model->crvs[SelectedCurveIndex]->InsertPointSegment = -1;
+    QPointF p = mapFromGlobal(QCursor::pos());
+    if(SmoothCurveIndex != -1 && !model->crvs.empty()) model->crvs[SmoothCurveIndex]->InsertPointSegment = -1;
     if(drawtype == PaintTool::EditVertex_ol){
         model->editOutlineVertex(p, gridsize, 2);
         if(model->outline->IsClosed())model->deform();
@@ -896,14 +711,14 @@ void GLWidget_2D::cb_ApplyCurveEvent(){
     if(KeyEvent == 0){
         std::cout << "finished " << std::endl; KeyEvent = -1;
     }else if(KeyEvent == -1){
-        if(SelectedCurveIndex == -1) std::cout << "no curve is selected"<<std::endl;
+        if(SmoothCurveIndex == -1) std::cout << "no curve is selected"<<std::endl;
     }
     update();
 }
 
 void GLWidget_2D::cb_DeleteCurve(){
     KeyEvent = 1;
-    if(SelectedCurveIndex != -1){
+    if(SmoothCurveIndex != -1){
         model->DeleteCurve();
     }
     update();
@@ -914,7 +729,7 @@ void GLWidget_2D::Reset(){
     tmp_c.clear();
     model = new Model(crvPtNum);
     emit SendNewActiveCheckBox(PaintTool::Reset);
-    SelectedCurveIndex = -1;
+    SmoothCurveIndex = -1;
     emit foldingSignals();
     update();
 }
@@ -949,8 +764,8 @@ int GLWidget_2D::referencedRuling(QPointF p){
 void GLWidget_2D::wheelEvent(QWheelEvent *we){
     DiffWheel = (we->angleDelta().y() > 0) ? 1 : -1;
     if(drawtype == PaintTool::FoldlineColor){
-        bool hasRulings = model->FL[0]->ChangeColor(model->outline, DiffWheel, curveDimention);
-        emit ColorChangeFrom(0, model->FL[0]->getColor());
+        bool hasRulings = model->FL[FoldCurveIndex]->ChangeColor(model->outline, DiffWheel, curveDimention);
+        emit ColorChangeFrom(0, model->FL[FoldCurveIndex]->getColor());
     }else if(drawtype == PaintTool::NewGradationMode){
         if(refHE == nullptr || std::find(model->Edges.begin(), model->Edges.end(), refHE) == model->Edges.end()){
             std::cout<<"there is no refHE"<<std::endl;
@@ -1017,21 +832,22 @@ void GLWidget_2D::OpenDebugWindwow(){
     gw->show();
 }
 
-HalfEdge *GLWidget_2D::assignment_refHE(){
+int GLWidget_2D::assignment_refHE(){
 
     QPointF p = mapFromGlobal(QCursor::pos());
     glm::f64vec3 curPos{p.x(), p.y(), 0};
-    HalfEdge *he = nullptr;
+    int ind = -1;
     double dist = 10;
-    for(auto& _he: model->Edges){
+    for(int i = 0; i < (int)model->Edges.size(); i++){
+        HalfEdge *_he = model->Edges[i];
         if(_he->edgetype != EdgeType::r)continue;
         if(_he->next == nullptr)continue;
         double d = glm::length(glm::cross((curPos - _he->vertex->p), _he->vertex->p - _he->next->vertex->p))/glm::length(_he->vertex->p - _he->next->vertex->p);
         if(d < dist){
-            dist = d; he = _he;
+            dist = d; ind = i;
         }
     }
-    return he;
+    return ind;
 }
 
 glm::f64vec3 GLWidget_2D::SetOnGrid(QPointF& cursol, double gridsize){

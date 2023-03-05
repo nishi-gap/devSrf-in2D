@@ -65,6 +65,8 @@ enum class PaintTool{
     FoldlineColor,
     FoldLine_move,
 
+    CheckDevelopability,
+
 };
 
 namespace MathTool{

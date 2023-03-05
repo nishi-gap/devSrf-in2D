@@ -58,7 +58,7 @@ HalfEdge* Model::InsertVertex(Vertex *v){
     for(auto& f: Faces){
         HalfEdge *he = f->halfedge;
         do{
-            if(glm::distance(v->p, he->vertex->p) <= FLT_EPSILON){
+            if(glm::distance(v->p, he->vertex->p) <= DBL_EPSILON){
                 return he;
             }
             if (is_point_on_line(v->p, he->vertex->p, he->next->vertex->p)){
@@ -354,7 +354,7 @@ void Model::SplineInterPolation(std::vector<HalfEdge*>& path, std::vector<glm::f
         dx1 = glm::distance(getCenter(GradationPoints[2]), getCenter(GradationPoints[0]));
         dx2 = glm::distance(getCenter(GradationPoints[2]), getCenter(GradationPoints[1]));
         dx3 = glm::distance(getCenter(GradationPoints[1]), getCenter(GradationPoints[0]));
-        if(abs(dx1) < FLT_EPSILON) u(1) = 0;
+        if(abs(dx1) < DBL_EPSILON) u(1) = 0;
         else{
             double a = (dx2 == 0) ? 0: (GradationPoints[2]->r->Gradation - GradationPoints[1]->r->Gradation)/dx2;
             double b = (dx3 == 0) ? 0: (GradationPoints[1]->r->Gradation - GradationPoints[0]->r->Gradation)/dx3;
@@ -726,12 +726,12 @@ void Model::MoveCurvePoint(glm::f64vec3& p, int MoveIndex, int ptInd, int curveD
     }
 }
 
-bool Model::AddControlPoint_FL(glm::f64vec3& p, int event, int curveDimention){
+bool Model::AddControlPoint_FL(glm::f64vec3& p, int event, int curveDimention, int FoldCurveIndex){
     bool res = false;
     if(event == 0){
-        res = FL[0]->addCtrlPt(p, curveDimention);
+        res = FL[FoldCurveIndex]->addCtrlPt(p, curveDimention);
     }else if(event == 1){
-        res = FL[0]->delCtrlPt(p, curveDimention, outline);
+        res = FL[FoldCurveIndex]->delCtrlPt(p, curveDimention, outline);
     }
     return res;
 }

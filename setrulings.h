@@ -13,6 +13,7 @@
 #include <QString>
 #include <Eigen/Dense>
 #include <glm/gtx/string_cast.hpp>
+#include <glm/gtx/vector_angle.hpp>
 
 constexpr glm::f64vec3 NullVec = glm::f64vec3{-1,-1,-1};
 
@@ -30,13 +31,16 @@ class Vertex{
 public:
     glm::f64vec3 p;
     glm::f64vec3 p3;
+    std::vector<HalfEdge*> halfedge;
     bool deformed;
     Vertex(glm::f64vec3 _p);
     Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3);
     Vertex(const Vertex& v);
     ~Vertex(){}
+
     void addNewEdge(HalfEdge *he);
-    std::vector<HalfEdge*> halfedge;
+    double developability();
+
 };
 
 class crvpt{
@@ -78,6 +82,7 @@ public:
     EdgeType edgetype;
     std::vector<HalfEdge*> Split(Vertex *v, std::vector<HalfEdge*>& Edges);
     bool hasCrossPoint2d(glm::f64vec3 p, glm::f64vec3 q, glm::f64vec3& CrossPoint,  bool ConsiderEnd = false);
+    double diffEdgeLength();
 
 protected:
     void edgeSwap(HalfEdge *h);
@@ -87,7 +92,7 @@ private:
 
 class Face{
 public:
-    int edgeNum();
+    int edgeNum(bool PrintVertex = false);
     bool bend;
     bool hasGradPt;
     HalfEdge* halfedge;
@@ -220,7 +225,8 @@ void CrossDetection(Face *f, CRV *crvs);
 
 std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, HalfEdge *line, int dim);
 std::vector<glm::f64vec3> ConvertDistBasedBezier(std::vector<glm::f64vec3>& CtrlPts, HalfEdge *line);
-
+void EdgeRecconection(const std::vector<Vertex*>& Poly_V, std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges);
+std::vector<HalfEdge*> EdgeCopy(const std::vector<HalfEdge*> Edges, const std::vector<Vertex*> V);
 //std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot, double& CurveLen, bool is3d = true, int dim = 3, int t_type = 2);
 
 

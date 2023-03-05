@@ -20,6 +20,7 @@ typedef std::vector<std::array<glm::f64vec3, 2>> Ruling3d;
 typedef std::vector<Face*> Faces3d;
 typedef std::vector<Vertex*> Polygon_V;
 typedef std::vector<HalfEdge*> HalfEdges;
+typedef std::vector<Vertex*> Surface_V;
 typedef std::vector<glm::f64vec3> Curve3d;
 //typedef std::vector<CrvPt_FL> CrvFL3d;
 typedef std::vector<HalfEdge*> FoldLine3d;
@@ -29,11 +30,14 @@ class GLWidget_3D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
 {
     Q_OBJECT
 public:
-    void setVertices(const Faces3d Faces = Faces3d(), const Polygon_V Poly_V = Polygon_V(), const HalfEdges Edges = HalfEdges(), const Ruling3d& _SingleRuling = Ruling3d(), const Ruling3d& _AllRulings = Ruling3d());
-    void receive(std::vector<std::vector<glm::f64vec3>>& l, std::vector<std::vector<glm::f64vec3>>& r, glm::f64vec3 center);
+    void setVertices(const Faces3d Faces = Faces3d(), const Polygon_V Poly_V = Polygon_V(), const HalfEdges Edges = HalfEdges(),
+                     const Surface_V _vertices = Surface_V(), const Ruling3d& _SingleRuling = Ruling3d(), const Ruling3d& _AllRulings = Ruling3d(), bool switchDraw = false);
     void receiveKeyEvent(QKeyEvent *e);
+    void PlanarityDispay(bool state);
+
 
     std::vector<int>left;
+    std::vector<double> PlanarityColor;
     explicit GLWidget_3D(QWidget *parent = 0);
     ~GLWidget_3D();
 
@@ -45,7 +49,6 @@ protected:
     void mousePressEvent(QMouseEvent *e);
     void wheelEvent(QWheelEvent *we);
     void mouseMoveEvent(QMouseEvent *e);
-    void keyPressEvent(QKeyEvent *e);
 
 public slots:
 
@@ -69,13 +72,21 @@ private:
 
     QPointF befPos;
     bool eraseMesh, eraseCtrlPt, eraseCrossPt, eraseVec, eraseCurve;
+    bool VisiblePlanarity;
+
+    double th_planarity = 1e-3;
     int switchTNB;
     double drawdist;
+
+    int drawEdgePlane;
 
     inline void dispV(glm::f64vec3 p);
     void updateRotate();
 
     ArcBallCam arccam;
+
+    Faces3d _faces;
+    HalfEdges _edges;
 };
 
 #endif // GLWIDGET_3D_H

@@ -62,7 +62,7 @@ public:
     void addRulings(); //0:move curve point, 1: add(erase, insert) curve point
 
     //FoldLine
-    bool AddControlPoint_FL(glm::f64vec3& p, int event, int curveDimention);
+    bool AddControlPoint_FL(glm::f64vec3& p, int event, int curveDimention, int FoldCurveIndex);
     void modify2Druling();
     void applyFL();
 

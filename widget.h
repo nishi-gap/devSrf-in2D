@@ -4,6 +4,7 @@
 #include <QString>
 #include <QWidget>
 #include <QSpinBox>
+#include <QDoubleSpinBox>
 #include <QPushButton>
 #include <QSlider>
 #include <QLineEdit>
@@ -70,6 +71,8 @@ public slots:
     void color_FL();
     void fold_FL();
     void sendAlphaBeta(double&_alpha, int& _beta, int& _beta2);
+    void changeAngleFromSlider(int val);
+    void changeAngleFromSpinBox(double val);
 
     //Line Width
     void changeLineWidthFromSlider(int n);
@@ -100,6 +103,8 @@ signals:
     void constraintType(int state);
     void signalFLtype(PaintTool state);
     void signalNewLineWidth(double d);
+
+    void sendAngle(double val);
 
 };
 #endif // WIDGET_H
