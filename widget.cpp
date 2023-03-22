@@ -14,12 +14,14 @@ MainWindow::MainWindow(QWidget *parent)
     //ui->glWid2dim->model = model;
     CBoxlist = {{ui->SelectButton, PaintTool::None}, {ui->outline_rectangle, PaintTool::Rectangle_ol}, {ui->outline_polygon,  PaintTool::Polygon_ol},
                 {ui->outline_polyline, PaintTool::Polyline_ol}, {ui->EditVertexButton, PaintTool::EditVertex_ol}, {ui->MoveOutLineButton, PaintTool::Move_ol},
-                {ui->make_devsrf, PaintTool::deform}, {ui->Reset, PaintTool::Reset}
+                 {ui->Reset, PaintTool::Reset}
                };
 
     connect(ui->SelectButton, &QCheckBox::stateChanged, ui->glWid2dim, &GLWidget_2D::InitializeDrawMode);
 
-    connect(ui->make_devsrf, &QCheckBox::stateChanged, this , &MainWindow::fold_Sm);
+    //色の最大値
+    connect(ui->ColorLimitation, &QSpinBox::valueChanged, this, &MainWindow::ChangeMaxColor);
+
     connect(ui->Reset, &QCheckBox::stateChanged,ui->glWid2dim,&GLWidget_2D::Reset);
     connect(ui->Reset, &QCheckBox::stateChanged, this, &MainWindow::Initialize);
     connect(ui->DvidedSizeSlider, &QSlider::valueChanged, this, &MainWindow::ChangeDivSizeEditFromSlider);
@@ -79,11 +81,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     //fold line debug
     connect(ui->addFL_test, &QPushButton::clicked, this, &MainWindow::addFoldLine_test);    
-    connect(ui->glWid2dim, &GLWidget_2D::getAlphaBeta, this, &MainWindow::sendAlphaBeta);
     connect(ui->startButton, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::Start4Debug_CF);
-    connect(ui->stopAtCon, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::changeStopAtCon);
-    connect(ui->stopAtEq, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::changeStopAtEq);
-    connect(ui->stopAtFF,&QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::changeStopAtFF);
+    connect(ui->OptBtn, &QPushButton::clicked, this, &MainWindow::StartOptimization);
     connect(ui->angleSlider, &QSlider::sliderMoved, this, &MainWindow::changeAngleFromSlider);
     connect(ui->angleA, &QDoubleSpinBox::valueChanged, this, &MainWindow::changeAngleFromSpinBox);
     connect(this, &MainWindow::sendAngle, ui->glWid2dim, &GLWidget_2D::changeBetaValue);
@@ -118,13 +117,23 @@ void MainWindow::Initialize(){
     LayerList.clear();
     update();
 }
+void MainWindow::ChangeMaxColor(int val){model->SetMaxFold((double)val);}
 
 void MainWindow::addFoldLine_l(){emit signalFLtype(PaintTool::FoldLine_test);}
 void MainWindow::addFoldLine_arc(){emit signalFLtype(PaintTool::FoldLine_arc);}
 void MainWindow::addFoldLine_bezier(){emit signalFLtype(PaintTool::FoldLine_bezier);}
 void MainWindow::addFoldLine_test(){emit signalFLtype(PaintTool::FoldLine_test);}
-void MainWindow::moveCtrlPts_fl(){emit signalFLtype(PaintTool::FoldLine_test);}
+void MainWindow::moveCtrlPts_fl(){emit signalFLtype(PaintTool::FoldLine_move);}
 void MainWindow::color_FL(){emit signalFLtype(PaintTool::FoldLine_move);}
+
+void MainWindow::StartOptimization(){
+    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+    std::vector<glm::f64vec3>C, C2;
+    ui->glWid2dim->model->FL[0]->Optimization(C, C2);
+    ui->glWid3dim->ReceiveParam(C,C2);
+
+}
+
 void MainWindow::changeAngleFromSlider(int val){
     ui->angleA->setValue((double)val/100);
     double a = (double)val/18000.0 * std::numbers::pi;
@@ -137,11 +146,6 @@ void MainWindow::changeAngleFromSpinBox(double val){
     emit sendAngle(a);
 
 }
-
-void MainWindow::sendAlphaBeta(double&_alpha, int& _beta, int& _beta2){
-    _alpha = ui->angleA->value();
-}
-
 
 void MainWindow::changeLineWidthFromSlider(int n){
     double d = (double)n/10.;
@@ -337,8 +341,8 @@ void MainWindow::exportobj(){
         glm::f64vec3 v = Mirror * glm::f64vec4{h->vertex->p3, 1};
         glm::f64vec3 v2 = Mirror * glm::f64vec4{h->next->vertex->p3, 1};
         glm::f64vec3 v3 = Mirror * glm::f64vec4{h->next->next->vertex->p3, 1};
-        N = glm::normalize(glm::cross(v3 - v, v2 - v));
-        if(glm::dot(befN, N) < 0) N *= -1;
+        N = -glm::normalize(glm::cross(v3 - v, v2 - v));
+        //if(glm::dot(befN, N) < 0) N *= -1;
         Normals.push_back(N);
         befN = N;
     }

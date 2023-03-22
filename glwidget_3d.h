@@ -32,11 +32,11 @@ class GLWidget_3D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
 public:
     void setVertices(const Faces3d Faces = Faces3d(), const Polygon_V Poly_V = Polygon_V(), const HalfEdges Edges = HalfEdges(),
                      const Surface_V _vertices = Surface_V(), const Ruling3d& _SingleRuling = Ruling3d(), const Ruling3d& _AllRulings = Ruling3d(), bool switchDraw = false);
+    void ReceiveParam(std::vector<glm::f64vec3>&_C,std::vector<glm::f64vec3>& _C2);
     void receiveKeyEvent(QKeyEvent *e);
     void PlanarityDispay(bool state);
 
-
-    std::vector<int>left;
+    std::vector<glm::f64vec3>C, C2;
     std::vector<double> PlanarityColor;
     explicit GLWidget_3D(QWidget *parent = 0);
     ~GLWidget_3D();
@@ -60,6 +60,10 @@ private:
 
     std::vector<std::vector<glm::f64vec3>> Vertices;
     std::vector<std::array<glm::f64vec3, 3>> TriMeshs;
+
+    glm::f64mat4x4 Mirror;
+    glm::f64mat4x4 Scale;
+
     double TransX, TransY, TransZ;
     double angleX, angleY;
     bool firstRotate;

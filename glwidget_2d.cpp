@@ -675,7 +675,15 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
     else if(drawtype == PaintTool::NewGradationMode){}
 
     if(drawtype == PaintTool::MoveCtrlPt)model->MoveCurvePoint(p_ongrid,SmoothCurveIndex, movePt, curveDimention, DivSize);
+    if(drawtype == PaintTool::FoldLine_move){
+        if(model->FL.empty() || FoldCurveIndex == -1)return;
+        //bool res = model->FL[FoldCurveIndex]->moveCtrlPt(p_ongrid);
+        //if(res){
+          //  std::vector<Vertex*> Poly_V = model->outline->getVertices();
+           // model->FL[FoldCurveIndex]->modify2DRulings(model->Faces, model->Edges, model->vertices, Poly_V);
+        //}
 
+    }
     if(SmoothCurveIndex != -1){
         if(drawtype == PaintTool::InsertCtrlPt &&  model->crvs[SmoothCurveIndex]->getCurveType() == CurveType::bsp3 && model->crvs[SmoothCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){//制御点の挿入(B-spline)
             model->crvs[SmoothCurveIndex]->InsertControlPoint2(p_ongrid);

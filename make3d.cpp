@@ -2,16 +2,6 @@
 #include "make3d.h"
 using namespace MathTool;
 
-FaceGradation::FaceGradation(){
-    color = 0;
-    he = nullptr;
-}
-
-FaceGradation::FaceGradation(HalfEdge *_he, double *_color){
-    he = _he;
-    color = _color;
-}
-
 Model::Model(){
     clear();
     outline = new OUTLINE();
@@ -32,6 +22,7 @@ void Model::clear(){
     Edges.clear();
     Faces.clear();
     ol_vertices.clear();
+    ColorPt = ColorPoint(200, std::numbers::pi/2.0);
 }
 
 void Model::Initialize(){
@@ -40,12 +31,18 @@ void Model::Initialize(){
     refCrv.clear();
 }
 
-LinearRange::LinearRange(){
-    face = nullptr;
-    CrvInd = -1;
-    RulingOnCurve = -1;
-    RulInd = -1;
+void Model::SetMaxFold(double val){
+    ColorPt.angle = val * std::numbers::pi/180.0;
+    if(!outline->IsClosed())return;
+    for(auto& c: crvs){
+        if(c->isempty){
+            std::cout << "crvs has empty"<<std::endl;
+            return;
+        }
+    }
+    deform();
 }
+
 
 glm::f64vec3 Model::SetOnGrid(QPointF& cursol, double gridsize){
     int x = (int)cursol.x() % (int)gridsize, y = (int)cursol.y() % (int)gridsize;
@@ -140,6 +137,11 @@ void Model::setHalfEdgePair(HalfEdge*he){
 
 
 void Model::deform(){
+    auto Color2Angle = [](double a, ColorPoint CP){
+        if(-CP.color <= a && a <= CP.color) return a * CP.angle/CP.color;
+        else if(CP.color < a) return (std::numbers::pi - CP.angle)/(255.0 - CP.color)* (abs(a) - CP.color) + CP.angle;
+        return -((std::numbers::pi - CP.angle)/(255.0 - CP.color)* (abs(a) - CP.color) + CP.angle);
+    };
     if(Faces.empty())return;
     glm::f64mat4x4 T, R, A;
 
@@ -172,7 +174,7 @@ void Model::deform(){
         v1 = Pos->pair->vertex->p;
         v2 = Pos->vertex->p;
         glm::f64vec3 axis = glm::normalize(v2 - v1);
-        double phi = he->r->Gradation * std::numbers::pi/255.0;
+        double phi = (he->edgetype == EdgeType::r)? Color2Angle(he->r->Gradation, ColorPt): 0;
         R = glm::rotate(phi, axis);
         do{
             T = glm::translate(he->vertex->p - v1);
@@ -412,7 +414,7 @@ void Model::setGradationValue(int val, HalfEdge *refHE, int InterpolationType, s
     if(Faces.size() == 0 || std::find(Edges.begin(), Edges.end(), refHE) == Edges.end()){std::cout<<"no selected" << std::endl; return;}
     if(refHE->edgetype != EdgeType::r)return;
     refHE->r->Gradation += val;
-    refHE->r->Gradation = (refHE->r->Gradation < -255)? -255 : (255 < refHE->r->Gradation)? 255 : refHE->r->Gradation;
+    refHE->r->Gradation = (refHE->r->Gradation < -255.0)? -255.0 : (255.0 < refHE->r->Gradation)? 255.0 : refHE->r->Gradation;
 
     if(InterpolationType == 0){
         if(GradationPoints.size() == 0)GradationPoints.push_back(refHE);

@@ -17,19 +17,18 @@
 #include "foldline.h"
 #include "mathtool.h"
 
-struct LinearRange{
-    Face *face;//なし:nullptr
-    int CrvInd;//なし:-1
-    int RulInd;
-    int RulingOnCurve;
-    LinearRange();
-};
 
 struct FaceGradation{
     HalfEdge *he;
     double *color;
-    FaceGradation();
-    FaceGradation(HalfEdge *_he, double *_color);
+    FaceGradation(): color(0), he(nullptr){}
+    FaceGradation(HalfEdge *_he, double *_color): he(_he), color(_color){}
+};
+
+struct ColorPoint{
+    double color, angle;
+    ColorPoint(): color(200), angle(std::numbers::pi/2.0){}
+    ColorPoint(double _c, double _a): color(_c), angle(_a){}
 };
 
 class Model{
@@ -43,6 +42,7 @@ public:
     std::vector<FoldLine*> FL;
     glm::f64vec3 Axis4Const[2];
     Vertex* Connect2Vertices[2];
+
     Model();
     Model(int _crvPtNum);
     //void deform(std::vector<std::vector<glm::f64vec3>>& output, std::vector<ruling*>& Rulings, glm::f64vec3& center);
@@ -52,7 +52,7 @@ public:
 
     HalfEdge* InsertVertex(Vertex *v);
     void setGradationValue(int val, HalfEdge *refHE,int InterpolationType, std::vector<glm::f64vec2>& CurvePath);
-
+    void SetMaxFold(double val);
     void setOutline();
     void drawOutline(QPointF& cursol, int drawtype, double gridsize, bool IsClicked = true);
     void editOutlineVertex(QPointF& cursol, double gridsize, int event);
@@ -98,6 +98,7 @@ private:
 
     int crvPtNum;
     int befFaceNum;
+    ColorPoint ColorPt;
 
     std::vector<HalfEdge*> GradationPoints;
     std::vector<HalfEdge*> makePath();

@@ -42,6 +42,9 @@ protected:
 public slots:
     void fold_Sm();
 
+    //色の上限を変更
+    void ChangeMaxColor(int val);
+
     void ChangedDivSizeEdit();
     void ChangeDivSizeEditFromSlider(int val);
     void ChangeDivSizeEditFromSpinBox(int val);
@@ -70,9 +73,9 @@ public slots:
     void addFoldLine_test();
     void color_FL();
     void fold_FL();
-    void sendAlphaBeta(double&_alpha, int& _beta, int& _beta2);
     void changeAngleFromSlider(int val);
     void changeAngleFromSpinBox(double val);
+    void StartOptimization();
 
     //Line Width
     void changeLineWidthFromSlider(int n);

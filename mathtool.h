@@ -106,6 +106,8 @@ glm::f64vec3 ProjectionVector(glm::f64vec3 v, glm::f64vec3 n);
 }
 
 
+
+
 /*
 
 class BaseCRV{
@@ -147,6 +149,63 @@ private:
 };
 
 class FoldCRV: BaseCRV{
+
+};
+
+class BaseElem{
+public:
+    bool add();
+    bool del();
+    bool move();
+    bool getElem();
+    bool IsSelected();
+};
+
+class Vertex: public BaseElem{
+
+};
+
+class HalfEdge: public BaseElem{
+
+};
+
+class Face: public BaseElem{
+
+};
+
+class Ruling: public HalfEdge{
+
+};
+
+class EdgeOutLine: public HalfEdge{
+
+};
+class FoldLine: public HalfEdge{
+
+};
+class BaseCRV: public BaseElem{
+
+};
+class Line: public BaseCRV{
+
+};
+class Bezier: public BaseCRV{
+
+};
+class Arc: public BaseCRV{
+
+};
+class Bspline: public BaseCRV{
+
+};
+class Line_crc: public Line{
+
+};
+
+class Arc_crc: public Arc{
+
+};
+class Bspline_crc: public Bspline{
 
 };
 */
