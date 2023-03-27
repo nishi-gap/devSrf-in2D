@@ -128,9 +128,12 @@ void MainWindow::color_FL(){emit signalFLtype(PaintTool::FoldLine_move);}
 
 void MainWindow::StartOptimization(){
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
-    std::vector<glm::f64vec3>C, C2;
-    ui->glWid2dim->model->FL[0]->Optimization(C, C2);
-    ui->glWid3dim->ReceiveParam(C,C2);
+    auto Poly_V = ui->glWid2dim->model->outline->getVertices();
+    auto Edges = ui->glWid2dim->model->Edges;
+    auto Vertices = ui->glWid2dim->model->vertices;
+    auto Faces = ui->glWid2dim->model->Faces;
+    ui->glWid2dim->model->FL[0]->Optimization(Poly_V, Faces, Edges, Vertices);
+
 
 }
 
@@ -360,6 +363,12 @@ void MainWindow::exportobj(){
         s += "\n";
         WriteList.append(s);
     }
+
+    const QString DirName = "./OBJ";
+    const QDir dir; dir.mkdir(DirName);
+    QDir CurDir = QDir::current(); CurDir.cd(DirName);
+    const QString CSVDir = "./ResultCSV";
+    const QDir ChildDir; ChildDir.mkdir(CSVDir);
     QString fileName = QFileDialog::getSaveFileName(this, tr("save as obj"), "", tr("テキストファイル(*.obj)") );
     if(fileName.isEmpty())return;
 
@@ -373,8 +382,8 @@ void MainWindow::exportobj(){
     foreach (QString item, WriteList) {
         out << item;
     }
-
-    //平面性の結果
+    CurDir.cd(CSVDir);
+    //平面性の結果 
     QFile QuantitativeResult_file(fileName.split(u'.')[0] + "QuantitativeResult.csv");
     if (!QuantitativeResult_file.open(QIODevice::WriteOnly)) {
             QMessageBox::information(this, tr("Unable to open file"), file.errorString());

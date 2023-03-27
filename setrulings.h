@@ -83,6 +83,7 @@ public:
     std::vector<HalfEdge*> Split(Vertex *v, std::vector<HalfEdge*>& Edges);
     bool hasCrossPoint2d(glm::f64vec3 p, glm::f64vec3 q, glm::f64vec3& CrossPoint,  bool ConsiderEnd = false);
     double diffEdgeLength();
+    HalfEdge* erase(std::vector<HalfEdge*>& Edges);
 
 protected:
     void edgeSwap(HalfEdge *h);
@@ -107,6 +108,7 @@ public:
     glm::f64vec3 getNormalVec();
     double sgndist(glm::f64vec3 p);
     void ReConnect(HalfEdge *he);
+    void TrianglationSplit(std::vector<HalfEdge*>& Edges, std::vector<Face*>& Faces);
 
 };
 

@@ -8,6 +8,7 @@
 #include <sstream>
 #include <iomanip>
 #include <numbers>
+#include <filesystem>
 #include "mathtool.h"
 class FoldLine
 {
@@ -24,7 +25,7 @@ public:
     double getColor();
     bool modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices,const std::vector<Vertex*>& Poly_v, int dim, int t_type = 2);
 
-    bool Optimization(std::vector<glm::f64vec3>&C, std::vector<glm::f64vec3>&C2);
+    bool Optimization(std::vector<Vertex*>& Poly_V, std::vector<Face*>&Faces,  std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices);
     void deform();
     HalfEdge *he, *he2;
     std::vector<glm::f64vec3> point;
@@ -36,7 +37,7 @@ public:
     std::vector<glm::f64vec3>BasisVectors, PointsOnPlane;
 
     double AngleIn2Edges(HalfEdge *p, HalfEdge *p2, bool Is3d = true);
-    void applyAAAMethod(std::vector<Vertex*>& Poly_v,  std::vector<Face*>& Faces, std::vector<HalfEdge*>& edges, double a = 2.0*M_PI/3.0);
+    void applyAAAMethod(std::vector<Vertex*>& Poly_v,  std::vector<Face*>& Faces, std::vector<HalfEdge*>& edges, std::vector<Vertex*>&Vertices, double a = 2.0*M_PI/3.0);
     void TestFoldingAAAM(double& a, std::vector<Vertex*>& _Vertices, std::vector<HalfEdge*>& _Edges);
 
     bool SplitFace4DebugAAAMethod(glm::f64vec3& NewPoint, std::vector<Face*> &faces, std::vector<HalfEdge*>& edges, std::vector<Vertex*>& vertices);
@@ -54,10 +55,9 @@ private:
     bool setPoint(const std::vector<Vertex*>& Poly_v, glm::f64vec3 N, glm::f64vec3& cp, glm::f64vec3& crossPoint);
     PaintTool type;
     int maxRsize;
-    double Fbend(std::vector<glm::f64vec3>&C, std::vector<glm::f64vec3>&C2);
+    double Fbend(std::vector<Vertex*>& Poly_V, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices);
+    double Fruling(std::vector<Vertex*>& Poly_V);
     void _FoldingAAAMethod(double & a, double phi02, double phim1, std::vector<Vertex*>& Poly_v,  std::vector<Face*>& Faces, std::vector<HalfEdge*>& edges);
-    void EdgeRecconection(std::vector<Vertex*>& Poly_V,  std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges);
-
 };
 
 

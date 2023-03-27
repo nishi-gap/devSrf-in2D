@@ -275,7 +275,7 @@ void GLWidget_2D::changeBetaValue(double val){
 
     double a = val * std::numbers::pi/180.0;
     std::vector<Vertex*> Poly_v = model->outline->getVertices();
-    model->FL[FoldCurveIndex]->applyAAAMethod(Poly_v, model->Faces, model->Edges, val);
+    model->FL[FoldCurveIndex]->applyAAAMethod(Poly_v, model->Faces, model->Edges, model->vertices, val);
 
     emit foldingSignals();
     update();

@@ -94,6 +94,25 @@ double HalfEdge::diffEdgeLength(){
     return abs(glm::length(next->vertex->p - vertex->p) - glm::length(next->vertex->p3 - vertex->p3));
 }
 
+HalfEdge* HalfEdge::erase(std::vector<HalfEdge*>& Edges){
+    std::vector<HalfEdge*>::iterator itr = std::find(Edges.begin(), Edges.end(), this);
+    if(itr == Edges.end())return nullptr;
+    prev->next = next; next->prev = prev;
+    face->ReConnect(prev);
+    if(this->pair == nullptr){
+        Edges.erase(itr);
+        delete this;
+    }else{
+        pair->prev->next = pair->next; pair->next->prev = pair->prev;
+        pair->face->ReConnect(pair->prev);
+        std::vector<HalfEdge*>::iterator itr_p = std::find(Edges.begin(), Edges.end(), pair);
+        Edges.erase(itr); Edges.erase(itr_p);
+        delete pair;
+        delete this;
+    }
+    return next;
+}
+
 double CrvPt_FL::developability(){
     if(halfedge.size() <= 4)return -1;
     double phi = 0.0;
@@ -186,7 +205,7 @@ int Face::edgeNum(bool PrintVertex){
         h = h->next;
 
     }while(h != halfedge);
-    std::cout << std::endl;
+    if(PrintVertex)std::cout << std::endl;
     return cnt;
 }
 
@@ -197,6 +216,50 @@ void Face::ReConnect(HalfEdge *he){
         h->face = this;
         h = h->next;
     }while(he != h);
+}
+
+void Face::TrianglationSplit(std::vector<HalfEdge*>& Edges, std::vector<Face*>& Faces){
+
+    int n = edgeNum(false);
+    HalfEdge *h = halfedge;
+    do{
+        if(glm::length(h->vertex->p - h->next->vertex->p) < 1e-6)h = h->erase(Edges);
+        else h = h->next;
+    }while(h != halfedge);
+    while(n > 3){
+        HalfEdge *next = halfedge->next, *cur = halfedge, *prev = halfedge->prev;
+
+        n = edgeNum(false);
+        do{
+            std::array<glm::f64vec3, 3> tri = {prev->vertex->p, cur->vertex->p, next->vertex->p};
+            bool elimTriMesh = true;
+            HalfEdge *p = next;
+            do{
+                bool check1 = MathTool::hasPointInTriangle3D(p->vertex->p, tri);
+                bool check2 = MathTool::IsAngleLessThan180(tri[1], tri[0], tri[2]);
+                if(check1 || !check2){
+                    elimTriMesh = false;
+                    break;
+                }
+                p = p->next;
+            }while(p != next);
+            if(elimTriMesh){
+                HalfEdge *h = new HalfEdge(cur->vertex, EdgeType::ol), *h2 = new HalfEdge(next->next->vertex, EdgeType::ol);
+                h->pair = h2; h2->pair = h;
+                h2->next = cur; h2->prev = next;
+                h->next = next->next; h->prev = prev;
+                prev->next  = next->next->prev = h;
+                cur->prev = next->next = h2;
+                Edges.push_back(h); Edges.push_back(h2);
+                Face *f = new Face(h); f->ReConnect(h); cur->face->ReConnect(cur);
+                Faces.push_back(f);
+                cur = h;
+                break;
+            }
+            cur = cur->next;
+        }while(cur != halfedge);
+        n = edgeNum(false);
+    }
 }
 
 CRV::CRV(int _crvNum, int DivSize){

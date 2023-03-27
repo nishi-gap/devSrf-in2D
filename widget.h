@@ -1,6 +1,7 @@
 #ifndef WIDGET_H
 #define WIDGET_H
 
+#include <QDir>
 #include <QString>
 #include <QWidget>
 #include <QSpinBox>
