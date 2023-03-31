@@ -1,13 +1,16 @@
 #ifndef FOLDLINE_H
 #define FOLDLINE_H
+
+#include <cmath>
+#include <numbers>
 #include <setrulings.h>
 #include<glm/gtx/vector_angle.hpp>
-#include <cmath>
+
+#include <utility>
 #include <Eigen/Dense>
 #include <fstream>
 #include <sstream>
 #include <iomanip>
-#include <numbers>
 #include <filesystem>
 #include "mathtool.h"
 class FoldLine
@@ -33,7 +36,8 @@ public:
 
     std::vector<glm::f64vec3> CtrlPts_res, Curve_res, CtrlPts_res2d, Curve_res2d;
     //std::vector<CrvPt_FL> T_crs;
-    std::vector<HalfEdge_FL*> FoldingCurve;
+    std::vector<std::pair<CrvPt_FL*, Vertex*>> FoldingCurve;
+    //std::vector<HalfEdge_FL*> FoldingCurve;
     std::vector<glm::f64vec3>BasisVectors, PointsOnPlane;
 
     double AngleIn2Edges(HalfEdge *p, HalfEdge *p2, bool Is3d = true);
@@ -57,7 +61,7 @@ private:
     int maxRsize;
     double Fbend(std::vector<Vertex*>& Poly_V, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices);
     double Fruling(std::vector<Vertex*>& Poly_V);
-    void _FoldingAAAMethod(double & a, double phi02, double phim1, std::vector<Vertex*>& Poly_v,  std::vector<Face*>& Faces, std::vector<HalfEdge*>& edges);
+    void _FoldingAAAMethod(double & a, double phi02, double phim1, std::vector<Vertex*>& Poly_v,  std::vector<Vertex*>&Vertices, std::vector<HalfEdge*>& edges);
 };
 
 

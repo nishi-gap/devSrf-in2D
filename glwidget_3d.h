@@ -13,7 +13,7 @@
 #include<GL/glu.h>
 #include <QKeyEvent>
 #include <glm/gtx/string_cast.hpp>
-#include "arcball.h"
+//#include "arcball.h"
 #include "setrulings.h"
 
 typedef std::vector<std::array<glm::f64vec3, 2>> Ruling3d;
@@ -87,7 +87,7 @@ private:
     inline void dispV(glm::f64vec3 p);
     void updateRotate();
 
-    ArcBallCam arccam;
+    //ArcBallCam arccam;
 
     Faces3d _faces;
     HalfEdges _edges;

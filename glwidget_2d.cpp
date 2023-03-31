@@ -320,7 +320,7 @@ void GLWidget_2D::paintGL(){
                 glPointSize(5);
                 for(auto&h: fl->FoldingCurve){
                     glBegin(GL_POINTS);
-                    glVertex2d(h->vertex->p.x, h->vertex->p.y);
+                    glVertex2d(h.first->p.x, h.first->p.y);
                     glEnd();
                 }
 

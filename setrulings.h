@@ -118,10 +118,6 @@ public:
     double s;
     //void digAlign(double& v, int dig = 11){ int n = pow(10, dig); int tmp = v * n; v = (double)tmp/(double)n; }
 
-    double k2d, k3d, tau, k2d_m, k2d_p, k3d_m, k3d_p;
-    double a, da;
-    glm::f64vec3 T2d, N2d, B2d, T3d, N3d, B3d;
-    glm::f64vec3 Td, Nd, Bd;
     CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3, double _s) : Vertex(_p2, _p3), s{_s} {}
     CrvPt_FL(glm::f64vec3 _p2, double _s) : Vertex(_p2), s{_s} {}
     bool operator>(const CrvPt_FL& T) const { return s > T.s; }

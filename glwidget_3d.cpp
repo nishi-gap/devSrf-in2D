@@ -15,7 +15,7 @@ GLWidget_3D::GLWidget_3D(QWidget *parent):QOpenGLWidget(parent)
     VisiblePlanarity = false;
     switchTNB = 0;
     glm::f64vec3 up{0,1,0};
-    arccam = ArcBallCam(glm::f64vec3{0,0,-100}, center, up);
+    //arccam = ArcBallCam(glm::f64vec3{0,0,-100}, center, up);
     drawdist = 0.0;
     drawEdgePlane = -1;
 
@@ -33,7 +33,7 @@ void GLWidget_3D::initializeGL(){
     TransX = 50.f, TransY = 0.f, TransZ = -200.f;
     angleY = 90;
     glm::f64vec3 up{0,1,0};
-    arccam = ArcBallCam(glm::f64vec3{0,0,-100}, center, up);
+    //arccam = ArcBallCam(glm::f64vec3{0,0,-100}, center, up);
     glViewport(s.width(),0,s.width(),s.height());
     glEnable(GL_POLYGON_OFFSET_FILL);
     glEnable(GL_DEPTH_TEST);
@@ -41,7 +41,7 @@ void GLWidget_3D::initializeGL(){
 
 void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const HalfEdges Edges, const Surface_V _vertices,
                               const Ruling3d& _SingleRuling, const Ruling3d& _AllRulings, bool switchDraw){
-    std::vector<glm::f64vec3> vertices, centers;
+    std::vector<glm::f64vec3> vertices;
     drawdist = 0.0;
     Vertices.clear();
     TriMeshs.clear();
@@ -337,7 +337,7 @@ void GLWidget_3D::mousePressEvent(QMouseEvent *e){
 
 void GLWidget_3D::wheelEvent(QWheelEvent *we){
     double z = (we->angleDelta().y() > 0) ? 5 : -5;
-    arccam.zoom(z);
+    //arccam.zoom(z);
     TransZ += z;
     update();
 }
@@ -369,11 +369,11 @@ void GLWidget_3D::mouseMoveEvent(QMouseEvent *e){
     if(actionType == 1){//平行移動
         TransX -=  0.3 * diff.x();
         TransY +=  0.3 * diff.y();
-        arccam.pan(glm::f64vec2{diff.x(), diff.y()});
+        //arccam.pan(glm::f64vec2{diff.x(), diff.y()});
     }else if(actionType == 2){//回転
         angleX += diff.x();
         angleY += diff.y();
-        arccam.rotate(glm::f64vec2{befPos.x(), befPos.y()}, glm::f64vec2{curPos.x(), curPos.y()});
+        //arccam.rotate(glm::f64vec2{befPos.x(), befPos.y()}, glm::f64vec2{curPos.x(), curPos.y()});
     }
     befPos = curPos;
     update();
