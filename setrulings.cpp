@@ -21,6 +21,12 @@ Vertex::Vertex(const Vertex &v){
     p = v.p; p3 = v.p3;
 }
 
+Vertex::~Vertex(){
+    for(auto* h: halfedge){
+        if(h == nullptr)free(h);
+    }
+}
+
 double Vertex::developability(){
     if(halfedge.size() < 4)return -1;
     //並び替え
@@ -61,6 +67,9 @@ HalfEdge::HalfEdge(Vertex *v, EdgeType _type){
     v->addNewEdge(this);
 }
 
+HalfEdge::~HalfEdge(){
+    free(vertex);
+}
 std::vector<HalfEdge*> HalfEdge::Split(Vertex *v, std::vector<HalfEdge*>& Edges){
     std::vector<HalfEdge*> res;
     if(!MathTool::is_point_on_line(v->p, this->vertex->p, this->next->vertex->p))return res;
@@ -94,22 +103,27 @@ double HalfEdge::diffEdgeLength(){
     return abs(glm::length(next->vertex->p - vertex->p) - glm::length(next->vertex->p3 - vertex->p3));
 }
 
-HalfEdge* HalfEdge::erase(std::vector<HalfEdge*>& Edges){
+HalfEdge* HalfEdge::erase(std::vector<HalfEdge*>& Edges, std::vector<Face*>& Faces){
     std::vector<HalfEdge*>::iterator itr = std::find(Edges.begin(), Edges.end(), this);
     if(itr == Edges.end())return nullptr;
-    prev->next = next; next->prev = prev;
-    face->ReConnect(prev);
-    if(this->pair == nullptr){
-        Edges.erase(itr);
-        delete this;
-    }else{
+    HalfEdge *next = this->next;
+    if(this->pair != nullptr){
         pair->prev->next = pair->next; pair->next->prev = pair->prev;
         pair->face->ReConnect(pair->prev);
         std::vector<HalfEdge*>::iterator itr_p = std::find(Edges.begin(), Edges.end(), pair);
-        Edges.erase(itr); Edges.erase(itr_p);
+        std::vector<Face*>::iterator itr_f = std::find(Faces.begin(), Faces.end(), this->face);
+        Faces.erase(itr_f);
+        Edges.erase(itr_p);
+        delete r;
         delete pair;
-        delete this;
+    }else{
+        prev->next = this->next; this->next->prev = prev;
+
+        face->ReConnect(prev);
     }
+
+    Edges.erase(itr);
+    delete this;
     return next;
 }
 
@@ -122,12 +136,15 @@ double CrvPt_FL::developability(){
     }
 }
 
+//bool operator<(const CrvPt_FL& T, const CrvPt_FL& T2) noexcept { return T.s < T2.s; }
 
 crvpt::crvpt(int _ind, glm::f64vec3 _pt, int _color){
     pt = _pt;
     color = _color;
     ind = _ind;
 }
+
+
 
 
 ruling::ruling(Vertex *a, Vertex *b, crvpt *_pt) {
@@ -223,7 +240,7 @@ void Face::TrianglationSplit(std::vector<HalfEdge*>& Edges, std::vector<Face*>& 
     int n = edgeNum(false);
     HalfEdge *h = halfedge;
     do{
-        if(glm::length(h->vertex->p - h->next->vertex->p) < 1e-6)h = h->erase(Edges);
+        if(glm::length(h->vertex->p - h->next->vertex->p) < 1e-6)h = h->erase(Edges, Faces);
         else h = h->next;
     }while(h != halfedge);
     while(n > 3){
@@ -1044,6 +1061,7 @@ void EdgeRecconection(const std::vector<Vertex*>& Poly_V, std::vector<Face*>& Fa
         Faces.push_back(f);
         do{
             int j = std::distance(Edges.begin(), std::find(Edges.begin(), Edges.end(), h));
+            if(j < 0 || j >= Edges.size())break;
             IsReconnected[j] = true;
             Edges[j]->face = f;
             h = h->next;

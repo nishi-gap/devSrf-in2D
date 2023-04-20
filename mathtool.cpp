@@ -124,12 +124,11 @@ std::vector<double> _bezierclipping(std::vector<glm::f64vec3>&CtrlPts_base, std:
         return {t_max};
         //return {(t_max + t_min)/2.0};
     }
-    std::pair<std::vector<glm::f64vec3>, std::vector<glm::f64vec3>> _bez = BezierSplit(CtrlPts_base, t_max, dim);
+    std::pair<std::vector<glm::f64vec3>, std::vector<glm::f64vec3>> _bez = BezierSplit(CtrlPts_base, t_max);
     double bez_t = t_min / (t_max);
-    _bez = BezierSplit(_bez.first, bez_t, dim);
+    _bez = BezierSplit(_bez.first, bez_t);
     if(abs(glm::distance(p,q) - abs(t_max - t_min)) < DBL_EPSILON){
-
-        std::pair<std::vector<glm::f64vec3>, std::vector<glm::f64vec3>> bez_spl = BezierSplit(_bez.second, 0.5,  dim);
+        std::pair<std::vector<glm::f64vec3>, std::vector<glm::f64vec3>> bez_spl = BezierSplit(_bez.second, 0.5);
         std::vector<glm::f64vec3> b1 = bez_spl.first, b2 = bez_spl.second;
         std::array<glm::f64vec3, 2> next_line2; std::copy(next_line.begin(), next_line.end(), next_line2.begin());
         std::vector<double>t1 = _bezierclipping(CtrlPts_base, b1, next_line, dim), t2 = _bezierclipping(CtrlPts_base, b2, next_line2, dim);
@@ -198,7 +197,7 @@ bool is_point_on_line(glm::f64vec3 p, glm::f64vec3 lp1, glm::f64vec3 lp2){
 }
 
 //split at t for bezier curve
-std::pair<std::vector<glm::f64vec3>, std::vector<glm::f64vec3>> BezierSplit(std::vector<glm::f64vec3> CtrlPts, double t, int dim){
+std::pair<std::vector<glm::f64vec3>, std::vector<glm::f64vec3>> BezierSplit(std::vector<glm::f64vec3> CtrlPts, double t){
     std::vector<glm::f64vec3>lp, rp;
     std::vector<std::vector<glm::f64vec3>> Tree = de_casteljau_algorithm(CtrlPts, t);
     Tree.insert(Tree.begin(), CtrlPts);
@@ -347,8 +346,10 @@ std::vector<glm::f64vec3> getPlaneFromCurvePoints(std::vector<glm::f64vec3>& Poi
     return PointsOnPlane;
 }
 
-glm::f64vec3 ProjectionVector(glm::f64vec3 v, glm::f64vec3 n){
-    return v - glm::dot(v,n)/pow(glm::length(n),2)* n;
+glm::f64vec3 ProjectionVector(glm::f64vec3 v, glm::f64vec3 n, bool Isnormalize){
+    n = glm::normalize(n);
+    glm::f64vec3 V = v - glm::dot(v,n)* n;
+    return (Isnormalize)? V/glm::length(V): V;
 }
 
 double AngleIn2Edges(HalfEdge *p, HalfEdge *p2, bool Is3d){

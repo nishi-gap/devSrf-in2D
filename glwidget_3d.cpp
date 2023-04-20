@@ -66,9 +66,9 @@ void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const
 
     if(!switchDraw){
         _faces.clear();
-       _edges = EdgeCopy(Edges, _vertices);
+       //_edges = EdgeCopy(Edges, _vertices);
        PlanarityColor.clear();
-       EdgeRecconection(Poly_V, _faces, _edges);
+       //EdgeRecconection(Poly_V, _faces, _edges);
         for(auto&f: _faces){
             vertices.clear();
             HalfEdge *he = f->halfedge;

@@ -126,13 +126,15 @@ void MainWindow::addFoldLine_test(){emit signalFLtype(PaintTool::FoldLine_test);
 void MainWindow::moveCtrlPts_fl(){emit signalFLtype(PaintTool::FoldLine_move);}
 void MainWindow::color_FL(){emit signalFLtype(PaintTool::FoldLine_move);}
 
+static int keyType = 0;
+
 void MainWindow::StartOptimization(){
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
     auto Poly_V = ui->glWid2dim->model->outline->getVertices();
-    auto Edges = ui->glWid2dim->model->Edges;
-    auto Vertices = ui->glWid2dim->model->vertices;
-    auto Faces = ui->glWid2dim->model->Faces;
-    ui->glWid2dim->model->FL[0]->Optimization(Poly_V, Faces, Edges, Vertices);
+    bool res = ui->glWid2dim->model->FL[0]->Optimization(ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, Poly_V, keyType);
+    if(res){
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->SingleRuling, ui->glWid2dim->AllRulings);
+    }
 
 
 }
@@ -140,13 +142,13 @@ void MainWindow::StartOptimization(){
 void MainWindow::changeAngleFromSlider(int val){
     ui->angleA->setValue((double)val/100);
     double a = (double)val/18000.0 * std::numbers::pi;
-    emit sendAngle(a);
+    emit sendAngle(a, keyType);
 
 }
 void MainWindow::changeAngleFromSpinBox(double val){
     ui->angleSlider->setValue(val*100);
     double a = (double)val*std::numbers::pi/180.0;
-    emit sendAngle(a);
+    emit sendAngle(a, keyType);
 
 }
 
@@ -263,6 +265,7 @@ void MainWindow::switchActivateCheckBox(PaintTool active){
 
 }
 
+
 void MainWindow::keyPressEvent(QKeyEvent *e){
     static bool switchDraw = false;
     switchDraw = (!switchDraw)? true: false;
@@ -280,6 +283,15 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         }
         else{
             ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
+        }
+    }
+    else if(e->key() == Qt::Key_3 ||e->key() == Qt::Key_4){
+        keyType = (e->key() == Qt::Key_3)? 0: 1;
+        if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+        auto Poly_V = ui->glWid2dim->model->outline->getVertices();
+        bool res = ui->glWid2dim->model->FL[0]->Optimization(ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, Poly_V, keyType);
+        if(res){
+            ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->SingleRuling, ui->glWid2dim->AllRulings);
         }
     }
     else{

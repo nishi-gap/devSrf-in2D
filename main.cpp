@@ -5,8 +5,10 @@
 #include <QApplication>
 #include <iomanip>
 #include <glm/gtx/vector_angle.hpp>
+#include <mathtool.h>
 //#include <QSurfaceFormat>
 //https://www.bogotobogo.com/Qt/Qt5_OpenGL_QGLWidget.php
+
 
 int main(int argc, char *argv[])
 {

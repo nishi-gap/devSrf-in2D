@@ -98,7 +98,7 @@ public slots:
     void changeFoldType(PaintTool state);
     void checkDevelopability(bool state);
 
-    void changeBetaValue(double val);
+    void changeBetaValue(double val, int keyType);
     void changeStopAtFF(bool state);
     void changeStopAtCon(bool state);
     void changeStopAtEq(bool state);

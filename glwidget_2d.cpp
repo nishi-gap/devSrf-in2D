@@ -269,13 +269,13 @@ void GLWidget_2D::Start4Debug_CF(){
 }
 
 
-void GLWidget_2D::changeBetaValue(double val){
+void GLWidget_2D::changeBetaValue(double val, int keyType){
     if(model->Faces.size() < 2 || IsStop4Debug || model->FL.empty())return;
     if(model->FL.empty())model->FL.push_back(new FoldLine(1, 1, PaintTool::FoldLine_test) );
 
     double a = val * std::numbers::pi/180.0;
-    std::vector<Vertex*> Poly_v = model->outline->getVertices();
-    model->FL[FoldCurveIndex]->applyAAAMethod(Poly_v, model->Faces, model->Edges, model->vertices, val);
+    auto Poly_V = model->outline->getVertices();
+    model->FL[FoldCurveIndex]->applyAAAMethod(model->Edges, model->vertices, Poly_V, val, keyType);
 
     emit foldingSignals();
     update();
@@ -329,125 +329,117 @@ void GLWidget_2D::paintGL(){
 
     }
 
-    if(model->outline->IsClosed()){
+    float r, g, b = 0;
+    glPolygonOffset(0.0,1.0);
+    int ind = assignment_refHE();
+    for(int i = 0; i < model->Edges.size(); i++){
+        HalfEdge *edge = model->Edges[i];
+        glColor3d(0,0,0);
+        glLineWidth(1);
 
-        const std::vector<Vertex*> Poly_V = model->outline->getVertices();
-        std::vector<HalfEdge*> _edges = EdgeCopy(model->Edges, model->vertices);
-        std::vector<Face*> _faces;
-        EdgeRecconection(Poly_V, _faces, _edges);
-        float r, g, b = 0;
-        glPolygonOffset(0.0,1.0);
-        int ind = assignment_refHE();
-        for(int i = 0; i < _edges.size(); i++){
-            HalfEdge *edge = _edges[i];
-            glColor3d(0,0,0);
-            glLineWidth(1);
-
-            if(edge->edgetype == EdgeType::r){
-                if(drawtype == PaintTool::NewGradationMode){
-                    glLineWidth(rulingWidth);
-                    if(edge->r->IsCrossed != -1)glColor3d(0,1,0);
-                    else {
-                        if(edge->r->Gradation == 0) r = g = b = 0.4;
-                        else if(edge->r->Gradation > 0){
-                            r = 1; g = b =1 - edge->r->Gradation/255.0;
-                        }else{
-                            b = 1;
-                            g = r = 1 + edge->r->Gradation/255.0;
-                        }
-                        glColor3d(r,g,b);
+        if(edge->edgetype == EdgeType::r){
+            if(drawtype == PaintTool::NewGradationMode){
+                glLineWidth(rulingWidth);
+                if(edge->r->IsCrossed != -1)glColor3d(0,1,0);
+                else {
+                    if(edge->r->Gradation == 0) r = g = b = 0.4;
+                    else if(edge->r->Gradation > 0){
+                        r = 1; g = b =1 - edge->r->Gradation/255.0;
+                    }else{
+                        b = 1;
+                        g = r = 1 + edge->r->Gradation/255.0;
                     }
-                }else{
-                    if(edge->r->IsCrossed  != -1)glColor3d(0,1,0);
-                    else glColor3d(0.4,0.4,0.4);
-                    glLineWidth(1.f);
+                    glColor3d(r,g,b);
                 }
-                auto itr = (ind != -1)? std::find(_edges.begin(), _edges.end(), _edges[ind]->pair): _edges.end();
-                int pairInd = (itr != _edges.end())?std::distance(_edges.begin(), itr): -1;
-                if(ind == i || pairInd == i)glColor3d(1,1,0);
-            }else if(edge->edgetype == EdgeType::fl || edge->edgetype == EdgeType::ol){
-                if(edge->vertex == refV){
-                    glColor3d(1, 0, 0);
-                    glPointSize(6.0f);
-                }else{
-                    glColor3d(0, 0, 0);
-                    glPointSize(3.0f);
-                }
-                glBegin(GL_POINTS);
-                glVertex2d(edge->vertex->p.x, edge->vertex->p.y);
-                glEnd();
-                glColor3d(0, 0, 0);
+            }else{
+                if(edge->r->IsCrossed  != -1)glColor3d(0,1,0);
+                else glColor3d(0.4,0.4,0.4);
+                glLineWidth(1.f);
             }
-
-            glBegin(GL_LINES);
-            glVertex2d(edge->vertex->p.x, edge->vertex->p.y);
-            glVertex2d(edge->next->vertex->p.x, edge->next->vertex->p.y);
-            glEnd();
-
-        }
-    }else{
-        //可展面の輪郭描画
-        {
-            if(model->outline->type == "Rectangle" || model->outline->type == "Polyline"){
+            auto itr = (ind != -1)? std::find(model->Edges.begin(), model->Edges.end(), edge->pair): model->Edges.end();
+            int pairInd = (itr != model->Edges.end())?std::distance(model->Edges.begin(), itr): -1;
+            if(ind == i || pairInd == i)glColor3d(1,1,0);
+        }else if(edge->edgetype == EdgeType::fl){
+            if(edge->vertex == refV){
+                glColor3d(1, 0, 0);
+                glPointSize(6.0f);
+            }else{
                 glColor3d(0, 0, 0);
                 glPointSize(3.0f);
+            }
+            glBegin(GL_POINTS);
+            glVertex2d(edge->vertex->p.x, edge->vertex->p.y);
+            glEnd();
+            glColor3d(0, 0, 0);
+        }
+
+        glBegin(GL_LINES);
+        glVertex2d(edge->vertex->p.x, edge->vertex->p.y);
+        glVertex2d(edge->next->vertex->p.x, edge->next->vertex->p.y);
+        glEnd();
+
+    }
+    //可展面の輪郭描画
+    {
+        if(model->outline->type == "Rectangle" || model->outline->type == "Polyline"){
+            glColor3d(0, 0, 0);
+            glPointSize(3.0f);
+            auto  Vertices = model->outline->getVertices();
+            for(auto& v: Vertices){
+                glBegin(GL_POINTS);
+                glVertex2d(v->p.x, v->p.y);
+                glEnd();
+            }
+
+            if(model->outline->IsClosed()){
+                glBegin(GL_LINE_LOOP);
+                for(auto& r: Vertices)glVertex2d(r->p.x, r->p.y);
+                glEnd();
+            }else{
+                glBegin(GL_LINE_STRIP);
+                for(auto& v: Vertices) glVertex2d(v->p.x, v->p.y);
+                glEnd();
+            }
+        }
+        if(model->outline->type == "Polygon"){
+            if(model->outline->hasPtNum > 0){
+                glColor3d(0, 0, 0);
+                glPointSize(5.0f);
+                glBegin(GL_POINTS);
+                glVertex2d(model->outline->origin.x, model->outline->origin.y);
+                glEnd();
+
+                glColor3d(0, 0, 0);
+                glPointSize(4.0f);
                 for(auto& v: model->outline->getVertices()){
                     glBegin(GL_POINTS);
                     glVertex2d(v->p.x, v->p.y);
                     glEnd();
                 }
 
-                if(model->outline->IsClosed()){
-                    glBegin(GL_LINE_LOOP);
-                    for(auto& r: model->outline->getVertices())glVertex2d(r->p.x, r->p.y);
-                    glEnd();
-                }else{
-                    glBegin(GL_LINE_STRIP);
-                    for(auto& v: model->outline->getVertices()) glVertex2d(v->p.x, v->p.y);
-                    glEnd();
-                }
-            }
-            if(model->outline->type == "Polygon"){
-                if(model->outline->hasPtNum > 0){
-                    glColor3d(0, 0, 0);
-                    glPointSize(5.0f);
-                    glBegin(GL_POINTS);
-                    glVertex2d(model->outline->origin.x, model->outline->origin.y);
-                    glEnd();
-
-                    glColor3d(0, 0, 0);
-                    glPointSize(4.0f);
-                    for(auto& v: model->outline->getVertices()){
-                        glBegin(GL_POINTS);
-                        glVertex2d(v->p.x, v->p.y);
-                        glEnd();
-                    }
-
-                    glBegin(GL_LINE_LOOP);
-                    for(auto& r: model->outline->getVertices())glVertex2d(r->p.x, r->p.y);
-                    glEnd();
-                }
-
-            }
-            glPointSize(4);
-            for(auto& Vertices: model->ol_vertices){
-                for(auto&v: Vertices){
-                    glBegin(GL_POINTS);
-                    glVertex2d(v->p.x, v->p.y);
-                    glEnd();
-                }
+                glBegin(GL_LINE_LOOP);
+                for(auto& r: model->outline->getVertices())glVertex2d(r->p.x, r->p.y);
+                glEnd();
             }
 
-            glColor3d(0, 0, 0);
-            for(auto& Vertices: model->ol_vertices){
-                glBegin(GL_LINE_STRIP);
-                for(auto&v: Vertices){
-                    glVertex2d(v->p.x, v->p.y);
-                }
+        }
+        glPointSize(4);
+        for(auto& Vertices: model->ol_vertices){
+            for(auto&v: Vertices){
+                glBegin(GL_POINTS);
+                glVertex2d(v->p.x, v->p.y);
                 glEnd();
             }
         }
 
+        glColor3d(0, 0, 0);
+        for(auto& Vertices: model->ol_vertices){
+            glBegin(GL_LINE_STRIP);
+            for(auto&v: Vertices){
+                glVertex2d(v->p.x, v->p.y);
+            }
+            glEnd();
+        }
     }
 
     glLineWidth(1.0);
@@ -593,7 +585,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
             update();
         }
         else if(drawtype == PaintTool::FoldLine_test){
-            bool res = model->FL[FoldCurveIndex]->SplitFace4DebugAAAMethod(p_ongrid, model->Faces, model->Edges, model->vertices);
+            std::cout << "can't use test now" << std::endl;
         }
         else if(drawtype == PaintTool::DeleteCurve){
             model->SelectCurve(p);
@@ -772,7 +764,6 @@ int GLWidget_2D::referencedRuling(QPointF p){
 void GLWidget_2D::wheelEvent(QWheelEvent *we){
     DiffWheel = (we->angleDelta().y() > 0) ? 1 : -1;
     if(drawtype == PaintTool::FoldlineColor){
-        bool hasRulings = model->FL[FoldCurveIndex]->ChangeColor(model->outline, DiffWheel, curveDimention);
         emit ColorChangeFrom(0, model->FL[FoldCurveIndex]->getColor());
     }else if(drawtype == PaintTool::NewGradationMode){
         if(refHE == nullptr || std::find(model->Edges.begin(), model->Edges.end(), refHE) == model->Edges.end()){

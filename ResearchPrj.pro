@@ -46,8 +46,11 @@ FORMS += \
     gtoolwnd.ui \
     widget.ui
 
-INCLUDEPATH = ./include
-#LIBS += C:\Program Files (x86)\Windows Kits\10\Lib\10.0.19041.0\um\x64\GLU32
+INCLUDEPATH += $$PWD/include \
+                $$PWD/include/nlopt/api
+
+LIBS += $$PWD/include/libs/nlopt.lib
+#dllファイルの追加：横メニューバーのプロジェクト→環境→PATHを編集してdllが入ったフォルダを追記するとできる
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin

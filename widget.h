@@ -108,7 +108,7 @@ signals:
     void signalFLtype(PaintTool state);
     void signalNewLineWidth(double d);
 
-    void sendAngle(double val);
+    void sendAngle(double val, int keyType);
 
 };
 #endif // WIDGET_H

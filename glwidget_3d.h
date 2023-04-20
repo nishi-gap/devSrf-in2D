@@ -31,7 +31,7 @@ class GLWidget_3D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
     Q_OBJECT
 public:
     void setVertices(const Faces3d Faces = Faces3d(), const Polygon_V Poly_V = Polygon_V(), const HalfEdges Edges = HalfEdges(),
-                     const Surface_V _vertices = Surface_V(), const Ruling3d& _SingleRuling = Ruling3d(), const Ruling3d& _AllRulings = Ruling3d(), bool switchDraw = false);
+                     const Surface_V _vertices = Surface_V(), const Ruling3d& _SingleRuling = Ruling3d(), const Ruling3d& _AllRulings = Ruling3d(), bool switchDraw = true);
     void ReceiveParam(std::vector<glm::f64vec3>&_C,std::vector<glm::f64vec3>& _C2);
     void receiveKeyEvent(QKeyEvent *e);
     void PlanarityDispay(bool state);

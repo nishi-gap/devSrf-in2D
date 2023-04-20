@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <algorithm>
 #include <vector>
 #include "mathtool.h"
 #include <glm/gtx/transform.hpp>
@@ -36,7 +37,7 @@ public:
     Vertex(glm::f64vec3 _p);
     Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3);
     Vertex(const Vertex& v);
-    ~Vertex(){}
+    ~Vertex();
 
     void addNewEdge(HalfEdge *he);
     double developability();
@@ -77,18 +78,17 @@ public:
     HalfEdge(Vertex *v, EdgeType _type);
     HalfEdge(const HalfEdge& he): IsCrossed(he.IsCrossed), face(he.face), prev(he.prev), next(he.next), pair(he.pair), r(he.r), edgetype(he.edgetype){}
     HalfEdge(){}
-    ~HalfEdge(){}
+    ~HalfEdge();
     ruling *r;
     EdgeType edgetype;
     std::vector<HalfEdge*> Split(Vertex *v, std::vector<HalfEdge*>& Edges);
     bool hasCrossPoint2d(glm::f64vec3 p, glm::f64vec3 q, glm::f64vec3& CrossPoint,  bool ConsiderEnd = false);
     double diffEdgeLength();
-    HalfEdge* erase(std::vector<HalfEdge*>& Edges);
+    HalfEdge* erase(std::vector<HalfEdge*>& Edges, std::vector<Face*>& Faces);
 
 protected:
     void edgeSwap(HalfEdge *h);
 private:
-    HalfEdge& operator =(const HalfEdge& he){}
 };
 
 class Face{
@@ -101,7 +101,6 @@ public:
     Face(HalfEdge *_halfedge);
     Face(){}
     Face(const Face& face);
-    Face& operator =(const Face& f){}
     ~Face(){}
 
     bool IsPointInFace(glm::f64vec3 p);
@@ -120,7 +119,7 @@ public:
 
     CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3, double _s) : Vertex(_p2, _p3), s{_s} {}
     CrvPt_FL(glm::f64vec3 _p2, double _s) : Vertex(_p2), s{_s} {}
-    bool operator>(const CrvPt_FL& T) const { return s > T.s; }
+   // bool operator()(const CrvPt_FL& T, const CrvPt_FL& T2)const noexcept {return T.s > T2.s;}
     double developability();
 
 };
