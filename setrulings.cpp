@@ -3,13 +3,13 @@ using namespace MathTool;
 
 Vertex::Vertex(glm::f64vec3 _p){
     p = _p;
-    p3 = _p;
+    p_test = p3 = _p;
     halfedge.clear();
     deformed = false;
 }
 Vertex::Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3){
     p = _p2;
-    p3 = _p3;
+    p_test = p3 = _p3;
     halfedge.clear();
     deformed = false;
 }
@@ -17,13 +17,15 @@ void Vertex::addNewEdge(HalfEdge *he){
     if(std::find(halfedge.begin(), halfedge.end(), he) == halfedge.end())halfedge.push_back(he);
 }
 
-Vertex::Vertex(const Vertex &v){
-    p = v.p; p3 = v.p3;
+Vertex::Vertex(const Vertex* v){
+    p = v->p; p_test = p3 = v->p3;
+    halfedge = v->halfedge;
+    deformed = v->deformed;
 }
 
 Vertex::~Vertex(){
     for(auto* h: halfedge){
-        if(h == nullptr)free(h);
+        if(h == nullptr)delete h;
     }
 }
 
@@ -58,17 +60,23 @@ double Vertex::developability(){
 
 HalfEdge::HalfEdge(Vertex *v, EdgeType _type){
     vertex = v;
-    pair = nullptr;
-    prev = nullptr;
-    next = nullptr;
+    pair = prev = next =  nullptr;
     IsCrossed = -1;
     //r = nullptr;
     edgetype = _type;
     v->addNewEdge(this);
 }
 
+HalfEdge::HalfEdge(const HalfEdge* he){
+    vertex = new Vertex(he->vertex);
+    pair = prev = next =  nullptr;
+    IsCrossed = he->IsCrossed;
+    edgetype = he->edgetype;
+    vertex->addNewEdge(this);
+}
+
 HalfEdge::~HalfEdge(){
-    free(vertex);
+    delete vertex;
 }
 std::vector<HalfEdge*> HalfEdge::Split(Vertex *v, std::vector<HalfEdge*>& Edges){
     std::vector<HalfEdge*> res;
@@ -134,6 +142,14 @@ double CrvPt_FL::developability(){
     for(int i = 1; i < halfedge.size(); i++){
 
     }
+}
+
+void CrvPt_FL::set(glm::f64vec3 _p, Vertex *o, Vertex *e){
+    double sa = glm::distance(_p, o->p), sc = glm::distance(o->p, e->p);
+    ve = e; vo = o;
+    rt = sa/sc;
+    p3 = rt * (e->p3 - o->p3) + o->p3;
+    this->p = _p;
 }
 
 //bool operator<(const CrvPt_FL& T, const CrvPt_FL& T2) noexcept { return T.s < T2.s; }

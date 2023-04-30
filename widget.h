@@ -73,7 +73,6 @@ public slots:
     void addFoldLine_bezier();
     void addFoldLine_test();
     void color_FL();
-    void fold_FL();
     void changeAngleFromSlider(int val);
     void changeAngleFromSpinBox(double val);
     void StartOptimization();

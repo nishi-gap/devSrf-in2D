@@ -32,11 +32,12 @@ class Vertex{
 public:
     glm::f64vec3 p;
     glm::f64vec3 p3;
+    glm::f64vec3 p_test;
     std::vector<HalfEdge*> halfedge;
     bool deformed;
     Vertex(glm::f64vec3 _p);
     Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3);
-    Vertex(const Vertex& v);
+    Vertex(const Vertex* v);
     ~Vertex();
 
     void addNewEdge(HalfEdge *he);
@@ -76,8 +77,7 @@ public:
     HalfEdge *pair;
 
     HalfEdge(Vertex *v, EdgeType _type);
-    HalfEdge(const HalfEdge& he): IsCrossed(he.IsCrossed), face(he.face), prev(he.prev), next(he.next), pair(he.pair), r(he.r), edgetype(he.edgetype){}
-    HalfEdge(){}
+    HalfEdge(const HalfEdge* he);
     ~HalfEdge();
     ruling *r;
     EdgeType edgetype;
@@ -114,12 +114,11 @@ public:
 
 class CrvPt_FL : public Vertex{
 public:
-    double s;
-    //void digAlign(double& v, int dig = 11){ int n = pow(10, dig); int tmp = v * n; v = (double)tmp/(double)n; }
-
-    CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3, double _s) : Vertex(_p2, _p3), s{_s} {}
+    double s, rt;
+    Vertex *ve, *vo;
+    CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3,  double _s) : Vertex(_p2, _p3), s{_s} {}
     CrvPt_FL(glm::f64vec3 _p2, double _s) : Vertex(_p2), s{_s} {}
-   // bool operator()(const CrvPt_FL& T, const CrvPt_FL& T2)const noexcept {return T.s > T2.s;}
+    void set(glm::f64vec3 _p,Vertex *o, Vertex *e);
     double developability();
 
 };

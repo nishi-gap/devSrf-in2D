@@ -74,7 +74,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->addFL_arc, &QPushButton::clicked, this, &MainWindow::addFoldLine_arc);
     connect(ui->addFL_bezier, &QPushButton::clicked, this, &MainWindow::addFoldLine_bezier);
     connect(this, &MainWindow::signalFLtype, ui->glWid2dim, &GLWidget_2D::changeFoldType);
-    connect(ui->glWid2dim, &GLWidget_2D::signalAddRulings_FL, this, &MainWindow::fold_FL);
     connect(ui->color_FL, &QPushButton::clicked, this, &MainWindow::color_FL);  
     connect(ui->move_ctrl_pt_fl, &QPushButton::clicked, this, &MainWindow::moveCtrlPts_fl);
 
@@ -174,51 +173,6 @@ void MainWindow::fold_Sm(){
     }
 }
 
-void MainWindow::fold_FL(){
-    glm::f64mat4x4 Scale = glm::scale(glm::f64vec3{0.05, 0.05, 0.05});
-    glm::f64mat4x4 Mirror = glm::mat4(1.0f); Mirror[1][1] = -1;
-    std::vector<std::array<glm::f64vec3, 2>> Ruling_l = ui->glWid2dim->model->FL[0]->Rulings_3dL;
-    std::vector<std::array<glm::f64vec3, 2>> Ruling_r = ui->glWid2dim->model->FL[0]->Rulings_3dR;
-    output.clear();
-    for(auto& m : Ruling_l){
-        for(auto&v: m)
-            v = Mirror * Scale * glm::f64vec4{v,1};
-    }
-    for(auto& m : Ruling_r){
-        for(auto&v: m)
-            v = Mirror * Scale * glm::f64vec4{v,1};
-    }
-    std::vector<std::vector<glm::f64vec3>> Left, Right;
-    for(int i = 1; i < (int)Ruling_l.size(); i++){
-        std::vector<glm::f64vec3> tmp{Ruling_l[i - 1][0], Ruling_l[i][0], Ruling_l[i][1], Ruling_l[i - 1][1]};
-        Left.push_back(tmp);
-        output.push_back(tmp);
-        tmp = {Ruling_r[i - 1][0], Ruling_r[i][0], Ruling_r[i][1], Ruling_r[i - 1][1]};
-        output.push_back(tmp);
-        Right.push_back(tmp);
-    }
-
-    glm::f64vec3 center{0,0,0};
-    for(auto& m : Left){
-        double s = m.size();
-        glm::f64vec3 c{0,0,0};
-        for(auto&v: m){
-            c += v;
-        }
-        center += c /s;
-    }
-    for(auto& m : Right){
-        double s = m.size();
-        glm::f64vec3 c{0,0,0};
-        for(auto&v: m){
-            c += v;
-        }
-        center += c /s;
-    }
-    center /= (Left.size() + Right.size());
-
-}
-
 void MainWindow::ChangedDivSizeEdit(){
     int val = ui->DivSizeSpinBox->value();
     this->ui->glWid2dim->ChangedDivSizeEdit(val);
@@ -269,13 +223,14 @@ void MainWindow::switchActivateCheckBox(PaintTool active){
 void MainWindow::keyPressEvent(QKeyEvent *e){
     static bool switchDraw = false;
     switchDraw = (!switchDraw)? true: false;
+    auto Poly_V = ui->glWid2dim->model->outline->getVertices();
     ui->glWid3dim->receiveKeyEvent(e);
     ui->glWid2dim->receiveKeyEvent(e);
     if(e->key() == Qt::Key_Backspace){
         emit PressedBackSpace();
     }
     else if(e->key() == Qt::Key_Return){emit PressedEnter();}
-    else if(e->key() == Qt::Key_Q){
+    else if(e->key() == Qt::Key_Q || e->key() == Qt::Key_P){
         if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
         else if(!ui->glWid2dim->model->FL.empty()){
             ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
@@ -288,11 +243,19 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     else if(e->key() == Qt::Key_3 ||e->key() == Qt::Key_4){
         keyType = (e->key() == Qt::Key_3)? 0: 1;
         if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
-        auto Poly_V = ui->glWid2dim->model->outline->getVertices();
+
         bool res = ui->glWid2dim->model->FL[0]->Optimization(ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, Poly_V, keyType);
         if(res){
             ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->SingleRuling, ui->glWid2dim->AllRulings);
         }
+    }
+    if(e->key() == Qt::Key_W){
+        double a = (double)ui->angleSlider->value()/100.0;
+        auto Edges = ui->glWid2dim->model->Edges;
+        auto vertices = ui->glWid2dim->model->vertices;
+        ui->glWid2dim->model->FL[0]->Optimization2(Edges, vertices, Poly_V, a);
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
+                                   ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->SingleRuling, ui->glWid2dim->model->FL[0]->AllRulings);
     }
     else{
 

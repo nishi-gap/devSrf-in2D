@@ -178,7 +178,7 @@ void Model::deform(){
         R = glm::rotate(phi, axis);
         do{
             T = glm::translate(he->vertex->p - v1);
-            he->vertex->p3 = A * R * T * glm::f64vec4{0,0,0, 1};
+            he->vertex->p_test = he->vertex->p3 = A * R * T * glm::f64vec4{0,0,0, 1};
             he->vertex->deformed = true;
             if(he->pair != nullptr && !he->pair->face->bend){
                 FacesQue.push(he->pair);
