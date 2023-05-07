@@ -116,8 +116,9 @@ class CrvPt_FL : public Vertex{
 public:
     double s, rt;
     Vertex *ve, *vo;
-    CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3,  double _s) : Vertex(_p2, _p3), s{_s} {}
-    CrvPt_FL(glm::f64vec3 _p2, double _s) : Vertex(_p2), s{_s} {}
+    bool IsValid;
+    CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3,  double _s) : Vertex(_p2, _p3), s{_s}, IsValid(true) {}
+    CrvPt_FL(glm::f64vec3 _p2, double _s) : Vertex(_p2), s{_s}, IsValid{true} {}
     void set(glm::f64vec3 _p,Vertex *o, Vertex *e);
     double developability();
 

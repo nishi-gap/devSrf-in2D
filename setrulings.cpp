@@ -149,6 +149,7 @@ void CrvPt_FL::set(glm::f64vec3 _p, Vertex *o, Vertex *e){
     ve = e; vo = o;
     rt = sa/sc;
     p3 = rt * (e->p3 - o->p3) + o->p3;
+    IsValid = true;
     this->p = _p;
 }
 
