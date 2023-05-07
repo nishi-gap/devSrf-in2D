@@ -159,7 +159,6 @@ signals:
     void SendNewActiveCheckBox(PaintTool _drawtype);
     void CurvePathSet(std::vector<glm::f64vec2>CurvePath);
     void deleteCrvSignal(std::vector<int> n);
-    void signalAddRulings_FL();
     void getAlphaBeta(double& _alpha, int& _beta, int& _beta2);
 };
 

@@ -63,12 +63,12 @@ void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const
     }
 
     TriMeshs.clear();
-
+    switchDraw = false;
     if(!switchDraw){
         _faces.clear();
-       //_edges = EdgeCopy(Edges, _vertices);
+       _edges = EdgeCopy(Edges, _vertices);
        PlanarityColor.clear();
-       //EdgeRecconection(Poly_V, _faces, _edges);
+       EdgeRecconection(Poly_V, _faces, _edges);
         for(auto&f: _faces){
             vertices.clear();
             HalfEdge *he = f->halfedge;
@@ -104,7 +104,7 @@ void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const
             Vertices.push_back(vertices);
         }
     }else{
-        for(auto&f: Faces){
+        for(auto&f: Faces){         
             vertices.clear();
             HalfEdge *he = f->halfedge;
             do{
@@ -112,6 +112,29 @@ void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const
                 vertices.push_back(v);
                 he = he->next;
             }while(he != f->halfedge);
+            double c;
+            if(vertices.size() == 3)c = 0.0;
+            else{
+                std::vector<glm::f64vec3> QuadPlane;
+                for(auto&v: vertices){
+                    bool IsOutlineVertices = false;
+                    for(auto&p: Poly_V){
+                        if(p->p3 == v)IsOutlineVertices = true;
+                    }
+                    if(!IsOutlineVertices)QuadPlane.push_back(v);
+                }
+                double l_avg = (glm::distance(QuadPlane[0], QuadPlane[2]) + glm::distance(QuadPlane[1], QuadPlane[3]))/2.0;
+                double d;
+                glm::f64vec3 u1 = glm::normalize(QuadPlane[0] - QuadPlane[2]), u2 = glm::normalize(QuadPlane[1]-  QuadPlane[3]);
+                if(glm::length(glm::cross(u1, u2)) < DBL_EPSILON){
+                    glm::f64vec3 H = QuadPlane[3] + glm::dot(QuadPlane[1] - QuadPlane[3], u2)*u2;
+                    d = glm::distance(H, QuadPlane[1]);
+                }else{
+                    d = glm::length(glm::dot(glm::cross(u1,u2),  QuadPlane[2] - QuadPlane[3]))/glm::length(glm::cross(u1, u2));
+                }
+                c = d/l_avg;
+            }
+            PlanarityColor.push_back(c);
             Vertices.push_back(vertices);
         }
     }
@@ -164,18 +187,25 @@ void GLWidget_3D::paintGL(){
 
     if(!eraseMesh){
         DrawMeshLines();
-        DrawMesh(true);
-        DrawMesh(false);
+        //DrawMesh(true);
+        //DrawMesh(false);
 
     }
     //
 
     glPolygonOffset(0.5f,1.f);
     for(int i = 0; i < (int)AllRulings.size(); i++){
-        glColor3d(0, (double)i/AllRulings.size(), (double)i/AllRulings.size());
+        //glColor3d(0, (double)i/AllRulings.size(), (double)i/AllRulings.size());
+        if(i % 2 == 0)glColor3d(1,0,0);
+        else glColor3d(0,1,0);
         glBegin(GL_LINES);
         glVertex3d(AllRulings[i][0].x, AllRulings[i][0].y, AllRulings[i][0].z);
         glVertex3d(AllRulings[i][1].x, AllRulings[i][1].y, AllRulings[i][1].z);
+        glEnd();
+
+        glPointSize(5);
+        glBegin(GL_POINTS);
+        glVertex3d(AllRulings[i][0].x, AllRulings[i][0].y, AllRulings[i][0].z);
         glEnd();
     }
 
@@ -294,8 +324,8 @@ void GLWidget_3D::DrawMeshLines(){
 
 void GLWidget_3D::PlanarityDispay(bool state){
     VisiblePlanarity = !VisiblePlanarity;
-    for(auto&c: PlanarityColor)
-    if(c > th_planarity)std::cout << "planarity : " << c << std::endl;
+    //for(auto&c: PlanarityColor)
+    //if(c > th_planarity)std::cout << "planarity : " << c << std::endl;
     update();
 }
 
@@ -353,10 +383,7 @@ void GLWidget_3D::receiveKeyEvent(QKeyEvent *e){
        if(switchTNB == 2) std::cout<<"Now diff "<<std::endl;
     }
     if(e->key() == Qt::Key_O)drawEdgePlane = -1;
-    if(e->key() == Qt::Key_P){
-        if(Vertices.empty())drawEdgePlane = -1;
-        else drawEdgePlane = (drawEdgePlane + 1) % (int)Vertices.size();
-    }
+
 
     update();
 }

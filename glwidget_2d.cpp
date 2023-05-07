@@ -336,6 +336,10 @@ void GLWidget_2D::paintGL(){
         HalfEdge *edge = model->Edges[i];
         glColor3d(0,0,0);
         glLineWidth(1);
+        if(edge->edgetype == EdgeType::ol){
+            glLineWidth(1);
+            continue;
+        }
 
         if(edge->edgetype == EdgeType::r){
             if(drawtype == PaintTool::NewGradationMode){
@@ -381,6 +385,7 @@ void GLWidget_2D::paintGL(){
     }
     //可展面の輪郭描画
     {
+        glLineWidth(1);
         if(model->outline->type == "Rectangle" || model->outline->type == "Polyline"){
             glColor3d(0, 0, 0);
             glPointSize(3.0f);
@@ -483,21 +488,26 @@ void GLWidget_2D::paintGL(){
         }
     }
 
-    /*
+
     if(model->FL.empty())return;
+
     for(const auto&fl : model->FL){
         for(int i = 0; i < fl->NewRuling2d.size(); i++){
             auto r = fl->NewRuling2d[i];
             if(i % 3 == 0)glColor3d(1,0,0);
-            if(i % 3 == 1)glColor3d(0,1,0);
-            if(i % 3 == 2)glColor3d(0,0,1);
+            else if(i % 3 == 1)glColor3d(0,1,0);
+            else glColor3d(0,0,1);
             glBegin(GL_LINES);
             glVertex2d(r[0].x, r[0].y);
             glVertex2d(r[1].x, r[1].y);
             glEnd();
         }
-        glColor3d(0,0,0);
-    }*/
+
+        //glBegin(GL_LINES);
+        //for(int i = 0; i < fl->NewRuling2d.size(); i++)glVertex2d(fl->NewRuling2d[i][0].x, fl->NewRuling2d[i][0].y);
+        //glEnd();
+    }
+    glColor3d(0,0,0);
 
 }
 
@@ -548,6 +558,16 @@ void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
                 std::cout << _e->diffEdgeLength() << " : " << glm::to_string(_e->next->vertex->p) << " , " << glm::to_string(_e->vertex->p) << std::endl;
         }
         std::cout << "---------------------------" << std::endl;
+    }
+    if(e->key() == Qt::Key_Q){
+        int type = 1;
+        res = model->FL[FoldCurveIndex]->RevisionCrosPtsPosition(model->Faces, model->Edges, model->vertices, Poly_v, type, false);
+        if(res) emit foldingSignals();
+    }
+    if(e->key() == Qt::Key_P){
+        int type = 1;
+        res = model->FL[FoldCurveIndex]->RevisionCrosPtsPosition(model->Faces, model->Edges, model->vertices, Poly_v, type, true);
+        if(res) emit foldingSignals();
     }
     update();
 }
