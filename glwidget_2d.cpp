@@ -1,6 +1,46 @@
 #define PI 3.14159265359
 #include "glwidget_2d.h"
 
+void Douglas_Peucker_algorithm(std::vector<crvpt>& FoldingCurve, std::vector<crvpt>& res, double tol){
+    auto perpendicularDistance = [](glm::f64vec3& p, glm::f64vec3& l_start, glm::f64vec3& l_end)->double{
+        glm::f64vec3 line = (l_start - l_end);
+        glm::f64vec3 OP = p - l_start;
+        double d = glm::dot(OP, line)/glm::length(line);
+        glm::f64vec3 H = l_start + d * line;
+        return glm::distance(H, p);
+    };
+    if((int)FoldingCurve.size() < 2)return;
+    double dmax = 0.0;
+    size_t index = 0;
+    size_t end = FoldingCurve.size()-1;
+    for(size_t i = 1; i < end; i++){
+        double d = perpendicularDistance(FoldingCurve[i].pt, FoldingCurve[0].pt, FoldingCurve.back().pt);
+        if (d > dmax){
+            index = i; dmax = d;
+        }
+    }
+
+    // If max distance is greater than epsilon, recursively simplify
+    if(dmax > tol){
+        // Recursive call
+        std::vector<crvpt> res_first, res_last;
+        std::vector<crvpt> firstLine{FoldingCurve.begin(), FoldingCurve.begin()+index+1};
+        std::vector<crvpt> lastLine{FoldingCurve.begin() + index, FoldingCurve.end()};
+        Douglas_Peucker_algorithm(firstLine,res_first, tol);
+        Douglas_Peucker_algorithm(lastLine,res_last, tol);
+
+        // Build the result list
+        res.assign(res_first.begin(), res_first.end()-1);
+        res.insert(res.end(), res_last.begin(), res_last.end());
+        if(res.size()<2)return;
+    } else {
+        //Just return start and end points
+        res.clear();
+        res.push_back(FoldingCurve[0]);
+        res.push_back(FoldingCurve.back());
+    }
+}
+
 GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
 {
 
@@ -568,6 +608,16 @@ void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
         int type = 1;
         res = model->FL[FoldCurveIndex]->RevisionCrosPtsPosition(model->Faces, model->Edges, model->vertices, Poly_v, type, true);
         if(res) emit foldingSignals();
+    }
+    if(e->key() == Qt::Key_F1){
+        if(model->crvs.empty())return;
+        std::cout << "Douglas_Peucker_algorithm"<<std::endl;
+        std::vector<crvpt> res;
+        double tol = 6;
+        Douglas_Peucker_algorithm(model->crvs[0]->CurvePoints, res, tol);
+        std::cout << "after size " << res.size() << std::endl;
+        model->crvs[0]->CurvePoints = res;
+
     }
     update();
 }

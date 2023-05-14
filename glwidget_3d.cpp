@@ -187,9 +187,8 @@ void GLWidget_3D::paintGL(){
 
     if(!eraseMesh){
         DrawMeshLines();
-        //DrawMesh(true);
-        //DrawMesh(false);
-
+        DrawMesh(true);
+        DrawMesh(false);
     }
     //
 

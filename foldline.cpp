@@ -19,7 +19,7 @@ bool IsRulingCrossed(glm::f64vec3 N, glm::f64vec3& cp, glm::f64vec3& crossPoint,
 std::vector<CrvPt_FL*> SetPointsOnCurve(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_v, std::vector<glm::f64vec3>& CtrlPts, int dim, int divSize);
 inline glm::f64vec3 calcCrossPoint_2Vector(Vertex* p1, Vertex* q1, Vertex* p2, Vertex* q2);
 inline glm::f64vec3 calcTargetDistanceOnPlane(Vertex *p, Vertex *o, Vertex *v1, Vertex *v2);
-
+void Douglas_Peucker_algorithm(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex4d>& res, double tol = std::numbers::pi/9.0);
 
 FoldLine::FoldLine(int crvNum, int rsize, PaintTool _type)
 {
@@ -298,18 +298,19 @@ bool FoldLine::Optimization(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>&
     phi02 = glm::angle(glm::normalize(FoldingCurve[0].second->p - FoldingCurve[0].first->p),glm::normalize(FoldingCurve[1].first->p - FoldingCurve[0].first->p));
     phim1 = glm::angle(glm::normalize(FoldingCurve.end()[-2].first->p - FoldingCurve.back().first->p),glm::normalize(FoldingCurve.back().second->p - FoldingCurve.back().first->p));
     double a = 0, a2 = 0.0;
+    /*
     std::ofstream ofs2;
     std::filesystem::create_directory("./Optimization");
 
     std::string AngleFile = "./Optimization/ChangeAngle.csv";
     ofs2.open(AngleFile, std::ios::out);
     ofs2 << "a, Fruling'"<<std::endl;
-
+    */
 
     Vertex *AxisV = findAxisVertex(FoldingCurve[1], FoldingCurve[0].first, FoldingCurve[2].first);
-    glm::f64vec3 Axis = (AxisV->p - FoldingCurve[1].first->p)/glm::length((AxisV->p - FoldingCurve[1].first->p));
-    double phi3 = std::acos(glm::dot(glm::normalize(FoldingCurve[2].first->p - FoldingCurve[1].first->p),Axis));
-    double phi4 = std::acos(glm::dot(glm::normalize(FoldingCurve[0].first->p - FoldingCurve[1].first->p),Axis));
+    glm::f64vec3 Axis = (AxisV->p3 - FoldingCurve[1].first->p3)/glm::length((AxisV->p3 - FoldingCurve[1].first->p3));
+    double phi3 = std::acos(glm::dot(glm::normalize(FoldingCurve[2].first->p3 - FoldingCurve[1].first->p3),Axis));
+    double phi4 = std::acos(glm::dot(glm::normalize(FoldingCurve[0].first->p3 - FoldingCurve[1].first->p3),Axis));
     double k = 2.0 * std::numbers::pi - phi3 - phi4;
     double a_min, a_max;
     bool IsMount;
@@ -320,10 +321,13 @@ bool FoldLine::Optimization(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>&
             break;
         }
     }
-    if(k < std::numbers::pi && IsMount){a_min = 1.5 * std::numbers::pi; a_max = 2.0 * std::numbers::pi ;}
-    if(k >= std::numbers::pi && IsMount){a_min = std::numbers::pi; a_max = 1.5 * std::numbers::pi;}
-    if(k < std::numbers::pi && !IsMount){a_min = 0; a_max = std::numbers::pi / 2.0;}
-    if(k >= std::numbers::pi && !IsMount){a_min = std::numbers::pi/2.0; a_max = std::numbers::pi;}
+    double beta = std::acos(glm::dot(glm::normalize(FoldingCurve[2].first->p3 - FoldingCurve[1].first->p3), glm::normalize(FoldingCurve[0].first->p3 - FoldingCurve[1].first->p3)));
+    double a_con = std::acos((sin(k) + (cos(beta) - cos(k))/tan(phi4))/sin(beta));
+    std::cout << "continuatin " << a_con << " , degree = " << glm::degrees(a_con) << std::endl;
+    if(k < std::numbers::pi && IsMount){a_min = a_con - std::numbers::pi;a_max = a_con - eps;}
+    if(k >= std::numbers::pi && IsMount){a_min = a_con + eps; a_max = std::numbers::pi + a_con;}
+    if(k < std::numbers::pi && !IsMount){a_min = a_con - std::numbers::pi;a_max = a_con - eps;}
+    if(k >= std::numbers::pi && !IsMount){a_min = a_con + eps; a_max = std::numbers::pi + a_con;}
 
     ObjData od = {FoldingCurve, Edges, Vertices, Poly_V, phi02, phim1, type};
     nlopt::opt opt(nlopt::LD_MMA, 1);
@@ -332,7 +336,7 @@ bool FoldLine::Optimization(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>&
     opt.set_min_objective(ObjFunc, &od);
     opt.add_inequality_constraint(Fruling, &od);
     opt.set_param("inner_maxeval", 300);
-    opt.set_xtol_rel(1e-7);
+    opt.set_xtol_rel(1e-9);
     a = (a_min + a_max)/2.0;
     std::cout << "area " << glm::degrees(a_min) << " < " << glm::degrees(a) << " < " << glm::degrees(a_max) << std::endl;
     double minf;
@@ -529,7 +533,6 @@ void FoldLine::ApproximatePolyLine(){
     }
 }
 
-
 bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_v, int dim, int t_type){
     using namespace MathTool;
     auto FindAnotherPoint = [](const std::vector<Vertex*>& Poly_v, std::vector<HalfEdge*>& Edges, Vertex *v, glm::f64vec3 n){
@@ -713,7 +716,7 @@ bool FoldLine::RevisionCrosPtsPosition(std::vector<Face*>& Faces, std::vector<Ha
 
     //ApproximatePolyLine();
     //先にpiに近い値を削除してもう一度挑戦
-    double tol = 10 * std::numbers::pi/180.0;
+    double tol = 0 * std::numbers::pi/180.0;
     auto tmp = TrimPoints2(Edges, Faces, Vertices, FoldingCurve, tol);
     for(auto&V4d: FoldingCurve){
         if(std::find(tmp.begin(), tmp.end(), V4d) != tmp.end()){         
@@ -826,7 +829,7 @@ bool FoldLine::RevisionCrosPtsPosition(std::vector<Face*>& Faces, std::vector<Ha
         if(glm::dot(glm::f64vec3{0,0,1}, glm::cross(glm::normalize(tmp[i-1].first->p - tmp[i].first->p), glm::normalize(tmp[i+1].first->p - tmp[i].first->p))) > 0)k = 2.0*std::numbers::pi - k;
         std::cout << k << std::endl;
     }
-    //return Optimization(Edges, Vertices, Poly_V, type);
+    return Optimization(Edges, Vertices, Poly_V, type);
     return true;
 }
 
@@ -1161,10 +1164,10 @@ void FoldLine::drawRulingInAllAngles(std::vector<std::array<glm::f64vec3, 2>>& _
             }
             Vertex *AxisV = findAxisVertex(FoldingCurve[i], FoldingCurve[i-1].first, FoldingCurve[i+1].first);
             if(AxisV == nullptr)continue;
-            glm::f64vec3 Axis = (AxisV->p - FoldingCurve[i].first->p)/glm::length((AxisV->p - FoldingCurve[i].first->p));
-            double phi3 = std::acos(glm::dot((FoldingCurve[i+1].first->p - FoldingCurve[i].first->p)/glm::length((FoldingCurve[i+1].first->p - FoldingCurve[i].first->p)),
+            glm::f64vec3 Axis = (AxisV->p3 - FoldingCurve[i].first->p3)/glm::length((AxisV->p3 - FoldingCurve[i].first->p3));
+            double phi3 = std::acos(glm::dot((FoldingCurve[i+1].first->p3 - FoldingCurve[i].first->p3)/glm::length((FoldingCurve[i+1].first->p3 - FoldingCurve[i].first->p3)),
                     Axis));
-            double phi4 = std::acos(glm::dot((FoldingCurve[i-1].first->p - FoldingCurve[i].first->p)/glm::length((FoldingCurve[i-1].first->p - FoldingCurve[i].first->p)),
+            double phi4 = std::acos(glm::dot((FoldingCurve[i-1].first->p3 - FoldingCurve[i].first->p3)/glm::length((FoldingCurve[i-1].first->p3 - FoldingCurve[i].first->p3)),
                                     Axis));
             double k = 2.0 * std::numbers::pi - phi3 - phi4;
             double _phi1 = atan((std::cos(k) - std::cos(beta))/(std::sin(beta)*std::cos(a)- std::sin(k)));
@@ -1215,6 +1218,9 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, std::vector<HalfEdge
        return V_max;
    };
 
+    a = a - 2.0 * std::numbers::pi * (int)(a / (2.0 * std::numbers::pi));
+    if(a < 0)a += 2.0 * std::numbers::pi;
+
     double a2 = 0, l;
     glm::f64vec3 e, e2, x, e_bef;
     glm::f64vec3 N, r, n, befN;
@@ -1253,10 +1259,9 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, std::vector<HalfEdge
         }
         Vertex *AxisV = findAxisVertex(fc, fc_bef.first, fc_next.first);
         if(AxisV == nullptr)continue;
-        glm::f64vec3 Axis = (AxisV->p - fc.first->p)/glm::length((AxisV->p - fc.first->p));
-        double phi3 = std::acos(glm::dot((fc_next.first->p - fc.first->p)/glm::length((fc_next.first->p - fc.first->p)),
-                Axis));
-        double phi4 = std::acos(glm::dot((fc_bef.first->p - fc.first->p)/glm::length((fc_bef.first->p - fc.first->p)), Axis));
+        glm::f64vec3 Axis = (AxisV->p3 - fc.first->p3)/glm::length((AxisV->p3 - fc.first->p3));
+        double phi3 = std::acos(glm::dot((fc_next.first->p3 - fc.first->p3)/glm::length((fc_next.first->p3 - fc.first->p3)),Axis));
+        double phi4 = std::acos(glm::dot((fc_bef.first->p3 - fc.first->p3)/glm::length((fc_bef.first->p3 - fc.first->p3)), Axis));
         double k = 2.0 * std::numbers::pi - phi3 - phi4;
         double _phi1 = atan((std::cos(k) - std::cos(beta))/(std::sin(beta)*std::cos(a)- std::sin(k)));
         double phi1 = (_phi1 < 0)? _phi1+std::numbers::pi: _phi1;
@@ -1427,5 +1432,46 @@ std::vector<Vertex4d> TrimPoints2(std::vector<HalfEdge*>& Edges, std::vector<Fac
     return res;
 }
 
+
+//https://issekinichou.wordpress.com/2022/12/28/douglas-peucker-algorithm/
+void Douglas_Peucker_algorithm(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex4d>& res, double tol){
+    auto perpendicularDistance = [](glm::f64vec3& p, glm::f64vec3& l_start, glm::f64vec3& l_end)->double{
+        glm::f64vec3 line = (l_start - l_end);
+        glm::f64vec3 OP = p - l_start;
+        double d = glm::dot(OP, line)/glm::length(line);
+        glm::f64vec3 H = l_start + d * line;
+        return glm::distance(H, p);
+    };
+    if((int)FoldingCurve.size() < 2)return;
+    double dmax = 0.0;
+    size_t index = 0;
+    size_t end = FoldingCurve.size()-1;
+    for(size_t i = 1; i < end; i++){
+        double d = perpendicularDistance(FoldingCurve[i].first->p, FoldingCurve[0].first->p, FoldingCurve.back().first->p);
+        if (d > dmax){
+            index = i; dmax = d;
+        }
+    }
+
+    // If max distance is greater than epsilon, recursively simplify
+    if(dmax > tol){
+        // Recursive call
+        std::vector<Vertex4d> res_first, res_last;
+        std::vector<Vertex4d> firstLine{FoldingCurve.begin(), FoldingCurve.begin()+index+1};
+        std::vector<Vertex4d> lastLine{FoldingCurve.begin() + index, FoldingCurve.end()};
+        Douglas_Peucker_algorithm(firstLine,res_first, tol);
+        Douglas_Peucker_algorithm(lastLine,res_last, tol);
+
+        // Build the result list
+        res.assign(res_first.begin(), res_first.end()-1);
+        res.insert(res.end(), res_last.begin(), res_last.end());
+        if(res.size()<2)return;
+    } else {
+        //Just return start and end points
+        res.clear();
+        res.push_back(FoldingCurve[0]);
+        res.push_back(FoldingCurve.back());
+    }
+}
 
 

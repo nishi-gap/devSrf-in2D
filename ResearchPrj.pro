@@ -46,11 +46,14 @@ FORMS += \
     gtoolwnd.ui \
     widget.ui
 
-INCLUDEPATH += $$PWD/include \
-                $$PWD/include/nlopt/api
+INCLUDEPATH += $$PWD/includes \
+                $$PWD/includes/nlopt/api
 
-LIBS += $$PWD/include/libs/nlopt.lib
-#dllファイルの追加：横メニューバーのプロジェクト→環境→PATHを編集してdllが入ったフォルダを追記するとできる
+QMAKE_RPATHDIR += $$PWD/includes/dlls
+LIBS += $$PWD/includes/libs/nlopt.lib
+LIBS += $$PWD/includes/dlls/nlopt.dll
+
+#dllファイルの追加：横メニューバーのプロジェクト→ビルドと実行メニューのうちメニューを選択→環境→PATHを編集してdllが入ったフォルダを追記するとできる
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
