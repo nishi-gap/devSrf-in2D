@@ -986,24 +986,16 @@ int OUTLINE::movePointIndex(glm::f64vec3 p){
 }
 
 std::vector<glm::f64vec3> ConvertDistBasedBezier(std::vector<glm::f64vec3>& CtrlPts, HalfEdge *line){
-    std::string file = "BezierClipping.csv"; std::ofstream ofs;
-
     glm::f64vec3 p, q;
     if(line->vertex->p.x <= line->next->vertex->p.x){p = line->next->vertex->p; q = line->vertex->p;}
     else{q = line->next->vertex->p; p = line->vertex->p;}
-
-    ofs.open(file, std::ios::out); ofs << "line p0x, line p0y, line p1x, line p1y"<<std::endl;
-    ofs << p.x << ", " << p.y << ", " << q.x << ", " << q.y << std::endl; ofs.close();
-    ofs.open(file, std::ios::app); ofs << "Pt x, Pt y"<<std::endl;
     double a = p.y - q.y, b = q.x - p.x, c = p.x * q.y - q.x * p.y;
     int n = CtrlPts.size();
     std::vector<glm::f64vec3> D(n);
     for(int i = 0; i < n; i++){
         double d = -(a * CtrlPts[i].x + b * CtrlPts[i].y + c)/sqrt(a*a + b*b);
-        D[i] = glm::f64vec3{(double)i/(double)(n - 1), d, 0};
-        ofs << (double)i/(double)(n - 1) << ", " << d << std::endl;
+        D[i] = glm::f64vec3{(double)i/(double)(n - 1), d, 0};       
     }
-    ofs.close();
     return D;
 }
 
@@ -1013,13 +1005,6 @@ std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, HalfEdge *
     std::copy(base.begin(), base.end(), std::back_inserter(current));
     std::array<glm::f64vec3, 2> _line{glm::f64vec3{0.,0,0}, glm::f64vec3{1.,0,0}};
     auto res = _bezierclipping(base, current, _line, dim);
-    std::string file = "BezierClipping.csv"; std::ofstream ofs;
-    ofs.open(file, std::ios::app); ofs << "cross point x, cross point y"<<std::endl;
-    for(auto&t: res){
-        glm::f64vec3 v2{0,0,0};
-        for (int i = 0; i < int(CtrlPts.size()); i++) v2 += MathTool::BernsteinBasisFunc(dim, i, t) * CtrlPts[i];
-        ofs << v2.x <<", " << v2.y << std::endl;
-    }ofs.close();
 
     return res;
 }
