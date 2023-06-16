@@ -21,7 +21,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     //色の最大値
     connect(ui->ColorLimitation, &QSpinBox::valueChanged, this, &MainWindow::ChangeMaxColor);
-
+    connect(ui->BinaryMVColor, &QCheckBox::clicked, ui->glWid2dim, &GLWidget_2D::VisualizeMVColor);//山谷の色を二値化するかグラデーションを描画するか切り替える
     connect(ui->Reset, &QCheckBox::stateChanged,ui->glWid2dim,&GLWidget_2D::Reset);
     connect(ui->Reset, &QCheckBox::stateChanged, this, &MainWindow::Initialize);
     connect(ui->DvidedSizeSlider, &QSlider::valueChanged, this, &MainWindow::ChangeDivSizeEditFromSlider);
@@ -53,8 +53,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this, &MainWindow::PressedEnter, ui->glWid2dim, &GLWidget_2D::cb_ApplyCurveEvent);
     connect(this, &MainWindow::PressedBackSpace, ui->glWid2dim, &GLWidget_2D::cb_DeleteCurve);
     connect(ui->delete_curve, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::DeleteCurve);
+
     //ruling
     connect(ui->glWid2dim, &GLWidget_2D::getDiviedNumber, this, &MainWindow::ChangedDivSizeEdit);
+
     //輪郭関係
     connect(ui->outline_rectangle, &QCheckBox::clicked, ui->glWid2dim, &GLWidget_2D::DrawOutlineRectangle);
     connect(ui->outline_polygon, &QCheckBox::clicked, ui->glWid2dim, &GLWidget_2D::DrawOutlinePolygon);
@@ -76,7 +78,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this, &MainWindow::signalFLtype, ui->glWid2dim, &GLWidget_2D::changeFoldType);
     connect(ui->color_FL, &QPushButton::clicked, this, &MainWindow::color_FL);  
     connect(ui->move_ctrl_pt_fl, &QPushButton::clicked, this, &MainWindow::moveCtrlPts_fl);
-
+    connect(ui->ToleranceValue, &QSlider::valueChanged, this, &MainWindow::changeToleranceValue_Slider);
+    connect(ui->TolValue, &QDoubleSpinBox::valueChanged, this, &MainWindow::changeToleranceValue_Spin);
 
     //fold line debug
     connect(ui->addFL_test, &QPushButton::clicked, this, &MainWindow::addFoldLine_test);    
@@ -98,11 +101,14 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->DevelopabilityButton, &QCheckBox::clicked, ui->glWid2dim, &GLWidget_2D::checkDevelopability);
     //planarity
     connect(ui->PlanarityButton, &QCheckBox::clicked, ui->glWid3dim, &GLWidget_3D::PlanarityDispay);
-
+    //Erase Non Fold Edge
+    connect(ui->EraseNonFoldButton, &QCheckBox::clicked, this, &MainWindow::EraseNonFoldEdge);
 
     CurvesNum[0] = MainWindow::CurvesNum[1] = MainWindow::CurvesNum[2] = MainWindow::CurvesNum[3] = 0;
     SelectedBtn = nullptr;
 }
+
+static int keyType = 0;
 
 MainWindow::~MainWindow()
 {
@@ -125,14 +131,55 @@ void MainWindow::addFoldLine_test(){emit signalFLtype(PaintTool::FoldLine_test);
 void MainWindow::moveCtrlPts_fl(){emit signalFLtype(PaintTool::FoldLine_move);}
 void MainWindow::color_FL(){emit signalFLtype(PaintTool::FoldLine_move);}
 
-static int keyType = 0;
+void MainWindow::ModelBack(){
+    for(auto&v: ui->glWid2dim->model->vertices){
+        v->p = v->p2_ori;
+        v->p3 = v->p3_ori;
+    }
+    ui->glWid2dim->update();
+    ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
+}
+
+
+void MainWindow::EraseNonFoldEdge(bool state){
+    ui->glWid2dim->EraseNonFoldEdge(state);
+    ui->glWid3dim->EraseNonFoldEdge(state);
+    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+    auto Poly_V = ui->glWid2dim->model->outline->getVertices();
+    ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
+                               ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
+}
+
+void MainWindow::changeToleranceValue_Slider(int val){
+    double maxSpin = ui->TolValue->maximum(), maxSlider = ui->ToleranceValue->maximum();
+    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+    double tol = maxSpin * (double)val/(double)maxSlider;
+    ui->TolValue->setValue(tol);
+    ui->glWid2dim->model->FL[0]->SimplifyModel(ui->glWid2dim->model->Faces,  ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, tol);
+    ui->glWid2dim->update();
+    ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
+                               ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings, false);
+}
+
+void MainWindow::changeToleranceValue_Spin(double val){
+    double maxSpin = ui->TolValue->maximum(), maxSlider = ui->ToleranceValue->maximum();
+    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+    ui->ToleranceValue->setValue(int(val/maxSpin * maxSlider));
+    ui->glWid2dim->model->FL[0]->SimplifyModel(ui->glWid2dim->model->Faces,  ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, val);
+    ui->glWid2dim->update();
+    ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
+                               ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings, false);
+}
+
 
 void MainWindow::StartOptimization(){
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
     auto Poly_V = ui->glWid2dim->model->outline->getVertices();
-    bool res = ui->glWid2dim->model->FL[0]->Optimization(ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, Poly_V, keyType);
+    bool res = ui->glWid2dim->model->FL[0]->Optimization_FlapAngle(ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, Poly_V, keyType);
     if(res){
-        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->SingleRuling, ui->glWid2dim->AllRulings);
+        //ui->glWid2dim->model->deform();
+        ui->glWid2dim->update();
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
     }
 
 
@@ -166,7 +213,7 @@ void MainWindow::fold_Sm(){
     //switchActivateCheckBox("MakeDevSrf");
     if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
     else if(!ui->glWid2dim->model->FL.empty()){
-        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->SingleRuling, ui->glWid2dim->AllRulings);
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
     }
     else{
         ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
@@ -222,15 +269,61 @@ void MainWindow::switchActivateCheckBox(PaintTool active){
 
 void MainWindow::keyPressEvent(QKeyEvent *e){
     static bool switchDraw = false;
-    switchDraw = (!switchDraw)? true: false;
+
     auto Poly_V = ui->glWid2dim->model->outline->getVertices();
     ui->glWid3dim->receiveKeyEvent(e);
     ui->glWid2dim->receiveKeyEvent(e);
-    if(e->key() == Qt::Key_Backspace){
-        emit PressedBackSpace();
+    if(e->key() == Qt::Key_Q){
+        switchDraw = !switchDraw;
     }
     else if(e->key() == Qt::Key_Return){emit PressedEnter();}
-    else if(e->key() == Qt::Key_Q || e->key() == Qt::Key_P){
+    else if(e->key() == Qt::Key_C){
+
+        if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
+        else if(!ui->glWid2dim->model->FL.empty()){
+            ui->glWid2dim->model->FL[0]->ReassignColor(ui->glWid2dim->model->Edges, ui->glWid2dim->model->ColorPt);
+            ui->glWid2dim->model->deform();
+            ui->glWid2dim->update();
+
+            ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
+                                       ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings, switchDraw);
+        }
+        else{
+            ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
+        }
+    }
+    else if( e->key() == Qt::Key_P){
+
+        if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
+        else if(!ui->glWid2dim->model->FL.empty()){
+            ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
+                                       ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings, switchDraw);
+        }
+        else{
+            ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
+        }
+    }
+    else if(e->key() == Qt::Key_3 ||e->key() == Qt::Key_4){
+    }
+    if(e->key() == Qt::Key_W){
+        double a = (double)ui->angleSlider->value()/100.0;
+        auto Edges = ui->glWid2dim->model->Edges;
+        auto vertices = ui->glWid2dim->model->vertices;
+        ui->glWid2dim->model->FL[0]->Optimization2(Edges, vertices, Poly_V, a);
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
+                                   ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->model->FL[0]->AllRulings);
+    }else if(e->modifiers().testFlag(Qt::ControlModifier)){
+        if(e->key() == Qt::Key_S)exportobj();
+    }
+    /*
+    if(e->key() == Qt::Key_F1){
+        double tol = ui->testValue->value();
+        tol = std::numbers::pi/4.0;
+        std::vector<Vertex4d> resCurve;
+        std::cout <<"before  " << ui->glWid2dim->model->FL[0]->FoldingCurve.size() << std::endl;
+        Douglas_Peucker_algorithm(ui->glWid2dim->model->FL[0]->FoldingCurve, resCurve, tol);
+        ui->glWid2dim->model->FL[0]->FoldingCurve = resCurve;
+        std::cout <<"after  " << resCurve.size() << std::endl;
         if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
         else if(!ui->glWid2dim->model->FL.empty()){
             ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
@@ -239,24 +332,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         else{
             ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
         }
-    }
-    else if(e->key() == Qt::Key_3 ||e->key() == Qt::Key_4){
-        keyType = (e->key() == Qt::Key_3)? 0: 1;
-        if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
-
-        bool res = ui->glWid2dim->model->FL[0]->Optimization(ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, Poly_V, keyType);
-        if(res){
-            ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->SingleRuling, ui->glWid2dim->AllRulings);
-        }
-    }
-    if(e->key() == Qt::Key_W){
-        double a = (double)ui->angleSlider->value()/100.0;
-        auto Edges = ui->glWid2dim->model->Edges;
-        auto vertices = ui->glWid2dim->model->vertices;
-        ui->glWid2dim->model->FL[0]->Optimization2(Edges, vertices, Poly_V, a);
-        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
-                                   ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->SingleRuling, ui->glWid2dim->model->FL[0]->AllRulings);
-    }
+    }*/
     else{
 
     }

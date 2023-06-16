@@ -174,11 +174,18 @@ void Model::deform(){
         v1 = Pos->pair->vertex->p;
         v2 = Pos->vertex->p;
         glm::f64vec3 axis = glm::normalize(v2 - v1);
-        double phi = (he->edgetype == EdgeType::r)? Color2Angle(he->r->Gradation, ColorPt): 0;
+        double phi;
+        if(he->edgetype == EdgeType::r)phi = Color2Angle(he->r->Gradation, ColorPt);
+        else if(he->edgetype == EdgeType::fl){
+            glm::f64vec3 N = he->face->getNormalVec(), Np = he->pair->face->getNormalVec();
+            phi = std::acos(glm::dot(N, Np));
+            if(glm::dot(axis, glm::cross(Np, N)) < 0)phi *= -1;
+        }
+        else phi = 0;
         R = glm::rotate(phi, axis);
         do{
             T = glm::translate(he->vertex->p - v1);
-            he->vertex->p_test = he->vertex->p3 = A * R * T * glm::f64vec4{0,0,0, 1};
+            he->vertex->p3_ori = he->vertex->p3 = A * R * T * glm::f64vec4{0,0,0, 1};
             he->vertex->deformed = true;
             if(he->pair != nullptr && !he->pair->face->bend){
                 FacesQue.push(he->pair);
@@ -430,55 +437,6 @@ void Model::setGradationValue(int val, HalfEdge *refHE, int InterpolationType, s
         SplineInterPolation(path, CurvePath);
     }
     return;
-}
-
-void Model::LinkRulingAndGradationArea(Face *f){
-    /*
-    std::vector<glm::f64vec2> mesh;
-    HalfEdge *h = f->halfedge;
-    do{
-        mesh.push_back(h->vertex->p);
-        h = h->next;
-    }while(h != f->halfedge);
-    for(auto&c: crvs){
-        if(c->isempty)continue;
-        for(auto& r: c->Rulings){
-            //glm::f64vec2 p = (std::get<0>(r->r)->p + std::get<1>(r->r)->p);
-            //p /= 2;
-            //QPointF v{p.x, p.y};
-            //if(cn(mesh, v)){
-                //f->rulings.push_back(r);
-                //f->Gradation = r->Gradation = r->pt->color;
-           // }
-        }
-    }
-    //ruling *tmp;
-    //if(f->rulings.size() == 0){//safty的な感じ。面の中心とrulingの中点の距離が最小となるrulingを選択
-        //std::cout<<"safty fail in LinkRulingAndGradationArea"<<std::endl;
-        std::vector<glm::f64vec2> mesh;
-        HalfEdge *h = f->halfedge;
-        do{
-            mesh.push_back(h->vertex->p);
-            h = h->next;
-        }while(h != f->halfedge);
-        glm::f64vec2 center{0,0};
-        for(auto& v: mesh)center += v;
-        center /= (double)mesh.size();
-        double mindist = 100;
-        for(auto& c: crvs){
-            for(auto& r: c->Rulings){
-                glm::f64vec3 p = std::get<0>(r->r)->p + std::get<1>(r->r)->p;
-                p /= 2;
-                if(glm::distance(p, glm::f64vec3{center,0}) < mindist){
-                    mindist = glm::distance(p, glm::f64vec3{center,0});
-                    tmp = r;
-                }
-            }
-        }
-        f->rulings.push_back(tmp);
-
-    //}
-    */
 }
 
 void Model::ConnectEdge(HalfEdge *he){

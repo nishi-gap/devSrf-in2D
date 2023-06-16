@@ -137,7 +137,7 @@
      <x>350</x>
      <y>470</y>
      <width>161</width>
-     <height>201</height>
+     <height>221</height>
     </rect>
    </property>
    <property name="title">
@@ -216,6 +216,19 @@
     </property>
     <property name="orientation">
      <enum>Qt::Horizontal</enum>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="BinaryMVColor">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>190</y>
+      <width>111</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>binary MV color</string>
     </property>
    </widget>
   </widget>
@@ -327,7 +340,7 @@
         <number>300</number>
        </property>
        <property name="value">
-        <number>2</number>
+        <number>20</number>
        </property>
       </widget>
      </item>
@@ -400,7 +413,7 @@
       <x>10</x>
       <y>20</y>
       <width>151</width>
-      <height>258</height>
+      <height>267</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -426,6 +439,13 @@
       </widget>
      </item>
      <item>
+      <widget class="QCheckBox" name="EraseNonFoldButton">
+       <property name="text">
+        <string>Erase Non Fold</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QCheckBox" name="DevelopabilityButton">
        <property name="text">
         <string>developability</string>
@@ -443,6 +463,13 @@
       <widget class="QPushButton" name="SaveButton">
        <property name="text">
         <string>Save</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="BackButton">
+       <property name="text">
+        <string>Back</string>
        </property>
       </widget>
      </item>
@@ -543,7 +570,7 @@
      <x>680</x>
      <y>450</y>
      <width>131</width>
-     <height>231</height>
+     <height>281</height>
     </rect>
    </property>
    <property name="title">
@@ -555,7 +582,7 @@
       <x>10</x>
       <y>30</y>
       <width>114</width>
-      <height>166</height>
+      <height>251</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout_5">
@@ -598,6 +625,39 @@
       <widget class="QPushButton" name="move_ctrl_pt_fl">
        <property name="text">
         <string>Move Control Point</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>tolerance</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSlider" name="ToleranceValue">
+       <property name="maximum">
+        <number>10000</number>
+       </property>
+       <property name="singleStep">
+        <number>1</number>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QDoubleSpinBox" name="TolValue">
+       <property name="decimals">
+        <number>4</number>
+       </property>
+       <property name="maximum">
+        <double>10.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.010000000000000</double>
        </property>
       </widget>
      </item>

@@ -2,14 +2,14 @@
 using namespace MathTool;
 
 Vertex::Vertex(glm::f64vec3 _p){
-    p = _p;
-    p_test = p3 = _p;
+    p2_ori = p = _p;
+    p3_ori = p3 = _p;
     halfedge.clear();
     deformed = false;
 }
 Vertex::Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3){
-    p = _p2;
-    p_test = p3 = _p3;
+    p2_ori = p = _p2;
+    p3_ori = p3 = _p3;
     halfedge.clear();
     deformed = false;
 }
@@ -18,7 +18,7 @@ void Vertex::addNewEdge(HalfEdge *he){
 }
 
 Vertex::Vertex(const Vertex* v){
-    p = v->p; p_test = p3 = v->p3;
+    p2_ori = p = v->p; p3_ori = p3 = v->p3;
     halfedge = v->halfedge;
     deformed = v->deformed;
 }
@@ -62,6 +62,7 @@ HalfEdge::HalfEdge(Vertex *v, EdgeType _type){
     vertex = v;
     pair = prev = next =  nullptr;
     IsCrossed = -1;
+    angle = 0.0;
     //r = nullptr;
     edgetype = _type;
     v->addNewEdge(this);
@@ -71,12 +72,12 @@ HalfEdge::HalfEdge(const HalfEdge* he){
     vertex = new Vertex(he->vertex);
     pair = prev = next =  nullptr;
     IsCrossed = he->IsCrossed;
+    angle = he->angle;
     edgetype = he->edgetype;
     vertex->addNewEdge(this);
 }
 
 HalfEdge::~HalfEdge(){
-    delete vertex;
 }
 std::vector<HalfEdge*> HalfEdge::Split(Vertex *v, std::vector<HalfEdge*>& Edges){
     std::vector<HalfEdge*> res;
@@ -152,6 +153,14 @@ void CrvPt_FL::set(glm::f64vec3 _p, Vertex *o, Vertex *e){
     IsValid = true;
     this->p = _p;
 }
+
+Vertex4d::Vertex4d(CrvPt_FL *v, Vertex *v2, Vertex *v3){
+    first = v; second = v2; third = v3; IsCalc = true;
+}
+Vertex4d::Vertex4d(const Vertex4d& V4d){
+    first = V4d.first; second = V4d.second; third = V4d.third; IsCalc = V4d.IsCalc;
+}
+Vertex4d::Vertex4d(){first = nullptr; second = nullptr; third = nullptr; IsCalc = false;}
 
 //bool operator<(const CrvPt_FL& T, const CrvPt_FL& T2) noexcept { return T.s < T2.s; }
 
@@ -235,7 +244,7 @@ int Face::edgeNum(bool PrintVertex){
     HalfEdge *h = halfedge;
     do{
         cnt++;
-        if(PrintVertex)std::cout << glm::to_string(h->vertex->p) << " , " << h << " , " << this << std::endl;
+        if(PrintVertex)std::cout << glm::to_string(h->vertex->p) << " , " << h << " , " << h->vertex << std::endl;
         h = h->next;
 
     }while(h != halfedge);
@@ -1009,69 +1018,6 @@ std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, HalfEdge *
     return res;
 }
 
-void EdgeRecconection(const std::vector<Vertex*>& Poly_V, std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges){
-    int n = Poly_V.size();
-    for(int i = 0; i < n; i++){
-        Vertex *v1 = Poly_V[i], *v2 = Poly_V[(i + 1) % n];
-        HalfEdge *h1 = nullptr, *h2 = nullptr;
-        std::vector<PointOnLine> PoL;
-        for(auto&e: Edges){
-            if((e->vertex->p == v1->p) && e->edgetype == EdgeType::ol)h1 = e;
-            if((e->vertex->p == v2->p) && e->edgetype == EdgeType::ol)h2 = e;
-
-            if((e->vertex->p == v1->p || e->vertex->p == v2->p) || e->edgetype != EdgeType::ol)continue;
-            if(abs(glm::distance(e->vertex->p, v1->p) + glm::distance(e->vertex->p, v2->p) - glm::distance(v1->p, v2->p)) < 1e-5){
-                double t = glm::distance(e->vertex->p, v2->p)/glm::distance(v1->p, v2->p);
-                auto p = PointOnLine(t, e->vertex);
-                PoL.push_back(p);
-            }
-        }
-        std::sort(PoL.begin(), PoL.end());
-
-        if(PoL.empty()){//polygon同士の頂点で一度つなぎなおす
-            h1->prev = h2; h2->next = h1;
-        }else{
-            for(int j = 1; j < (int)PoL.size(); j++){
-                HalfEdge *edge1 = nullptr, *edge2= nullptr;
-                for(auto&h: PoL[j-1].v->halfedge){
-                    if(h->edgetype == EdgeType::ol)edge1 = h;
-                }
-                for(auto&h: PoL[j].v->halfedge){
-                    if(h->edgetype != EdgeType::ol)edge2 = h;
-                }
-                edge1->next = edge2; edge2->prev = edge1;
-            }
-            for(auto&e: PoL.front().v->halfedge){
-                if(e->edgetype == EdgeType::ol)continue;
-                e->prev = h2;
-                h2->next = e;
-            }
-            for(auto&e: PoL.back().v->halfedge){
-                if(e->edgetype != EdgeType::ol)continue;
-                e->next = h1;
-                h1->prev = e;
-            }
-        }
-    }
-    std::vector<bool> IsReconnected(Edges.size(), false);
-    int faceIndex = 0;
-
-    for(int i = 0; i < (int)IsReconnected.size(); i++){
-        if(IsReconnected[i])continue;
-        auto h = Edges[i];
-        Face *f = new Face(h);
-        Faces.push_back(f);
-        do{
-            int j = std::distance(Edges.begin(), std::find(Edges.begin(), Edges.end(), h));
-            if(j < 0 || j >= Edges.size())break;
-            IsReconnected[j] = true;
-            Edges[j]->face = f;
-            h = h->next;
-        }while(h != Edges[i]);
-        faceIndex++;
-    }
-}
-
 std::vector<HalfEdge*> EdgeCopy(const std::vector<HalfEdge*> Edges, const std::vector<Vertex*> V){
     std::vector<HalfEdge*> Edges_cp;
     std::vector<Vertex*> srfV;
@@ -1101,102 +1047,57 @@ std::vector<HalfEdge*> EdgeCopy(const std::vector<HalfEdge*> Edges, const std::v
 }
 
 
-//https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/INT-APP/CURVE-INT-global.html
-//http://www.cad.zju.edu.cn/home/zhx/GM/009/00-bsia.pdf
-/*
-std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>&Knot, double& CurveLen, bool is3d, int dim, int t_type){
-    using namespace Eigen;
-
-    int n = Q.size() - 1;
-    int s = Q.size();
-    std::vector<double> T(s, 0);
-    int m = s + dim;
-    Knot.assign(m + 1,0);
-
-    if(s < 1)return std::vector<glm::f64vec3>{};
-    MatrixXd _D(s,3), B, P(s,3);
-    for(int i = 0; i <= n; i++){
-        if(is3d){_D(i,0) = Q[i].p3.x; _D(i,1) = Q[i].p3.y; _D(i,2) = Q[i].p3.z; }
-        else{_D(i,0) = Q[i].p.x; _D(i,1) = Q[i].p.y; _D(i,2) = Q[i].p.z; }
-    }
-    if(t_type == 0){T[0] = 0; for(int i = 1; i < s; i++)T[i] = (double)i/(double)n;}
-    else{
-        //The Centripetal Method
-        double L= 0.0; for(int i = 1; i < s; i++)L += (t_type == 1) ? (_D.row(i) - _D.row(i - 1)).norm(): sqrt((_D.row(i) - _D.row(i - 1)).norm());
-        for(int i = 1; i < s; i++){
-            double sum = 0; for(int j = 1; j <= i; j++)sum += (t_type == 1)? (_D.row(j) - _D.row(j - 1)).norm(): sqrt((_D.row(j) - _D.row(j - 1)).norm());
-            T[i] = sum/L;
-        }
-    }
-
-
-    for(int i = 0; i < s; i++)Q[i].s = T[i];//update parameter t
-
-    //The Universal method
-    for(int i = 0; i <= dim; i++)Knot[i] = 0;
-    for(int i = 0; i <= dim; i++)Knot[m - dim + i] = 1;
-    for(int i = 1; i <= n - dim; i++){
-        double d = (double)s/(double)(s - dim);
-        //double a = i * d - 1;
-        //int _m = int(i * d);
-        //Knot[dim + i] = (1.0 - a)*T[_m-1] + a*T[_m];
-        //Knot[dim + i] = (double)i/(double)(s - dim);
-        //Knot[dim+i] = 0;
-        for(int j = i; j < i+dim; j++){
-            Knot[dim+i] += T[j];
-        }Knot[dim+i] /= (double)dim;
-    }
-
-    //Knot Matrix
-    MatrixXd N = MatrixXd::Zero(s, s);
-    for(int i = 0; i < s; i++){
-        double u = T[i];
-        if(u == Knot[0]){ N(i,0) = 1;continue;}
-        if(u == Knot[m]){N(i,n) = 1; continue;}
-
-        //for(int j = 0; j < s; j++){N(i,j) = basis(n,j,dim,u,Knot);}
-
-        for(int k = 0; k < m; k++){
-            if(!(Knot[k] <= u && u < Knot[k+1]))continue;
-            N(i,k) = 1;
-            for(int d = 1; d <= dim; d++){
-                N(i,k - d) = (Knot[k+1] != Knot[k - d + 1]) ? (Knot[k+1] - u)/(Knot[k+1] - Knot[k - d + 1]) * N(i,k - d + 1): 0;
-                //N(i,j) = basis(s,j,dim,u,Knot);
-                for(int j = k - d + 1; j < k; j++){
-                    N(i,j) = (Knot[j+d] != Knot[j]) ? (u - Knot[j])/(Knot[j+d] - Knot[j])*N(i,j): 0;
-                    N(i,j) += (Knot[j+d + 1] != Knot[j + 1]) ? (Knot[j + d + 1] - u)/(Knot[j+d + 1] - Knot[j + 1])*N(i,j+1): 0;
-                }
-                N(i,k) = (Knot[k+d] != Knot[k])? (u - Knot[k])/(Knot[k+d] - Knot[k])*N(i,k): 0;
+void EdgeRecconection(const std::vector<Vertex*>& Poly_V, std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges){
+    int n = Poly_V.size();
+    for(int i = 0; i < n; i++){
+        Vertex *v1 = Poly_V[i], *v2 = Poly_V[(i + 1) % n];
+        std::vector<PointOnLine> PoL;
+        for(auto&e: Edges){
+            if((e->vertex->p == v1->p || e->vertex->p == v2->p) ||
+                    std::find_if(PoL.begin(), PoL.end(), [&](const PointOnLine &h)->bool{return e->vertex == h.v;}) != PoL.end())continue;
+            if(abs(glm::distance(e->vertex->p, v1->p) + glm::distance(e->vertex->p, v2->p) - glm::distance(v1->p, v2->p)) < 1e-5){
+                double t = glm::distance(e->vertex->p, v2->p)/glm::distance(v1->p, v2->p);
+                auto p = PointOnLine(t, e->vertex);
+                PoL.push_back(p);
             }
         }
-    }
+        std::sort(PoL.begin(), PoL.end());
+        auto itr_h2 = std::find_if(Edges.begin(), Edges.end(), [&](const HalfEdge&h)->bool{return Poly_V[i]->p == h.vertex->p;});
+        auto itr_h1 = std::find_if(Edges.begin(), Edges.end(), [&](const HalfEdge&h)->bool{return Poly_V[(i+1) % n]->p == h.vertex->p;});
+        if(PoL.empty()){//polygon同士の頂点で一度つなぎなおす
+            (*itr_h1)->next = (*itr_h2); (*itr_h2)->prev = (*itr_h1);
+        }else{
+            for(int j = 1; j < (int)PoL.size(); j++){
+                auto itr_edge1 = std::find_if(PoL[j-1].v->halfedge.begin(), PoL[j-1].v->halfedge.end(), [](const HalfEdge&h)->bool{return h.edgetype == EdgeType::ol;});
+                auto itr_edge2 = std::find_if(PoL[j].v->halfedge.begin(), PoL[j].v->halfedge.end(), [](const HalfEdge&h)->bool{return h.edgetype != EdgeType::ol;});
+                (*itr_edge1)->next = *itr_edge2; (*itr_edge2)->prev = *itr_edge1;
+            }
+            auto itr_H2Edge = std::find_if((*itr_h2)->vertex->halfedge.begin(), (*itr_h2)->vertex->halfedge.end(), [](const HalfEdge&h)->bool{return h.edgetype == EdgeType::ol;});
+            auto itr_H1Edge = std::find_if((*itr_h1)->vertex->halfedge.begin(), (*itr_h1)->vertex->halfedge.end(), [](const HalfEdge&h)->bool{return h.edgetype == EdgeType::ol;});
+            auto itr_LastEdge = std::find_if(PoL.back().v->halfedge.begin(), PoL.back().v->halfedge.end(), [](const HalfEdge&h)->bool{return h.edgetype == EdgeType::ol;});
+            auto itr_FrontEdge = std::find_if(PoL.front().v->halfedge.begin(), PoL.front().v->halfedge.end(), [](const HalfEdge&h)->bool{return h.edgetype != EdgeType::ol;});
+            (*itr_FrontEdge)->prev = (*itr_H1Edge); (*itr_H1Edge)->next = (*itr_FrontEdge);//setuzoku shusei
+            (*itr_LastEdge)->next = (*itr_H2Edge); (*itr_H2Edge)->prev = (*itr_LastEdge);//setuzoku shusei
 
-    B = MatrixXd::Zero(n-1, n-1);
-    for(int i = 0; i < n-1; i++){
-        for(int j = 0; j < n-1; j++)B(i,j) = basis(n, j+1, dim, T[i+1], Knot);
+        }
     }
-    MatrixXd _Q(n-1,3);
-    for(int i = 0; i < n-1; i++){
-        _Q.row(i) = _D.row(i+1) - basis(n,0,dim, T[i+1], Knot)*_D.row(0) - basis(n,n,dim,T[i+1],Knot)*_D.row(n);
-    }
-    P = N.fullPivLu().solve(_D);
+    std::vector<bool> IsReconnected(Edges.size(), false);
+    int faceIndex = 0;
 
-    //cast
-    CtrlPts_res.resize(s);
-    for(int i = 0; i < (int)P.rows(); i++){
-        CtrlPts_res[i].x = P(i,0); CtrlPts_res[i].y = P(i,1); CtrlPts_res[i].z = P(i,2);
+    for(int i = 0; i < (int)IsReconnected.size(); i++){
+        if(IsReconnected[i])continue;
+        auto h = Edges[i];
+        Face *f = new Face(h);
+        Faces.push_back(f);
+        do{
+            int j = std::distance(Edges.begin(), std::find(Edges.begin(), Edges.end(), h));
+            if(j < 0 || j >= Edges.size())break;
+            IsReconnected[j] = true;
+            Edges[j]->face = f;
+            h = h->next;
+        }while(h != Edges[i]);
+        faceIndex++;
     }
-    int num = 10000;
-    double t = Knot[dim];
-    CurveLen = 0.0;
-    std::vector<glm::f64vec3> BCurve;
-    while(t <= 1){
-        glm::f64vec3 v{0,0,0};
-        for(int j = 0; j < s; j++)v += basis(n, j, dim, t, Knot)*CtrlPts_res[j];
-        BCurve.push_back(v);
-        if(BCurve.size() > 1)CurveLen += glm::distance(v, BCurve[BCurve.size() -2]);
-        t += (Knot[s] - Knot[dim])/(double)(num);
-    }
-    return BCurve;
 }
-*/
+
+

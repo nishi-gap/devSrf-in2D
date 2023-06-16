@@ -120,7 +120,7 @@ std::vector<double> _bezierclipping(std::vector<glm::f64vec3>&CtrlPts_base, std:
     t_max = *std::max_element(T.begin(), T.end()); t_max = (t_max < 0) ? 0: (t_max > 1) ? 1:  t_max;
     std::array<glm::f64vec3, 2> next_line = std::array{glm::f64vec3{t_min, 0,0}, glm::f64vec3{t_max, 0,0}};
 
-    if(abs(t_max -  t_min) < DBL_EPSILON){
+    if(abs(t_max -  t_min) < 1e-7){
         return {t_max};
         //return {(t_max + t_min)/2.0};
     }

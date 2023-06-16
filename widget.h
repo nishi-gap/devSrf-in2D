@@ -42,6 +42,8 @@ protected:
 
 public slots:
     void fold_Sm();
+    void ModelBack();
+    void EraseNonFoldEdge(bool state);
 
     //色の上限を変更
     void ChangeMaxColor(int val);
@@ -76,6 +78,8 @@ public slots:
     void changeAngleFromSlider(int val);
     void changeAngleFromSpinBox(double val);
     void StartOptimization();
+    void changeToleranceValue_Slider(int val);
+    void changeToleranceValue_Spin(double val);
 
     //Line Width
     void changeLineWidthFromSlider(int n);

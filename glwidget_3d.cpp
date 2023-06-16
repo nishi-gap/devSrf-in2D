@@ -18,6 +18,7 @@ GLWidget_3D::GLWidget_3D(QWidget *parent):QOpenGLWidget(parent)
     //arccam = ArcBallCam(glm::f64vec3{0,0,-100}, center, up);
     drawdist = 0.0;
     drawEdgePlane = -1;
+    IsEraseNonFoldEdge = false;
 
     Mirror = glm::mat4(1.0f); Mirror[1][1] = -1;
     Scale = glm::scale(glm::f64vec3{0.1, 0.1, 0.1});
@@ -39,8 +40,13 @@ void GLWidget_3D::initializeGL(){
     glEnable(GL_DEPTH_TEST);
 }
 
+void GLWidget_3D::EraseNonFoldEdge(bool state){
+    IsEraseNonFoldEdge = state;
+    update();
+}
+
 void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const HalfEdges Edges, const Surface_V _vertices,
-                              const Ruling3d& _SingleRuling, const Ruling3d& _AllRulings, bool switchDraw){
+                              const FoldLine3d& _FoldLine, const Ruling3d& _AllRulings, bool switchDraw){
     std::vector<glm::f64vec3> vertices;
     drawdist = 0.0;
     Vertices.clear();
@@ -49,12 +55,6 @@ void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const
 
     std::vector<std::array<glm::f64vec3, 3>> trimesh;
     FoldLineVertices.clear();
-
-    SingleRuling.clear();
-    for(auto&v: _SingleRuling){
-        std::array<glm::f64vec3, 2> tmpV{glm::f64vec3(Scale * Mirror * glm::f64vec4(v[0],1)), glm::f64vec3(Scale * Mirror * glm::f64vec4(v[1],1))};
-        SingleRuling.push_back(tmpV);
-    }
 
     AllRulings.clear();
     for(auto&v: _AllRulings){
@@ -69,6 +69,35 @@ void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const
        _edges = EdgeCopy(Edges, _vertices);
        PlanarityColor.clear();
        EdgeRecconection(Poly_V, _faces, _edges);
+       /*
+       if(IsEraseNonFoldEdge){
+
+           for(int i = 0; i< _FoldLine.size(); i++){
+               if(! _FoldLine[i].IsCalc){
+
+                   for(auto itr =  _edges.begin(); itr != _edges.end();){
+                       if(((*itr)->vertex->p ==  _FoldLine[i].first->p && (*itr)->next->vertex->p ==  _FoldLine[i].second->p) ||
+                               ((*itr)->vertex->p ==  _FoldLine[i].third->p && (*itr)->next->vertex->p ==  _FoldLine[i].first->p)){
+                           if((*itr)->pair != nullptr){
+                               (*itr)->pair->prev->next = (*itr)->pair->next; (*itr)->pair->next->prev = (*itr)->pair->prev;
+                               (*itr)->pair->face->ReConnect((*itr)->pair->prev);
+                               std::vector<HalfEdge*>::iterator itr_p = std::find(_edges.begin(), _edges.end(), (*itr)->pair);
+                               std::vector<Face*>::iterator itr_f = std::find(_faces.begin(), _faces.end(), (*itr)->face);
+                               _faces.erase(itr_f);_edges.erase(itr_p);
+                               delete (*itr)->pair;
+                           }else{
+                               (*itr)->prev->next = (*itr)->next; (*itr)->next->prev = (*itr)->prev;
+                               (*itr)->face->ReConnect((*itr)->prev);
+                           }
+                           (*itr)->prev->face->ReConnect((*itr)->prev);
+                           itr = _edges.erase(itr);
+                       }
+                       else itr++;
+                   }
+               }
+            }
+
+       }*/
         for(auto&f: _faces){
             vertices.clear();
             HalfEdge *he = f->halfedge;
@@ -139,6 +168,7 @@ void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const
         }
     }
 
+
     for(auto&V: Vertices){
         Triangulation(V, trimesh);
         TriMeshs.insert(TriMeshs.end(), trimesh.begin(), trimesh.end());
@@ -194,9 +224,9 @@ void GLWidget_3D::paintGL(){
 
     glPolygonOffset(0.5f,1.f);
     for(int i = 0; i < (int)AllRulings.size(); i++){
-        //glColor3d(0, (double)i/AllRulings.size(), (double)i/AllRulings.size());
-        if(i % 2 == 0)glColor3d(1,0,0);
-        else glColor3d(0,1,0);
+        glColor3d(0, (double)i/AllRulings.size(), (double)i/AllRulings.size());
+        //if(i % 2 == 0)glColor3d(1,0,0);
+        //else glColor3d(0,1,0);
         glBegin(GL_LINES);
         glVertex3d(AllRulings[i][0].x, AllRulings[i][0].y, AllRulings[i][0].z);
         glVertex3d(AllRulings[i][1].x, AllRulings[i][1].y, AllRulings[i][1].z);
@@ -209,22 +239,6 @@ void GLWidget_3D::paintGL(){
     }
 
     glPolygonOffset(1.f,2.f);
-    if(!eraseCtrlPt){
-        for(int i = 0; i < (int)SingleRuling.size(); i++){
-            if(SingleRuling.size()% 4 == 0){
-                if(i% 4 == 0)glColor3d(1,0, 0);//e
-                else if(i% 4 == 1)glColor3d(0,1, 0);//N
-                else if(i% 4 == 2)glColor3d(0,0, 1);//r
-                else if(i%4 == 3)glColor3d(0,0,0);//N(回転前)
-            }else glColor3d(0,0, (double)i/SingleRuling.size());
-            glLineWidth(3);
-            glBegin(GL_LINES);
-
-            glVertex3d(SingleRuling[i][0].x, SingleRuling[i][0].y, SingleRuling[i][0].z);
-            glVertex3d(SingleRuling[i][1].x, SingleRuling[i][1].y, SingleRuling[i][1].z);
-            glEnd();
-        }
-    }
 
     glLineWidth(1);
     glColor3d(0,0,0);
@@ -437,3 +451,4 @@ void GLWidget_3D::updateRotate() {
     // 回転行列の更新
     //acRotMat = glm::rotate(((4.0 * angle), rotAxisWorldSpace) * acRotMat;
 }
+

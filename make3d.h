@@ -25,11 +25,7 @@ struct FaceGradation{
     FaceGradation(HalfEdge *_he, double *_color): he(_he), color(_color){}
 };
 
-struct ColorPoint{
-    double color, angle;
-    ColorPoint(): color(200), angle(std::numbers::pi/2.0){}
-    ColorPoint(double _c, double _a): color(_c), angle(_a){}
-};
+
 
 class Model{
 public:
@@ -42,6 +38,7 @@ public:
     std::vector<FoldLine*> FL;
     glm::f64vec3 Axis4Const[2];
     Vertex* Connect2Vertices[2];
+    ColorPoint ColorPt;
 
     Model();
     Model(int _crvPtNum);
@@ -85,8 +82,7 @@ private:
     void LinearInterPolation(std::vector<HalfEdge*>& path);
     void SplineInterPolation(std::vector<HalfEdge*>& path, std::vector<glm::f64vec2>& CurvePath);
     void setHalfEdgePair(HalfEdge *he);
-    
-    void LinkRulingAndGradationArea(Face *f);
+
     inline void clear();
     void ConnectEdge(HalfEdge *he);
 
@@ -98,7 +94,6 @@ private:
 
     int crvPtNum;
     int befFaceNum;
-    ColorPoint ColorPt;
 
     std::vector<HalfEdge*> GradationPoints;
     std::vector<HalfEdge*> makePath();

@@ -31,6 +31,12 @@ enum class CurveType{
     DebugTest,
 };
 
+struct ColorPoint{
+    double color, angle;
+    ColorPoint(): color(200), angle(std::numbers::pi/2.0){}
+    ColorPoint(double _c, double _a): color(_c), angle(_a){}
+};
+
 enum class PaintTool{
     None,
     Reset,

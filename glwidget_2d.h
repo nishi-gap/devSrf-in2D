@@ -47,6 +47,8 @@ public:
     //debug for curved folding
     bool IsStopAtFF = false, IsStopAtEq = false, IsStopAtCon = false, IsStop4Debug = false;
     double angle = 0.0;
+    void EraseNonFoldEdge(bool state);
+
 protected:
     void initializeGL();
     void paintGL();
@@ -74,10 +76,13 @@ public slots:
     void setColor();
     void receiveColors();
 
+
+
     //new gradation mode
     void setNewGradationMode();
     void ApplyNewGradationMode();
     void getGradationFromSlider(int val);
+    void VisualizeMVColor(bool state);
 
     //add curve
     void AddCurve();
@@ -113,6 +118,7 @@ private:
     std::vector<glm::f64vec3> tmp_c;
     void draw();
 
+    bool IsEraseNonFoldEdge;
     int SmoothCurveIndex; //-1: 未参照
     int FoldCurveIndex;
     int KeyEvent; //-1:None  0:Enter  1: Back-Space  2:Other
@@ -142,6 +148,7 @@ private:
 
     double gridsize;
     int visibleGrid;//1:enable, -1:disable
+    bool IsMVcolor_binary;
 
     void DrawGrid();
     bool drawpolygon;
@@ -160,6 +167,7 @@ signals:
     void CurvePathSet(std::vector<glm::f64vec2>CurvePath);
     void deleteCrvSignal(std::vector<int> n);
     void getAlphaBeta(double& _alpha, int& _beta, int& _beta2);
+
 };
 
 #endif // GLWIDGET_2D_H

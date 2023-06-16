@@ -17,19 +17,7 @@
 
 #include <nlopt.hpp>
 
-struct Vertex4d{
-    bool IsCalc;
-    CrvPt_FL *first;
-    Vertex *second;
-    Vertex4d(CrvPt_FL *v, Vertex *v2);
-    Vertex4d(const Vertex4d& V4d);
-    bool operator == (const Vertex4d &V4d)const{
-        return first == V4d.first && second == V4d.second && IsCalc == V4d.IsCalc;
-    }
-    bool operator != (const Vertex4d &V4d)const{
-        return first != V4d.first || second != V4d.second || IsCalc != V4d.IsCalc;
-    }
-};
+
 
 class FoldLine
 {
@@ -45,10 +33,13 @@ public:
     double getColor();
     bool modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_v, int dim, int t_type = 2);
     bool RevisionCrosPtsPosition(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V, int type, bool TrimMode);
-    bool Optimization(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V, int type = 0);
+    bool Optimization_FlapAngle(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V, int type = 0);
     void Optimization2(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_v, double a);
+    void Optimization_Vertices(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V, int type);
+    void ReassignColor(std::vector<HalfEdge*>& Edges, ColorPoint& CP);
+    void SimplifyModel(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, double tol);
 
-    HalfEdge *he, *he2;
+    //HalfEdge *he, *he2;
     std::vector<glm::f64vec3> point;
     Vertex *vx, *vx2;
 
@@ -57,7 +48,7 @@ public:
     std::vector<Vertex4d> FoldingCurve;
     //std::vector<HalfEdge_FL*> FoldingCurve;
     void applyAAAMethod(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V, double a, int type = 0);
-    std::vector<std::array<glm::f64vec3, 2>> SingleRuling, AllRulings, NewRuling2d;
+    std::vector<std::array<glm::f64vec3, 2>>  AllRulings, NewRuling2d;
     void drawRulingInAllAngles(std::vector<std::array<glm::f64vec3, 2>>& _Rulings);
 
 private:
@@ -74,7 +65,6 @@ private:
 
     std::vector<CrvPt_FL*> Points_On_Curve;
 
-    void ApproximatePolyLine();
 };
 
 

@@ -1,46 +1,6 @@
 #define PI 3.14159265359
 #include "glwidget_2d.h"
 
-void Douglas_Peucker_algorithm(std::vector<crvpt>& FoldingCurve, std::vector<crvpt>& res, double tol){
-    auto perpendicularDistance = [](glm::f64vec3& p, glm::f64vec3& l_start, glm::f64vec3& l_end)->double{
-        glm::f64vec3 line = (l_start - l_end);
-        glm::f64vec3 OP = p - l_start;
-        double d = glm::dot(OP, line)/glm::length(line);
-        glm::f64vec3 H = l_start + d * line;
-        return glm::distance(H, p);
-    };
-    if((int)FoldingCurve.size() < 2)return;
-    double dmax = 0.0;
-    size_t index = 0;
-    size_t end = FoldingCurve.size()-1;
-    for(size_t i = 1; i < end; i++){
-        double d = perpendicularDistance(FoldingCurve[i].pt, FoldingCurve[0].pt, FoldingCurve.back().pt);
-        if (d > dmax){
-            index = i; dmax = d;
-        }
-    }
-
-    // If max distance is greater than epsilon, recursively simplify
-    if(dmax > tol){
-        // Recursive call
-        std::vector<crvpt> res_first, res_last;
-        std::vector<crvpt> firstLine{FoldingCurve.begin(), FoldingCurve.begin()+index+1};
-        std::vector<crvpt> lastLine{FoldingCurve.begin() + index, FoldingCurve.end()};
-        Douglas_Peucker_algorithm(firstLine,res_first, tol);
-        Douglas_Peucker_algorithm(lastLine,res_last, tol);
-
-        // Build the result list
-        res.assign(res_first.begin(), res_first.end()-1);
-        res.insert(res.end(), res_last.begin(), res_last.end());
-        if(res.size()<2)return;
-    } else {
-        //Just return start and end points
-        res.clear();
-        res.push_back(FoldingCurve[0]);
-        res.push_back(FoldingCurve.back());
-    }
-}
-
 GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
 {
 
@@ -70,8 +30,9 @@ GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
 
     gridsize = 10;
     visibleGrid = 1;
-
+    IsMVcolor_binary = false;
     eraseVec2d = false;
+    IsEraseNonFoldEdge = false;
     visibleCurve = true;
     model = new Model(crvPtNum);
 
@@ -81,6 +42,7 @@ GLWidget_2D::~GLWidget_2D(){}
 void GLWidget_2D::InitializeDrawMode(int state){
     if(state == 0)return; drawtype = PaintTool::None; SmoothCurveIndex = -1; emit SendNewActiveCheckBox(PaintTool::None);
 }
+void GLWidget_2D::VisualizeMVColor(bool state){IsMVcolor_binary = state;update();}
 
 void GLWidget_2D::AddCurve(){
     std::vector<int>deleteIndex;
@@ -110,6 +72,11 @@ void GLWidget_2D::InsertNewPoint(){
     if(model->crvs.empty()) SmoothCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
     emit SendNewActiveCheckBox(PaintTool::InsertCtrlPt);
+}
+
+void GLWidget_2D::EraseNonFoldEdge(bool state){
+    IsEraseNonFoldEdge = state;
+    update();
 }
 
 void GLWidget_2D::MoveCurvePt(){
@@ -359,6 +326,7 @@ void GLWidget_2D::paintGL(){
                 glColor3d(0,1,0);
                 glPointSize(5);
                 for(auto&h: fl->FoldingCurve){
+                    if(IsEraseNonFoldEdge && !h.IsCalc)continue;
                     glBegin(GL_POINTS);
                     glVertex2d(h.first->p.x, h.first->p.y);
                     glEnd();
@@ -380,30 +348,37 @@ void GLWidget_2D::paintGL(){
             glLineWidth(1);
             continue;
         }
-
-        if(edge->edgetype == EdgeType::r){
+        if(edge->edgetype == EdgeType::fl || edge->edgetype == EdgeType::r){
             if(drawtype == PaintTool::NewGradationMode){
+                auto getcolor = [](double c, double a, double y)->double{
+                    if(y < a)return c/a * y/255.0;
+                    return ((255.0 - c)*(y - a)/(std::numbers::pi - a) + c)/255.0;
+                };
                 glLineWidth(rulingWidth);
-                if(edge->r->IsCrossed != -1)glColor3d(0,1,0);
-                else {
-                    if(edge->r->Gradation == 0) r = g = b = 0.4;
-                    else if(edge->r->Gradation > 0){
-                        r = 1; g = b =1 - edge->r->Gradation/255.0;
-                    }else{
-                        b = 1;
-                        g = r = 1 + edge->r->Gradation/255.0;
-                    }
-                    glColor3d(r,g,b);
+                glm::f64vec3 f_nv = glm::normalize(glm::cross(edge->vertex->p3 - edge->prev->vertex->p3, edge->next->vertex->p3 - edge->vertex->p3));
+                glm::f64vec3 fp_nv = glm::normalize(glm::cross(edge->pair->vertex->p3 - edge->pair->prev->vertex->p3, edge->pair->next->vertex->p3 - edge->pair->vertex->p3));
+                glm::f64vec3 SpinAxis = glm::normalize(edge->next->vertex->p3 - edge->vertex->p3);
+                double color = getcolor(model->ColorPt.color, model->ColorPt.angle, std::acos(glm::dot(f_nv, fp_nv)));
+
+
+                if(edge->edgetype == EdgeType::r){
+                    double df = edge->r->Gradation/255.0 - color;
                 }
-            }else{
-                if(edge->r->IsCrossed  != -1)glColor3d(0,1,0);
-                else glColor3d(0.4,0.4,0.4);
-                glLineWidth(1.f);
-            }
-            auto itr = (ind != -1)? std::find(model->Edges.begin(), model->Edges.end(), edge->pair): model->Edges.end();
-            int pairInd = (itr != model->Edges.end())?std::distance(model->Edges.begin(), itr): -1;
-            if(ind == i || pairInd == i)glColor3d(1,1,0);
-        }else if(edge->edgetype == EdgeType::fl){
+                if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) < -1e-3){//mount
+                   if(!IsMVcolor_binary)glColor3d(1,1.0 - color,1.0 - color);
+                   else glColor3d(1,0,0);
+                }else if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) > 1e-3){//valley
+                    if(!IsMVcolor_binary)glColor3d(1.0 - color,1.0 - color,1);
+                    else glColor3d(0,0,1);
+                }else{
+                    if(IsEraseNonFoldEdge && edge->edgetype == EdgeType::r)continue;
+                    glColor3d(0,0,0);
+                }
+            }else{ glLineWidth(1.f); glColor3d(0,0,0); }
+            glBegin(GL_LINES);
+            glVertex2d(edge->vertex->p.x, edge->vertex->p.y);
+            glVertex2d(edge->next->vertex->p.x, edge->next->vertex->p.y);
+            glEnd();
             if(edge->vertex == refV){
                 glColor3d(1, 0, 0);
                 glPointSize(6.0f);
@@ -416,12 +391,6 @@ void GLWidget_2D::paintGL(){
             glEnd();
             glColor3d(0, 0, 0);
         }
-
-        glBegin(GL_LINES);
-        glVertex2d(edge->vertex->p.x, edge->vertex->p.y);
-        glVertex2d(edge->next->vertex->p.x, edge->next->vertex->p.y);
-        glEnd();
-
     }
     //可展面の輪郭描画
     {
@@ -542,10 +511,6 @@ void GLWidget_2D::paintGL(){
             glVertex2d(r[1].x, r[1].y);
             glEnd();
         }
-
-        //glBegin(GL_LINES);
-        //for(int i = 0; i < fl->NewRuling2d.size(); i++)glVertex2d(fl->NewRuling2d[i][0].x, fl->NewRuling2d[i][0].y);
-        //glEnd();
     }
     glColor3d(0,0,0);
 
@@ -582,22 +547,13 @@ void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
     if(e->key() == Qt::Key_A) visibleCurve = !visibleCurve;
     //if(e->key() == Qt::Key_0){model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention, 0); emit foldingSignals();}
     //if(e->key() == Qt::Key_1){model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention, 1); emit foldingSignals();}
-    if(e->key() == Qt::Key_2){ res = model->FL[FoldCurveIndex]->modify2DRulings(model->Faces, model->Edges, model->vertices, Poly_v, curveDimention, 2);
+    if(e->key() == Qt::Key_2){
+        if(model->FL.empty())return;
+        res = model->FL[FoldCurveIndex]->modify2DRulings(model->Faces, model->Edges, model->vertices, Poly_v, curveDimention, 2);
         if(res){
             emit foldingSignals();
         }
 
-    }
-    if(e->key() == Qt::Key_F){
-        std::vector<Vertex*> Poly_V = model->outline->getVertices();
-        std::vector<HalfEdge*> _edges = EdgeCopy(model->Edges, model->vertices);
-        std::vector<Face*> _faces;
-        EdgeRecconection(Poly_V, _faces, _edges);
-        for(auto&_e: _edges){
-            if( _e->diffEdgeLength() > 1e-4)
-                std::cout << _e->diffEdgeLength() << " : " << glm::to_string(_e->next->vertex->p) << " , " << glm::to_string(_e->vertex->p) << std::endl;
-        }
-        std::cout << "---------------------------" << std::endl;
     }
     if(e->key() == Qt::Key_Q){
         int type = 1;
@@ -606,18 +562,9 @@ void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
     }
     if(e->key() == Qt::Key_P){
         int type = 1;
-        res = model->FL[FoldCurveIndex]->RevisionCrosPtsPosition(model->Faces, model->Edges, model->vertices, Poly_v, type, true);
-        if(res) emit foldingSignals();
-    }
-    if(e->key() == Qt::Key_F1){
-        if(model->crvs.empty())return;
-        std::cout << "Douglas_Peucker_algorithm"<<std::endl;
-        std::vector<crvpt> res;
-        double tol = 6;
-        Douglas_Peucker_algorithm(model->crvs[0]->CurvePoints, res, tol);
-        std::cout << "after size " << res.size() << std::endl;
-        model->crvs[0]->CurvePoints = res;
+        model->FL[FoldCurveIndex]->Optimization_Vertices(model->Edges, model->vertices, Poly_v, type);
 
+        emit foldingSignals();
     }
     update();
 }
@@ -711,7 +658,6 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
 
     }
     if(model->outline->IsClosed()){
-        //model->deform();
         emit foldingSignals();
     }
     update();
