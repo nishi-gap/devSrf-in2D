@@ -562,7 +562,7 @@ void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
     }
     if(e->key() == Qt::Key_P){
         int type = 1;
-        model->FL[FoldCurveIndex]->Optimization_Vertices(model->Edges, model->vertices, Poly_v, type);
+        model->FL[FoldCurveIndex]->Optimization_Vertices(model->Edges, model->vertices, Poly_v, type, false);
 
         emit foldingSignals();
     }

@@ -173,9 +173,11 @@ void MainWindow::changeToleranceValue_Spin(double val){
 
 
 void MainWindow::StartOptimization(){
+    static bool IsValidSigmoid = true;
+    IsValidSigmoid = !IsValidSigmoid;
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
     auto Poly_V = ui->glWid2dim->model->outline->getVertices();
-    bool res = ui->glWid2dim->model->FL[0]->Optimization_FlapAngle(ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, Poly_V, keyType);
+    bool res = ui->glWid2dim->model->FL[0]->Optimization_FlapAngle(ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, Poly_V, keyType, IsValidSigmoid);
     if(res){
         //ui->glWid2dim->model->deform();
         ui->glWid2dim->update();

@@ -480,24 +480,6 @@ void CRV::BezierRulings(OUTLINE *outline, int& DivSize, int crvPtNum){
         bool IsIntersected = setPoint(vertices, N, CurvePoints[n].pt, crossPoint);
 
         if(IsIntersected){
-            /*
-            if(RulingSet){
-                for(int j = 0; j < (int)crossPoint.size(); j += 2){
-                    meshLines[mind]->vertices[0]->p = crossPoint[j];
-                    meshLines[mind]->vertices[1]->p = crossPoint[j + 1];
-                }
-                RulingSet = false;
-                mind++;
-            }else{
-                for(int j = 0; j < (int)crossPoint.size(); j += 2){
-                    Rulings[rind]->r = std::make_tuple(new Vertex(crossPoint[j]), new Vertex(crossPoint[j+1]));
-                    Rulings[rind]->pt = &CurvePoints[n];
-                    //Rulings.push_back(new ruling(crossPoint[j],crossPoint[j + 1], &CurvePoints[n]));
-                    i++;
-                }
-                RulingSet = true;
-                rind++;
-            }*/
             for(int j = 0; j < (int)crossPoint.size(); j += 2){
                 Rulings[rind]->r = std::make_tuple(new Vertex(crossPoint[j]), new Vertex(crossPoint[j+1]));
                 i++;
@@ -544,28 +526,6 @@ void CRV::BsplineRulings(OUTLINE *outline, int& DivSize, int crvPtNum, int curve
     int rind = 0;
     //ruling *r;
     while(n < eind){
-        /*
-        if(RulingSet){
-            for(int j = 0; j < (int)CrossPoints[floor(n)].size(); j += 2){
-                meshLines[mind]->vertices[0]->p = CrossPoints[floor(n)][j];
-                meshLines[mind]->vertices[1]->p = CrossPoints[floor(n)][j + 1];
-                //std::vector<Vertex*> tmp {new Vertex(crossPoint[j]), new Vertex(crossPoint[j + 1])};
-                //meshLines[mind]->vertices4grad.push_back(tmp);
-            }
-            meshLines[mind]->pt = &CurvePoints[floor(n)];
-            meshLines[mind]->hasRulings[0] = Rulings[rind - 1];
-            meshLines[mind]->hasRulings[1] = Rulings[rind];
-            RulingSet = false;
-            mind++;
-        }else{
-            Rulings[rind]->r = std::make_tuple(new Vertex(CrossPoints[floor(n)][0]), new Vertex(CrossPoints[floor(n)][1]));
-            Rulings[rind]->pt = &CurvePoints[floor(n)];
-            for(int j = 0; j < (int)CrossPoints[floor(n)].size(); j += 2){
-
-            }
-            rind++;
-            RulingSet = true;
-        }*/
         Rulings[rind]->r = std::make_tuple(new Vertex(CrossPoints[floor(n)][0]), new Vertex(CrossPoints[floor(n)][1]));
         for(int j = 0; j < (int)CrossPoints[floor(n)].size(); j += 2){
 
@@ -614,27 +574,6 @@ void CRV::LineRulings(OUTLINE *outline, int DivSize){
     double n = double(sind);
     int rind = 0;
     while(n < eind){
-        /*
-        if(RulingSet){
-            meshLines[mind]->vertices4grad.clear();
-            for(int j = 0; j < (int)CrossPoints[floor(n)].size(); j += 2){
-                meshLines[mind]->vertices[0]->p = CrossPoints[floor(n)][j];
-                meshLines[mind]->vertices[1]->p = CrossPoints[floor(n)][j + 1];
-                std::tuple<Vertex*, Vertex*> tmp = std::make_tuple(new Vertex(CrossPoints[floor(n)][j]), new Vertex(CrossPoints[floor(n)][j + 1]));
-                meshLines[mind]->vertices4grad.push_back(tmp);
-            }
-            meshLines[mind]->pt = &CurvePoints[floor(n)];
-            meshLines[mind]->hasRulings[0] = Rulings[rind - 1];
-            meshLines[mind]->hasRulings[1] = Rulings[rind];
-            RulingSet = false;
-            mind++;
-        }else{
-            Rulings[rind]->r = std::make_tuple(new Vertex(CrossPoints[floor(n)][0]), new Vertex(CrossPoints[floor(n)][1]));
-            Rulings[rind]->pt = &CurvePoints[floor(n)];
-
-            rind++;
-            RulingSet = true;
-        }*/
         Rulings[rind]->r = std::make_tuple(new Vertex(CrossPoints[floor(n)][0]), new Vertex(CrossPoints[floor(n)][1]));
 
         rind++;
@@ -1012,7 +951,7 @@ std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, HalfEdge *
     std::vector<glm::f64vec3> base = ConvertDistBasedBezier(CtrlPts, line);
     std::vector<glm::f64vec3> current;
     std::copy(base.begin(), base.end(), std::back_inserter(current));
-    std::array<glm::f64vec3, 2> _line{glm::f64vec3{0.,0,0}, glm::f64vec3{1.,0,0}};
+    std::array<glm::f64vec3, 2> _line{glm::f64vec3{0.,0.0,0.0}, glm::f64vec3{1.,0.0,0.0}};
     auto res = _bezierclipping(base, current, _line, dim);
 
     return res;

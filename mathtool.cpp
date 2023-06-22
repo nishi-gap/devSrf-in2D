@@ -218,10 +218,10 @@ std::vector<std::vector<glm::f64vec3>> de_casteljau_algorithm(std::vector<glm::f
         Q.push_back(new_p);
         prev = CtrlPts[i];
     }
-    if(Q.size() == 0)return _Q;
-
+    if((int)Q.size() == 0)return _Q;
+    if((int)Q.size() == 1)return {Q};
     _Q.push_back(Q);
-    if(Q.size() == 1)return _Q;
+
 
     std::vector<std::vector<glm::f64vec3>> tmp = de_casteljau_algorithm(Q,t);
     _Q.insert(_Q.end(), tmp.begin(), tmp.end());
