@@ -80,6 +80,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->move_ctrl_pt_fl, &QPushButton::clicked, this, &MainWindow::moveCtrlPts_fl);
     connect(ui->ToleranceValue, &QSlider::valueChanged, this, &MainWindow::changeToleranceValue_Slider);
     connect(ui->TolValue, &QDoubleSpinBox::valueChanged, this, &MainWindow::changeToleranceValue_Spin);
+    connect(ui->SmoothingButton, &QPushButton::clicked, this, &MainWindow::StartSmoothingSurface);
 
     //fold line debug
     connect(ui->addFL_test, &QPushButton::clicked, this, &MainWindow::addFoldLine_test);    
@@ -145,7 +146,7 @@ void MainWindow::EraseNonFoldEdge(bool state){
     ui->glWid2dim->EraseNonFoldEdge(state);
     ui->glWid3dim->EraseNonFoldEdge(state);
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
-    auto Poly_V = ui->glWid2dim->model->outline->getVertices();
+
     ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
                                ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
 }
@@ -183,8 +184,15 @@ void MainWindow::StartOptimization(){
         ui->glWid2dim->update();
         ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
     }
+}
 
-
+void MainWindow::StartSmoothingSurface(){
+    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+    bool res = ui->glWid2dim->model->FL[0]->Optimization_SmooothSrf();
+    if(res){
+        ui->glWid2dim->update();
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
+    }
 }
 
 void MainWindow::changeAngleFromSlider(int val){
@@ -311,7 +319,6 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         double a = (double)ui->angleSlider->value()/100.0;
         auto Edges = ui->glWid2dim->model->Edges;
         auto vertices = ui->glWid2dim->model->vertices;
-        ui->glWid2dim->model->FL[0]->Optimization2(Edges, vertices, Poly_V, a);
         ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
                                    ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->model->FL[0]->AllRulings);
     }else if(e->modifiers().testFlag(Qt::ControlModifier)){

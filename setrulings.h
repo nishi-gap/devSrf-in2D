@@ -54,11 +54,10 @@ public:
     bool IsValid;
     CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3,  double _s) : Vertex(_p2, _p3), s{_s}, IsValid(true) {}
     CrvPt_FL(glm::f64vec3 _p2, double _s) : Vertex(_p2), s{_s}, IsValid{true} {}
+    ~CrvPt_FL();
     bool operator == (const CrvPt_FL &p)const{return s == p.s && rt == p.rt && ve == p.ve && vo == p.vo && IsValid == p.IsValid;}
     bool operator != (const CrvPt_FL &p)const{return !(s == p.s && rt == p.rt && ve == p.ve && vo == p.vo && IsValid == p.IsValid);}
     void set(glm::f64vec3 _p,Vertex *o, Vertex *e);
-    double developability();
-
 };
 
 struct Vertex4d{
@@ -69,6 +68,8 @@ struct Vertex4d{
     Vertex4d(CrvPt_FL *v, Vertex *v2, Vertex *v3);
     Vertex4d(const Vertex4d& V4d);
     Vertex4d();
+    ~Vertex4d();
+
     bool operator == (const Vertex4d &V4d)const{return first == V4d.first && second == V4d.second && third == V4d.third && IsCalc == V4d.IsCalc;}
     bool operator != (const Vertex4d &V4d)const{ return first != V4d.first || second != V4d.second || third != V4d.third || IsCalc != V4d.IsCalc; }
     bool operator == (const Vertex &V)const{return first == V; }
@@ -136,11 +137,10 @@ public:
     bool bend;
     bool hasGradPt;
     HalfEdge* halfedge;
-
     Face(HalfEdge *_halfedge);
     Face(){}
     Face(const Face& face);
-    ~Face(){}
+    ~Face();
 
     bool IsPointInFace(glm::f64vec3 p);
     glm::f64vec3 getNormalVec();
@@ -221,6 +221,7 @@ class OUTLINE{
 public:
 
     OUTLINE();
+    ~OUTLINE();
     QString type;//Rectangle, Polygon, Polyline
 
     bool IsClosed();
@@ -237,6 +238,7 @@ public:
     void MoveVertex(glm::f64vec3 p, int ind);
     glm::f64vec2 origin;//polygonの始点
     int hasPtNum; //0 ~ 2 (polygonの点の数)
+
 private:
     std::vector<Vertex*> vertices;
     std::vector<HalfEdge*> edges;

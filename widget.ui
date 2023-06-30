@@ -782,6 +782,19 @@
     <string>optmization</string>
    </property>
   </widget>
+  <widget class="QPushButton" name="SmoothingButton">
+   <property name="geometry">
+    <rect>
+     <x>1050</x>
+     <y>570</y>
+     <width>80</width>
+     <height>18</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>smothing</string>
+   </property>
+  </widget>
  </widget>
  <customwidgets>
   <customwidget>

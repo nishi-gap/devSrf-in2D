@@ -17,16 +17,6 @@
 #include "foldline.h"
 #include "mathtool.h"
 
-
-struct FaceGradation{
-    HalfEdge *he;
-    double *color;
-    FaceGradation(): color(0), he(nullptr){}
-    FaceGradation(HalfEdge *_he, double *_color): he(_he), color(_color){}
-};
-
-
-
 class Model{
 public:
     std::vector<Vertex*> vertices;
@@ -41,6 +31,7 @@ public:
     ColorPoint ColorPt;
 
     Model();
+    ~Model();
     Model(int _crvPtNum);
     //void deform(std::vector<std::vector<glm::f64vec3>>& output, std::vector<ruling*>& Rulings, glm::f64vec3& center);
     void deform();
@@ -90,7 +81,6 @@ private:
 
     std::vector<int> refCrv;//0:未参照　1:参照
     std::vector<int> refFL;
-    std::vector<FaceGradation> Fgrad;
 
     int crvPtNum;
     int befFaceNum;

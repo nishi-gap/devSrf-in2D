@@ -27,6 +27,7 @@ Vertex::~Vertex(){
     for(auto* h: halfedge){
         if(h == nullptr)delete h;
     }
+    delete this;
 }
 
 double Vertex::developability(){
@@ -78,7 +79,12 @@ HalfEdge::HalfEdge(const HalfEdge* he){
 }
 
 HalfEdge::~HalfEdge(){
+    if(pair != nullptr)delete pair;
+    if(prev != nullptr && next != nullptr){prev->next = next; next->prev = prev;}
+    else if(prev != nullptr && next == nullptr){prev->next = prev->prev = nullptr;}
+    else if(prev == nullptr && next != nullptr){next->next = next->prev = nullptr;}
 }
+
 std::vector<HalfEdge*> HalfEdge::Split(Vertex *v, std::vector<HalfEdge*>& Edges){
     std::vector<HalfEdge*> res;
     if(!MathTool::is_point_on_line(v->p, this->vertex->p, this->next->vertex->p))return res;
@@ -136,13 +142,9 @@ HalfEdge* HalfEdge::erase(std::vector<HalfEdge*>& Edges, std::vector<Face*>& Fac
     return next;
 }
 
-double CrvPt_FL::developability(){
-    if(halfedge.size() <= 4)return -1;
-    double phi = 0.0;
-    return phi;
-    for(int i = 1; i < halfedge.size(); i++){
 
-    }
+CrvPt_FL::~CrvPt_FL(){
+    delete ve; delete vo;
 }
 
 void CrvPt_FL::set(glm::f64vec3 _p, Vertex *o, Vertex *e){
@@ -162,6 +164,10 @@ Vertex4d::Vertex4d(const Vertex4d& V4d){
 }
 Vertex4d::Vertex4d(){first = nullptr; second = nullptr; third = nullptr; IsCalc = false;}
 
+Vertex4d::~Vertex4d(){
+    delete first; delete second; delete third;
+}
+
 //bool operator<(const CrvPt_FL& T, const CrvPt_FL& T2) noexcept { return T.s < T2.s; }
 
 crvpt::crvpt(int _ind, glm::f64vec3 _pt, int _color){
@@ -169,9 +175,6 @@ crvpt::crvpt(int _ind, glm::f64vec3 _pt, int _color){
     color = _color;
     ind = _ind;
 }
-
-
-
 
 ruling::ruling(Vertex *a, Vertex *b, crvpt *_pt) {
     IsCrossed = -1;
@@ -201,6 +204,15 @@ Face::Face(HalfEdge *_halfedge){
 Face::Face(const Face& face){
   auto _h = face.halfedge;
   halfedge->edgetype = _h->edgetype;
+}
+
+Face::~Face(){
+    HalfEdge *h = halfedge;
+    do{
+        delete h->prev->vertex;
+        h = h->next;
+    }while(h != nullptr || h != halfedge);
+    if(halfedge != nullptr)delete halfedge->vertex;
 }
 
 bool Face::IsPointInFace(glm::f64vec3 p){
@@ -719,6 +731,11 @@ OUTLINE::OUTLINE(){
     hasPtNum = 0;
 }
 
+OUTLINE::~OUTLINE(){
+    std::vector<Vertex*> vertices;
+    for(auto itr = vertices.begin(); itr != vertices.end(); itr++)delete *itr;
+}
+
 void OUTLINE::addVertex(Vertex*v, int n){
     if(n > (int)vertices.size())vertices.push_back(v);
     else vertices.insert(vertices.begin() + n, v);
@@ -905,11 +922,9 @@ void CrossDetection(Face *f, CRV *crvs){
             bool rs = IsIntersect(std::get<0>(crvs->Rulings[in]->r)->p, std::get<1>(crvs->Rulings[in]->r)->p, std::get<0>(crvs->Rulings[inn]->r)->p,std::get<1>(crvs->Rulings[inn]->r)->p, false);
             if(rs){
                 glm::f64vec3 p = getIntersectionPoint(std::get<0>(crvs->Rulings[in]->r)->p, std::get<1>(crvs->Rulings[in]->r)->p, std::get<0>(crvs->Rulings[inn]->r)->p,std::get<1>(crvs->Rulings[inn]->r)->p);
-                bool PointOnLines = false;
                 bool PointInFace = f->IsPointInFace(p);
                 HalfEdge *h = f->halfedge;
                 do{
-                    if(is_point_on_line(p, h->vertex->p, h->next->vertex->p))PointOnLines = true;
                     h = h->next;
                 }while(h != f->halfedge);
                 if(PointInFace)crvs->Rulings[in]->IsCrossed = crvs->Rulings[inn]->IsCrossed = 0;
@@ -1030,7 +1045,7 @@ void EdgeRecconection(const std::vector<Vertex*>& Poly_V, std::vector<Face*>& Fa
         Faces.push_back(f);
         do{
             int j = std::distance(Edges.begin(), std::find(Edges.begin(), Edges.end(), h));
-            if(j < 0 || j >= Edges.size())break;
+            if(j < 0 || j >= (int)Edges.size())break;
             IsReconnected[j] = true;
             Edges[j]->face = f;
             h = h->next;
