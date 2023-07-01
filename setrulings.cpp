@@ -1,4 +1,5 @@
 #include "setrulings.h"
+#include<memory>
 using namespace MathTool;
 
 Vertex::Vertex(glm::f64vec3 _p){
@@ -13,64 +14,60 @@ Vertex::Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3){
     halfedge.clear();
     deformed = false;
 }
-void Vertex::addNewEdge(HalfEdge *he){
-    if(std::find(halfedge.begin(), halfedge.end(), he) == halfedge.end())halfedge.push_back(he);
-}
 
-Vertex::Vertex(const Vertex* v){
+Vertex::Vertex(const std::shared_ptr<Vertex>& v){
     p2_ori = p = v->p; p3_ori = p3 = v->p3;
     halfedge = v->halfedge;
     deformed = v->deformed;
+
+}
+void Vertex::addNewEdge(const QSharedPointer<HalfEdge>& h){
+    if(std::find(halfedge.begin(), halfedge.end(), h.get()) == halfedge.end())halfedge.push_back(h);
 }
 
-Vertex::~Vertex(){
-    for(auto* h: halfedge){
-        if(h == nullptr)delete h;
-    }
-    delete this;
-}
+Vertex::~Vertex(){ halfedge.clear();}
 
 double Vertex::developability(){
     if(halfedge.size() < 4)return -1;
     //並び替え
     struct EdgeAndAnlge{
         double a;
-        HalfEdge *h;
-        EdgeAndAnlge(double _a, HalfEdge *_h): a(_a), h(_h){}
+        QWeakPointer<HalfEdge> h;
+        EdgeAndAnlge(double _a, const QWeakPointer<HalfEdge>& _h): a(_a), h(_h){}
         bool operator<(const EdgeAndAnlge& H) const { return a < H.a; }
     };
 
-    HalfEdge *head = halfedge.front();
-
-    glm::f64vec3 e = glm::normalize(head->next->vertex->p - head->vertex->p);
+    glm::f64vec3 e = glm::normalize(halfedge.front().get()->next->vertex->p - halfedge.front().get()->vertex->p);
     std::vector<EdgeAndAnlge> EAA;
-    EAA.push_back(EdgeAndAnlge(0, head));
-    for(int i = 1; i < (int)halfedge.size(); i++){
-        double a = glm::orientedAngle(e, glm::normalize(halfedge[i]->next->vertex->p - halfedge[i]->vertex->p), glm::f64vec3{0,0,1});
+    EAA.push_back(EdgeAndAnlge(0, QWeakPointer(halfedge.front())));
+
+    for(int i = 1; i < (int)this->halfedge.size(); i++){
+        double a = glm::orientedAngle(e, glm::normalize(halfedge[i].get()->next->vertex->p - halfedge[i].get()->vertex->p), glm::f64vec3{0,0,1});
         if(a < 0) a += 2.0 * std::numbers::pi;
-        EAA.push_back(EdgeAndAnlge(a, halfedge[i]));
+        EAA.push_back(EdgeAndAnlge(a, QWeakPointer(halfedge[i])));
     }
     std::sort(EAA.begin(), EAA.end());
     int edgeNum = halfedge.size();
     double sum = 0.0;
     for(int i = 0; i < (int)EAA.size(); i++){
-        sum += glm::angle(glm::normalize(EAA[i].h->next->vertex->p - EAA[i].h->vertex->p),glm::normalize(EAA[(i + 1) % edgeNum].h->next->vertex->p - EAA[(i + 1) % edgeNum].h->vertex->p) );
+        QSharedPointer h = EAA[i].h.lock(), h2 = EAA[(i + 1) % edgeNum].h.lock();
+        sum += glm::angle(glm::normalize(h.get()->next->vertex->p - h.get()->vertex->p), glm::normalize(h2.get()->next->vertex->p - h2.get()->vertex->p) );
     }
     return abs(2.0*std::numbers::pi - sum);
 }
 
-HalfEdge::HalfEdge(Vertex *v, EdgeType _type){
+HalfEdge::HalfEdge(QSharedPointer<Vertex> &v, EdgeType _type){
     vertex = v;
     pair = prev = next =  nullptr;
     IsCrossed = -1;
     angle = 0.0;
     //r = nullptr;
     edgetype = _type;
-    v->addNewEdge(this);
+    v.get()->addNewEdge(this);
 }
 
-HalfEdge::HalfEdge(const HalfEdge* he){
-    vertex = new Vertex(he->vertex);
+HalfEdge::HalfEdge(const QSharedPointer<HalfEdge>& he){
+    vertex = QSharedPointer<Vertex>(he.get()->vertex);
     pair = prev = next =  nullptr;
     IsCrossed = he->IsCrossed;
     angle = he->angle;
@@ -79,28 +76,27 @@ HalfEdge::HalfEdge(const HalfEdge* he){
 }
 
 HalfEdge::~HalfEdge(){
-    if(pair != nullptr)delete pair;
-    if(prev != nullptr && next != nullptr){prev->next = next; next->prev = prev;}
-    else if(prev != nullptr && next == nullptr){prev->next = prev->prev = nullptr;}
-    else if(prev == nullptr && next != nullptr){next->next = next->prev = nullptr;}
+
 }
 
-std::vector<HalfEdge*> HalfEdge::Split(Vertex *v, std::vector<HalfEdge*>& Edges){
-    std::vector<HalfEdge*> res;
-    if(!MathTool::is_point_on_line(v->p, this->vertex->p, this->next->vertex->p))return res;
-    double t = glm::length(v->p - vertex->p)/glm::length(next->vertex->p - vertex->p);
-    v->p3 = vertex->p3 + t * (next->vertex->p3 - vertex->p3);
-    HalfEdge *h_new = new HalfEdge(v, edgetype); h_new->r = r;
-    h_new->face = face; h_new->next = next; next->prev = h_new;
-    h_new->prev = this; next = h_new;
+std::vector<QSharedPointer<HalfEdge>> HalfEdge::Split(QSharedPointer<Vertex> v, std::vector<QSharedPointer<HalfEdge>>& Edges){
+    std::vector<QSharedPointer<HalfEdge>> res;
+    if(!MathTool::is_point_on_line(v.get()->p, vertex->p, next->vertex->p))return res;
+    double t = glm::length(v.get()->p - vertex->p)/glm::length(next->vertex->p - vertex->p);
+    v.get()->p3 = vertex->p3 + t * (next->vertex->p3 - vertex->p3);
+    QSharedPointer<HalfEdge> h_new = QSharedPointer<HalfEdge>(new HalfEdge(v, edgetype));
+    h_new.get()->r = r;
+    h_new.get()->face = face; h_new.get()->next = next; next->prev = h_new;
+    h_new.get()->prev.get() = this; next = h_new;
     res.push_back(h_new);
     Edges.push_back(h_new);
     if(pair != nullptr){
-        HalfEdge *h2_new = new HalfEdge(v, edgetype); h2_new->r = r;
-        h2_new->face = pair->face;
-        h2_new->next = pair->next; h2_new->prev = pair;
+        QSharedPointer<HalfEdge> h2_new = QSharedPointer<HalfEdge>(new HalfEdge(v, edgetype));
+        h2_new.get()->r = r;
+        h2_new.get()->face = pair->face;
+        h2_new.get()->next = pair->next; h2_new.get()->prev = pair;
         pair->next->prev = h2_new; pair->next = h2_new;
-        h_new->pair = pair; h2_new->pair = this;
+        h_new->pair = pair; h2_new->pair.get() = this;
         pair->pair = h_new; pair = h2_new;
         Edges.push_back(h2_new);
         res.push_back(h2_new);
@@ -118,22 +114,19 @@ double HalfEdge::diffEdgeLength(){
     return abs(glm::length(next->vertex->p - vertex->p) - glm::length(next->vertex->p3 - vertex->p3));
 }
 
-HalfEdge* HalfEdge::erase(std::vector<HalfEdge*>& Edges, std::vector<Face*>& Faces){
-    std::vector<HalfEdge*>::iterator itr = std::find(Edges.begin(), Edges.end(), this);
+QSharedPointer<HalfEdge>HalfEdge::erase(std::vector<QSharedPointer<HalfEdge>>& Edges, std::vector<QSharedPointer<Face>>& Faces){
+    std::vector<QSharedPointer<HalfEdge>>::iterator itr = std::find(Edges.begin(), Edges.end(), this);
     if(itr == Edges.end())return nullptr;
-    HalfEdge *next = this->next;
     if(this->pair != nullptr){
         pair->prev->next = pair->next; pair->next->prev = pair->prev;
         pair->face->ReConnect(pair->prev);
-        std::vector<HalfEdge*>::iterator itr_p = std::find(Edges.begin(), Edges.end(), pair);
-        std::vector<Face*>::iterator itr_f = std::find(Faces.begin(), Faces.end(), this->face);
+        std::vector<QSharedPointer<HalfEdge>>::iterator itr_p = std::find(Edges.begin(), Edges.end(), pair);
+        std::vector<QSharedPointer<Face>>::iterator itr_f = std::find(Faces.begin(), Faces.end(), face);
         Faces.erase(itr_f);
         Edges.erase(itr_p);
-        delete r;
-        delete pair;
+         r.clear(); pair.clear();
     }else{
         prev->next = this->next; this->next->prev = prev;
-
         face->ReConnect(prev);
     }
 
@@ -144,19 +137,19 @@ HalfEdge* HalfEdge::erase(std::vector<HalfEdge*>& Edges, std::vector<Face*>& Fac
 
 
 CrvPt_FL::~CrvPt_FL(){
-    delete ve; delete vo;
+    ve.clear(); vo.clear(); ve = vo = nullptr;
 }
 
-void CrvPt_FL::set(glm::f64vec3 _p, Vertex *o, Vertex *e){
-    double sa = glm::distance(_p, o->p), sc = glm::distance(o->p, e->p);
+void CrvPt_FL::set(glm::f64vec3 _p, QSharedPointer<Vertex>& o, QSharedPointer<Vertex>& e){
+    double sa = glm::distance(_p, o.get()->p), sc = glm::distance(o->p, e.get()->p);
     ve = e; vo = o;
     rt = sa/sc;
-    p3 = rt * (e->p3 - o->p3) + o->p3;
+    p3 = rt * (e.get()->p3 - o.get()->p3) + o.get()->p3;
     IsValid = true;
-    this->p = _p;
+    p = _p;
 }
 
-Vertex4d::Vertex4d(CrvPt_FL *v, Vertex *v2, Vertex *v3){
+Vertex4d::Vertex4d(QSharedPointer<CrvPt_FL>& v, QSharedPointer<Vertex>& v2, QSharedPointer<Vertex>&v3){
     first = v; second = v2; third = v3; IsCalc = true;
 }
 Vertex4d::Vertex4d(const Vertex4d& V4d){
@@ -165,7 +158,8 @@ Vertex4d::Vertex4d(const Vertex4d& V4d){
 Vertex4d::Vertex4d(){first = nullptr; second = nullptr; third = nullptr; IsCalc = false;}
 
 Vertex4d::~Vertex4d(){
-    delete first; delete second; delete third;
+    first.clear(); second.clear(); third.clear();
+    first = nullptr; second = third = nullptr;
 }
 
 //bool operator<(const CrvPt_FL& T, const CrvPt_FL& T2) noexcept { return T.s < T2.s; }
@@ -176,7 +170,7 @@ crvpt::crvpt(int _ind, glm::f64vec3 _pt, int _color){
     ind = _ind;
 }
 
-ruling::ruling(Vertex *a, Vertex *b, crvpt *_pt) {
+ruling::ruling(QSharedPointer<Vertex>& a, QSharedPointer<Vertex>&b, QSharedPointer<crvpt>&_pt) {
     IsCrossed = -1;
     r = std::make_tuple(a, b);
     Gradation = 0;
@@ -193,10 +187,10 @@ ruling::ruling(){
 }
 
 
-Face::Face(HalfEdge *_halfedge){
+Face::Face(QSharedPointer<HalfEdge>& _halfedge){
     //rulings.clear();
     halfedge = _halfedge;
-    _halfedge->face = this;
+    halfedge->face.get() = this;
     bend = false;
     hasGradPt = false;
 }
@@ -207,22 +201,26 @@ Face::Face(const Face& face){
 }
 
 Face::~Face(){
+    std::vector<HalfEdge*>HE;
     HalfEdge *h = halfedge;
     do{
-        delete h->prev->vertex;
-        h = h->next;
-    }while(h != nullptr || h != halfedge);
-    if(halfedge != nullptr)delete halfedge->vertex;
+        HE.push_back(h); h = h->next;
+    }while(h != halfedge);
+    for(auto itr = HE.begin(); itr != HE.end();){
+        delete (*itr)->vertex;
+        itr = HE.erase(itr);
+        //delete he; //he = nullptr;
+    }
 }
 
 bool Face::IsPointInFace(glm::f64vec3 p){
     int cnt = 0;
     double vt;
-    HalfEdge *he = halfedge;
+    QSharedPointer<HalfEdge> he = halfedge;
     do{
-        if(he->vertex->p.y <= p.y && he->next->vertex->p.y > p.y){
-            vt = (p.y - he->vertex->p.y) / (he->next->vertex->p.y - he->vertex->p.y);
-            if(p.x < (he->vertex->p.x + vt * (he->next->vertex->p.x - he->vertex->p.x)))cnt++;
+        if(he.get()->vertex->p.y <= p.y && he.get()->next->vertex->p.y > p.y){
+            vt = (p.y - he->vertex->p.y) / (he.get()->next->vertex->p.y - he.get()->vertex->p.y);
+            if(p.x < (he.get()->vertex->p.x + vt * (he.get()->next->vertex->p.x - he.get()->vertex->p.x)))cnt++;
         }else if(he->vertex->p.y > p.y && he->next->vertex->p.y <= p.y){
             vt = (p.y - he->vertex->p.y)/(he->next->vertex->p.y - he->vertex->p.y);
             if(p.x < (he->vertex->p.x + vt * (he->next->vertex->p.x - he->vertex->p.x)))cnt--;
@@ -733,7 +731,7 @@ OUTLINE::OUTLINE(){
 
 OUTLINE::~OUTLINE(){
     std::vector<Vertex*> vertices;
-    for(auto itr = vertices.begin(); itr != vertices.end(); itr++)delete *itr;
+    for(auto itr = vertices.begin(); itr != vertices.end(); itr++){delete *itr; *itr = nullptr;}
 }
 
 void OUTLINE::addVertex(Vertex*v, int n){

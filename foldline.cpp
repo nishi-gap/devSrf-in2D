@@ -313,8 +313,6 @@ double Fruling(const std::vector<double> &a, std::vector<double> &grad, void* f_
     if(!grad.empty()){
         std::vector<HalfEdge*> Edges = od->Edges;
         std::vector<Vertex*> Poly_V = od->Poly_V;
-        std::vector<Vertex> tmp;
-        for(auto v: FoldingCurve)tmp.push_back(v.second);
         _FoldingAAAMethod(FoldingCurve, Edges, Poly_V, a[0] + eps, phi02, phim1, type);
        double fp = f_r(FoldingCurve);
         _FoldingAAAMethod(FoldingCurve, Edges, Poly_V, a[0] - eps, phi02, phim1, type);
@@ -1475,10 +1473,7 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, std::vector<HalfEdge
 
 //kokoga genninn
 std::vector<Vertex4d> TrimPoints2(std::vector<HalfEdge*>& Edges, std::vector<Face*>& Faces, std::vector<Vertex*>& Vertices, std::vector<Vertex4d>& FoldingCurve, double tol){
-    int Ind;
-    double mink;
-    std::vector<HalfEdge*>::iterator itr;
-    std::vector<Vertex*>::iterator itr_v;
+
     std::vector<Vertex4d> res = FoldingCurve;
     res.clear();
     size_t st = FoldingCurve.size();
@@ -1490,7 +1485,11 @@ std::vector<Vertex4d> TrimPoints2(std::vector<HalfEdge*>& Edges, std::vector<Fac
     }
 
     return res;
-
+    /*
+    int Ind;
+    double mink;
+    std::vector<HalfEdge*>::iterator itr;
+    std::vector<Vertex*>::iterator itr_v;
     for(auto fc = FoldingCurve.begin(); fc != FoldingCurve.end();){
         if(std::find(res.begin(), res.end(), *fc) != res.end()){fc++; continue;}
             for(auto&e: Edges){
@@ -1576,6 +1575,7 @@ std::vector<Vertex4d> TrimPoints2(std::vector<HalfEdge*>& Edges, std::vector<Fac
        }
     }while(Ind != -1);
     return res;
+    */
 }
 
 //間引いた後の数を指定

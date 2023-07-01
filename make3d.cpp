@@ -15,15 +15,8 @@ Model::Model(int _crvPtNum){
 }
 
 void Model::clear(){
-    for(auto itr = vertices.begin(); itr != vertices.end();){
-        delete *itr; itr++;
-    }vertices.clear();
-    for(auto itr = Edges.begin(); itr != Edges.end();){
-        delete *itr; itr++;
-    }Edges.clear();
-    for(auto itr = Faces.begin(); itr != Faces.end();){
-        delete *itr; itr++;
-    }Faces.clear();
+    for(auto itr = Faces.begin(); itr != Faces.end(); itr++)delete *itr;
+    Faces.clear(); Edges.clear(); vertices.clear();
 
     ol_vertices.clear();
     ColorPt = ColorPoint(200, std::numbers::pi/2.0);
@@ -235,11 +228,10 @@ void Model::setOutline(){
     int n = _outline.size();
     if(n < 3)return;
     clear();
-    HalfEdge*he;
     for(auto& p: _outline){
-        vertices.push_back(p);
-        he = new HalfEdge(p, EdgeType::ol);
-        Edges.push_back(he);
+        Vertex *_p = new Vertex(p);
+        vertices.push_back(_p);
+        Edges.push_back(new HalfEdge(_p, EdgeType::ol));
     }
     for(int i = 0; i < n; i++){
         Edges[i]->prev = Edges[(i + 1) % n];
@@ -469,9 +461,9 @@ void Model::ConnectEdge(HalfEdge *he){
     prev->next = next;
     next->prev = prev;
     std::vector<Vertex*>::iterator itr_v = std::find(vertices.begin(), vertices.end(), he->vertex);
-    delete he->vertex;
+    delete he->vertex; he->vertex = nullptr;
     if(itr_v != vertices.end())vertices.erase(itr_v);
-    delete he;
+    delete he; he = nullptr;
     std::vector<HalfEdge*>::iterator itr = std::find(Edges.begin(), Edges.end(), he);
     if(itr != Edges.end())Edges.erase(itr);
 
@@ -513,14 +505,15 @@ void Model::addRulings(){
             if(std::find(vertices.begin(), vertices.end(), std::get<1>(rl->r)) == vertices.end())vertices.push_back(std::get<1>(rl->r));
         }
     }
+    /*
     for(auto&v: vertices){//各vertexが持つhalfedgeのうち、edgesにないものを削除
         for (auto itr = v->halfedge.begin(); itr != v->halfedge.end();) {
             if(std::find(Edges.begin(), Edges.end(), *itr) == Edges.end()){
-                //delete *itr;
+                delete *itr;
                 itr = v->halfedge.erase(itr);
             }else ++itr;
         }
-    }
+    }*/
 }
 
 void Model::SelectCurve(QPointF pt){
