@@ -73,6 +73,7 @@ struct Vertex4d{
     bool operator != (const Vertex4d &V4d)const{ return first != V4d.first || second != V4d.second || third != V4d.third || IsCalc != V4d.IsCalc; }
     bool operator == (const Vertex &V)const{return first == V; }
     bool operator != (const Vertex &V)const{return first != V; }
+    void operator = (const Vertex4d &V){first = V.first; second = V.second; third = V.third; IsCalc = V.IsCalc;}
 };
 
 class crvpt{

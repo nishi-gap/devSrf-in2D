@@ -47,6 +47,31 @@ void GLWidget_3D::EraseNonFoldEdge(bool state){
 
 void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const HalfEdges Edges, const Surface_V _vertices,
                               const FoldLine3d& _FoldLine, const Ruling3d& _AllRulings, bool switchDraw){
+
+    auto Planerity  = [](const std::vector<glm::f64vec3>& vertices, const Polygon_V Poly_V)->double{
+        if(vertices.size() == 3)return 0.0;
+        else{
+            std::vector<glm::f64vec3> QuadPlane;
+            for(auto&v: vertices){
+                bool IsOutlineVertices = false;
+                for(auto&p: Poly_V){
+                    if(p->p3 == v)IsOutlineVertices = true;
+                }
+                if(!IsOutlineVertices)QuadPlane.push_back(v);
+            }
+            double l_avg = (glm::distance(QuadPlane[0], QuadPlane[2]) + glm::distance(QuadPlane[1], QuadPlane[3]))/2.0;
+            double d;
+            glm::f64vec3 u1 = glm::normalize(QuadPlane[0] - QuadPlane[2]), u2 = glm::normalize(QuadPlane[1]-  QuadPlane[3]);
+            if(glm::length(glm::cross(u1, u2)) < DBL_EPSILON){
+                glm::f64vec3 H = QuadPlane[3] + glm::dot(QuadPlane[1] - QuadPlane[3], u2)*u2;
+                d = glm::distance(H, QuadPlane[1]);
+            }else{
+                d = glm::length(glm::dot(glm::cross(u1,u2),  QuadPlane[2] - QuadPlane[3]))/glm::length(glm::cross(u1, u2));
+            }
+            return d/l_avg;
+        }
+    };
+
     std::vector<glm::f64vec3> vertices;
     drawdist = 0.0;
     Vertices.clear();
@@ -65,73 +90,74 @@ void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const
     TriMeshs.clear();
     switchDraw = false;
     if(!switchDraw){
+       // _faces.clear();
+       //_edges = EdgeCopy(Edges, _vertices);
+       //PlanarityColor.clear();
+       //EdgeRecconection(Poly_V, _faces, _edges);
         _faces.clear();
-       _edges = EdgeCopy(Edges, _vertices);
-       PlanarityColor.clear();
-       EdgeRecconection(Poly_V, _faces, _edges);
-       /*
-       if(IsEraseNonFoldEdge){
 
-           for(int i = 0; i< _FoldLine.size(); i++){
-               if(! _FoldLine[i].IsCalc){
+        if(_FoldLine.empty()){
+            for(auto&f: Faces){
+                vertices.clear();
+                HalfEdge *he = f->halfedge;
+                do{
+                    glm::f64vec3 v = glm::f64vec3(Scale * Mirror * glm::f64vec4(he->vertex->p3,1));
+                    vertices.push_back(v);
+                    he = he->next;
+                }while(he != f->halfedge);
+                PlanarityColor.push_back(Planerity(vertices, Poly_V));
 
-                   for(auto itr =  _edges.begin(); itr != _edges.end();){
-                       if(((*itr)->vertex->p ==  _FoldLine[i].first->p && (*itr)->next->vertex->p ==  _FoldLine[i].second->p) ||
-                               ((*itr)->vertex->p ==  _FoldLine[i].third->p && (*itr)->next->vertex->p ==  _FoldLine[i].first->p)){
-                           if((*itr)->pair != nullptr){
-                               (*itr)->pair->prev->next = (*itr)->pair->next; (*itr)->pair->next->prev = (*itr)->pair->prev;
-                               (*itr)->pair->face->ReConnect((*itr)->pair->prev);
-                               std::vector<HalfEdge*>::iterator itr_p = std::find(_edges.begin(), _edges.end(), (*itr)->pair);
-                               std::vector<Face*>::iterator itr_f = std::find(_faces.begin(), _faces.end(), (*itr)->face);
-                               _faces.erase(itr_f);_edges.erase(itr_p);
-                               delete (*itr)->pair;
-                           }else{
-                               (*itr)->prev->next = (*itr)->next; (*itr)->next->prev = (*itr)->prev;
-                               (*itr)->face->ReConnect((*itr)->prev);
-                           }
-                           (*itr)->prev->face->ReConnect((*itr)->prev);
-                           itr = _edges.erase(itr);
+                Vertices.push_back(vertices);
+            }
+        }else{
+            auto getClosestVertex = [](const Vertex *v, const Vertex* o, const FoldLine3d& FoldingCurve, bool IsSecond){
+               int V_max = -1;
+               double t_max = -1;
+               for(auto&fc: FoldingCurve){
+                   if(IsSecond){
+                       if((glm::length(fc.second->p - v->p) < 1e-7|| glm::length(fc.second->p - o->p) < 1e-7))continue;
+                       if(MathTool::is_point_on_line(fc.second->p, v->p, o->p)){
+                           double t = glm::distance(fc.second->p, o->p)/glm::distance(v->p, o->p);
+                           if(t > t_max){ t_max = t; V_max = std::distance(FoldingCurve.begin(), std::find(FoldingCurve.begin(), FoldingCurve.end(), fc)); }
                        }
-                       else itr++;
+                   }else{
+                       if((glm::length(fc.third->p - v->p) < 1e-7|| glm::length(fc.third->p - o->p) < 1e-7))continue;
+                       if(MathTool::is_point_on_line(fc.third->p, v->p, o->p)){
+                           double t = glm::distance(fc.third->p, o->p)/glm::distance(v->p, o->p);
+                           if(t > t_max){ t_max = t; V_max = std::distance(FoldingCurve.begin(), std::find(FoldingCurve.begin(), FoldingCurve.end(), fc)); }
+                       }
                    }
+
                }
-            }
+               return V_max;
+            };
 
-       }*/
-        for(auto&f: _faces){
-            vertices.clear();
-            HalfEdge *he = f->halfedge;
-            do{
-                glm::f64vec3 v = glm::f64vec3(Scale * Mirror * glm::f64vec4(he->vertex->p3,1));
-                vertices.push_back(v);
-                he = he->next;
-            }while(he != f->halfedge);
-            double c;
-            if(vertices.size() == 3)c = 0.0;
-            else{
-                std::vector<glm::f64vec3> QuadPlane;
-                for(auto&v: vertices){
-                    bool IsOutlineVertices = false;
-                    for(auto&p: Poly_V){
-                        if(p->p3 == v)IsOutlineVertices = true;
-                    }
-                    if(!IsOutlineVertices)QuadPlane.push_back(v);
-                }
-                double l_avg = (glm::distance(QuadPlane[0], QuadPlane[2]) + glm::distance(QuadPlane[1], QuadPlane[3]))/2.0;
-                double d;
-                glm::f64vec3 u1 = glm::normalize(QuadPlane[0] - QuadPlane[2]), u2 = glm::normalize(QuadPlane[1]-  QuadPlane[3]);
-                if(glm::length(glm::cross(u1, u2)) < DBL_EPSILON){
-                    glm::f64vec3 H = QuadPlane[3] + glm::dot(QuadPlane[1] - QuadPlane[3], u2)*u2;
-                    d = glm::distance(H, QuadPlane[1]);
-                }else{
-                    d = glm::length(glm::dot(glm::cross(u1,u2),  QuadPlane[2] - QuadPlane[3]))/glm::length(glm::cross(u1, u2));
-                }
-                c = d/l_avg;
-            }
-            PlanarityColor.push_back(c);
+            int rsec = getClosestVertex(_FoldLine[0].second, _FoldLine[0].first, _FoldLine, true), rthi = getClosestVertex(_FoldLine[0].third, _FoldLine[0].first, _FoldLine, false);
+            int lsec = getClosestVertex(_FoldLine.back().second, _FoldLine.back().first, _FoldLine, true), lthi = getClosestVertex(_FoldLine.back().third, _FoldLine.back().first, _FoldLine, false);
 
-            Vertices.push_back(vertices);
+            for(int i = 0; i < (int)_FoldLine.size() - 1; i++){
+                vertices.clear();
+                vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine[i].first->p3,1)));
+                if(!(rsec != -1 && i == 0))vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine[i].second->p3,1)));
+                if(i == rsec)vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine[0].second->p3,1)));
+                if(i == lsec - 1)vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine.back().second->p3,1)));
+                if(!(lsec != -1 && i == (int)_FoldLine.size() - 2))vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine[i+1].second->p3,1)));
+                vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine[i+1].first->p3,1)));
+                PlanarityColor.push_back(Planerity(vertices, Poly_V));
+                Vertices.push_back(vertices);
+
+                vertices.clear();
+                vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine[i].first->p3,1)));
+                vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine[i+1].first->p3,1)));
+                if(!(lthi != -1 && i == (int)_FoldLine.size() - 2))vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine[i+1].third->p3,1)));
+                if(i == rthi)vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine.front().third->p3,1)));
+                if(i == lthi - 1)vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine.back().third->p3,1)));
+                if(!(rthi != -1 && i == 0))vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine[i].third->p3,1)));
+                PlanarityColor.push_back(Planerity(vertices, Poly_V));
+                Vertices.push_back(vertices);
+            }
         }
+
     }else{
         for(auto&f: Faces){         
             vertices.clear();
@@ -141,29 +167,8 @@ void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const
                 vertices.push_back(v);
                 he = he->next;
             }while(he != f->halfedge);
-            double c;
-            if(vertices.size() == 3)c = 0.0;
-            else{
-                std::vector<glm::f64vec3> QuadPlane;
-                for(auto&v: vertices){
-                    bool IsOutlineVertices = false;
-                    for(auto&p: Poly_V){
-                        if(p->p3 == v)IsOutlineVertices = true;
-                    }
-                    if(!IsOutlineVertices)QuadPlane.push_back(v);
-                }
-                double l_avg = (glm::distance(QuadPlane[0], QuadPlane[2]) + glm::distance(QuadPlane[1], QuadPlane[3]))/2.0;
-                double d;
-                glm::f64vec3 u1 = glm::normalize(QuadPlane[0] - QuadPlane[2]), u2 = glm::normalize(QuadPlane[1]-  QuadPlane[3]);
-                if(glm::length(glm::cross(u1, u2)) < DBL_EPSILON){
-                    glm::f64vec3 H = QuadPlane[3] + glm::dot(QuadPlane[1] - QuadPlane[3], u2)*u2;
-                    d = glm::distance(H, QuadPlane[1]);
-                }else{
-                    d = glm::length(glm::dot(glm::cross(u1,u2),  QuadPlane[2] - QuadPlane[3]))/glm::length(glm::cross(u1, u2));
-                }
-                c = d/l_avg;
-            }
-            PlanarityColor.push_back(c);
+
+            PlanarityColor.push_back(Planerity(vertices, Poly_V));
             Vertices.push_back(vertices);
         }
     }

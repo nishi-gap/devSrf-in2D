@@ -18,7 +18,7 @@ MainWindow::MainWindow(QWidget *parent)
                };
 
     connect(ui->SelectButton, &QCheckBox::stateChanged, ui->glWid2dim, &GLWidget_2D::InitializeDrawMode);
-
+    setGeometry(0,0,1250, 620);
     //色の最大値
     connect(ui->ColorLimitation, &QSpinBox::valueChanged, this, &MainWindow::ChangeMaxColor);
     connect(ui->BinaryMVColor, &QCheckBox::clicked, ui->glWid2dim, &GLWidget_2D::VisualizeMVColor);//山谷の色を二値化するかグラデーションを描画するか切り替える
@@ -72,17 +72,14 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->ConnectVertices, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::ConnectVertices);
 
     //FoldLine
-    connect(ui->addFL_line, &QPushButton::clicked, this, &MainWindow::addFoldLine_l);
-    connect(ui->addFL_arc, &QPushButton::clicked, this, &MainWindow::addFoldLine_arc);
     connect(ui->addFL_bezier, &QPushButton::clicked, this, &MainWindow::addFoldLine_bezier);
     connect(this, &MainWindow::signalFLtype, ui->glWid2dim, &GLWidget_2D::changeFoldType);
-    connect(ui->color_FL, &QPushButton::clicked, this, &MainWindow::color_FL);  
-    connect(ui->move_ctrl_pt_fl, &QPushButton::clicked, this, &MainWindow::moveCtrlPts_fl);
     connect(ui->ToleranceValue, &QSlider::valueChanged, this, &MainWindow::changeToleranceValue_Slider);
     connect(ui->TolValue, &QDoubleSpinBox::valueChanged, this, &MainWindow::changeToleranceValue_Spin);
+    connect(ui->SmoothingButton, &QPushButton::clicked, this, &MainWindow::StartSmoothingSurface);
+    connect(ui->SimpleSmoothButton, &QPushButton::clicked, this, &MainWindow::SimpleSmoothing);
 
     //fold line debug
-    connect(ui->addFL_test, &QPushButton::clicked, this, &MainWindow::addFoldLine_test);    
     connect(ui->startButton, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::Start4Debug_CF);
     connect(ui->OptBtn, &QPushButton::clicked, this, &MainWindow::StartOptimization);
     connect(ui->angleSlider, &QSlider::sliderMoved, this, &MainWindow::changeAngleFromSlider);
@@ -145,7 +142,7 @@ void MainWindow::EraseNonFoldEdge(bool state){
     ui->glWid2dim->EraseNonFoldEdge(state);
     ui->glWid3dim->EraseNonFoldEdge(state);
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
-    auto Poly_V = ui->glWid2dim->model->outline->getVertices();
+
     ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
                                ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
 }
@@ -183,8 +180,26 @@ void MainWindow::StartOptimization(){
         ui->glWid2dim->update();
         ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
     }
+}
 
+void MainWindow::StartSmoothingSurface(){
+    auto Poly_V = ui->glWid2dim->model->outline->getVertices();
+    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+    bool res = ui->glWid2dim->model->FL[0]->Optimization_SmooothSrf(Poly_V);
+    if(res){
+        ui->glWid2dim->update();
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
+    }
+}
 
+void MainWindow::SimpleSmoothing(){
+    auto Poly_V = ui->glWid2dim->model->outline->getVertices();
+    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+    bool res = ui->glWid2dim->model->FL[0]->SimpleSmooothSrf(Poly_V);
+    if(res){
+        ui->glWid2dim->update();
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
+    }
 }
 
 void MainWindow::changeAngleFromSlider(int val){
@@ -272,7 +287,6 @@ void MainWindow::switchActivateCheckBox(PaintTool active){
 void MainWindow::keyPressEvent(QKeyEvent *e){
     static bool switchDraw = false;
 
-    auto Poly_V = ui->glWid2dim->model->outline->getVertices();
     ui->glWid3dim->receiveKeyEvent(e);
     ui->glWid2dim->receiveKeyEvent(e);
     if(e->key() == Qt::Key_Q){
@@ -311,30 +325,11 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         double a = (double)ui->angleSlider->value()/100.0;
         auto Edges = ui->glWid2dim->model->Edges;
         auto vertices = ui->glWid2dim->model->vertices;
-        ui->glWid2dim->model->FL[0]->Optimization2(Edges, vertices, Poly_V, a);
         ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
                                    ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->model->FL[0]->AllRulings);
     }else if(e->modifiers().testFlag(Qt::ControlModifier)){
         if(e->key() == Qt::Key_S)exportobj();
     }
-    /*
-    if(e->key() == Qt::Key_F1){
-        double tol = ui->testValue->value();
-        tol = std::numbers::pi/4.0;
-        std::vector<Vertex4d> resCurve;
-        std::cout <<"before  " << ui->glWid2dim->model->FL[0]->FoldingCurve.size() << std::endl;
-        Douglas_Peucker_algorithm(ui->glWid2dim->model->FL[0]->FoldingCurve, resCurve, tol);
-        ui->glWid2dim->model->FL[0]->FoldingCurve = resCurve;
-        std::cout <<"after  " << resCurve.size() << std::endl;
-        if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
-        else if(!ui->glWid2dim->model->FL.empty()){
-            ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
-                                       ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->SingleRuling, ui->glWid2dim->AllRulings, switchDraw);
-        }
-        else{
-            ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
-        }
-    }*/
     else{
 
     }
@@ -366,7 +361,6 @@ void MainWindow::mouseMoveEvent(QMouseEvent *e){
 
         }
     }
-
 }
 
 //https://nprogram.hatenablog.com/entry/2017/08/10/082236
@@ -377,42 +371,119 @@ void MainWindow::exportobj(){
         msgBox.exec();
         return;
     }
-
+    QSize WindowSize = this->size();
     QStringList WriteList;
     std::vector<glm::f64vec3> Normals;
     glm::f64vec3 befN = {0,0,0}, N;
     glm::f64mat4x4 Mirror = glm::mat4(1.0f); Mirror[1][1] = -1;
-   std::vector<Face*> outputFace;
+   //std::vector<Face*> outputFace;
    auto Poly_V = ui->glWid2dim->model->outline->getVertices();
-   auto _edges = EdgeCopy(ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
-   EdgeRecconection(Poly_V, outputFace, _edges);
+   std::vector<std::vector<glm::f64vec3>> Vertices;
+   //auto _edges = EdgeCopy(ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
+   //EdgeRecconection(Poly_V, outputFace, _edges);
 
-    for(auto& f: outputFace){
-        HalfEdge *h = f->halfedge;
-        do{
-            glm::f64vec3 v = Mirror * glm::f64vec4{h->vertex->p3, 1};
-            WriteList.append("v " + QString::number(v.x) + " " + QString::number(v.y) + " " + QString::number(v.z) + "\n");
-            h = h->next;
-        }while(h != f->halfedge);
-        glm::f64vec3 v = Mirror * glm::f64vec4{h->vertex->p3, 1};
-        glm::f64vec3 v2 = Mirror * glm::f64vec4{h->next->vertex->p3, 1};
-        glm::f64vec3 v3 = Mirror * glm::f64vec4{h->next->next->vertex->p3, 1};
-        N = -glm::normalize(glm::cross(v3 - v, v2 - v));
-        //if(glm::dot(befN, N) < 0) N *= -1;
+   auto Planerity  = [](const std::vector<glm::f64vec3>& vertices, const Polygon_V Poly_V)->double{
+       if(vertices.size() == 3)return 0.0;
+       else{
+           std::vector<glm::f64vec3> QuadPlane;
+           for(auto&v: vertices){
+               bool IsOutlineVertices = false;
+               for(auto&p: Poly_V){
+                   if(p->p3 == v)IsOutlineVertices = true;
+               }
+               if(!IsOutlineVertices)QuadPlane.push_back(v);
+           }
+           double l_avg = (glm::distance(QuadPlane[0], QuadPlane[2]) + glm::distance(QuadPlane[1], QuadPlane[3]))/2.0;
+           double d;
+           glm::f64vec3 u1 = glm::normalize(QuadPlane[0] - QuadPlane[2]), u2 = glm::normalize(QuadPlane[1]-  QuadPlane[3]);
+           if(glm::length(glm::cross(u1, u2)) < DBL_EPSILON){
+               glm::f64vec3 H = QuadPlane[3] + glm::dot(QuadPlane[1] - QuadPlane[3], u2)*u2;
+               d = glm::distance(H, QuadPlane[1]);
+           }else{
+               d = glm::length(glm::dot(glm::cross(u1,u2),  QuadPlane[2] - QuadPlane[3]))/glm::length(glm::cross(u1, u2));
+           }
+           return d/l_avg;
+       }
+   };
+   auto getClosestVertex = [](const Vertex *v, const Vertex* o, const FoldLine3d& FoldingCurve, bool IsSecond){
+      int V_max = -1;
+      double t_max = -1;
+      for(auto&fc: FoldingCurve){
+          if(IsSecond){
+              if((glm::length(fc.second->p - v->p) < 1e-7|| glm::length(fc.second->p - o->p) < 1e-7))continue;
+              if(MathTool::is_point_on_line(fc.second->p, v->p, o->p)){
+                  double t = glm::distance(fc.second->p, o->p)/glm::distance(v->p, o->p);
+                  if(t > t_max){ t_max = t; V_max = std::distance(FoldingCurve.begin(), std::find(FoldingCurve.begin(), FoldingCurve.end(), fc)); }
+              }
+          }else{
+              if((glm::length(fc.third->p - v->p) < 1e-7|| glm::length(fc.third->p - o->p) < 1e-7))continue;
+              if(MathTool::is_point_on_line(fc.third->p, v->p, o->p)){
+                  double t = glm::distance(fc.third->p, o->p)/glm::distance(v->p, o->p);
+                  if(t > t_max){ t_max = t; V_max = std::distance(FoldingCurve.begin(), std::find(FoldingCurve.begin(), FoldingCurve.end(), fc)); }
+              }
+          }
+
+      }
+      return V_max;
+   };
+   std::vector<double> planerity_value;
+   if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty()){
+       for(auto&f: ui->glWid2dim->model->Faces){
+          std::vector<glm::f64vec3> vertices;
+           HalfEdge *he = f->halfedge;
+           do{
+               vertices.push_back(Mirror * glm::f64vec4{he->vertex->p3, 1});
+               he = he->next;
+           }while(he != f->halfedge);
+           planerity_value.push_back(Planerity(vertices, Poly_V));
+           Vertices.push_back(vertices);
+       }
+   }else{
+       std::vector<Vertex4d> FoldLine = ui->glWid2dim->model->FL[0]->FoldingCurve;
+       int rsec = getClosestVertex(FoldLine[0].second, FoldLine[0].first, FoldLine, true), rthi = getClosestVertex(FoldLine[0].third, FoldLine[0].first, FoldLine, false);
+       int lsec = getClosestVertex(FoldLine.back().second, FoldLine.back().first, FoldLine, true), lthi = getClosestVertex(FoldLine.back().third, FoldLine.back().first, FoldLine, false);
+
+       for(int i = 0; i < (int)FoldLine.size() - 1; i++){
+           std::vector<glm::f64vec3> vertices;
+           vertices.push_back(Mirror * glm::f64vec4{FoldLine[i].first->p3, 1});
+           if(!(rsec != -1 && i == 0))vertices.push_back(Mirror * glm::f64vec4{FoldLine[i].second->p3, 1});
+           if(i == rsec)vertices.push_back(Mirror * glm::f64vec4{FoldLine[0].second->p3, 1});
+           if(i == lsec - 1)vertices.push_back(Mirror * glm::f64vec4{FoldLine.back().second->p3, 1});
+           if(!(lsec != -1 && i == (int)FoldLine.size() - 2))vertices.push_back(Mirror * glm::f64vec4{FoldLine[i+1].second->p3, 1});
+           vertices.push_back(Mirror * glm::f64vec4{FoldLine[i+1].first->p3, 1});
+           planerity_value.push_back(Planerity(vertices, Poly_V));
+           Vertices.push_back(vertices);
+
+           vertices.clear();
+           vertices.push_back(Mirror * glm::f64vec4{FoldLine[i].first->p3, 1});
+           vertices.push_back(Mirror * glm::f64vec4{FoldLine[i+1].first->p3, 1});
+           if(!(lthi != -1 && i == (int)FoldLine.size() - 2))vertices.push_back(Mirror * glm::f64vec4{FoldLine[i+1].third->p3, 1});
+           if(i == rthi)vertices.push_back(Mirror * glm::f64vec4{FoldLine.front().third->p3, 1});
+           if(i == lthi - 1)vertices.push_back(Mirror * glm::f64vec4{FoldLine.back().third->p3, 1});
+           if(!(rthi != -1 && i == 0))vertices.push_back(Mirror * glm::f64vec4{FoldLine[i].third->p3, 1});
+           planerity_value.push_back(Planerity(vertices, Poly_V));
+           Vertices.push_back(vertices);
+       }
+   }
+
+    for(const auto& mesh: Vertices){
+        for(const auto&v: mesh)WriteList.append("v " + QString::number(v.x) + " " + QString::number(v.y) + " " + QString::number(v.z) + "\n");
+        glm::f64vec3 v = Mirror * glm::f64vec4{mesh[0], 1};
+        glm::f64vec3 v2 = Mirror * glm::f64vec4{mesh[1], 1};
+        glm::f64vec3 v3 = Mirror * glm::f64vec4{mesh[2], 1};
+        N = glm::normalize(glm::cross(v3 - v, v2 - v));
         Normals.push_back(N);
         befN = N;
     }
-    for(auto&n : Normals) WriteList.append("vn " + QString::number(n.x) + " " + QString::number(n.y) + " " + QString::number(n.z) + "\n");
+    for(const auto&n : Normals) WriteList.append("vn " + QString::number(n.x) + " " + QString::number(n.y) + " " + QString::number(n.z) + "\n");
 
     int cnt = 1;
-    for(int i = 0; i < (int)outputFace.size(); i++){
+    for(int i = 0; i < (int)Vertices.size(); i++){
         QString s = "f ";
-        HalfEdge *h = outputFace[i]->halfedge;
-        do{
+        for(const auto& v: Vertices[i]){
             s += QString::number(cnt) + "//" + QString::number(i+1) + " ";
             cnt++;
-            h = h->next;
-        }while(h != outputFace[i]->halfedge);
+        }
         s += "\n";
         WriteList.append(s);
     }
@@ -436,7 +507,7 @@ void MainWindow::exportobj(){
         out << item;
     }
     CurDir.cd(CSVDir);
-    //平面性の結果 
+    //平面性の結果
     QFile QuantitativeResult_file(fileName.split(u'.')[0] + "QuantitativeResult.csv");
     if (!QuantitativeResult_file.open(QIODevice::WriteOnly)) {
             QMessageBox::information(this, tr("Unable to open file"), file.errorString());
@@ -445,12 +516,15 @@ void MainWindow::exportobj(){
 
     QTextStream QuantitativeResult(&QuantitativeResult_file);
     QuantitativeResult << "Planarity\n" ;
-    for(auto&c: ui->glWid3dim->PlanarityColor)QuantitativeResult << c << ", ";
+    for(auto&c: planerity_value)QuantitativeResult << c << ", ";
     QuantitativeResult << "\nDevelopability\n" ;
-    for(auto&v: ui->glWid2dim->model->vertices){
-        double a = v->developability();
-        if(a != -1)QuantitativeResult << a << ", ";
+    if(!(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())){
+        for(auto&v: ui->glWid2dim->model->FL[0]->FoldingCurve){
+            double a = v.first->developability();
+            if(a != -1)QuantitativeResult << a << ", ";
+        }
     }
+
 
 }
 

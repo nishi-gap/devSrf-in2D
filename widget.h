@@ -80,6 +80,8 @@ public slots:
     void StartOptimization();
     void changeToleranceValue_Slider(int val);
     void changeToleranceValue_Spin(double val);
+    void StartSmoothingSurface();
+    void SimpleSmoothing();
 
     //Line Width
     void changeLineWidthFromSlider(int n);
