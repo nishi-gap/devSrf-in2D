@@ -12,12 +12,9 @@ MainWindow::MainWindow(QWidget *parent)
     ui->glWid2dim->DivSize = ui->DivSizeSpinBox->value();
     //model = new Model(crvPtNum);
     //ui->glWid2dim->model = model;
-    CBoxlist = {{ui->SelectButton, PaintTool::None}, {ui->outline_rectangle, PaintTool::Rectangle_ol}, {ui->outline_polygon,  PaintTool::Polygon_ol},
-                {ui->outline_polyline, PaintTool::Polyline_ol}, {ui->EditVertexButton, PaintTool::EditVertex_ol}, {ui->MoveOutLineButton, PaintTool::Move_ol},
-                 {ui->Reset, PaintTool::Reset}
-               };
+    CBoxlist = {{ui->outline_rectangle, PaintTool::Rectangle_ol}, {ui->outline_polygon,  PaintTool::Polygon_ol},{ui->outline_polyline, PaintTool::Polyline_ol},
+                {ui->EditVertexButton, PaintTool::EditVertex_ol}, {ui->MoveOutLineButton, PaintTool::Move_ol},{ui->Reset, PaintTool::Reset}};
 
-    connect(ui->SelectButton, &QCheckBox::stateChanged, ui->glWid2dim, &GLWidget_2D::InitializeDrawMode);
     setGeometry(0,0,1250, 620);
     //色の最大値
     connect(ui->ColorLimitation, &QSpinBox::valueChanged, this, &MainWindow::ChangeMaxColor);
@@ -78,6 +75,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->TolValue, &QDoubleSpinBox::valueChanged, this, &MainWindow::changeToleranceValue_Spin);
     connect(ui->SmoothingButton, &QPushButton::clicked, this, &MainWindow::StartSmoothingSurface);
     connect(ui->SimpleSmoothButton, &QPushButton::clicked, this, &MainWindow::SimpleSmoothing);
+    connect(ui->ReassinColorButton, &QPushButton::clicked, this, &MainWindow::ReassinColor);
 
     //fold line debug
     connect(ui->startButton, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::Start4Debug_CF);
@@ -94,8 +92,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this, &MainWindow::signalNewSelectedCrv, ui->glWid2dim, &GLWidget_2D::changeSelectedCurve);
     connect(this, &MainWindow::swapIndex, ui->glWid2dim, &GLWidget_2D::swapCrvsOnLayer);
 
-    //developability
-    connect(ui->DevelopabilityButton, &QCheckBox::clicked, ui->glWid2dim, &GLWidget_2D::checkDevelopability);
+
     //planarity
     connect(ui->PlanarityButton, &QCheckBox::clicked, ui->glWid3dim, &GLWidget_3D::PlanarityDispay);
     //Erase Non Fold Edge
@@ -137,7 +134,6 @@ void MainWindow::ModelBack(){
     ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
 }
 
-
 void MainWindow::EraseNonFoldEdge(bool state){
     ui->glWid2dim->EraseNonFoldEdge(state);
     ui->glWid3dim->EraseNonFoldEdge(state);
@@ -150,6 +146,9 @@ void MainWindow::EraseNonFoldEdge(bool state){
 void MainWindow::changeToleranceValue_Slider(int val){
     double maxSpin = ui->TolValue->maximum(), maxSlider = ui->ToleranceValue->maximum();
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+    if(!ui->BinaryMVColor->isChecked())ui->BinaryMVColor->setChecked(true);
+    ui->glWid2dim->setNewGradationMode();
+    ui->glWid2dim->VisualizeMVColor(true);
     double tol = maxSpin * (double)val/(double)maxSlider;
     ui->TolValue->setValue(tol);
     ui->glWid2dim->model->FL[0]->SimplifyModel(ui->glWid2dim->model->Faces,  ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, tol);
@@ -161,6 +160,10 @@ void MainWindow::changeToleranceValue_Slider(int val){
 void MainWindow::changeToleranceValue_Spin(double val){
     double maxSpin = ui->TolValue->maximum(), maxSlider = ui->ToleranceValue->maximum();
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+    if(!ui->BinaryMVColor->isChecked())ui->BinaryMVColor->setChecked(true);
+    ui->glWid2dim->setNewGradationMode();
+    ui->glWid2dim->VisualizeMVColor(true);
+
     ui->ToleranceValue->setValue(int(val/maxSpin * maxSlider));
     ui->glWid2dim->model->FL[0]->SimplifyModel(ui->glWid2dim->model->Faces,  ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, val);
     ui->glWid2dim->update();
@@ -170,11 +173,10 @@ void MainWindow::changeToleranceValue_Spin(double val){
 
 
 void MainWindow::StartOptimization(){
-    static bool IsValidSigmoid = true;
-    IsValidSigmoid = !IsValidSigmoid;
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
     auto Poly_V = ui->glWid2dim->model->outline->getVertices();
-    bool res = ui->glWid2dim->model->FL[0]->Optimization_FlapAngle(ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, Poly_V, keyType, IsValidSigmoid);
+    double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
+    bool res = ui->glWid2dim->model->FL[0]->Optimization_FlapAngle(ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, Poly_V, wb, wp);
     if(res){
         //ui->glWid2dim->model->deform();
         ui->glWid2dim->update();
@@ -185,10 +187,12 @@ void MainWindow::StartOptimization(){
 void MainWindow::StartSmoothingSurface(){
     auto Poly_V = ui->glWid2dim->model->outline->getVertices();
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
-    bool res = ui->glWid2dim->model->FL[0]->Optimization_SmooothSrf(Poly_V);
-    if(res){
+    bool ICE = ui->ConnectEndPointBox->isChecked();
+    auto res = ui->glWid2dim->model->FL[0]->Optimization_SmooothSrf(Poly_V, ICE);
+    if(!res.empty()){
         ui->glWid2dim->update();
         ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
+        ui->glWid3dim->ReceiveParam(res);
     }
 }
 
@@ -282,7 +286,20 @@ void MainWindow::switchActivateCheckBox(PaintTool active){
     }
 
 }
-
+void MainWindow::ReassinColor(){
+    if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
+    else if(!ui->glWid2dim->model->FL.empty()){
+        ui->glWid2dim->model->FL[0]->ReassignColor(ui->glWid2dim->model->Edges, ui->glWid2dim->model->ColorPt);
+        ui->glWid2dim->model->deform();
+        ui->glWid2dim->update();
+        ui->glWid2dim->model->FL[0]->modifyFoldingCurvePositionOn3d(ui->glWid2dim->model->Edges);
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
+                                   ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings, false);
+    }
+    else{
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
+    }
+}
 
 void MainWindow::keyPressEvent(QKeyEvent *e){
     static bool switchDraw = false;
@@ -299,6 +316,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         else if(!ui->glWid2dim->model->FL.empty()){
             ui->glWid2dim->model->FL[0]->ReassignColor(ui->glWid2dim->model->Edges, ui->glWid2dim->model->ColorPt);
             ui->glWid2dim->model->deform();
+            ui->glWid2dim->model->FL[0]->modifyFoldingCurvePositionOn3d(ui->glWid2dim->model->Edges);
             ui->glWid2dim->update();
 
             ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
@@ -320,13 +338,6 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         }
     }
     else if(e->key() == Qt::Key_3 ||e->key() == Qt::Key_4){
-    }
-    if(e->key() == Qt::Key_W){
-        double a = (double)ui->angleSlider->value()/100.0;
-        auto Edges = ui->glWid2dim->model->Edges;
-        auto vertices = ui->glWid2dim->model->vertices;
-        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
-                                   ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->model->FL[0]->AllRulings);
     }else if(e->modifiers().testFlag(Qt::ControlModifier)){
         if(e->key() == Qt::Key_S)exportobj();
     }
@@ -371,7 +382,6 @@ void MainWindow::exportobj(){
         msgBox.exec();
         return;
     }
-    QSize WindowSize = this->size();
     QStringList WriteList;
     std::vector<glm::f64vec3> Normals;
     glm::f64vec3 befN = {0,0,0}, N;
@@ -520,7 +530,7 @@ void MainWindow::exportobj(){
     QuantitativeResult << "\nDevelopability\n" ;
     if(!(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())){
         for(auto&v: ui->glWid2dim->model->FL[0]->FoldingCurve){
-            double a = v.first->developability();
+            double a = v.developability();
             if(a != -1)QuantitativeResult << a << ", ";
         }
     }
@@ -528,9 +538,7 @@ void MainWindow::exportobj(){
 
 }
 
-
 void MainWindow::addCurveBtn(){
-
     QRect geo = ui->LayerListWidget->geometry();
     int pad = 5;
     int btn_w = geo.width() - 2 * pad, btn_h = 25;

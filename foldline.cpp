@@ -11,14 +11,13 @@ std::ofstream ofs_Ebend, ofs_Eruling;
 inline glm::f64vec3 _calcruling3d(const double& a, glm::f64vec3 e, glm::f64vec3 e2, glm::f64vec3 axis, double& beta, std::vector<double>& Phi);
 void CalcRuling(double a, Vertex4d& xbef, Vertex4d& x, Vertex4d& xnext, std::vector<Vertex*>& Poly_V, double& a2, glm::f64vec3& SrfN);
 inline double update_flapangle(double a, const glm::f64vec3& befN, const glm::f64vec3& SrfN, const glm::f64vec3& e);
-void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Poly_V,double a, double phi02, double phim1, int type);
-Vertex* findAxisVertex(Vertex4d& R, Vertex *e1, Vertex *e2);
+void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex*>& Poly_V,double a);
 std::vector<Vertex4d> TrimPoints2(std::vector<HalfEdge*>& Edges, std::vector<Face*>& Faces, std::vector<Vertex*>& Vertices, std::vector<Vertex4d>& FoldingCurve, double tol);
 bool IsRulingCrossed(glm::f64vec3 N, glm::f64vec3& cp, glm::f64vec3& crossPoint,  std::vector<Vertex*>& Poly_V);
 std::vector<CrvPt_FL*> SetPointsOnCurve(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_v, std::vector<glm::f64vec3>& CtrlPts, int dim, int divSize);
 void Douglas_Peucker_algorithm(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex4d>& res, double tol = std::numbers::pi/9.0);
 void Douglas_Peucker_algorithm2(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex4d>& res, int size);
-Vertex* getClosestVertex(Vertex *v, Vertex* o,  std::vector<Vertex4d> FoldingCurve);
+Vertex* getClosestVertex(Vertex *v, Vertex* o,  const std::vector<Vertex4d>& FoldingCurve, bool SkipTrimedPoint = true);
 
 inline glm::f64vec3 calcCrossPoint_2Vector(Vertex* p1, Vertex* q1, Vertex* p2, Vertex* q2){
     Eigen::Matrix2d A; Eigen::Vector2d b;
@@ -26,10 +25,16 @@ inline glm::f64vec3 calcCrossPoint_2Vector(Vertex* p1, Vertex* q1, Vertex* p2, V
     b(0) = p2->p.x - p1->p.x; b(1) = p2->p.y - p1->p.y;
     A(0,0) = v1.x; A(0,1) = -v2.x;
     A(1,0) = v1.y; A(1,1) = -v2.y;
+    double t = ((p2->p.x - p1->p.x)*(p2->p.y - q2->p.y) - (p2->p.x - q2->p.x)*(p2->p.y - p1->p.y))/((q1->p.x - p1->p.x) * (p2->p.y - q2->p.y) - (p2->p.x - q2->p.x)*(q1->p.y - p1->p.y));
+    return glm::f64vec3{t * (q1->p.x - p1->p.x) + p1->p.x, t * (q1->p.y - p1->p.y) + p1->p.y, 0};
     Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
     return  x(0) * v1 + p1->p;
 }
 inline glm::f64vec3 calcCrossPoint_2Vector(glm::f64vec3 p1, glm::f64vec3 q1, glm::f64vec3 p2, glm::f64vec3 q2){
+
+    double t = ((p2.x - p1.x)*(p2.y - q2.y) - (p2.x - q2.x)*(p2.y - p1.y))/((q1.x - p1.x) * (p2.y - q2.y) - (p2.x - q2.x)*(q1.y - p1.y));
+    return glm::f64vec3{t * (q1.x - p1.x) + p1.x, t * (q1.y - p1.y) + p1.y, 0};
+
     Eigen::Matrix2d A; Eigen::Vector2d b;
     b(0) = p2.x - p1.x; b(1) = p2.y - p1.y;
     A(0,0) = (q1 - p1).x; A(0,1) = -(q2 - p2).x;
@@ -56,20 +61,20 @@ namespace RevisionVertices{
     using FoldLine3d = std::vector<Vertex4d>;
     struct OptimizeParam{
         FoldLine3d FC;
-        std::vector<HalfEdge*> Edges;
         std::vector<Vertex*> Vertices, Poly_V;
-        bool IsValidSigmoid;
-        double phi02, phim1;
         std::vector<double*> res_Fbend, res_Fruling, res_a;
-        int type;
-        OptimizeParam(FoldLine3d& _FC, std::vector<HalfEdge*>& _Edges, std::vector<Vertex*>& _Vertices, std::vector<Vertex*>& _Poly_V, double _phi02, double _phim1, int _t, bool IVS):
-            FC{_FC}, Edges{_Edges}, Vertices{_Vertices}, Poly_V{_Poly_V}, phi02{_phi02}, phim1{_phim1}, type{_t}, IsValidSigmoid{IVS}{}
+        double wb, wp;
+        void AddWeight(double _wb, double _wp){ wb = _wb; wp = _wp;}
+
+        OptimizeParam(FoldLine3d& _FC, std::vector<Vertex*>& _Vertices, std::vector<Vertex*>& _Poly_V):FC{_FC}, Vertices{_Vertices}, Poly_V{_Poly_V}{}
         ~OptimizeParam(){}
+    private:
+
     };
     struct OptimizeParam_v: public OptimizeParam{
         double a;
-        OptimizeParam_v(double _a, FoldLine3d& _FC, std::vector<HalfEdge*>& _Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V, double _phi02, double _phi01, int _t, bool IVS):
-            a{_a}, OptimizeParam::OptimizeParam( _FC, _Edges, Vertices,  Poly_V, _phi02, _phi01, _t, IVS){}
+        OptimizeParam_v(double _a, FoldLine3d& _FC,  std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V):
+            a{_a}, OptimizeParam::OptimizeParam( _FC, Vertices,  Poly_V){}
         ~OptimizeParam_v(){}
     };
     struct SmoothingArea{
@@ -87,17 +92,29 @@ namespace RevisionVertices{
             qt = getV(stP.first, stP.second, lastP.first, lastP.second);
             qb = getV(stP.first, stP.third, lastP.first, lastP.third);
         }
-        double Edev(std::vector<glm::f64vec3>& P, const double th = 1e-5){
+        double Edev(std::vector<glm::f64vec3>& P, bool IsConnectEndPoint, const double th = 1e-5){
             auto Angle = [](glm::f64vec3& e, glm::f64vec3& e2)->double{return (glm::dot(e, e2) >= 1)? 0: (glm::dot(e, e2) <= -1)? std::numbers::pi: std::acos(glm::dot(e, e2));  };
             double f = 0.0;
             glm::f64vec3 el, er, et, eb;
             for(int i = 0; i < (int)P.size(); i++){
                 if(i == 0)er = glm::normalize(stP.first->p3 - P[0]); else er = glm::normalize(P[i-1] - P[i]);
-                if(i == (int)P.size() - 1)el = glm::normalize(lastP.first->p3 - P[i]); else er = glm::normalize(P[i+1] - P[i]);
-                if(qt != nullptr)et = glm::normalize(qt->p3 - P[i]); else et = stP.second->p3 - stP.first->p3;
-                if(qb != nullptr)eb = glm::normalize(qb->p3 - P[i]); else eb = stP.third->p3 - stP.first->p3;
+                if(i == (int)P.size() - 1 || IsConnectEndPoint) el = glm::normalize(lastP.first->p3 - P[i]);
+                 else  el = glm::normalize(P[i+1] - P[i]);
+                if(qt != nullptr)et = glm::normalize(qt->p3 - P[i]);
+                else {
+                    et = (st_ind != 0)? glm::normalize(stP.second->p3 - stP.first->p3): glm::normalize(lastP.second->p3 - lastP.first->p3);
+                }
+                if(qb != nullptr)eb = glm::normalize(qb->p3 - P[i]);
+                else {
+                    eb = (st_ind != 0)? glm::normalize(stP.third->p3 - stP.first->p3): glm::normalize(lastP.third->p3 - lastP.first->p3);
+                }
                 f += (std::abs(2.0 * std::numbers::pi - (Angle(el, et) + Angle(et, er) + Angle(er, eb) + Angle(eb, el))) - th);
             }
+            return f;
+        }
+
+        double E_density(const std::vector<glm::f64vec3>& Qt, const std::vector<glm::f64vec3>& Qb){
+            double f = .0;
             return f;
         }
 
@@ -105,6 +122,7 @@ namespace RevisionVertices{
     };
     struct SmoothSurface{
         std::vector<SmoothingArea> SA;
+        bool IsConnectEndPoint;
     };
 
     using ObjData = OptimizeParam;
@@ -121,7 +139,7 @@ namespace RevisionVertices{
     double E_fair(std::vector<std::vector<glm::f64vec3>>& P, std::vector<double>& grad);
     double E_sim(std::vector<std::vector<glm::f64vec3>>& P, std::vector<std::vector<glm::f64vec3>>& Pori, std::vector<double>& grad);
     double E_iso(std::vector<std::vector<glm::f64vec3>>& P, std::vector<std::vector<glm::f64vec3>>& Pori, std::vector<double>& grad);
-    double E_planerity();
+    double E_planerity(const std::vector<Vertex4d>& FC, bool IsLeft4pt, bool IsRight4pt);
 
 
     double Minimize_SmoothSrf(const std::vector<double>& X, std::vector<double> &grad, void *f_data);
@@ -263,18 +281,24 @@ bool IsRulingCrossed (glm::f64vec3 N, glm::f64vec3& cp, glm::f64vec3& crossPoint
     return IsIntersected;
 }
 
-double Fbend2(std::vector<Vertex4d>& FoldingCurve, bool IsValidSigmoid){
+double Fparallel(std::vector<Vertex4d>& FoldingCurve){
+    std::vector<int>Vertices_Ind;
+    double f = 0.0;
+    for(int i = 0; i < (int)FoldingCurve.size(); i++){if(FoldingCurve[i].IsCalc)Vertices_Ind.push_back(i);}
+    for(int i = 1; i < (int)Vertices_Ind.size() - 2; i++){
+        f += glm::dot(glm::normalize(FoldingCurve[i].second->p - FoldingCurve[i].first->p), glm::normalize(FoldingCurve[i+1].second->p - FoldingCurve[i+1].first->p));
+    }
+    return f;
+}
+
+double Fbend2(std::vector<Vertex4d>& FoldingCurve){
     std::vector<int> Vertices_Ind;
-    auto Sigmoid =[](double x, bool IsValidSigmoid){
-        if(IsValidSigmoid)return 1.0/(1.0 + std::exp(-x));
-        return x;
-    };
     double f = 0.0;
     for(int i = 0; i < (int)FoldingCurve.size(); i++){if(FoldingCurve[i].IsCalc)Vertices_Ind.push_back(i);}
     glm::f64vec3 Nt = glm::normalize(glm::cross(FoldingCurve[0].first->p3 - FoldingCurve[Vertices_Ind[1]].first->p3, FoldingCurve[Vertices_Ind[1]].second->p3 - FoldingCurve[Vertices_Ind[1]].first->p3));
     glm::f64vec3 Nb = glm::normalize(glm::cross(FoldingCurve[Vertices_Ind[1]].third->p3 - FoldingCurve[Vertices_Ind[1]].first->p3, FoldingCurve[0].first->p3 - FoldingCurve[Vertices_Ind[1]].first->p3));
     double phi = ((glm::dot(Nt,Nb)) > 1)? std::numbers::pi: ((glm::dot(Nt,Nb)) < -1)? 0:  std::numbers::pi - abs(std::acos(glm::dot(Nt,Nb)));
-    f += Sigmoid(1.0/(phi*phi), IsValidSigmoid);
+    f += 1.0/(phi*phi);
     for(int i = 1; i < (int)Vertices_Ind.size() - 1; i++){
         glm::f64vec3 Ntp = glm::normalize(glm::cross(FoldingCurve[Vertices_Ind[i]].first->p3 - FoldingCurve[Vertices_Ind[i+1]].first->p3,
                 FoldingCurve[Vertices_Ind[i+1]].second->p3 - FoldingCurve[Vertices_Ind[i+1]].first->p3));
@@ -282,9 +306,9 @@ double Fbend2(std::vector<Vertex4d>& FoldingCurve, bool IsValidSigmoid){
                 FoldingCurve[Vertices_Ind[i]].first->p3 - FoldingCurve[Vertices_Ind[i+1]].first->p3));
 
         phi = ((glm::dot(Ntp,Nbp)) > 1)? std::numbers::pi: ((glm::dot(Ntp,Nbp)) < -1)? 0:  std::numbers::pi - abs(std::acos(glm::dot(Ntp,Nbp)));
-        f += Sigmoid(1.0/(phi*phi), IsValidSigmoid);
+        f += 1.0/(phi*phi);
         phi = ((glm::dot(Ntp,Nt)) > 1)? std::numbers::pi: ((glm::dot(Ntp,Nt)) < -1)? 0:  std::numbers::pi - std::acos(glm::dot(Ntp,Nt));
-        f += Sigmoid(1.0/(phi*phi), IsValidSigmoid);
+        f += 1.0/(phi*phi);
         Nt = Ntp; Nb = Nbp;
     }
     return f;
@@ -300,6 +324,10 @@ double RulingsCrossed(std::vector<Vertex4d>& FoldingCurve){
         for(int j = -1; j <= 1; j +=2){
             int i2 = i + j;
             if(i2 <= 0 || i2 >= (int)Vertices_Ind.size() - 1)continue;
+            glm::f64vec3 p1 = FoldingCurve[Vertices_Ind[i]].first->p, q1 = FoldingCurve[Vertices_Ind[i]].second->p, p2 = FoldingCurve[Vertices_Ind[i2]].first->p, q2 = FoldingCurve[Vertices_Ind[i2]].second->p;
+            double t = ((p2.x - p1.x)*(p2.y - q2.y) - (p2.x - q2.x)*(p2.y - p1.y))/((q1.x - p1.x) * (p2.y - q2.y) - (p2.x - q2.x)*(q1.y - p1.y));
+            if(0 < t && t < 1) f += 1.0/t;
+            continue;
             A(0,0) = FoldingCurve[Vertices_Ind[i]].first->p.x - FoldingCurve[Vertices_Ind[i]].second->p.x;
             A(0,1) = -(FoldingCurve[Vertices_Ind[i2]].first->p.x - FoldingCurve[Vertices_Ind[i2]].second->p.x);
             A(1,0) = FoldingCurve[Vertices_Ind[i]].first->p.y - FoldingCurve[Vertices_Ind[i]].second->p.y;
@@ -316,18 +344,15 @@ double RulingsCrossed(std::vector<Vertex4d>& FoldingCurve){
 double Fruling(const std::vector<double> &a, std::vector<double> &grad, void* f_data)
 {
     RevisionVertices::ObjData *od = (RevisionVertices::ObjData *)f_data;
-    double phi02 = od->phi02, phim1 = od->phim1;
-    int type = od->type;
     RevisionVertices::FoldLine3d FoldingCurve = od->FC;
     double f = RulingsCrossed(FoldingCurve);
     if(!grad.empty()){
-        std::vector<HalfEdge*> Edges = od->Edges;
         std::vector<Vertex*> Poly_V = od->Poly_V;
         std::vector<Vertex> tmp;
         for(auto v: FoldingCurve)tmp.push_back(v.second);
-        _FoldingAAAMethod(FoldingCurve, Edges, Poly_V, a[0] + eps, phi02, phim1, type);
+        _FoldingAAAMethod(FoldingCurve, Poly_V, a[0] + eps);
        double fp = RulingsCrossed(FoldingCurve);
-        _FoldingAAAMethod(FoldingCurve, Edges, Poly_V, a[0] - eps, phi02, phim1, type);
+        _FoldingAAAMethod(FoldingCurve, Poly_V, a[0] - eps);
        double fm = RulingsCrossed(FoldingCurve);
        grad[0] = (fp - fm)/(2.0 * eps);
        //for(int j = 0; j < (int)FoldingCurve.size(); j++)FoldingCurve[j].second->p3 = tmp[j].p3;
@@ -336,30 +361,28 @@ double Fruling(const std::vector<double> &a, std::vector<double> &grad, void* f_
     return f;
  }
 
-double ObjFunc(const std::vector<double> &a, std::vector<double> &grad, void* f_data){
+double ObjFunc_FlapAngle(const std::vector<double> &a, std::vector<double> &grad, void* f_data){
     RevisionVertices::ObjData *od = (RevisionVertices::ObjData *)f_data;
-    double phi02 = od->phi02, phim1 = od->phim1;
-    int type = od->type;
     RevisionVertices::FoldLine3d FoldingCurve = od->FC;
-    std::vector<HalfEdge*> Edges = od->Edges;
     std::vector<Vertex*>Poly_V = od->Poly_V;
-    _FoldingAAAMethod(FoldingCurve, Edges, Poly_V, a[0], phi02, phim1, type);
-    double f = Fbend2(FoldingCurve, od->IsValidSigmoid);
+    _FoldingAAAMethod(FoldingCurve, Poly_V, a[0]);
+    double fb = od->wb * Fbend2(FoldingCurve), fp = od->wp * Fparallel(FoldingCurve);
     if(!grad.empty()){
-        _FoldingAAAMethod(FoldingCurve, Edges, Poly_V, a[0] + eps, phi02, phim1, type);
-       double fp = Fbend2(FoldingCurve, od->IsValidSigmoid);
-        _FoldingAAAMethod(FoldingCurve, Edges, Poly_V, a[0] - eps, phi02, phim1, type);
-       double fm = Fbend2(FoldingCurve, od->IsValidSigmoid);
+        _FoldingAAAMethod(FoldingCurve, Poly_V, a[0] + eps);
+       double fp =  od->wb * Fbend2(FoldingCurve) + od->wp * Fparallel(FoldingCurve);
+        _FoldingAAAMethod(FoldingCurve, Poly_V, a[0] - eps);
+       double fm =  od->wb * Fbend2(FoldingCurve) + od->wp * Fparallel(FoldingCurve);
        grad[0] = (fp - fm)/(2.0 * eps);
     }
-    //std::cout <<"Fbend(" << glm::degrees(a[0]) << ")  =  " <<  f <<  " ,  " << grad[0] << std::endl;
-    if(ofs_Ebend.is_open())ofs_Ebend << a[0] <<", " << glm::degrees(a[0]) << ", " <<  f <<  " ,  " << grad[0] << std::endl;
-    return f;
+    //std::cout <<"Fbend(" << glm::degrees(a[0]) << ")  =  " <<  fb <<  " ,  " << grad[0] << "  ,  Fparalell = " << fp <<  std::endl;
+    if(ofs_Ebend.is_open())ofs_Ebend << a[0] <<", " << glm::degrees(a[0]) << ", " <<  fb <<  " ,  " << grad[0] << std::endl;
+    return fb + fp;
 }
 
 double RevisionVertices::Const_Edev(const std::vector<double>& X, std::vector<double> &grad, void *f_data){
     SmoothSurface *od = (SmoothSurface*)f_data;
     std::vector<SmoothingArea> SA = od->SA;
+    bool ICE = od->IsConnectEndPoint;
     double th = 1e-6;
     int ind = 0;
     std::vector<std::vector<glm::f64vec3>> P;
@@ -375,14 +398,14 @@ double RevisionVertices::Const_Edev(const std::vector<double>& X, std::vector<do
     ind = 0;
     if(!grad.empty()){
         for(int i = 0; i < (int)SA.size(); i++){
-            f += SA[i].Edev(P[i], th);
+            f += SA[i].Edev(P[i], ICE, th);
             double fp, fm;
             for(int n = 0; n < (int)P[i].size(); n++){
-                P[i][n].x += eps; fp = SA[i].Edev(P[i], th); P[i][n].x -= 2.0*eps; fm = SA[i].Edev(P[i], th);
+                P[i][n].x += eps; fp = SA[i].Edev(P[i], ICE, th); P[i][n].x -= 2.0*eps; fm = SA[i].Edev(P[i], ICE, th);
                 grad[ind] = (fp - fm)/(2.0*eps); P[i][n].x = X[ind++];
-                P[i][n].y += eps; fp = SA[i].Edev(P[i], th); P[i][n].y -= 2.0*eps; fm = SA[i].Edev(P[i], th);
+                P[i][n].y += eps; fp = SA[i].Edev(P[i], ICE, th); P[i][n].y -= 2.0*eps; fm = SA[i].Edev(P[i], ICE, th);
                 grad[ind] = (fp - fm)/(2.0*eps); P[i][n].y = X[ind++];
-                P[i][n].z += eps; fp = SA[i].Edev(P[i], th); P[i][n].z -= 2.0*eps; fm = SA[i].Edev(P[i], th);
+                P[i][n].z += eps; fp = SA[i].Edev(P[i], ICE, th); P[i][n].z -= 2.0*eps; fm = SA[i].Edev(P[i], ICE, th);
                 grad[ind] = (fp - fm)/(2.0*eps); P[i][n].z = X[ind++];
             }
         }
@@ -391,8 +414,21 @@ double RevisionVertices::Const_Edev(const std::vector<double>& X, std::vector<do
     return f;
 }
 
-double RevisionVertices::E_planerity(){
+double RevisionVertices::E_planerity(const std::vector<Vertex4d>& FC, bool IsLeft4pt, bool IsRight4pt){
+    double f = .0;
+    auto CalcPlanarity = [](glm::f64vec3& p, glm::f64vec3& q, glm::f64vec3& p2, glm::f64vec3& q2){
+        double l_avg = (glm::distance(p, q2) + glm::distance(q, p2))/2.0;
+        glm::f64vec3 u1 = glm::normalize(p - q2), u2 = glm::normalize(q -  p2);
+        if(glm::length(glm::cross(u1, u2)) < DBL_EPSILON)return glm::distance(p2 + glm::dot(q - p2, u2)*u2, q)/l_avg;
+        else return glm::length(glm::dot(glm::cross(u1,u2),  q2 - p2))/glm::length(glm::cross(u1, u2))/l_avg;
+    };
 
+    for(int i = 1; i < (int)FC.size() - 2; i++)f += CalcPlanarity(FC[i].first->p3, FC[i].second->p3, FC[i+1].first->p3, FC[i+1].second->p3);
+
+    if(IsLeft4pt)f += CalcPlanarity(FC[0].first->p3, FC[0].second->p3, FC[1].first->p3, FC[1].second->p3);
+    if(IsRight4pt)f += CalcPlanarity(FC.back().first->p3, FC.back().second->p3, FC.end()[-2].first->p3, FC.end()[-2].second->p3);
+
+    return f;
 }
 
 double RevisionVertices::E_iso(std::vector<std::vector<glm::f64vec3>>& P, std::vector<std::vector<glm::f64vec3>>& Pori, std::vector<double>& grad){
@@ -470,64 +506,95 @@ double RevisionVertices::Minimize_SmoothSrf(const std::vector<double>& X, std::v
         P.push_back(tmp); Pori.push_back(tmp_ori);
     }
     double f_sim, f_fair, f_iso;
+    double w_sim = 100, w_fair = 100, w_iso = 0.1;
     if(!grad.empty()){
         std::vector<double> dE_sim(grad.size()), dE_fair(grad.size()), dE_iso(grad.size());
         f_sim = RevisionVertices::E_sim(P, Pori, dE_sim); f_fair = RevisionVertices::E_fair(P, dE_fair), f_iso = RevisionVertices::E_iso(P, Pori, dE_iso);
-        for(int i = 0; i < (int)grad.size(); i++)grad[i] = dE_sim[i] + dE_fair[i] + dE_iso[i];
+        for(int i = 0; i < (int)grad.size(); i++)grad[i] = w_sim * dE_sim[i] + w_fair * dE_fair[i] + w_iso * dE_iso[i];
 
     }
     std::cout<< "similarilty = " << f_sim << "  ,  fairness = " << f_fair << ", isometric = " << f_iso << std::endl;
-    return f_sim + f_fair + f_iso;
+    return w_sim * f_sim + w_fair * f_fair + w_iso * f_iso;
 
 }
 
 bool FoldLine::SimpleSmooothSrf(const std::vector<Vertex*>& Poly_v){
-    int bef = 0;
-    for(auto&fc: FoldingCurve){
-        if(fc.IsCalc){
-            if(fc == FoldingCurve.front())continue;
-            auto getV = [](Vertex *o, Vertex *x, Vertex *o2, Vertex *x2)->Vertex*{
-                if(IsParallel(o, x, o2, x2))return nullptr;
-                glm::f64vec3 p2d = calcCrossPoint_2Vector(o, x, o2, x2);
-                glm::f64vec3 p3d = calcTargetDistanceOnPlane(p2d, o,  x, x2);
-                return  new Vertex(p2d, p3d);
-            };
-            Vertex *qt = getV(FoldingCurve[bef].first, FoldingCurve[bef].second, fc.first, fc.second);
-            //Vertex *qb = getV(FoldingCurve[bef].first, FoldingCurve[bef].third, fc.first, fc.third);
-            //Vertex *clst_t = itr_bef->second;
-           //if(itr_bef == FoldingCurve.begin()){
-           //     clst_t = getClosestVertex(itr_bef->first, itr_bef->second, FoldingCurve);
-           //     if(clst_t == nullptr)clst_t = itr_bef->second;
-           // }
-            int _fc = std::distance(FoldingCurve.begin(), std::find(FoldingCurve.begin(), FoldingCurve.end(), fc));
-            glm::f64vec3 r3d, r2d;
-            for(int i = bef + 1; i < _fc; i++){
-                if(qt == nullptr){
-                    r3d = glm::normalize(fc.second->p3 - fc.first->p3), r2d = glm::normalize(fc.second->p - fc.first->p);
+
+    auto getV = [](Vertex *o, Vertex *x, Vertex *o2, Vertex *x2)->Vertex*{
+        if(IsParallel(o, x, o2, x2))return nullptr;
+        glm::f64vec3 p2d = calcCrossPoint_2Vector(o, x, o2, x2);
+        glm::f64vec3 p3d = calcTargetDistanceOnPlane(p2d, o,  x, x2);
+        return  new Vertex(p2d, p3d);
+    };
+
+    glm::f64vec3 r3d, r2d, _r3d, _r2d;
+    std::vector<int>Vertices_Ind;
+    for(int i = 0; i < (int)FoldingCurve.size(); i++){if(FoldingCurve[i].IsCalc)Vertices_Ind.push_back(i);}
+
+    Vertex *qt;
+    for(int j = 0; j < (int)Vertices_Ind.size() - 1; j++){
+        qt = nullptr;
+        if(j != 0 && j != (int)Vertices_Ind.size() - 2){
+            qt = getV(FoldingCurve[Vertices_Ind[j]].first, FoldingCurve[Vertices_Ind[j]].second, FoldingCurve[Vertices_Ind[j+1]].first, FoldingCurve[Vertices_Ind[j+1]].second);
+             _r3d = glm::normalize(FoldingCurve[Vertices_Ind[j]].second->p3 - FoldingCurve[Vertices_Ind[j]].first->p3), _r2d = glm::normalize(FoldingCurve[Vertices_Ind[j]].second->p - FoldingCurve[Vertices_Ind[j]].first->p);
+        }
+        for(int i = Vertices_Ind[j] + 1; i < Vertices_Ind[j+1]; i++){
+            FoldingCurve[i].first->p3 = FoldingCurve[i].first->p3_ori; FoldingCurve[i].first->p = FoldingCurve[i].first->p2_ori;
+            if(j == 0){
+                r2d = glm::normalize(FoldingCurve[Vertices_Ind[1]].second->p - FoldingCurve[Vertices_Ind[1]].first->p);
+                r3d = glm::normalize(FoldingCurve[Vertices_Ind[1]].second->p3 - FoldingCurve[Vertices_Ind[1]].first->p3);
+            }else if(j == (int)Vertices_Ind.size() - 2){
+                r2d = glm::normalize(FoldingCurve[Vertices_Ind[j]].second->p - FoldingCurve[Vertices_Ind[j]].first->p);
+                r3d = glm::normalize(FoldingCurve[Vertices_Ind[j]].second->p3 - FoldingCurve[Vertices_Ind[j]].first->p3);
+            }else{
+                if(qt != nullptr){
+                    r2d = glm::normalize(qt->p - FoldingCurve[i].first->p); r3d = glm::normalize(qt->p3 - FoldingCurve[i].first->p3);
+                    double k = glm::dot(glm::normalize(FoldingCurve[i-1].first->p - FoldingCurve[i].first->p), glm::normalize(FoldingCurve[i+1].first->p - FoldingCurve[i].first->p));
+                    k = (k < -1)? std::numbers::pi: (k > 1)? 0: std::acos(k);
+                    glm::f64vec3 Nori = glm::cross(FoldingCurve[i-1].first->p - FoldingCurve[i].first->p, FoldingCurve[i+1].first->p - FoldingCurve[i].first->p);
+                    if(Nori.z > 0)k = 2.0*std::numbers::pi - k;
+                    double phi = glm::dot(glm::normalize(FoldingCurve[i-1].first->p - FoldingCurve[i].first->p), r2d);
+                    phi = (phi < -1)? std::numbers::pi: (phi > 1)? 0: std::acos(phi);
+                    glm::f64vec3 N = glm::cross(FoldingCurve[i-1].first->p - FoldingCurve[i].first->p, r2d);
+                    if(N.z > 0)phi = 2.0*std::numbers::pi - phi;
+                    if(phi > k)r2d *= -1;
+                    if(glm::dot(r3d, _r3d) < 0)r3d *= -1;
                 }else{
-                    r2d = glm::normalize(qt->p - FoldingCurve[i].first->p); r3d = glm::normalize(qt->p3 - FoldingCurve[i].first->p);
-                    if(glm::dot(r2d, fc.second->p - fc.first->p) < 0)r2d *= -1;
-                    if(glm::dot(r3d, fc.second->p3 - fc.first->p3) < 0)r3d *= -1;
+                    r2d = glm::normalize(FoldingCurve[Vertices_Ind[j]].second->p - FoldingCurve[Vertices_Ind[j]].first->p);
+                    r3d = glm::normalize(FoldingCurve[Vertices_Ind[j]].second->p3 - FoldingCurve[Vertices_Ind[j]].first->p3);
                 }
-                glm::f64vec3 p;
-                for(int j = 0; j < (int)Poly_v.size(); j++){
-                    p = calcCrossPoint_2Vector(FoldingCurve[i].first->p, 1000.0 * r2d + FoldingCurve[i].first->p, Poly_v[j]->p, Poly_v[(j + 1) % (int)Poly_v.size()]->p);
-                    if(MathTool::is_point_on_line(p, Poly_v[j]->p, Poly_v[(j + 1) % (int)Poly_v.size()]->p))break;
-                }
-                FoldingCurve[i].second->p = p;
-                FoldingCurve[i].second->p3 = glm::length(FoldingCurve[i].second->p - FoldingCurve[i].first->p) * r3d + FoldingCurve[i].first->p3;
-                FoldingCurve[i].third->p = FoldingCurve[i].third->p2_ori;
-                FoldingCurve[i].second->p3 = calcTargetDistanceOnPlane(FoldingCurve[i].second->p, FoldingCurve[i].first, fc.first, FoldingCurve[bef].second);
-                FoldingCurve[i].third->p3 = FoldingCurve[i].third->p3_ori;
             }
-            bef = _fc;
+
+            glm::f64vec3 p;
+            for(int k = 0; k < (int)Poly_v.size(); k++){
+                p = calcCrossPoint_2Vector(FoldingCurve[i].first->p, 1000.0 * r2d + FoldingCurve[i].first->p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p);
+                if(MathTool::is_point_on_line(p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p) && glm::dot(p - FoldingCurve[i].first->p, r2d) > 0)break;
+            }
+            FoldingCurve[i].second->p = p;
+            FoldingCurve[i].second->p3 = glm::length(FoldingCurve[i].second->p - FoldingCurve[i].first->p) * r3d + FoldingCurve[i].first->p3;
+            FoldingCurve[i].third->p = FoldingCurve[i].third->p2_ori;
+            FoldingCurve[i].third->p3 = FoldingCurve[i].third->p3_ori;
         }
     }
+    Vertex* v_clst = getClosestVertex(FoldingCurve[0].second, FoldingCurve[0].first, FoldingCurve, false);
+    if(v_clst != nullptr){
+        int j;
+        for(j = 0; j < (int)FoldingCurve.size(); j++){if(v_clst == FoldingCurve[j].second)break;}
+        FoldingCurve[0].second->p3 = calcTargetDistanceOnPlane(FoldingCurve[0].second->p, FoldingCurve[j].first, FoldingCurve[j].second, FoldingCurve[j+1].second);
+    }
+    v_clst = getClosestVertex(FoldingCurve.back().second, FoldingCurve.back().first, FoldingCurve, false);
+        if(v_clst != nullptr){
+            int j;
+            for(j = 0; j < (int)FoldingCurve.size(); j++){if(v_clst == FoldingCurve[j].second)break;}
+            FoldingCurve.back().second->p3 = calcTargetDistanceOnPlane(FoldingCurve.back().second->p, FoldingCurve[j].first, FoldingCurve[j].second, FoldingCurve[j-1].second);
+        }
+    delete qt;
     return true;
 }
 
-bool FoldLine::Optimization_SmooothSrf(const std::vector<Vertex*>& Poly_v){
+std::vector<std::vector<glm::f64vec3>> FoldLine::Optimization_SmooothSrf(const std::vector<Vertex*>& Poly_v, bool IsConnectEndPoint){
     std::vector<double> X;
+    std::vector<std::vector<glm::f64vec3>> res_qt;
     Vertex4d bef = FoldingCurve.front();
     std::vector<RevisionVertices::SmoothingArea> SA;
     std::vector<Vertex*> OriginalVertices;
@@ -541,20 +608,21 @@ bool FoldLine::Optimization_SmooothSrf(const std::vector<Vertex*>& Poly_v){
             int ind = std::distance(FoldingCurve.begin(), std::find(FoldingCurve.begin(), FoldingCurve.end(), FC));
             if(FC == bef){bef_ind = ind; continue;}
             RevisionVertices::SmoothingArea sm = {bef, FC, bef_ind, ind, OriginalVertices};
+            if(bef_ind == 0 || ind == (int)FoldingCurve.size() - 1){sm.qt = nullptr; sm.qb = nullptr;}
             SA.push_back(sm);
             bef_ind = ind;
-            //hogehoge
             bef = FC;
             OriginalVertices.clear();
         }
     }
-    RevisionVertices::ObjData_smooth od = {SA};
-    if(X.empty())return true;
+    RevisionVertices::ObjData_smooth od = {SA, IsConnectEndPoint};
+    if(X.empty())return res_qt;
     nlopt::opt opt;
     opt = nlopt::opt(nlopt::LD_MMA, X.size());
     opt.set_min_objective(RevisionVertices::Minimize_SmoothSrf, &od);
     opt.add_inequality_constraint(RevisionVertices::Const_Edev, &od);
     opt.set_xtol_rel(1e-13);
+
     double minf;
     try {
         nlopt::result result = opt.optimize(X, minf);
@@ -572,58 +640,71 @@ bool FoldLine::Optimization_SmooothSrf(const std::vector<Vertex*>& Poly_v){
             glm::f64vec3 SpinAxis = (vt2d.y < 0)? glm::f64vec3{0,0,-1}: glm::f64vec3{0,0,1};
             for(int j = sm.st_ind + 1; j < sm.last_ind; j++){
                 glm::f64vec3 e = FoldingCurve[j].first->p3 - FoldingCurve[j-1].first->p3;
-                double l = glm::length(e), phi = std::acos(glm::dot(vt, glm::normalize(e)));std::cout<<glm::degrees(phi)<< " : " << glm::to_string(SpinAxis) << std::endl;
+                double l = glm::length(e), phi = std::acos(glm::dot(vt, glm::normalize(e)));
                 FoldingCurve[j].first->p = l * glm::f64vec3{glm::rotate(phi, SpinAxis)* glm::f64vec4{ vt2d, 1.0}} + FoldingCurve[j-1].first->p;
-                double d = glm::length(sm.lastP.first->p3 - FoldingCurve[j].first->p3) - glm::length(sm.lastP.first->p - FoldingCurve[j].first->p);
+
                 if(sm.qt == nullptr){
-                    r3d = glm::normalize(sm.stP.second->p - sm.stP.first->p); r3d = glm::normalize(sm.stP.second->p3 - sm.stP.first->p3);
+                    if(sm.st_ind != 0){r2d = glm::normalize(sm.stP.second->p - sm.stP.first->p); r3d = glm::normalize(sm.stP.second->p3 - sm.stP.first->p3);}
+                    else {r2d = glm::normalize(sm.lastP.second->p - sm.lastP.first->p); r3d = glm::normalize(sm.lastP.second->p3 - sm.lastP.first->p3);}
                 }else{
+                    res_qt.push_back({sm.stP.first->p3, sm.qt->p3, sm.lastP.first->p3});
+
                     r2d = glm::normalize(sm.qt->p - FoldingCurve[j].first->p);
                     if(glm::dot(r2d, FoldingCurve[sm.st_ind].second->p - FoldingCurve[sm.st_ind].first->p) < 0)r2d *= -1;
                     FoldingCurve[j].second->p = calcCrossPoint_2Vector(FoldingCurve[j].first->p, 1000.0 * r2d + FoldingCurve[j].first->p, sm.stP.second->p, sm.lastP.second->p);
                     r3d = glm::normalize(sm.qt->p3 - FoldingCurve[j].first->p3);
-                    vt =glm::normalize(sm.qt->p3 - FoldingCurve[j].first->p3);vt2d =glm::normalize(sm.qt->p - FoldingCurve[j].first->p);
+                    if(glm::dot(r3d, glm::normalize(sm.stP.second->p3 - sm.stP.first->p3)) < 0)r3d *= -1;
+                    vt =glm::normalize(sm.qt->p3 - FoldingCurve[j].first->p3); vt2d =glm::normalize(sm.qt->p - FoldingCurve[j].first->p);
                     SpinAxis = (vt2d.y < 0)? glm::f64vec3{0,0,-1}: glm::f64vec3{0,0,1};
                 }
                 for(int k = 0; k < (int)Poly_v.size(); k++){
                     p = calcCrossPoint_2Vector(FoldingCurve[j].first->p, 1000.0 * r2d + FoldingCurve[j].first->p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p);
-                    if(MathTool::is_point_on_line(p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p))break;
+                    if(MathTool::is_point_on_line(p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p) && glm::dot(r2d, p - FoldingCurve[j].first->p) > 0)break;
                 }
                 FoldingCurve[j].second->p = p;
                 FoldingCurve[j].second->p3 = glm::length(FoldingCurve[j].second->p - FoldingCurve[j].first->p) * r3d + FoldingCurve[j].first->p3;
 
                 if(sm.qb == nullptr){
-                    r3d = glm::normalize(sm.stP.third->p - sm.stP.first->p); r3d = glm::normalize(sm.stP.third->p3 - sm.stP.first->p3);
+                    if(sm.st_ind != 0){r2d = glm::normalize(sm.stP.third->p - sm.stP.first->p); r3d = glm::normalize(sm.stP.third->p3 - sm.stP.first->p3);}
+                    else {r2d = glm::normalize(sm.lastP.third->p - sm.lastP.first->p); r3d = glm::normalize(sm.lastP.third->p3 - sm.lastP.first->p3);}
                 }else{
                     r2d = glm::normalize(sm.qb->p - FoldingCurve[j].first->p);r3d = glm::normalize(sm.qb->p3 - FoldingCurve[j].first->p3);
                     if(glm::dot(r2d, FoldingCurve[sm.st_ind].third->p - FoldingCurve[sm.st_ind].first->p) < 0)r2d *= -1;
                 }
                 for(int k = 0; k < (int)Poly_v.size(); k++){
                     p = calcCrossPoint_2Vector(FoldingCurve[j].first->p, 1000.0 * r2d + FoldingCurve[j].first->p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p);
-                    if(MathTool::is_point_on_line(p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p))break;
+                    if(MathTool::is_point_on_line(p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p) && glm::dot(r2d, p - FoldingCurve[j].first->p) > 0)break;
                 }
-                FoldingCurve[j].second->p = p;
-                FoldingCurve[j].second->p3 = glm::length(FoldingCurve[j].second->p - FoldingCurve[j].first->p) * r3d + FoldingCurve[j].first->p3;
+                FoldingCurve[j].third->p = p;
+                FoldingCurve[j].third->p3 = glm::length(p - FoldingCurve[j].first->p) * r3d + FoldingCurve[j].first->p3;
             }
         }
+        Vertex* v_clst = getClosestVertex(FoldingCurve[0].second, FoldingCurve[0].first, FoldingCurve, false);
+        if(v_clst != nullptr){
+            int j; for(j = 0; j < (int)FoldingCurve.size(); j++){if(v_clst == FoldingCurve[j].second)break;}
+            FoldingCurve[0].second->p3 = calcTargetDistanceOnPlane(FoldingCurve[0].second->p, FoldingCurve[j].first, FoldingCurve[j].second, FoldingCurve[j+1].second);
+        }
+        v_clst = getClosestVertex(FoldingCurve.back().second, FoldingCurve.back().first, FoldingCurve, false);
+        if(v_clst != nullptr){
+            int j; for(j = 0; j < (int)FoldingCurve.size(); j++){if(v_clst == FoldingCurve[j].second)break;}
+            FoldingCurve.back().second->p3 = calcTargetDistanceOnPlane(FoldingCurve.back().second->p, FoldingCurve[j].first, FoldingCurve[j].second, FoldingCurve[j-1].second);
+        }
         std::cout<<"smoothing finish"<<std::endl;
-        return true;
     }catch (std::exception& e) {std::cout << "nlopt failed: " << e.what() << std::endl; }
 
-    return false;
+    for(auto&sm: od.SA){
+        delete sm.qb; delete sm.qt;
+    }
+
+    return res_qt;
 }
 
-bool FoldLine::Optimization_FlapAngle(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V, int type, bool IsValidSigmoid){
+bool FoldLine::Optimization_FlapAngle(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V, double wb, double wp){
     if(FoldingCurve.empty())return false;
 
-    double phi02, phim1;
     std::vector<int> Vertices_Ind;for(int i = 0; i < (int)FoldingCurve.size(); i++){if(FoldingCurve[i].IsCalc)Vertices_Ind.push_back(i);}
-    phi02 = glm::angle(glm::normalize(FoldingCurve[Vertices_Ind[0]].second->p - FoldingCurve[Vertices_Ind[0]].first->p),
-            glm::normalize(FoldingCurve[Vertices_Ind[1]].first->p - FoldingCurve[Vertices_Ind[0]].first->p));
-    phim1 = glm::angle(glm::normalize(FoldingCurve[Vertices_Ind.end()[-2]].first->p - FoldingCurve.back().first->p),
-            glm::normalize(FoldingCurve.back().second->p - FoldingCurve.back().first->p));
-    double a = 0, a2 = 0.0;
 
+    double a = 0, a2 = 0.0;
     glm::f64vec3 e = glm::normalize(FoldingCurve[Vertices_Ind[0]].first->p3 - FoldingCurve[Vertices_Ind[1]].first->p3),
             e2 = glm::normalize(FoldingCurve[Vertices_Ind[2]].first->p3 - FoldingCurve[Vertices_Ind[1]].first->p3);
     glm::f64vec3 Nb = -glm::normalize(glm::cross(e, e2)), N4;
@@ -644,9 +725,9 @@ bool FoldLine::Optimization_FlapAngle(std::vector<HalfEdge*>& Edges, std::vector
     std::string AngleFile = "./Optimization/ChangeAngle.csv" ;
     ofs2.open(AngleFile, std::ios::out); ofs2 << "a(radian),a(degree),Eruling, Ebend"<<std::endl;
     while(a <= 2.0*std::numbers::pi){
-         _FoldingAAAMethod(FoldingCurve, Edges, Poly_V, a, phi02, phim1, type);
+         _FoldingAAAMethod(FoldingCurve, Poly_V, a);
          double f = RulingsCrossed(FoldingCurve);
-         double fb = Fbend2(FoldingCurve, false);
+         double fb = Fbend2(FoldingCurve);
         double val = (f == 0)? fb: 1;
          ofs2 << a << "," << a * 180.0/std::numbers::pi << ", " << f << ", " << fb << ", " << val <<  std::endl;
         a += 1e-3;
@@ -677,10 +758,10 @@ bool FoldLine::Optimization_FlapAngle(std::vector<HalfEdge*>& Edges, std::vector
     //if(k < std::numbers::pi && !IsMount){a_min = a_con;a_max = a_con + std::numbers::pi; a = a_max - 0.1;}
     //if(k >= std::numbers::pi && !IsMount){a_min = a_con - std::numbers::pi; a_max = a_con; a = a_min + 0.1;}
     //a_min = std::min(a_con, _a_con); a_max = std::max(a_con, _a_con);
-    RevisionVertices::ObjData od = {FoldingCurve, Edges, Vertices, Poly_V, phi02, phim1, type, false};
+    RevisionVertices::ObjData od = {FoldingCurve, Vertices, Poly_V}; od.AddWeight(wb, wp);
     nlopt::opt opt;
     opt = nlopt::opt(nlopt::LD_MMA, 1);
-    opt.set_min_objective(ObjFunc, &od);
+    opt.set_min_objective(ObjFunc_FlapAngle, &od);
     opt.set_lower_bounds(a_min);
     opt.set_upper_bounds(a_max);
     opt.add_inequality_constraint(Fruling, &od);
@@ -696,9 +777,9 @@ bool FoldLine::Optimization_FlapAngle(std::vector<HalfEdge*>& Edges, std::vector
     ofs2.open(AngleFile, std::ios::out);
     ofs2 << "a(radian), a(degree) , Eruling, Ebend, Ebend"<<std::endl;
     for(double _a = a_min; _a <= a_max; _a+= 1e-3){
-         _FoldingAAAMethod(FoldingCurve, Edges, Poly_V, _a, phi02, phim1, type);
+         _FoldingAAAMethod(FoldingCurve, Poly_V, _a);
          double f = RulingsCrossed(FoldingCurve);
-         double fb = Fbend2(FoldingCurve, false);
+         double fb = Fbend2(FoldingCurve);
          double val = (f == 0)? fb: 1;
         ofs2 << _a << ", " << glm::degrees(_a) << " , " << f << ", " << fb << ", "<< val << std::endl;
     }ofs2.close();
@@ -707,20 +788,20 @@ bool FoldLine::Optimization_FlapAngle(std::vector<HalfEdge*>& Edges, std::vector
     double res_amin, res_amax;
     ofs_Ebend.open(File_Ebend, std::ios::out); ofs_Eruling.open(File_Eruling, std::ios::out);
       try {
-        std::vector<double> _a{a_min + 0.1};
+        std::vector<double> _a{a_min + 0.5};
           nlopt::result result = opt.optimize(_a, minf_amin);
 
           std::cout <<"result :  lower bound" <<result << std::endl;
-          std::cout << "found minimum at f(" << glm::degrees(_a[0]) << ") = " << std::setprecision(10) << minf_amin << "  ,  " << f_ruling_amin <<  std::endl;
           f_ruling_amin = RulingsCrossed(FoldingCurve);
           res_amin = _a[0];
+          std::cout << "found minimum at f(" << glm::degrees(_a[0]) << ") = " << std::setprecision(10) << minf_amin << "  ,  " << f_ruling_amin <<  std::endl;          
       }
       catch (std::exception& e) {
           std::cout << "nlopt failed: " << e.what() << std::endl;
       }ofs_Ebend.close(); ofs_Eruling.close();
 
     try {
-      std::vector<double> _a{a_max - 0.1};
+      std::vector<double> _a{a_max - 0.5};
         nlopt::result result = opt.optimize(_a, minf_amax);
         f_ruling_amax = RulingsCrossed(FoldingCurve);
         std::cout <<"result :  upper bound" <<result << std::endl;
@@ -733,31 +814,26 @@ bool FoldLine::Optimization_FlapAngle(std::vector<HalfEdge*>& Edges, std::vector
     }
     double th_ruling = 1e-9;
     if(f_ruling_amin < th_ruling && f_ruling_amax < th_ruling){
-        if(minf_amax > minf_amin){std::cout << "result : smaller = " << glm::degrees(res_amin) << ",  f = " << minf_amin <<  "  ,  " << f_ruling_amin << std::endl; a2 = res_amin; }
-        else{std::cout << "result : smaller = " << glm::degrees(res_amax) << ",  f = " << minf_amax << " ,  " << f_ruling_amax << std::endl; a2 = res_amax; }
-    }else if(f_ruling_amin < th_ruling && f_ruling_amax >= th_ruling){
-        std::cout << "result : smaller = " << glm::degrees(res_amin) << ",  f = " << minf_amin << "  ,  " << f_ruling_amin << std::endl; a2 = res_amin;
-    }else if(f_ruling_amin >= th_ruling && f_ruling_amax < th_ruling){
-        std::cout << "result : smaller = " << glm::degrees(res_amax) << ",  f = " << minf_amax << "  ,  " << f_ruling_amax << std::endl; a2 = res_amax;
-    }else{
+        if(minf_amax > minf_amin)a2 = res_amin;
+        else a2 = res_amax;
+    }else if(f_ruling_amin < th_ruling && f_ruling_amax >= th_ruling){a2 = res_amin; }
+    else if(f_ruling_amin >= th_ruling && f_ruling_amax < th_ruling){ a2 = res_amax; }else{
         std::cout<<"could not avoid ruling cross"<<std::endl;
         return false;
     }
-   _FoldingAAAMethod(FoldingCurve, Edges, Poly_V, a2, phi02, phim1, type);
+   _FoldingAAAMethod(FoldingCurve, Poly_V, a2);
+   std::cout << "result : smaller = " << glm::degrees(a2) << ",  f_bend = " << wb * Fbend2(FoldingCurve) << "  ,  f_paralell = " << wp * Fparallel(FoldingCurve) << std::endl;
     std::cout << "finish"<<std::endl;
     return true;
 }
 
-void FoldLine::Optimization_Vertices(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V, int type, bool IsValidSigmoid){
+void FoldLine::Optimization_Vertices(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V){
     if(FoldingCurve.empty())return;
     glm::f64vec3 Nb = glm::normalize(glm::cross(FoldingCurve[2].first->p3 - FoldingCurve[1].first->p3, FoldingCurve[0].first->p3 - FoldingCurve[1].first->p3));
     glm::f64vec3 Nf = glm::normalize(glm::cross(FoldingCurve[1].first->p3 - FoldingCurve[0].first->p3, FoldingCurve[1].second->p3 - FoldingCurve[1].first->p3));
     glm::f64vec3 SpinAxis = glm::normalize(FoldingCurve[0].first->p3 - FoldingCurve[1].first->p3);
     double a = (glm::dot(Nb, Nf) < -1)? std::numbers::pi: (glm::dot(Nb, Nf) > 1)? 0: std::acos(glm::dot(Nb, Nf));
     if(glm::dot(glm::cross(Nb, Nf), SpinAxis) > 0)a = 2.0 * std::numbers::pi - a;
-
-    double phi02 = glm::angle(glm::normalize(FoldingCurve[0].second->p - FoldingCurve[0].first->p),glm::normalize(FoldingCurve[1].first->p - FoldingCurve[0].first->p));
-    double phim1 = glm::angle(glm::normalize(FoldingCurve.end()[-2].first->p - FoldingCurve.back().first->p),glm::normalize(FoldingCurve.back().second->p - FoldingCurve.back().first->p));
 
     glm::f64vec3 N4;
     for(auto&he: Edges){
@@ -770,8 +846,7 @@ void FoldLine::Optimization_Vertices(std::vector<HalfEdge*>& Edges, std::vector<
     if(a_con > 2.0*std::numbers::pi)a_con -= 2.0*std::numbers::pi;
     if(a_con < 0)a_con +=2.0*std::numbers::pi;
 
-    Vertex *AxisV = findAxisVertex(FoldingCurve[1], FoldingCurve[0].first, FoldingCurve[2].first);
-    glm::f64vec3 Axis = (AxisV->p3 - FoldingCurve[1].first->p3)/glm::length((AxisV->p3 - FoldingCurve[1].first->p3));
+    glm::f64vec3 Axis = (FoldingCurve[1].third->p3 - FoldingCurve[1].first->p3)/glm::length((FoldingCurve[1].third->p3 - FoldingCurve[1].first->p3));
     double phi3 = std::acos(glm::dot(glm::normalize(FoldingCurve[2].first->p3 - FoldingCurve[1].first->p3),Axis));
     double phi4 = std::acos(glm::dot(glm::normalize(FoldingCurve[0].first->p3 - FoldingCurve[1].first->p3),Axis));
     double k = 2.0 * std::numbers::pi - phi3 - phi4;
@@ -790,7 +865,7 @@ void FoldLine::Optimization_Vertices(std::vector<HalfEdge*>& Edges, std::vector<
     if(k < std::numbers::pi && !IsMount){a_min = 0.0;a_max = a_con - std::numbers::pi;}
     if(k >= std::numbers::pi && !IsMount){a_min = a_con - std::numbers::pi; a_max = std::numbers::pi;}
 
-    RevisionVertices::ObjData_v od_v = RevisionVertices::ObjData_v{a, FoldingCurve, Edges, Vertices, Poly_V, phi02, phim1, type, IsValidSigmoid};
+    RevisionVertices::ObjData_v od_v = RevisionVertices::ObjData_v{a, FoldingCurve, Vertices, Poly_V};
     std::vector<double> X(FoldingCurve.size() + 1, 1.0);
     std::vector<double>UpperBnds(FoldingCurve.size() + 1, 0), LowerBnds(FoldingCurve.size() + 1,0);
     for(int i = 0; i < (int)FoldingCurve.size(); i++)
@@ -815,7 +890,7 @@ void FoldLine::Optimization_Vertices(std::vector<HalfEdge*>& Edges, std::vector<
               FoldingCurve[i].first->p = X[i] * (FoldingCurve[i].first->p2_ori - FoldingCurve[i].third->p2_ori) + FoldingCurve[i].third->p2_ori;
               FoldingCurve[i].first->p3 = X[i] * (FoldingCurve[i].first->p3_ori - FoldingCurve[i].third->p3_ori) + FoldingCurve[i].third->p3_ori;
           }
-         _FoldingAAAMethod(FoldingCurve, Edges, Poly_V, X.back(), phi02, phim1, type);
+         _FoldingAAAMethod(FoldingCurve, Poly_V, X.back());
     }catch (std::exception& e) {std::cout << "nlopt failed: " << e.what() << std::endl; }
 }
 
@@ -883,6 +958,10 @@ double RevisionVertices::F_ruling(const std::vector<double> &X, std::vector<doub
             double f2 = 0;
             for(int i2 = 1; i2 < FoldingCurve.size() - 1; i2 += 1){
                 if(i == i2)continue;
+                glm::f64vec3 p1 = FoldingCurve[i].first->p, q1 = FoldingCurve[i].second->p, p2 = FoldingCurve[i2].first->p, q2 = FoldingCurve[i2].second->p;
+                double t = ((p2.x - p1.x)*(p2.y - q2.y) - (p2.x - q2.x)*(p2.y - p1.y))/((q1.x - p1.x) * (p2.y - q2.y) - (p2.x - q2.x)*(q1.y - p1.y));
+                if(0 < t && t < 1) f += 1.0/t;
+                continue;
                 A(0,0) = FoldingCurve[i].second->p.x - FoldingCurve[i].first->p.x; A(0,1) = -(FoldingCurve[i2].second->p.x - FoldingCurve[i2].first->p.x);
                 A(1,0) = FoldingCurve[i].second->p.y - FoldingCurve[i].first->p.y; A(1,1) = -(FoldingCurve[i2].second->p.y - FoldingCurve[i2].first->p.y);
                 b(0) = FoldingCurve[i2].first->p.x - FoldingCurve[i].first->p.x;
@@ -906,24 +985,23 @@ double RevisionVertices::F_ruling(const std::vector<double> &X, std::vector<doub
             tmp.push_back({FC[i].first->p, FC[i].first->p3});
             FC[i].first->p = getVertex(FC[i].third->p2_ori, FC[i].first->p2_ori, X[i]);
             FC[i].first->p3 = getVertex(FC[i].third->p3_ori, FC[i].first->p3_ori, X[i]);
-        }
-        _FoldingAAAMethod(FC, data->Edges, data->Poly_V, a, data->phi02, data->phim1, data->type);
+        } _FoldingAAAMethod(FC, data->Poly_V, a);
 
         f = fr(FC);
         for(int i = 0; i < (int)FC.size(); i++){
             FC[i].first->p = getVertex(FC[i].third->p2_ori, FC[i].first->p2_ori, X[i] + eps); FC[i].first->p3 = getVertex(FC[i].third->p3_ori, FC[i].first->p3_ori, X[i] + eps);
-            _FoldingAAAMethod(FC, data->Edges, data->Poly_V, a, data->phi02, data->phim1, data->type);
+            _FoldingAAAMethod(FC, data->Poly_V, a);
             double fp = fr(FC);
             FC[i].first->p = getVertex(FC[i].third->p2_ori, FC[i].first->p2_ori, X[i] - eps); FC[i].first->p3 = getVertex(FC[i].third->p3_ori, FC[i].first->p3_ori, X[i] - eps);
-            _FoldingAAAMethod(FC, data->Edges, data->Poly_V, a, data->phi02, data->phim1, data->type);
+            _FoldingAAAMethod(FC, data->Poly_V, a);
             double fm = fr(FC);
             grad[i] = (fp - fm)/(2.0*eps);
             FC[i].first->p = tmp[i][0]; FC[i].first->p3 = tmp[i][1];
         }
         if(grad.size() != FC.size()){
-            _FoldingAAAMethod(FC, data->Edges, data->Poly_V, a + eps, data->phi02, data->phim1, data->type);
+            _FoldingAAAMethod(FC, data->Poly_V, a + eps);
             double fp = fr(FC);
-            _FoldingAAAMethod(FC, data->Edges, data->Poly_V, a - eps, data->phi02, data->phim1, data->type);
+            _FoldingAAAMethod(FC, data->Poly_V, a - eps);
             double fm = fr(FC);
             grad.back() = (fp - fm)/(2.0*eps);
         }
@@ -934,21 +1012,17 @@ double RevisionVertices::F_ruling(const std::vector<double> &X, std::vector<doub
 
 double RevisionVertices::Minimize_Vpos(const std::vector<double> &X, std::vector<double> &grad, void* f_data){
     ObjData_v *od = (ObjData_v *)f_data;
-    double phi02 = od->phi02, phim1 = od->phim1;
-    int type = od->type;
     FoldLine3d FC = od->FC;
     double fk, fvpos, fa;
 
     if(!grad.empty()){
         double a = (grad.size() != FC.size())? X.back(): od->a;
         std::vector<double> grad_vpos(grad.size()), grad_k(grad.size()), grad_a(grad.size(), 0);
-        std::vector<HalfEdge*> Edges = od->Edges;
         std::vector<Vertex*> Poly_V = od->Poly_V;
         for(int i = 0; i < (int)FC.size(); i++ ){
             FC[i].first->p = getVertex(FC[i].third->p2_ori, FC[i].first->p2_ori, X[i]);
             FC[i].first->p3 = getVertex(FC[i].third->p3_ori, FC[i].first->p3_ori, X[i]);
-        }
-        _FoldingAAAMethod(FC, Edges, Poly_V, a, phi02, phim1, type);
+        }  _FoldingAAAMethod(FC, Poly_V, a);
         fk = F_k(FC, X, grad_k); fvpos = F_vpos(FC, X, grad_vpos);
         fa = abs(a - od->a); grad.back() = (abs(a + eps - od->a) - abs(a - eps - od->a)/(2.0*eps));
         for(int i = 0; i < (int)X.size(); i++){
@@ -1020,15 +1094,15 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
             if((e->edgetype == EdgeType::r && (std::find(SearchedEdge.begin(), SearchedEdge.end(), e) != SearchedEdge.end() ||
                                                std::find(SearchedEdge.begin(), SearchedEdge.end(), e->pair) != SearchedEdge.end())))continue;
             SearchedEdge.push_back(e);
-            if(std::find_if(T_crs.begin(), T_crs.end(), [&e](CrvPt_FL* T){return T->p == e->vertex->p || T->p == e->next->vertex->p;}) != T_crs.end())continue;
+            //if(std::find_if(T_crs.begin(), T_crs.end(), [&e](CrvPt_FL* T){return T->p == e->vertex->p || T->p == e->next->vertex->p;}) != T_crs.end())continue;
             std::vector<double>arcT = BezierClipping(CtrlPts, e, dim);
 
             for(auto&t: arcT){
                 if(t < 0 || 1 < t){std::cout<<"t is not correct value " << t << std::endl; continue;}
-                if(std::find_if(T_crs.begin(), T_crs.end(), [&t](CrvPt_FL* T){return abs(T->s - t) < 1e-5;}) != T_crs.end())continue;
+                if(!T_crs.empty() && std::find_if(T_crs.begin(), T_crs.end(), [&t](CrvPt_FL* T){return abs(T->s - t) < 1e-9;}) != T_crs.end()){std::cout<<"has" <<std::endl; continue;}
                 glm::f64vec3 v2{0,0,0};
                 for (int i = 0; i < int(CtrlPts.size()); i++) v2 += MathTool::BernsteinBasisFunc(dim, i, t) * CtrlPts[i];
-                if(!is_point_on_line(v2, e->vertex->p, e->next->vertex->p)) continue;
+                //if(!is_point_on_line(v2, e->vertex->p, e->next->vertex->p)){std::cout<<"not on line  "<< t << std::endl; continue;}
                 double sa = glm::distance(v2, e->vertex->p), sc = glm::distance(e->vertex->p, e->next->vertex->p);
                 glm::f64vec3 v3 = sa/sc * (e->next->vertex->p3 - e->vertex->p3) + e->vertex->p3;
                 t_max = std::max(t_max, t); t_min = std::min(t_min, t);
@@ -1038,11 +1112,45 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
             }
         }
     }
+    FoldingCurve.clear();
     std::sort(T_crs.begin(), T_crs.end(), [](CrvPt_FL* T, CrvPt_FL* T2){return T->s > T2->s;});
-
     for(auto&t: T_crs){
         Vertices.push_back(t);
     }
+    glm::f64vec3 UpVec{0,-1,0};
+    for(auto&t: T_crs){
+        if(t == T_crs.front() || t == T_crs.back()){
+            for(int i = 0; i < (int)Poly_v.size(); i++){
+                if(!MathTool::is_point_on_line(t->p, Poly_v[i]->p, Poly_v[(i + 1) % (int)Poly_v.size()]->p))continue;
+                Vertex *top, *bottom;
+                if(glm::dot(UpVec, glm::normalize(Poly_v[i]->p - Poly_v[(i + 1) % (int)Poly_v.size()]->p)) > 0){
+                    for(auto&he: Edges){
+                        if(he->vertex->p == Poly_v[i]->p)top = he->vertex;
+                        if(he->vertex->p == Poly_v[(i + 1) % (int)Poly_v.size()]->p)bottom = he->vertex;
+                    }
+                }
+                else {
+                    for(auto&he: Edges){
+                        if(he->vertex->p == Poly_v[i]->p)bottom = he->vertex;
+                        if(he->vertex->p == Poly_v[(i + 1) % (int)Poly_v.size()]->p)top = he->vertex;
+                    }
+                }
+                FoldingCurve.push_back(Vertex4d(t, top, bottom));
+                break;
+            }
+        }else{
+            for(auto&he: Edges){
+                if(!MathTool::is_point_on_line(t->p, he->vertex->p, he->next->vertex->p))continue;
+                if(glm::dot(UpVec, glm::normalize(he->next->vertex->p - he->vertex->p)) > 0)FoldingCurve.push_back(Vertex4d(t, he->next->vertex, he->vertex));
+                else FoldingCurve.push_back(Vertex4d(t, he->vertex, he->next->vertex));
+                break;
+            }
+        }
+
+    }
+    return true;
+
+
     for(auto&t: T_crs){
         std::vector<HalfEdge*> H_new;
         for(auto&he: Edges){
@@ -1052,7 +1160,7 @@ bool FoldLine::modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>
     }
 
     std::vector<Face*> Faces_new;
-    FoldingCurve.clear();
+
     double tbef = -1;
     int faceNum = Faces.size();
     HalfEdge_FL *h1, *h2;
@@ -1284,6 +1392,17 @@ void FoldLine::ReassignColor(std::vector<HalfEdge*>& Edges, ColorPoint& CP){
     std::cout <<"color changed"<<std::endl;
 }
 
+void FoldLine::modifyFoldingCurvePositionOn3d(const std::vector<HalfEdge*>& Edges){
+    for(auto&fc: FoldingCurve){
+        for(auto&h: Edges){
+            if(!MathTool::is_point_on_line(fc.first->p, h->vertex->p, h->next->vertex->p))continue;
+            double t = glm::length(fc.first->p - h->vertex->p)/glm::length(h->vertex->p - h->next->vertex->p);
+            fc.first->p3_ori = fc.first->p3 = t * (h->next->vertex->p3 - h->vertex->p3) + h->vertex->p3;
+            break;
+        }
+    }
+}
+
 std::vector<CrvPt_FL*> SetPointsOnCurve(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_v, std::vector<glm::f64vec3>& CtrlPts, int dim, int divSize){
     using namespace MathTool;
 
@@ -1324,13 +1443,6 @@ std::vector<CrvPt_FL*> SetPointsOnCurve(std::vector<HalfEdge*>& Edges, std::vect
     return Points_On_Curve;
 }
 
-Vertex* findAxisVertex(Vertex4d& R, Vertex *e1, Vertex *e2){
-    for(auto& h: R.first->halfedge){
-        if(h->next->vertex->p != R.second->p && h->next->vertex->p != e1->p && h->next->vertex->p != e2->p)return h->next->vertex;
-    }
-    return nullptr;
-}
-
 void FoldLine::drawRulingInAllAngles(std::vector<std::array<glm::f64vec3, 2>>& _Rulings){
 
     double a2 = 0;
@@ -1358,9 +1470,7 @@ void FoldLine::drawRulingInAllAngles(std::vector<std::array<glm::f64vec3, 2>>& _
                 if(dir <= 0)tau = 2.0*std::numbers::pi - tau;
                 a = (a2 - tau < 0) ? a2 - tau + 2.0 * std::numbers::pi: a2 - tau;
             }
-            Vertex *AxisV = findAxisVertex(FoldingCurve[i], FoldingCurve[i-1].first, FoldingCurve[i+1].first);
-            if(AxisV == nullptr)continue;
-            glm::f64vec3 Axis = (AxisV->p3 - FoldingCurve[i].first->p3)/glm::length((AxisV->p3 - FoldingCurve[i].first->p3));
+            glm::f64vec3 Axis = (FoldingCurve[i].third->p3 - FoldingCurve[i].first->p3)/glm::length((FoldingCurve[i].third->p3 - FoldingCurve[i].first->p3));
             double phi3 = std::acos(glm::dot((FoldingCurve[i+1].first->p3 - FoldingCurve[i].first->p3)/glm::length((FoldingCurve[i+1].first->p3 - FoldingCurve[i].first->p3)),
                     Axis));
             double phi4 = std::acos(glm::dot((FoldingCurve[i-1].first->p3 - FoldingCurve[i].first->p3)/glm::length((FoldingCurve[i-1].first->p3 - FoldingCurve[i].first->p3)),
@@ -1388,11 +1498,9 @@ void FoldLine::drawRulingInAllAngles(std::vector<std::array<glm::f64vec3, 2>>& _
 
 }
 
-void FoldLine::applyAAAMethod(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V, double a, int type){
+void FoldLine::applyAAAMethod(std::vector<Vertex*>& Poly_V, double a){
     if(FoldingCurve.empty())return;
-    double phi02 = glm::angle(glm::normalize(FoldingCurve[0].second->p - FoldingCurve[0].first->p),glm::normalize(FoldingCurve[1].first->p - FoldingCurve[0].first->p));
-    double phim1 = glm::angle(glm::normalize(FoldingCurve.end()[-2].first->p - FoldingCurve.back().first->p),glm::normalize(FoldingCurve.back().second->p - FoldingCurve.back().first->p));
-     _FoldingAAAMethod(FoldingCurve, Edges, Poly_V, a, phi02, phim1, type);
+     _FoldingAAAMethod(FoldingCurve, Poly_V, a);
 }
 
 inline double update_flapangle(double a, const glm::f64vec3& befN, const glm::f64vec3& SrfN, const glm::f64vec3& e){
@@ -1443,11 +1551,11 @@ void CalcRuling(double a, Vertex4d& xbef, Vertex4d& x, Vertex4d& xnext, std::vec
     SrfN = MathTool::ProjectionVector(glm::cross(e, e2), e2, true);
 }
 
-Vertex* getClosestVertex(Vertex *v, Vertex* o,  std::vector<Vertex4d> FoldingCurve){
+Vertex* getClosestVertex(Vertex *v, Vertex* o,  const std::vector<Vertex4d>& FoldingCurve, bool SkipTrimedPoint){
    Vertex *V_max = nullptr;
    double t_max = -1;
    for(auto&fc: FoldingCurve){
-       if(!fc.IsCalc)continue;
+       if(SkipTrimedPoint && !fc.IsCalc)continue;
        if((glm::length(fc.second->p - v->p) < 1e-7|| glm::length(fc.second->p - o->p) < 1e-7))continue;
        if(MathTool::is_point_on_line(fc.second->p, v->p, o->p)){
            double t = glm::distance(fc.second->p, o->p)/glm::distance(v->p, o->p);
@@ -1459,8 +1567,7 @@ Vertex* getClosestVertex(Vertex *v, Vertex* o,  std::vector<Vertex4d> FoldingCur
    return V_max;
 }
 
-void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Poly_V,
-                                 double a, double phi02, double phim1, int type){
+void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex*>& Poly_V, double a){
 
     auto SetOnPlane = [&](Vertex4d& V, std::vector<Vertex*>& Poly_V, Vertex4d& p, Vertex4d& p2, Vertex *q, Vertex *q2, int IsEnd){
         //p, q: 左、p2, q2：右
@@ -1470,17 +1577,23 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, std::vector<HalfEdge
         else{
             if(!IsParallel(p.first, q, p2.first, q2))vec = glm::normalize(calcCrossPoint_2Vector(p.first, q, p2.first, q2) - V.first->p);
             else vec = glm::normalize(q->p - p.first->p);
+
+            double k = glm::dot(glm::normalize(p2.first->p - V.first->p), glm::normalize(p.first->p - V.first->p)); k = (k < -1)? std::numbers::pi: (k > 1)? 0: std::acos(k);
+            glm::f64vec3 N = glm::cross(p2.first->p - V.first->p, p.first->p - V.first->p);
+            if(N.z > 0)k = 2.0*std::numbers::pi - k;
+            double phi = glm::dot(glm::normalize(p2.first->p - V.first->p), vec); phi = (phi < -1)? std::numbers::pi: (phi > 1)? 0: std::acos(phi);
+            N = glm::cross(p2.first->p - V.first->p, vec);if(N.z > 0)phi = 2.0*std::numbers::pi - phi;
+            if(phi > k)vec *= -1;
+
         }
-        if(glm::dot(glm::normalize(V.third->p - V.first->p), vec) > 0) vec = -1000. * vec + V.first->p;
-        else vec = 1000. * vec + V.first->p;
+        vec = 1000. * vec + V.first->p;
         Vertex *Qv = new Vertex(vec);
 
         for(int k = 0; k < (int)Poly_V.size(); k++){
             glm::f64vec3 q;
             if(IsParallel(V.first, Qv, Poly_V[k], Poly_V[(k + 1) % (int)Poly_V.size()]))continue;
             q = calcCrossPoint_2Vector(V.first, Qv, Poly_V[k], Poly_V[(k + 1) % (int)Poly_V.size()]);
-            if(MathTool::is_point_on_line(q, Poly_V[k]->p, Poly_V[(k + 1) % (int)Poly_V.size()]->p) &&
-                    MathTool::is_point_on_line(q, V.first->p, Qv->p) ){
+            if(MathTool::is_point_on_line(q, Poly_V[k]->p, Poly_V[(k + 1) % (int)Poly_V.size()]->p) && MathTool::is_point_on_line(q, V.first->p, Qv->p) ){
                 V.second->p = q;
                 V.second->p3 = calcTargetDistanceOnPlane(V.second->p, q2, p.first, p2.first);
             }
@@ -1492,6 +1605,12 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, std::vector<HalfEdge
     glm::f64vec3 N, r, befN;
     std::vector<int> Vertices_Ind;
     for(int i = 0; i < (int)FoldingCurve.size(); i++){if(FoldingCurve[i].IsCalc)Vertices_Ind.push_back(i);}
+
+    double phi02 = glm::angle(glm::normalize(FoldingCurve[Vertices_Ind[0]].second->p - FoldingCurve[Vertices_Ind[0]].first->p),
+            glm::normalize(FoldingCurve[Vertices_Ind[1]].first->p - FoldingCurve[Vertices_Ind[0]].first->p));
+    double phim1 = glm::angle(glm::normalize(FoldingCurve[Vertices_Ind.end()[-2]].first->p - FoldingCurve.back().first->p),
+            glm::normalize(FoldingCurve.back().second->p - FoldingCurve.back().first->p));
+
     a = (a < 0.0)? a + 2.0 * std::numbers::pi: (a > 2.0*std::numbers::pi)? a - 2.0*std::numbers::pi: a;
     for(int ind = 1; ind < (int)Vertices_Ind.size() - 1; ind++){
 
@@ -1511,9 +1630,7 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, std::vector<HalfEdge
                 SetOnPlane(FoldingCurve[i], Poly_V, FoldingCurve[Vertices_Ind[ind]],FoldingCurve[Vertices_Ind[ind-1]], FoldingCurve[Vertices_Ind[ind]].second,  FoldingCurve[Vertices_Ind[ind-1]].second, 0);
         }
     }
-
     {//i = 0(端の面)
-
         Vertex *v_clst = getClosestVertex(FoldingCurve[Vertices_Ind[0]].second , FoldingCurve[Vertices_Ind[0]].first, FoldingCurve);
         if(v_clst == nullptr){
             x = FoldingCurve[Vertices_Ind[0]].first->p3;
@@ -1554,13 +1671,14 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, std::vector<HalfEdge
             for(int i = Vertices_Ind.end()[-2] + 1; i < Vertices_Ind.back(); i++)
                 SetOnPlane(FoldingCurve[i], Poly_V, FoldingCurve[Vertices_Ind.back()], FoldingCurve[Vertices_Ind.end()[-2]], FoldingCurve[Vertices_Ind.back()].second, FoldingCurve[Vertices_Ind.end()[-2]].second, -1);
         }else{
-            HalfEdge *h_clst = nullptr;
-            for(auto&h: v_clst->halfedge){if(h->edgetype != EdgeType::ol)h_clst = h;}
-            if(h_clst != nullptr){
-                auto p = calcTargetDistanceOnPlane(FoldingCurve[Vertices_Ind.back()].second->p, v_clst,  h_clst->next->vertex, h_clst->next->next->vertex);
+            int j;
+            for(j = 0; j < (int)Vertices_Ind.size(); j++){
+                if(FoldingCurve[Vertices_Ind[j]].second == v_clst)break;
+            }
+            if(j == (int)Vertices_Ind.size())std::cout <<"can't find correct edge right" << std::endl;
+            else{
+                auto p = calcTargetDistanceOnPlane(FoldingCurve[Vertices_Ind.back()].second->p, v_clst,  FoldingCurve[Vertices_Ind[j]].first, FoldingCurve[Vertices_Ind[j-1]].first);
                 FoldingCurve[Vertices_Ind.back()].second->p3 = p;
-            }else {
-                std::cout <<"can't find correct edge left" << std::endl;
             }
             for(int i = Vertices_Ind.end()[-2] + 1; i < Vertices_Ind.back(); i++)
                 SetOnPlane(FoldingCurve[i], Poly_V, FoldingCurve[Vertices_Ind.back()], FoldingCurve[Vertices_Ind.end()[-2]], v_clst, FoldingCurve[Vertices_Ind.end()[-2]].second, -1);

@@ -33,12 +33,12 @@ class GLWidget_3D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
 public:
     void setVertices(const Faces3d Faces = Faces3d(), const Polygon_V Poly_V = Polygon_V(), const HalfEdges Edges = HalfEdges(),
                      const Surface_V _vertices = Surface_V(), const FoldLine3d& _FoldLines = FoldLine3d(), const Ruling3d& _AllRulings = Ruling3d(), bool switchDraw = true);
-    void ReceiveParam(std::vector<glm::f64vec3>&_C,std::vector<glm::f64vec3>& _C2);
+    void ReceiveParam(std::vector<std::vector<glm::f64vec3>>&_C);
     void receiveKeyEvent(QKeyEvent *e);
     void PlanarityDispay(bool state);
     void EraseNonFoldEdge(bool state);
 
-    std::vector<glm::f64vec3>C, C2;
+    std::vector<std::vector<glm::f64vec3>>C;
     std::vector<double> PlanarityColor;
     explicit GLWidget_3D(QWidget *parent = 0);
     ~GLWidget_3D();

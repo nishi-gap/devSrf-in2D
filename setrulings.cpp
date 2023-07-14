@@ -23,40 +23,7 @@ Vertex::Vertex(const Vertex* v){
     deformed = v->deformed;
 }
 
-Vertex::~Vertex(){
-    for(auto* h: halfedge){
-        if(h == nullptr)delete h;
-    }
-}
-
-double Vertex::developability(){
-    if(halfedge.size() < 4)return -1;
-    //並び替え
-    struct EdgeAndAnlge{
-        double a;
-        HalfEdge *h;
-        EdgeAndAnlge(double _a, HalfEdge *_h): a(_a), h(_h){}
-        bool operator<(const EdgeAndAnlge& H) const { return a < H.a; }
-    };
-
-    HalfEdge *head = halfedge.front();
-
-    glm::f64vec3 e = glm::normalize(head->next->vertex->p - head->vertex->p);
-    std::vector<EdgeAndAnlge> EAA;
-    EAA.push_back(EdgeAndAnlge(0, head));
-    for(int i = 1; i < (int)halfedge.size(); i++){
-        double a = glm::orientedAngle(e, glm::normalize(halfedge[i]->next->vertex->p - halfedge[i]->vertex->p), glm::f64vec3{0,0,1});
-        if(a < 0) a += 2.0 * std::numbers::pi;
-        EAA.push_back(EdgeAndAnlge(a, halfedge[i]));
-    }
-    std::sort(EAA.begin(), EAA.end());
-    int edgeNum = halfedge.size();
-    double sum = 0.0;
-    for(int i = 0; i < (int)EAA.size(); i++){
-        sum += glm::angle(glm::normalize(EAA[i].h->next->vertex->p - EAA[i].h->vertex->p),glm::normalize(EAA[(i + 1) % edgeNum].h->next->vertex->p - EAA[(i + 1) % edgeNum].h->vertex->p) );
-    }
-    return abs(2.0*std::numbers::pi - sum);
-}
+Vertex::~Vertex(){ for(auto* h: halfedge){if(h == nullptr)delete h;}}
 
 HalfEdge::HalfEdge(Vertex *v, EdgeType _type){
     vertex = v;
@@ -127,7 +94,6 @@ HalfEdge* HalfEdge::erase(std::vector<HalfEdge*>& Edges, std::vector<Face*>& Fac
         delete pair;
     }else{
         prev->next = this->next; this->next->prev = prev;
-
         face->ReConnect(prev);
     }
 
@@ -136,14 +102,6 @@ HalfEdge* HalfEdge::erase(std::vector<HalfEdge*>& Edges, std::vector<Face*>& Fac
     return next;
 }
 
-double CrvPt_FL::developability(){
-    if(halfedge.size() <= 4)return -1;
-    double phi = 0.0;
-    return phi;
-    for(int i = 1; i < halfedge.size(); i++){
-
-    }
-}
 
 void CrvPt_FL::set(glm::f64vec3 _p, Vertex *o, Vertex *e){
     double sa = glm::distance(_p, o->p), sc = glm::distance(o->p, e->p);
@@ -162,6 +120,44 @@ Vertex4d::Vertex4d(const Vertex4d& V4d){
 }
 Vertex4d::Vertex4d(){first = nullptr; second = nullptr; third = nullptr; IsCalc = false;}
 
+double Vertex4d::developability(){
+    if(first->halfedge.size() < 4)return -1;
+    double sum = 2.0 * std::numbers::pi;
+    /*
+    //並び替え
+    struct EdgeAndAnlge{
+        double a;
+        HalfEdge *h;
+        EdgeAndAnlge(double _a, HalfEdge *_h): a(_a), h(_h){}
+        bool operator<(const EdgeAndAnlge& H) const { return a < H.a; }
+    };
+
+    HalfEdge *head = halfedge.front();
+
+    glm::f64vec3 e = glm::normalize(head->next->vertex->p - head->vertex->p);
+    std::vector<EdgeAndAnlge> EAA;
+    EAA.push_back(EdgeAndAnlge(0, head));
+    for(int i = 1; i < (int)halfedge.size(); i++){
+        double a = glm::orientedAngle(e, glm::normalize(halfedge[i]->next->vertex->p - halfedge[i]->vertex->p), glm::f64vec3{0,0,1});
+        if(a < 0) a += 2.0 * std::numbers::pi;
+        EAA.push_back(EdgeAndAnlge(a, halfedge[i]));
+    }
+    std::sort(EAA.begin(), EAA.end());
+    int edgeNum = halfedge.size();
+    double sum = 0.0;
+    for(int i = 0; i < (int)EAA.size(); i++){
+        sum -= glm::angle(glm::normalize(EAA[i].h->next->vertex->p - EAA[i].h->vertex->p),glm::normalize(EAA[(i + 1) % edgeNum].h->next->vertex->p - EAA[(i + 1) % edgeNum].h->vertex->p) );
+    }*/
+
+    for(auto&h: first->halfedge){
+        if(h->next->vertex->p != second->p && h->next->vertex->p != third->p){
+            sum -= std::acos(glm::dot(glm::normalize(h->next->vertex->p3 - first->p3), glm::normalize(second->p3 - first->p3)));
+            sum -= std::acos(glm::dot(glm::normalize(h->next->vertex->p3 - first->p3), glm::normalize(third->p3 - first->p3)));
+        }
+    }
+
+    return abs(sum);
+}
 //bool operator<(const CrvPt_FL& T, const CrvPt_FL& T2) noexcept { return T.s < T2.s; }
 
 crvpt::crvpt(int _ind, glm::f64vec3 _pt, int _color){

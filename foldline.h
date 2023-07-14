@@ -33,12 +33,13 @@ public:
     double getColor();
     bool modify2DRulings(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_v, int dim, int t_type = 2);
     bool RevisionCrosPtsPosition(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V, int type, bool TrimMode);
-    bool Optimization_FlapAngle(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V, int type = 0, bool IsValidSigmoid = false);
-    bool Optimization_SmooothSrf(const std::vector<Vertex*>& Poly_v);
-    void Optimization_Vertices(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V, int type, bool IsValidSigmoid);
+    bool Optimization_FlapAngle(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V, double wb, double wp);
+    std::vector<std::vector<glm::f64vec3>> Optimization_SmooothSrf(const std::vector<Vertex*>& Poly_v, bool IsConnectEndPoint);
+    void Optimization_Vertices(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V);
     void ReassignColor(std::vector<HalfEdge*>& Edges, ColorPoint& CP);
     void SimplifyModel(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, double tol);
     bool SimpleSmooothSrf(const std::vector<Vertex*>& Poly_v);
+    void modifyFoldingCurvePositionOn3d(const std::vector<HalfEdge*>& Edges);
 
     //HalfEdge *he, *he2;
     std::vector<glm::f64vec3> point;
@@ -48,7 +49,7 @@ public:
     //std::vector<CrvPt_FL> T_crs;
     std::vector<Vertex4d> FoldingCurve;
     //std::vector<HalfEdge_FL*> FoldingCurve;
-    void applyAAAMethod(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V, double a, int type = 0);
+    void applyAAAMethod(std::vector<Vertex*>& Poly_V, double a);
     std::vector<std::array<glm::f64vec3, 2>>  AllRulings, NewRuling2d;
     void drawRulingInAllAngles(std::vector<std::array<glm::f64vec3, 2>>& _Rulings);
 

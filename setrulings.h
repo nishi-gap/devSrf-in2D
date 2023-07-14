@@ -41,7 +41,6 @@ public:
     ~Vertex();
 
     void addNewEdge(HalfEdge *he);
-    double developability();
     bool operator != (const Vertex &V)const{return p != V.p || p2_ori != V.p2_ori|| p3 != V.p3 || p3_ori != V.p3_ori || halfedge != V.halfedge || deformed != V.deformed;}
     bool operator == (const Vertex &V)const{return p == V.p && p2_ori == V.p2_ori && p3 == V.p3 && p3_ori == V.p3_ori && halfedge == V.halfedge && deformed == V.deformed;}
 };
@@ -57,7 +56,6 @@ public:
     bool operator == (const CrvPt_FL &p)const{return s == p.s && rt == p.rt && ve == p.ve && vo == p.vo && IsValid == p.IsValid;}
     bool operator != (const CrvPt_FL &p)const{return !(s == p.s && rt == p.rt && ve == p.ve && vo == p.vo && IsValid == p.IsValid);}
     void set(glm::f64vec3 _p,Vertex *o, Vertex *e);
-    double developability();
 
 };
 
@@ -69,6 +67,7 @@ struct Vertex4d{
     Vertex4d(CrvPt_FL *v, Vertex *v2, Vertex *v3);
     Vertex4d(const Vertex4d& V4d);
     Vertex4d();
+    double developability();
     bool operator == (const Vertex4d &V4d)const{return first == V4d.first && second == V4d.second && third == V4d.third && IsCalc == V4d.IsCalc;}
     bool operator != (const Vertex4d &V4d)const{ return first != V4d.first || second != V4d.second || third != V4d.third || IsCalc != V4d.IsCalc; }
     bool operator == (const Vertex &V)const{return first == V; }

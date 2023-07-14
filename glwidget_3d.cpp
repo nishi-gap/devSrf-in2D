@@ -76,6 +76,8 @@ void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const
     drawdist = 0.0;
     Vertices.clear();
     TriMeshs.clear();
+    PlanarityColor.clear();
+    C.clear();
     glm::f64vec3 _center;
 
     std::vector<std::array<glm::f64vec3, 3>> trimesh;
@@ -192,13 +194,10 @@ void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const
 inline void GLWidget_3D::dispV(glm::f64vec3 p){
     glVertex3d(p.x, p.y, p.z);
 }
-void GLWidget_3D::ReceiveParam(std::vector<glm::f64vec3>&_C,std::vector<glm::f64vec3>& _C2){
-    C.clear(); C2.clear();
-    for(auto&_t: _C){
-        C.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_t,1)));
-    }
-    for(auto&_t: _C2){
-        C2.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_t,1)));
+void GLWidget_3D::ReceiveParam(std::vector<std::vector<glm::f64vec3>>&_C){
+    C = _C;
+    for(auto&c: C){
+        for(auto&p: c) p = glm::f64vec3(Scale * Mirror * glm::f64vec4(p,1));
     }
 }
 
@@ -210,9 +209,9 @@ void GLWidget_3D::paintGL(){
 
     glLoadIdentity();
     perspective(30.0f, (float)s.width() / (float)s.height(), 1.f, 100.f);
-    glm::f64mat4 RotY = glm::rotate(angleY, glm::f64vec3{0,1,0}), RotX = glm::rotate(angleX, glm::f64vec3(1,0,0));
-    glm::f64mat4 Trans = glm::translate(glm::f64vec3{- TransX, - TransY, - TransZ});
-    glm::f64vec3 camPos = RotY * RotX * Trans * glm::f64vec4{center, 1};
+    //glm::f64mat4 RotY = glm::rotate(angleY, glm::f64vec3{0,1,0}), RotX = glm::rotate(angleX, glm::f64vec3(1,0,0));
+    //glm::f64mat4 Trans = glm::translate(glm::f64vec3{- TransX, - TransY, - TransZ});
+    //glm::f64vec3 camPos = RotY * RotX * Trans * glm::f64vec4{center, 1};
 
 
     glScaled(0.1, 0.1, 0.1);
@@ -245,30 +244,26 @@ void GLWidget_3D::paintGL(){
 
     glPolygonOffset(1.f,2.f);
 
-    glLineWidth(1);
-    glColor3d(0,0,0);
-    glBegin(GL_LINE_STRIP);
-    for(auto&v: C){
-        glVertex3d(v.x, v.y, v.z);
-    }glEnd();
-    glBegin(GL_LINE_STRIP);
-    for(auto&v: C2){
-        glVertex3d(v.x, v.y, v.z);
-    }glEnd();
 
-    glPointSize(3);
-    glColor3d(1,0,0);
-    for(auto&v: C){
-        glBegin(GL_POINTS);
-        glVertex3d(v.x, v.y, v.z);
+
+    for(const auto&c: C){
+        glPointSize(6);
+        glColor3d(1,0,0);
+        for(const auto&v: c){
+            glBegin(GL_POINTS);
+            glVertex3d(v.x, v.y, v.z);
+            glEnd();
+        }
+        glEnable(GL_LINE_STIPPLE);
+        glLineStipple(1 , 0xF0F0);
+        glBegin(GL_LINE_STRIP);
+        glColor3d(0.4, 0.4, 0.4);
+        for (const auto& v: c)glVertex3d( v.x, v.y, v.z);
         glEnd();
+        glDisable(GL_LINE_STIPPLE);
+
     }
 
-    for(auto&v: C2){
-        glBegin(GL_POINTS);
-        glVertex3d(v.x, v.y, v.z);
-        glEnd();
-    }
     glPolygonOffset(0.f,0.f);
 
 }

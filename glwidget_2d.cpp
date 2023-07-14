@@ -280,9 +280,8 @@ void GLWidget_2D::changeBetaValue(double val, int keyType){
     if(model->Faces.size() < 2 || IsStop4Debug || model->FL.empty())return;
     if(model->FL.empty())model->FL.push_back(new FoldLine(1, 1, PaintTool::FoldLine_test) );
 
-    double a = val * std::numbers::pi/180.0;
     auto Poly_V = model->outline->getVertices();
-    model->FL[FoldCurveIndex]->applyAAAMethod(model->Edges, model->vertices, Poly_V, val, keyType);
+    model->FL[FoldCurveIndex]->applyAAAMethod(Poly_V, val);
 
     emit foldingSignals();
     update();
@@ -337,61 +336,105 @@ void GLWidget_2D::paintGL(){
 
     }
 
-    float r, g, b = 0;
     glPolygonOffset(0.0,1.0);
-    int ind = assignment_refHE();
-    for(int i = 0; i < model->Edges.size(); i++){
-        HalfEdge *edge = model->Edges[i];
-        glColor3d(0,0,0);
-        glLineWidth(1);
-        if(edge->edgetype == EdgeType::ol){
-            glLineWidth(1);
-            continue;
-        }
-        if(edge->edgetype == EdgeType::fl || edge->edgetype == EdgeType::r){
-            if(drawtype == PaintTool::NewGradationMode){
-                auto getcolor = [](double c, double a, double y)->double{
-                    if(y < a)return c/a * y/255.0;
-                    return ((255.0 - c)*(y - a)/(std::numbers::pi - a) + c)/255.0;
-                };
-                glLineWidth(rulingWidth);
-                glm::f64vec3 f_nv = glm::normalize(glm::cross(edge->vertex->p3 - edge->prev->vertex->p3, edge->next->vertex->p3 - edge->vertex->p3));
-                glm::f64vec3 fp_nv = glm::normalize(glm::cross(edge->pair->vertex->p3 - edge->pair->prev->vertex->p3, edge->pair->next->vertex->p3 - edge->pair->vertex->p3));
-                glm::f64vec3 SpinAxis = glm::normalize(edge->next->vertex->p3 - edge->vertex->p3);
-                double color = getcolor(model->ColorPt.color, model->ColorPt.angle, std::acos(glm::dot(f_nv, fp_nv)));
-
-
-                if(edge->edgetype == EdgeType::r){
-                    double df = edge->r->Gradation/255.0 - color;
-                }
-                if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) < -1e-3){//mount
-                   if(!IsMVcolor_binary)glColor3d(1,1.0 - color,1.0 - color);
-                   else glColor3d(1,0,0);
-                }else if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) > 1e-3){//valley
-                    if(!IsMVcolor_binary)glColor3d(1.0 - color,1.0 - color,1);
-                    else glColor3d(0,0,1);
-                }else{
-                    if(IsEraseNonFoldEdge && edge->edgetype == EdgeType::r)continue;
-                    glColor3d(0,0,0);
-                }
-            }else{ glLineWidth(1.f); glColor3d(0,0,0); }
-            glBegin(GL_LINES);
-            glVertex2d(edge->vertex->p.x, edge->vertex->p.y);
-            glVertex2d(edge->next->vertex->p.x, edge->next->vertex->p.y);
-            glEnd();
-            if(edge->vertex == refV){
-                glColor3d(1, 0, 0);
-                glPointSize(6.0f);
-            }else{
+    auto getcolor = [](double c, double a, double y)->double{
+        if(y < a)return c/a * y/255.0;
+        return ((255.0 - c)*(y - a)/(std::numbers::pi - a) + c)/255.0;
+    };
+    if(!model->FL.empty() && !model->FL[0]->FoldingCurve.empty()){
+        for(auto& FL: model->FL){
+            for(const auto& fc: FL->FoldingCurve){
                 glColor3d(0, 0, 0);
                 glPointSize(3.0f);
+                glBegin(GL_POINTS);
+                glVertex2d(fc.first->p.x, fc.first->p.y);
+                glEnd();
             }
-            glBegin(GL_POINTS);
-            glVertex2d(edge->vertex->p.x, edge->vertex->p.y);
-            glEnd();
-            glColor3d(0, 0, 0);
+            //p0:描画するエッジの始点, p1: 描画するエッジの端点, p2: 片側の平面上の点, p3: もう片方の平面上の点
+            auto DrawEdge = [&](Vertex *p0, Vertex *p1, Vertex *p2, Vertex *p3, double LineWidth, bool IsGradation, bool IsRuling){
+                glLineWidth(LineWidth);
+                glm::f64vec3 f_nv = glm::normalize(glm::cross(p1->p3 - p0->p3, p2->p3 - p0->p3)),fp_nv = glm::normalize(glm::cross(p3->p3 - p0->p3, p1->p3 - p0->p3));
+                glm::f64vec3 SpinAxis = glm::normalize(p1->p3 - p0->p3);
+                if(IsGradation){
+                    double color = getcolor(model->ColorPt.color, model->ColorPt.angle, std::acos(glm::dot(f_nv, fp_nv)));
+                    if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) > 1e-3){//mount
+                       if(!IsMVcolor_binary)glColor3d(1,1.0 - color,1.0 - color);
+                       else glColor3d(1,0,0);
+                    }else if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) < -1e-3){//valley
+                        if(!IsMVcolor_binary)glColor3d(1.0 - color,1.0 - color,1);
+                        else glColor3d(0,0,1);
+                    }else{
+                        if(IsEraseNonFoldEdge &&  IsRuling)return;
+                        glColor3d(0,0,0);
+                    }
+                }else{ glLineWidth(1.f); glColor3d(0,0,0); }
+                glBegin(GL_LINES);
+                glVertex2d(p1->p.x, p1->p.y);  glVertex2d(p0->p.x, p0->p.y);
+                glEnd();
+
+                glColor3d(0, 0, 0);
+                glPointSize(3.0f); glBegin(GL_POINTS); glVertex2d(p0->p.x, p0->p.y);
+                glEnd();
+
+            };
+            bool IsGradation = (drawtype == PaintTool::NewGradationMode)?true: false;
+            for(int i = 1; i < (int)FL->FoldingCurve.size(); i++)
+                DrawEdge(FL->FoldingCurve[i].first, FL->FoldingCurve[i-1].first, FL->FoldingCurve[i].second, FL->FoldingCurve[i].third, rulingWidth, IsGradation, false);
+            for(int i = 1; i < (int)FL->FoldingCurve.size() - 1; i++){
+                DrawEdge(FL->FoldingCurve[i].first, FL->FoldingCurve[i].second, FL->FoldingCurve[i+1].first, FL->FoldingCurve[i-1].first, rulingWidth, IsGradation, true);
+                DrawEdge(FL->FoldingCurve[i].first, FL->FoldingCurve[i].third, FL->FoldingCurve[i-1].first, FL->FoldingCurve[i+1].first, rulingWidth, IsGradation, true);
+            }
+
+
+            glColor3d(0,0,0);
+        }
+    }else{
+        for(const auto&edge: model->Edges){
+            glColor3d(0,0,0);
+            glLineWidth(1);
+            if(edge->edgetype == EdgeType::ol)glLineWidth(1);
+            if(edge->edgetype == EdgeType::r){
+                if(drawtype == PaintTool::NewGradationMode){
+                    glLineWidth(rulingWidth);
+                    glm::f64vec3 f_nv = glm::normalize(glm::cross(edge->vertex->p3 - edge->prev->vertex->p3, edge->next->vertex->p3 - edge->vertex->p3));
+                    glm::f64vec3 fp_nv = glm::normalize(glm::cross(edge->pair->vertex->p3 - edge->pair->prev->vertex->p3, edge->pair->next->vertex->p3 - edge->pair->vertex->p3));
+                    glm::f64vec3 SpinAxis = glm::normalize(edge->next->vertex->p3 - edge->vertex->p3);
+                    double color = getcolor(model->ColorPt.color, model->ColorPt.angle, std::acos(glm::dot(f_nv, fp_nv)));
+
+
+                    if(edge->edgetype == EdgeType::r){
+                        double df = edge->r->Gradation/255.0 - color;
+                    }
+                    if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) > 1e-3){//mount
+                       if(!IsMVcolor_binary)glColor3d(1,1.0 - color,1.0 - color);
+                       else glColor3d(1,0,0);
+                    }else if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) < -1e-3){//valley
+                        if(!IsMVcolor_binary)glColor3d(1.0 - color,1.0 - color,1);
+                        else glColor3d(0,0,1);
+                    }else{
+                        if(IsEraseNonFoldEdge && edge->edgetype == EdgeType::r)continue;
+                        glColor3d(0,0,0);
+                    }
+                }else{ glLineWidth(1.f); glColor3d(0,0,0); }
+                glBegin(GL_LINES);
+                glVertex2d(edge->vertex->p.x, edge->vertex->p.y);
+                glVertex2d(edge->next->vertex->p.x, edge->next->vertex->p.y);
+                glEnd();
+                if(edge->vertex == refV){
+                    glColor3d(1, 0, 0);
+                    glPointSize(6.0f);
+                }else{
+                    glColor3d(0, 0, 0);
+                    glPointSize(3.0f);
+                }
+                glBegin(GL_POINTS);
+                glVertex2d(edge->vertex->p.x, edge->vertex->p.y);
+                glEnd();
+                glColor3d(0, 0, 0);
+            }
         }
     }
+
     //可展面の輪郭描画
     {
         glLineWidth(1);
@@ -561,25 +604,12 @@ void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
         if(res) emit foldingSignals();
     }
     if(e->key() == Qt::Key_P){
-        int type = 1;
-        model->FL[FoldCurveIndex]->Optimization_Vertices(model->Edges, model->vertices, Poly_v, type, false);
-
+        model->FL[FoldCurveIndex]->Optimization_Vertices(model->Edges, model->vertices, Poly_v);
         emit foldingSignals();
     }
     update();
 }
 
-Vertex *GLWidget_2D::closestVertex(QPointF p, std::vector<Vertex*>& Vertices){
-    Vertex *clstV = nullptr;
-    double d = 10;
-    for(auto&v: Vertices){
-        if(d > glm::distance(glm::f64vec3{p.x(), p.y(), 0}, v->p)){
-            d = glm::distance(glm::f64vec3{p.x(), p.y(), 0}, v->p);
-            clstV = v;
-        }
-    }
-    return clstV;
-}
 
 void GLWidget_2D::mousePressEvent(QMouseEvent *e){
     QPointF p = this->mapFromGlobal(QCursor::pos());
@@ -641,10 +671,6 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
         }else if(drawtype == PaintTool::MoveCtrlPt){
             SmoothCurveIndex = model->searchPointIndex(p, movePt, 0);
 
-        }
-        else if(drawtype == PaintTool::CheckDevelopability){
-            refV = closestVertex(p, model->vertices);
-            std::cout << "Referenced vertex  " << refV << " ,  developability = " << refV->developability() << std::endl;
         }
 
     }else if(e->button() == Qt::RightButton){

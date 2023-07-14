@@ -82,6 +82,7 @@ public slots:
     void changeToleranceValue_Spin(double val);
     void StartSmoothingSurface();
     void SimpleSmoothing();
+    void ReassinColor();
 
     //Line Width
     void changeLineWidthFromSlider(int n);

@@ -100,7 +100,7 @@ bool hasPointInTriangle3D(glm::f64vec3 p, std::array<glm::f64vec3, 3>& V){
 }
 
 
-std::vector<double> _bezierclipping(std::vector<glm::f64vec3>&CtrlPts_base, std::vector<glm::f64vec3>&CtrlPts_cur, std::array<glm::f64vec3, 2>& line, int dim){
+std::vector<double> _bezierclipping(const std::vector<glm::f64vec3>&CtrlPts_base, std::vector<glm::f64vec3>&CtrlPts_cur, std::array<glm::f64vec3, 2>& line, int dim){
     double t_min = 1, t_max = 0;
     glm::f64vec3 p = line[0], q = line[1];
     std::vector<glm::f64vec3> D = GrahamScan(CtrlPts_cur);
@@ -116,18 +116,18 @@ std::vector<double> _bezierclipping(std::vector<glm::f64vec3>&CtrlPts_base, std:
     if(T.size() == 0)return {};
 
     if(T.size() == 1){return{(p.x + q.x)/2}; }
-    t_min = *std::min_element(T.begin(), T.end()); t_min = (t_min < 0) ? 0: (t_min > 1)? 1: t_min;
-    t_max = *std::max_element(T.begin(), T.end()); t_max = (t_max < 0) ? 0: (t_max > 1) ? 1:  t_max;
-    std::array<glm::f64vec3, 2> next_line = std::array{glm::f64vec3{t_min, 0,0}, glm::f64vec3{t_max, 0,0}};
+    t_min = *std::min_element(T.begin(), T.end()); t_min = (t_min < 0) ? 0.0: (t_min > 1)? 1.0: t_min;
+    t_max = *std::max_element(T.begin(), T.end()); t_max = (t_max < 0) ? 0.0: (t_max > 1) ? 1.0:  t_max;
+    std::array<glm::f64vec3, 2> next_line = std::array{glm::f64vec3{t_min, 0.0,0.0}, glm::f64vec3{t_max, 0.0,0.0}};
 
-    if(abs(t_max -  t_min) < 1e-7){
+    if(abs(t_max -  t_min) < 1e-9){
         return {t_max};
         //return {(t_max + t_min)/2.0};
     }
     std::pair<std::vector<glm::f64vec3>, std::vector<glm::f64vec3>> _bez = BezierSplit(CtrlPts_base, t_max);
     double bez_t = t_min / (t_max);
     _bez = BezierSplit(_bez.first, bez_t);
-    if(abs(glm::distance(p,q) - abs(t_max - t_min)) < DBL_EPSILON){
+    if(abs(glm::distance(p,q) - abs(t_max - t_min)) < 1e-9){
         std::pair<std::vector<glm::f64vec3>, std::vector<glm::f64vec3>> bez_spl = BezierSplit(_bez.second, 0.5);
         std::vector<glm::f64vec3> b1 = bez_spl.first, b2 = bez_spl.second;
         std::array<glm::f64vec3, 2> next_line2; std::copy(next_line.begin(), next_line.end(), next_line2.begin());
@@ -191,13 +191,13 @@ double SignedArea(glm::f64vec3 a, glm::f64vec3 b, glm::f64vec3 p){
 
 bool is_point_on_line(glm::f64vec3 p, glm::f64vec3 lp1, glm::f64vec3 lp2){
     double ac = glm::distance(p, lp1), bc = glm::distance(p, lp2), lp = glm::distance(lp1, lp2);
-    if(ac < 1e-9 || bc < 1e-9)return true;
-    if(abs(lp - ac - bc) < 1e-9) return true;
+    if(ac < 1e-9 || bc < 1e-7)return true;
+    if(abs(lp - ac - bc) < 1e-7) return true;
     return false;
 }
 
 //split at t for bezier curve
-std::pair<std::vector<glm::f64vec3>, std::vector<glm::f64vec3>> BezierSplit(std::vector<glm::f64vec3> CtrlPts, double t){
+std::pair<std::vector<glm::f64vec3>, std::vector<glm::f64vec3>> BezierSplit(const std::vector<glm::f64vec3>& CtrlPts, double t){
     std::vector<glm::f64vec3>lp, rp;
     std::vector<std::vector<glm::f64vec3>> Tree = de_casteljau_algorithm(CtrlPts, t);
     Tree.insert(Tree.begin(), CtrlPts);
@@ -209,7 +209,7 @@ std::pair<std::vector<glm::f64vec3>, std::vector<glm::f64vec3>> BezierSplit(std:
 
 }
 
-std::vector<std::vector<glm::f64vec3>> de_casteljau_algorithm(std::vector<glm::f64vec3> CtrlPts, double t){
+std::vector<std::vector<glm::f64vec3>> de_casteljau_algorithm(const std::vector<glm::f64vec3>& CtrlPts, double t){
     std::vector<glm::f64vec3> Q;
     std::vector<std::vector<glm::f64vec3>> _Q;
     glm::f64vec3 prev = CtrlPts[0];
