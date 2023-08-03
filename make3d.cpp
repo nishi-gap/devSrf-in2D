@@ -138,9 +138,9 @@ void Model::setHalfEdgePair(HalfEdge*he){
 
 void Model::deform(){
     auto Color2Angle = [](double a, ColorPoint CP){
-        if(-CP.color <= a && a <= CP.color) return a * CP.angle/CP.color;
-        else if(CP.color < a) return ((std::numbers::pi - CP.angle)/(255.0 - CP.color)* (abs(a) - CP.color) + CP.angle);
-        return -((std::numbers::pi - CP.angle)/(255.0 - CP.color)* (abs(a) - CP.color) + CP.angle);
+        if(-CP.color <= a && a <= CP.color) return -a * CP.angle/CP.color;
+        else if(CP.color < a) return -((std::numbers::pi - CP.angle)/(255.0 - CP.color)* (abs(a) - CP.color) + CP.angle);
+        return ((std::numbers::pi - CP.angle)/(255.0 - CP.color)* (abs(a) - CP.color) + CP.angle);
     };
     if(Faces.empty())return;
     glm::f64mat4x4 T, R, A;

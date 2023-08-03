@@ -305,7 +305,7 @@ void GLWidget_2D::paintGL(){
 
     if(visibleGrid == 1)DrawGrid();
 
-    //折り線の描画
+    //折曲線の描画
     {
         if(visibleCurve){
             for(auto&fl: model->FL){
@@ -357,10 +357,10 @@ void GLWidget_2D::paintGL(){
                 glm::f64vec3 SpinAxis = glm::normalize(p1->p3 - p0->p3);
                 if(IsGradation){
                     double color = getcolor(model->ColorPt.color, model->ColorPt.angle, std::acos(glm::dot(f_nv, fp_nv)));
-                    if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) > 1e-3){//mount
+                    if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) <-1e-5){//mount
                        if(!IsMVcolor_binary)glColor3d(1,1.0 - color,1.0 - color);
                        else glColor3d(1,0,0);
-                    }else if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) < -1e-3){//valley
+                    }else if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) > 1e-5){//valley
                         if(!IsMVcolor_binary)glColor3d(1.0 - color,1.0 - color,1);
                         else glColor3d(0,0,1);
                     }else{
@@ -388,6 +388,13 @@ void GLWidget_2D::paintGL(){
 
             glColor3d(0,0,0);
         }
+        if(refV != nullptr){
+            glBegin(GL_POINT);
+            glPointSize(6.f);
+            glColor3d(1,0,0);
+            glVertex2d(refV->p.x, refV->p.y);
+            glEnd();
+        }
     }else{
         for(const auto&edge: model->Edges){
             glColor3d(0,0,0);
@@ -400,15 +407,10 @@ void GLWidget_2D::paintGL(){
                     glm::f64vec3 fp_nv = glm::normalize(glm::cross(edge->pair->vertex->p3 - edge->pair->prev->vertex->p3, edge->pair->next->vertex->p3 - edge->pair->vertex->p3));
                     glm::f64vec3 SpinAxis = glm::normalize(edge->next->vertex->p3 - edge->vertex->p3);
                     double color = getcolor(model->ColorPt.color, model->ColorPt.angle, std::acos(glm::dot(f_nv, fp_nv)));
-
-
-                    if(edge->edgetype == EdgeType::r){
-                        double df = edge->r->Gradation/255.0 - color;
-                    }
-                    if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) > 1e-3){//mount
+                    if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) < -1e-3){//mount
                        if(!IsMVcolor_binary)glColor3d(1,1.0 - color,1.0 - color);
                        else glColor3d(1,0,0);
-                    }else if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) < -1e-3){//valley
+                    }else if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) > 1e-3){//valley
                         if(!IsMVcolor_binary)glColor3d(1.0 - color,1.0 - color,1);
                         else glColor3d(0,0,1);
                     }else{
@@ -500,8 +502,8 @@ void GLWidget_2D::paintGL(){
     }
 
     glLineWidth(1.0);
-    if(!visibleCurve)return;
-    //曲線の制御点
+    if(!visibleCurve || drawtype == PaintTool::FoldLine_bezier)return;
+    //ruling制御曲線の制御点
     if(drawtype != PaintTool::NewGradationMode){
         for(int i = 0; i < (int)model->crvs.size(); i++){
             if((i == model->getSelectedCurveIndex(mapFromGlobal(QCursor::pos()))) ||
@@ -528,7 +530,7 @@ void GLWidget_2D::paintGL(){
             }
         }
 
-        //曲線の描画
+        //ruling制御曲線の描画
         for(int i = 0; i < (int)model->crvs.size(); i++){
             if(i == SmoothCurveIndex)glColor3d(1, 0, 0);
             else glColor3d(0.4, 0.4, 0.4);
@@ -670,6 +672,27 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
             model->DeleteControlPoint(p, curveDimention, DivSize);
         }else if(drawtype == PaintTool::MoveCtrlPt){
             SmoothCurveIndex = model->searchPointIndex(p, movePt, 0);
+
+        }else if(drawtype == PaintTool::CheckDevelopability){
+            int ind = -1; FoldLine *_fl = nullptr; refV = nullptr;
+            double dist = 3.0;
+            if(model->FL.empty())return;
+            for(const auto&fl: model->FL){
+                for(auto itr = fl->FoldingCurve.begin() + 1; itr != fl->FoldingCurve.end() - 1; itr++){
+                    if(glm::length(glm::f64vec3{p.x(), p.y(), 0} - (*itr).first->p) < dist){
+                        ind = std::distance(fl->FoldingCurve.begin(), itr); dist = glm::length(glm::f64vec3{p.x(), p.y(), 0} - (*itr).first->p);
+                        _fl = fl;
+                    }
+                }
+            }
+            if(ind != -1){
+                auto v4d = _fl->FoldingCurve[ind];
+                glm::f64vec3 et = v4d.second->p3 -v4d.first->p3, er = _fl->FoldingCurve[ind-1].first->p3 -v4d.first->p3, eb = v4d.third->p3 -v4d.first->p3, el = _fl->FoldingCurve[ind+1].first->p3 -v4d.first->p3;
+                et /= glm::length(et); er /= glm::length(er); eb /= glm::length(eb); el /= glm::length(el);
+                double phi1 = std::acos(glm::dot(et, er)), phi2 = std::acos(glm::dot(et, el)), phi3 = std::acos(glm::dot(eb, el)), phi4 = std::acos(glm::dot(eb, er));
+                refV = _fl->FoldingCurve[ind].first;
+                std::cout << "developability  = " <<  abs(2.0*std::numbers::pi - phi1 - phi2 - phi3 - phi4) << ", phi1 = " << glm::degrees(phi1) << " , phi2 = " << glm::degrees(phi2) << ", phi3 = " << glm::degrees(phi3) << ", phi4 = " << glm::degrees(phi4) << std::endl;
+            }
 
         }
 

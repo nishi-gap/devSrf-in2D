@@ -67,7 +67,6 @@ struct Vertex4d{
     Vertex4d(CrvPt_FL *v, Vertex *v2, Vertex *v3);
     Vertex4d(const Vertex4d& V4d);
     Vertex4d();
-    double developability();
     bool operator == (const Vertex4d &V4d)const{return first == V4d.first && second == V4d.second && third == V4d.third && IsCalc == V4d.IsCalc;}
     bool operator != (const Vertex4d &V4d)const{ return first != V4d.first || second != V4d.second || third != V4d.third || IsCalc != V4d.IsCalc; }
     bool operator == (const Vertex &V)const{return first == V; }

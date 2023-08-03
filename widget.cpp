@@ -73,13 +73,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this, &MainWindow::signalFLtype, ui->glWid2dim, &GLWidget_2D::changeFoldType);
     connect(ui->ToleranceValue, &QSlider::valueChanged, this, &MainWindow::changeToleranceValue_Slider);
     connect(ui->TolValue, &QDoubleSpinBox::valueChanged, this, &MainWindow::changeToleranceValue_Spin);
-    connect(ui->SmoothingButton, &QPushButton::clicked, this, &MainWindow::StartSmoothingSurface);
-    connect(ui->SimpleSmoothButton, &QPushButton::clicked, this, &MainWindow::SimpleSmoothing);
     connect(ui->ReassinColorButton, &QPushButton::clicked, this, &MainWindow::ReassinColor);
 
     //fold line debug
     connect(ui->startButton, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::Start4Debug_CF);
-    connect(ui->OptBtn, &QPushButton::clicked, this, &MainWindow::StartOptimization);
+    connect(ui->developablityButton, &QCheckBox::clicked, ui->glWid2dim, &GLWidget_2D::checkDevelopability);
+
     connect(ui->angleSlider, &QSlider::sliderMoved, this, &MainWindow::changeAngleFromSlider);
     connect(ui->angleA, &QDoubleSpinBox::valueChanged, this, &MainWindow::changeAngleFromSpinBox);
     connect(this, &MainWindow::sendAngle, ui->glWid2dim, &GLWidget_2D::changeBetaValue);
@@ -94,7 +93,14 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     //planarity
+    connect(ui->SmoothingButton, &QPushButton::clicked, this, &MainWindow::StartSmoothingSurface);
+    connect(ui->SimpleSmoothButton, &QPushButton::clicked, this, &MainWindow::SimpleSmoothing);
     connect(ui->PlanarityButton, &QCheckBox::clicked, ui->glWid3dim, &GLWidget_3D::PlanarityDispay);
+    connect(ui->OptPlararity_Button, &QPushButton::clicked, this, &MainWindow::StartOptimization_plararity);
+
+    //optimization or discrete developable surface
+    connect(ui->OptBtn, &QPushButton::clicked, this, &MainWindow::StartOptimization);
+
     //Erase Non Fold Edge
     connect(ui->EraseNonFoldButton, &QCheckBox::clicked, this, &MainWindow::EraseNonFoldEdge);
 
@@ -166,9 +172,7 @@ void MainWindow::changeToleranceValue_Spin(double val){
 
     ui->ToleranceValue->setValue(int(val/maxSpin * maxSlider));
     ui->glWid2dim->model->FL[0]->SimplifyModel(ui->glWid2dim->model->Faces,  ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, val);
-    ui->glWid2dim->update();
-    ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
-                               ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings, false);
+    fold_Sm();
 }
 
 
@@ -177,11 +181,16 @@ void MainWindow::StartOptimization(){
     auto Poly_V = ui->glWid2dim->model->outline->getVertices();
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
     bool res = ui->glWid2dim->model->FL[0]->Optimization_FlapAngle(ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, Poly_V, wb, wp);
-    if(res){
-        //ui->glWid2dim->model->deform();
-        ui->glWid2dim->update();
-        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
-    }
+    if(res)fold_Sm();
+
+}
+
+void MainWindow::StartOptimization_plararity(){
+    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+    auto Poly_V = ui->glWid2dim->model->outline->getVertices();
+    auto res = ui->glWid2dim->model->FL[0]->Optimization_PlanaritySrf(Poly_V);
+    fold_Sm();
+    ui->glWid3dim->ReceiveParam(res);
 }
 
 void MainWindow::StartSmoothingSurface(){
@@ -190,8 +199,9 @@ void MainWindow::StartSmoothingSurface(){
     bool ICE = ui->ConnectEndPointBox->isChecked();
     auto res = ui->glWid2dim->model->FL[0]->Optimization_SmooothSrf(Poly_V, ICE);
     if(!res.empty()){
-        ui->glWid2dim->update();
-        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
+        //ui->glWid2dim->update();
+        //ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
+        fold_Sm();
         ui->glWid3dim->ReceiveParam(res);
     }
 }
@@ -210,8 +220,8 @@ void MainWindow::changeAngleFromSlider(int val){
     ui->angleA->setValue((double)val/100);
     double a = (double)val/18000.0 * std::numbers::pi;
     emit sendAngle(a, keyType);
-
 }
+
 void MainWindow::changeAngleFromSpinBox(double val){
     ui->angleSlider->setValue(val*100);
     double a = (double)val*std::numbers::pi/180.0;
@@ -230,8 +240,7 @@ void MainWindow::changeLineWidthFromSpinBox(double d){
 }
 
 void MainWindow::fold_Sm(){
-
-    //switchActivateCheckBox("MakeDevSrf");
+    ui->glWid2dim->update();
     if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
     else if(!ui->glWid2dim->model->FL.empty()){
         ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
@@ -288,7 +297,7 @@ void MainWindow::switchActivateCheckBox(PaintTool active){
 }
 void MainWindow::ReassinColor(){
     if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
-    else if(!ui->glWid2dim->model->FL.empty()){
+    else if(!ui->glWid2dim->model->FL.empty() && !ui->glWid2dim->model->FL[0]->FoldingCurve.empty()){
         ui->glWid2dim->model->FL[0]->ReassignColor(ui->glWid2dim->model->Edges, ui->glWid2dim->model->ColorPt);
         ui->glWid2dim->model->deform();
         ui->glWid2dim->update();
@@ -303,11 +312,14 @@ void MainWindow::ReassinColor(){
 
 void MainWindow::keyPressEvent(QKeyEvent *e){
     static bool switchDraw = false;
-
     ui->glWid3dim->receiveKeyEvent(e);
     ui->glWid2dim->receiveKeyEvent(e);
-    if(e->key() == Qt::Key_Q){
-        switchDraw = !switchDraw;
+    if(e->key() == Qt::Key_W){
+        if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+        auto Poly_V = ui->glWid2dim->model->outline->getVertices();
+        double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
+        bool res = ui->glWid2dim->model->FL[0]->Optimization_FlapAngle(ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, Poly_V, wb, wp, false);
+        fold_Sm();
     }
     else if(e->key() == Qt::Key_Return){emit PressedEnter();}
     else if(e->key() == Qt::Key_C){
@@ -529,8 +541,11 @@ void MainWindow::exportobj(){
     for(auto&c: planerity_value)QuantitativeResult << c << ", ";
     QuantitativeResult << "\nDevelopability\n" ;
     if(!(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())){
-        for(auto&v: ui->glWid2dim->model->FL[0]->FoldingCurve){
-            double a = v.developability();
+        for(auto itr = ui->glWid2dim->model->FL[0]->FoldingCurve.begin() + 1; itr != ui->glWid2dim->model->FL[0]->FoldingCurve.end() - 1; itr++){
+            glm::f64vec3 et = itr->second->p3 - itr->first->p3, er = (itr - 1)->first->p3 - itr->first->p3, eb = itr->third->p3 - itr->first->p3, el = (itr + 1)->first->p3 - itr->first->p3;
+            et /= glm::length(et); er /= glm::length(er); eb /= glm::length(eb); el /= glm::length(el);
+            double phi1 = std::acos(glm::dot(et, er)), phi2 = std::acos(glm::dot(et, el)), phi3 = std::acos(glm::dot(eb, el)), phi4 = std::acos(glm::dot(eb, er));
+            double a = abs(2.0*std::numbers::pi - (phi1 + phi2 + phi3 + phi4));
             if(a != -1)QuantitativeResult << a << ", ";
         }
     }

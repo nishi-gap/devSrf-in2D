@@ -77,16 +77,21 @@ public slots:
     void color_FL();
     void changeAngleFromSlider(int val);
     void changeAngleFromSpinBox(double val);
-    void StartOptimization();
+
     void changeToleranceValue_Slider(int val);
     void changeToleranceValue_Spin(double val);
-    void StartSmoothingSurface();
-    void SimpleSmoothing();
+
     void ReassinColor();
 
     //Line Width
     void changeLineWidthFromSlider(int n);
     void changeLineWidthFromSpinBox(double d);
+
+    //optimization or discrete developable surface
+    void StartSmoothingSurface();
+    void SimpleSmoothing();
+    void StartOptimization();
+    void StartOptimization_plararity();
 private:
     Ui::MainWindow *ui;
     Model *model;
