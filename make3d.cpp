@@ -15,22 +15,9 @@ Model::Model(int _crvPtNum){
 }
 
 void Model::clear(){
-<<<<<<< HEAD
-    for(auto itr = vertices.begin(); itr != vertices.end();){
-        delete *itr; itr++;
-    }vertices.clear();
-    for(auto itr = Edges.begin(); itr != Edges.end();){
-        delete *itr; itr++;
-    }Edges.clear();
-    for(auto itr = Faces.begin(); itr != Faces.end();){
-        delete *itr; itr++;
-    }Faces.clear();
-
-=======
     vertices.clear();
     Rulings.clear();
     //Faces.clear();
->>>>>>> b887cac (backup)
     ol_vertices.clear();
     ColorPt = ColorPoint(200, std::numbers::pi/2.0);
 }
@@ -38,12 +25,6 @@ void Model::clear(){
 Model::~Model(){
     for(auto itr = vertices.begin(); itr != vertices.end();itr++)delete *itr;
     vertices.clear();
-
-    for(auto itr = Edges.begin(); itr != Edges.end(); itr++)delete *itr;
-    Edges.clear();
-
-    for(auto itr = Faces.begin(); itr != Faces.end(); itr++)delete *itr;
-    Faces.clear();
 
     delete outline;
     for(auto&v: ol_vertices){

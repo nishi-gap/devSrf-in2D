@@ -12,12 +12,7 @@ inline glm::f64vec3 _calcruling3d(const double& a, glm::f64vec3 e, glm::f64vec3 
 void CalcRuling(double a, Vertex4d& xbef, Vertex4d& x, Vertex4d& xnext, std::vector<Vertex*>& Poly_V, double& a2, glm::f64vec3& SrfN);
 inline double update_flapangle(double a, const glm::f64vec3& befN, const glm::f64vec3& SrfN, const glm::f64vec3& e);
 void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex*>& Poly_V,double a);
-<<<<<<< HEAD
-
-std::vector<Vertex4d> TrimPoints2(std::vector<HalfEdge*>& Edges, std::vector<Face*>& Faces, std::vector<Vertex*>& Vertices, std::vector<Vertex4d>& FoldingCurve, double tol);
-=======
 std::vector<Vertex4d> TrimPoints2(std::vector<Vertex4d>& FoldingCurve, double tol);
->>>>>>> b887cac (backup)
 bool IsRulingCrossed(glm::f64vec3 N, glm::f64vec3& cp, glm::f64vec3& crossPoint,  std::vector<Vertex*>& Poly_V);
 void Douglas_Peucker_algorithm(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex4d>& res, double tol = std::numbers::pi/9.0);
 void Douglas_Peucker_algorithm2(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex4d>& res, int size);
@@ -106,99 +101,68 @@ namespace RevisionVertices{
 
     };
     struct SmoothSurface{
-        std::vector<SmoothingArea> SA;
-        bool IsConnectEndPoint;
+       std::vector<SmoothingArea> SA;
+       bool IsConnectEndPoint;
 
-        double Edev(std::vector<glm::f64vec3>& P, bool IsConnectEndPoint, const double th = 1e-5){
-            auto Angle = [](glm::f64vec3& e, glm::f64vec3& e2)->double{return (glm::dot(e, e2) >= 1)? 0: (glm::dot(e, e2) <= -1)? std::numbers::pi: std::acos(glm::dot(e, e2));  };
-            double f = 0.0;
-            int j = 0;
-            std::vector<std::array<glm::f64vec3, 3>> X;
-            glm::f64vec3 rt, rb;
-            for(const auto&sa: SA){
-                rt = glm::normalize(sa.stP.second->p3 - sa.stP.first->p3);
-                rb = glm::normalize(sa.stP.third->p3 - sa.stP.first->p3);
-                X.push_back(std::array{sa.stP.first->p3, rt, rb});
-                for(int i = 0; i < (int)sa.OriginalVertices.size(); i++){
-                    rt = (sa.qt != nullptr)? glm::normalize(sa.qt->p3 - P[j]): glm::normalize(sa.stP.second->p3 - sa.stP.first->p3);
-                    rb = (sa.qb != nullptr)? glm::normalize(sa.qb->p3 - P[j]): glm::normalize(sa.stP.third->p3 - sa.stP.first->p3);
-                    X.push_back(std::array{P[j], rt, rb});
-                    j++;
-                }
-            }
-            rt = glm::normalize(SA.back().lastP.second->p3 - SA.back().lastP.first->p3);
-            rb = glm::normalize(SA.back().lastP.third->p3 - SA.back().lastP.first->p3);
-            X.push_back(std::array{SA.back().lastP.first->p3, rt, rb});
+       double Edev(std::vector<glm::f64vec3>& P, bool IsConnectEndPoint, const double th = 1e-5){
+           auto Angle = [](glm::f64vec3& e, glm::f64vec3& e2)->double{return (glm::dot(e, e2) >= 1)? 0: (glm::dot(e, e2) <= -1)? std::numbers::pi: std::acos(glm::dot(e, e2));  };
+           double f = 0.0;
+           int j = 0;
+           std::vector<std::array<glm::f64vec3, 3>> X;
+           glm::f64vec3 rt, rb;
+           for(const auto&sa: SA){
+               rt = glm::normalize(sa.stP.second->p3 - sa.stP.first->p3);
+               rb = glm::normalize(sa.stP.third->p3 - sa.stP.first->p3);
+               X.push_back(std::array{sa.stP.first->p3, rt, rb});
+               for(int i = 0; i < (int)sa.OriginalVertices.size(); i++){
+                   rt = (sa.qt != nullptr)? glm::normalize(sa.qt->p3 - P[j]): glm::normalize(sa.stP.second->p3 - sa.stP.first->p3);
+                   rb = (sa.qb != nullptr)? glm::normalize(sa.qb->p3 - P[j]): glm::normalize(sa.stP.third->p3 - sa.stP.first->p3);
+                   X.push_back(std::array{P[j], rt, rb});
+                   j++;
+               }
+           }
+           rt = glm::normalize(SA.back().lastP.second->p3 - SA.back().lastP.first->p3);
+           rb = glm::normalize(SA.back().lastP.third->p3 - SA.back().lastP.first->p3);
+           X.push_back(std::array{SA.back().lastP.first->p3, rt, rb});
 
-            glm::f64vec3 el, er;
-            for(int i = 1; i < X.size() - 1; i++){
-                el = glm::normalize(X[i+1][0] - X[i][0]); er = glm::normalize(X[i-1][0] - X[i][0]);
-                f += std::abs((2.0 * std::numbers::pi - (Angle(el, X[i][1]) + Angle(X[i][1], er) + Angle(er, X[i][2]) + Angle(X[i][2], el))) - th);
-            }
+           glm::f64vec3 el, er;
+           for(int i = 1; i < X.size() - 1; i++){
+               el = glm::normalize(X[i+1][0] - X[i][0]); er = glm::normalize(X[i-1][0] - X[i][0]);
+               f += std::abs((2.0 * std::numbers::pi - (Angle(el, X[i][1]) + Angle(X[i][1], er) + Angle(er, X[i][2]) + Angle(X[i][2], el))) - th);
+           }
 
-            return f;
-        }
+           return f;
+       }
 
-        double Econv(std::vector<glm::f64vec3>& P, std::vector<glm::f64vec3>& Pori){
-            auto SgdArea = [](glm::f64vec3& A, glm::f64vec3& B, glm::f64vec3& C)->double{
-              return ((A.x*B.y - B.x*A.y) + (B.x*C.y - C.x*B.y) + (C.x*A.y - A.x*C.y))/2.0;
-            };
-            double f = 0.0;
-            double sum = 0.0;
-            if(P.empty())return 0.0;
-            int j = 0;
-            std::vector<glm::f64vec3> X, Xori;
-            for(const auto&sa: SA){
-                X.push_back(sa.stP.first->p); Xori.push_back(sa.stP.first->p);
-                for(int i = 0; i < (int)sa.OriginalVertices.size(); i++){
-                    X.push_back(P[j]); Xori.push_back(Pori[j]);
-                    j++;
-                }
-            }
-            X.push_back(SA.back().lastP.first->p); Xori.push_back(SA.back().lastP.first->p);
-            for(int i = 1; i < (int)X.size() - 1; i++){
-                f =  -SgdArea(X[i-1],X[i],X[i+1]) * SgdArea(Xori[i-1],Xori[i],Xori[i+1]);
-                sum += (f > 0)? f: 0;
-            }
-            return sum;
-        }
-
-        SmoothingArea(Vertex4d& a, Vertex4d& _end, int si, int li, std::vector<Vertex*>& OV): stP{a}, lastP{_end}, st_ind{si}, last_ind{li}, OriginalVertices{OV}{
-            auto getV = [](Vertex *o, Vertex *x, Vertex *o2, Vertex *x2)->Vertex*{
-                if(IsParallel(o, x, o2, x2))return nullptr;
-                glm::f64vec3 p2d = calcCrossPoint_2Vector(o, x, o2, x2);
-                glm::f64vec3 p3d = calcTargetDistanceOnPlane(p2d, o,  x, x2);
-                return  new Vertex(p2d, p3d);
-            };
-            qt = getV(stP.first, stP.second, lastP.first, lastP.second);
-            qb = getV(stP.first, stP.third, lastP.first, lastP.third);
-        }
-        double Edev(std::vector<glm::f64vec3>& P, const double th = 1e-5){
-            auto Angle = [](glm::f64vec3& e, glm::f64vec3& e2)->double{return (glm::dot(e, e2) >= 1)? 0: (glm::dot(e, e2) <= -1)? std::numbers::pi: std::acos(glm::dot(e, e2));  };
-            double f = 0.0;
-            glm::f64vec3 el, er, et, eb;
-            for(int i = 0; i < (int)P.size(); i++){
-                if(i == 0)er = glm::normalize(stP.first->p3 - P[0]); else er = glm::normalize(P[i-1] - P[i]);
-                if(i == (int)P.size() - 1)el = glm::normalize(lastP.first->p3 - P[i]); else er = glm::normalize(P[i+1] - P[i]);
-                if(qt != nullptr)et = glm::normalize(qt->p3 - P[i]); else et = stP.second->p3 - stP.first->p3;
-                if(qb != nullptr)eb = glm::normalize(qb->p3 - P[i]); else eb = stP.third->p3 - stP.first->p3;
-                f += (std::abs(2.0 * std::numbers::pi - (Angle(el, et) + Angle(et, er) + Angle(er, eb) + Angle(eb, el))) - th);
-            }
-            return f;
-        }
-
-        ~SmoothingArea(){}
-
+       double Econv(std::vector<glm::f64vec3>& P, std::vector<glm::f64vec3>& Pori){
+           auto SgdArea = [](glm::f64vec3& A, glm::f64vec3& B, glm::f64vec3& C)->double{
+             return ((A.x*B.y - B.x*A.y) + (B.x*C.y - C.x*B.y) + (C.x*A.y - A.x*C.y))/2.0;
+           };
+           double f = 0.0;
+           double sum = 0.0;
+           if(P.empty())return 0.0;
+           int j = 0;
+           std::vector<glm::f64vec3> X, Xori;
+           for(const auto&sa: SA){
+               X.push_back(sa.stP.first->p); Xori.push_back(sa.stP.first->p);
+               for(int i = 0; i < (int)sa.OriginalVertices.size(); i++){
+                   X.push_back(P[j]); Xori.push_back(Pori[j]);
+                   j++;
+               }
+           }
+           X.push_back(SA.back().lastP.first->p); Xori.push_back(SA.back().lastP.first->p);
+           for(int i = 1; i < (int)X.size() - 1; i++){
+               f =  -SgdArea(X[i-1],X[i],X[i+1]) * SgdArea(Xori[i-1],Xori[i],Xori[i+1]);
+               sum += (f > 0)? f: 0;
+           }
+           return sum;
+       }
     };
-
     using ObjData = OptimizeParam;
     using ObjData_v = OptimizeParam_v;
 
     using ObjData_smooth = SmoothSurface;
     using FoldCrv = std::vector<Vertex4d>;
-
-    using ObjData_smooth = std::vector<SmoothingArea>;
-
 
     inline double getK(const glm::f64vec3 o, const glm::f64vec3 x, const glm::f64vec3 x2);
 
@@ -631,66 +595,6 @@ double RevisionVertices::E_iso(std::vector<std::vector<glm::f64vec3>>& P, std::v
             P[n][j].y += eps; fp = f(P[n], Pori[n]); P[n][j].y -= 2.0 * eps; fm = f(P[n], Pori[n]);  P[n][j].y += eps; grad[i++] = (fp - fm)/(2.0*eps);
             P[n][j].z += eps; fp = f(P[n], Pori[n]); P[n][j].z -= 2.0 * eps; fm = f(P[n], Pori[n]);  P[n][j].z += eps; grad[i++] = (fp - fm)/(2.0*eps);
         }
-    }
-    double f = 0.0;
-    ind = 0;
-    if(!grad.empty()){
-        for(int j = 0; j < (int)od->size(); j++){
-            for(int i = 0; i < (int)od[j].size(); i++){
-                f += od[j][i].Edev(P[i], th);
-                double fp, fm;
-                for(int n = 0; n < (int)P[i].size(); n++){
-                    P[i][n].x += eps; fp = od[j][i].Edev(P[i], th); P[i][n].x -= 2.0*eps; fm = od[j][i].Edev(P[i], th);
-                    grad[ind] = (fp - fm)/(2.0*eps); P[i][n].x = X[ind++];
-                    P[i][n].y += eps; fp = od[j][i].Edev(P[i], th); P[i][n].y -= 2.0*eps; fm = od[j][i].Edev(P[i], th);
-                    grad[ind] = (fp - fm)/(2.0*eps); P[i][n].y = X[ind++];
-                    P[i][n].z += eps; fp = od[j][i].Edev(P[i], th); P[i][n].z -= 2.0*eps; fm = od[j][i].Edev(P[i], th);
-                    grad[ind] = (fp - fm)/(2.0*eps); P[i][n].z = X[ind++];
-                }
-            }
-        }
-    }
-    return f;
-}
-
-double RevisionVertices::E_fair(std::vector<glm::f64vec3>& P, std::vector<double>& grad){
-    double val = 0.0;
-    auto f = [](std::vector<glm::f64vec3>& P)->double{
-        double val;
-        for(int i = 1; i < (int)P.size() - 1; i++)val += std::pow(glm::length(P[i-1] - 2.0 * P[i] + P[i+1]), 2);
-        return val;
-    };
-    for(int i = 0; i < (int)grad.size(); i++){
-        double fp, fm;
-        if(i % 3 == 0){
-            P[floor(i / 3)].x += eps; fp = f(P); P[floor(i / 3)].x -= 2.0 * eps; fm = f(P);  P[floor(i / 3)].x += eps;
-        }else if(i % 3 == 1){
-            P[floor(i / 3)].y += eps; fp = f(P); P[floor(i / 3)].y -= 2.0 * eps; fm = f(P);  P[floor(i / 3)].y += eps;
-        }else{
-            P[floor(i / 3)].z += eps; fp = f(P); P[floor(i / 3)].z -= 2.0 * eps; fm = f(P);  P[floor(i / 3)].z += eps;
-        }
-        grad[i] = (fp - fm)/(2.0*eps);
-    }
-    return val;
-}
-double RevisionVertices::E_sim(std::vector<glm::f64vec3>& P, std::vector<glm::f64vec3>& Pori, std::vector<double>& grad){
-    double e = 0.0;
-    auto f = [](std::vector<glm::f64vec3>& P, std::vector<glm::f64vec3>& Pori)->double{
-        double val;
-         for(int i = 0; i < (int)P.size(); i++)val += glm::length(P[i] - Pori[i]);
-        return val;
-    };
-   e = f(P, Pori);
-    for(int i = 0; i < (int)grad.size(); i++){
-        double fp, fm;
-        if(i % 3 == 0){
-            P[floor(i / 3)].x += eps; fp = f(P, Pori); P[floor(i / 3)].x -= 2.0 * eps; fm = f(P, Pori);  P[floor(i / 3)].x += eps;
-        }else if(i % 3 == 1){
-            P[floor(i / 3)].y += eps; fp = f(P, Pori); P[floor(i / 3)].y -= 2.0 * eps; fm = f(P, Pori);  P[floor(i / 3)].y += eps;
-        }else{
-            P[floor(i / 3)].z += eps; fp = f(P, Pori); P[floor(i / 3)].z -= 2.0 * eps; fm = f(P, Pori);  P[floor(i / 3)].z += eps;
-        }
-        grad[i] = (fp - fm)/(2.0*eps);
     }
     return e;
 }
