@@ -129,6 +129,26 @@ protected:
 private:
 };
 
+class RulingVec{
+public:
+    void set(glm::f64vec3 _v){v = _v;}
+    glm::f64vec3 get(){return glm::normalize(v);}
+private:
+    glm::f64vec3 v;
+};
+
+class Line{
+public:
+    double color;
+    int IsCrossed;
+    Vertex *o, *v;//原則の方向はv[1] - v[0] (v[0]が原点)
+    RulingVec *r;
+    EdgeType et;
+    Line(Vertex *_o, Vertex *_v, EdgeType _et){o = _o; v = _v; et = _et;}
+    bool operator !=(const Line &l)const{return IsCrossed != l.IsCrossed || color != l.color || (v[0] != l.v[0] && v[0] != l.v[1]);}
+    bool operator ==(const Line &l)const{return IsCrossed == l.IsCrossed && color == l.color && ((v[0] == l.v[0] && v[1] == l.v[1]) || (v[1] == l.v[0] && v[0] == l.v[1]));}
+};
+
 class Face{
 public:
     int edgeNum(bool PrintVertex = false);
@@ -228,7 +248,7 @@ public:
     void addVertex(glm::f64vec3& p);
     void eraseVertex();
     std::vector<Vertex*> getVertices();
-    std::vector<HalfEdge*> getEdges();
+    std::vector<Line*> getEdges();
     Face* getFace();
     void ConnectEdges(bool IsConnected = true);
     void drawPolygon(glm::f64vec3& p, bool IsClicked);
@@ -238,18 +258,20 @@ public:
     int hasPtNum; //0 ~ 2 (polygonの点の数)
 private:
     std::vector<Vertex*> vertices;
-    std::vector<HalfEdge*> edges;
+    //std::vector<HalfEdge*> edges;
+    std::vector<Line*> Lines;
     int movePointIndex(glm::f64vec3 p);
-    Face *face;
+    //Face *face;
 };
 
 void CrossDetection(Face *f, CRV *crvs);
 
 
-std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, HalfEdge *line, int dim);
-std::vector<glm::f64vec3> ConvertDistBasedBezier(std::vector<glm::f64vec3>& CtrlPts, HalfEdge *line);
+std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, Line *l, int dim);
+std::vector<glm::f64vec3> ConvertDistBasedBezier(std::vector<glm::f64vec3>& CtrlPts, Line *l);
  void EdgeRecconection(const std::vector<Vertex*>& Poly_V, std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges);
 std::vector<HalfEdge*> EdgeCopy(const std::vector<HalfEdge*> Edges, const std::vector<Vertex*> V);
+std::vector<Vertex*> SortPolygon(std::vector<Vertex*>& polygon);
 //std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot, double& CurveLen, bool is3d = true, int dim = 3, int t_type = 2);
 
 
