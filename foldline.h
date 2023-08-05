@@ -37,6 +37,7 @@ public:
     std::vector<std::vector<glm::f64vec3>> Optimization_SmooothSrf(const std::vector<Vertex*>& Poly_v, bool IsConnectEndPoint);
     std::vector<std::vector<glm::f64vec3>> Optimization_PlanaritySrf(const std::vector<Vertex*>& Poly_v);
     void Optimization_Vertices(std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V);
+
     void ReassignColor(std::vector<HalfEdge*>& Edges, ColorPoint& CP);
     void SimplifyModel(std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, std::vector<Vertex*>& Vertices, double tol);
     bool SimpleSmooothSrf(const std::vector<Vertex*>& Poly_v);

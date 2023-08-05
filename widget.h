@@ -80,6 +80,7 @@ public slots:
 
     void changeToleranceValue_Slider(int val);
     void changeToleranceValue_Spin(double val);
+    void StartSmoothingSurface();
 
     void ReassinColor();
 

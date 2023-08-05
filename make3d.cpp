@@ -3,30 +3,55 @@
 using namespace MathTool;
 
 Model::Model(){
-    clear();
     outline = new OUTLINE();
 }
 
 Model::Model(int _crvPtNum){
     crvPtNum = _crvPtNum;
-    clear();
     outline = new OUTLINE(); 
     refCrv.clear();
     refFL.clear();
-    Fgrad.clear();
     befFaceNum = 0;
 }
 
 void Model::clear(){
-    vertices.clear();
-    Edges.clear();
-    Faces.clear();
+    for(auto itr = vertices.begin(); itr != vertices.end();){
+        delete *itr; itr++;
+    }vertices.clear();
+    for(auto itr = Edges.begin(); itr != Edges.end();){
+        delete *itr; itr++;
+    }Edges.clear();
+    for(auto itr = Faces.begin(); itr != Faces.end();){
+        delete *itr; itr++;
+    }Faces.clear();
+
     ol_vertices.clear();
     ColorPt = ColorPoint(200, std::numbers::pi/2.0);
 }
 
+Model::~Model(){
+    for(auto itr = vertices.begin(); itr != vertices.end();itr++)delete *itr;
+    vertices.clear();
+
+    for(auto itr = Edges.begin(); itr != Edges.end(); itr++)delete *itr;
+    Edges.clear();
+
+    for(auto itr = Faces.begin(); itr != Faces.end(); itr++)delete *itr;
+    Faces.clear();
+
+    delete outline;
+    for(auto&v: ol_vertices){
+        for(auto itr = v.begin(); itr != v.end(); itr++)delete *itr;
+    }ol_vertices.clear();
+
+    for(auto itr = crvs.begin(); itr != crvs.end(); itr++)delete *itr;
+    crvs.clear();
+
+    for(auto itr = FL.begin(); itr != FL.end(); itr++)delete *itr;
+    FL.clear();
+}
+
 void Model::Initialize(){
-    clear();
     outline = new OUTLINE();
     refCrv.clear();
 }
