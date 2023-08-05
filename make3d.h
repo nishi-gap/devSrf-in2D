@@ -20,8 +20,9 @@
 class Model{
 public:
     std::vector<Vertex*> vertices;
-    std::vector<Face*> Faces;
-    std::vector<HalfEdge*> Edges;
+    //std::vector<Face*> Faces;
+    //std::vector<HalfEdge*> Edges;
+    std::vector<Line*> Rulings;
     OUTLINE *outline;
     std::vector<std::vector<Vertex*>> ol_vertices;
     std::vector<CRV*> crvs;
@@ -39,9 +40,8 @@ public:
     bool devide(HalfEdge* he1, HalfEdge* he2, std::vector<Face*>& faces);
 
     HalfEdge* InsertVertex(Vertex *v);
-    void setGradationValue(int val, HalfEdge *refHE,int InterpolationType, std::vector<glm::f64vec2>& CurvePath);
+    void setGradationValue(int val, Line *refL, int InterpolationType, std::vector<glm::f64vec2>& CurvePath);
     void SetMaxFold(double val);
-    void setOutline();
     void drawOutline(QPointF& cursol, int drawtype, double gridsize, bool IsClicked = true);
     void editOutlineVertex(QPointF& cursol, double gridsize, int event);
     void addConstraint(QPointF& cursol, int type, int gridsize, glm::f64vec3 (&axis)[2]);
@@ -70,9 +70,8 @@ public:
     int searchPointIndex(QPointF pt, int& ptInd, int type);//type = 0 -> Control Point, 1: Curve Point
 
 private:
-    void LinearInterPolation(std::vector<HalfEdge*>& path);
-    void SplineInterPolation(std::vector<HalfEdge*>& path, std::vector<glm::f64vec2>& CurvePath);
-    void setHalfEdgePair(HalfEdge *he);
+    void LinearInterPolation(std::vector<Line*>& path);
+    void SplineInterPolation(std::vector<Line*>& path, std::vector<glm::f64vec2>& CurvePath);
 
     inline void clear();
     void ConnectEdge(HalfEdge *he);
@@ -85,7 +84,7 @@ private:
     int crvPtNum;
     int befFaceNum;
 
-    std::vector<HalfEdge*> GradationPoints;
+    std::vector<Line*> GradationPoints;
     std::vector<HalfEdge*> makePath();
 };
 
