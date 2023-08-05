@@ -123,9 +123,9 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings, const R
     };
 
     int n = (hasFoldingCurve)? 1: 0;
-    for(auto itr = Rulings.begin() + n; itr != Rulings.end() - (n + 1); itr++){
+    for(int i = n; i < (int)Rulings.size() - (n+1); i++){
         std::vector<Vertex*> polygon;
-        polygon.push_back((*itr)->v); polygon.push_back((*(itr + 1))->v); polygon.push_back((*(itr + 1))->o); polygon.push_back((*itr)->o);
+        polygon.push_back(Rulings[i]->v); polygon.push_back(Rulings[i+1]->v); polygon.push_back(Rulings[i+1]->o); polygon.push_back(Rulings[i]->o);
         Polygons.push_back(polygon);
     }
     for(auto itr_s = Surface.begin(); itr_s != Surface.end(); itr_s++){
