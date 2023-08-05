@@ -45,18 +45,19 @@ void GLWidget_3D::EraseNonFoldEdge(bool state){
     update();
 }
 
-void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings, const Ruling3d& _AllRulings, bool hasFoldingCurve){
+void GLWidget_3D::setVertices(const Faces3d Faces, const Polygon_V Poly_V, const HalfEdges Edges, const Surface_V _vertices,
+                              const FoldLine3d& _FoldLine, const Ruling3d& _AllRulings, bool switchDraw){
 
-    auto Planerity  = [](const std::vector<Vertex*>& vertices, const Lines Poly_V)->double{
+    auto Planerity  = [](const std::vector<glm::f64vec3>& vertices, const Polygon_V Poly_V)->double{
         if(vertices.size() == 3)return 0.0;
         else{
             std::vector<glm::f64vec3> QuadPlane;
             for(auto&v: vertices){
                 bool IsOutlineVertices = false;
                 for(auto&p: Poly_V){
-                    if(p->v->p3 == v->p3)IsOutlineVertices = true;
+                    if(p->p3 == v)IsOutlineVertices = true;
                 }
-                if(!IsOutlineVertices)QuadPlane.push_back(v->p3);
+                if(!IsOutlineVertices)QuadPlane.push_back(v);
             }
             double l_avg = (glm::distance(QuadPlane[0], QuadPlane[2]) + glm::distance(QuadPlane[1], QuadPlane[3]))/2.0;
             double d;
@@ -71,7 +72,7 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings, const R
         }
     };
 
-
+    std::vector<glm::f64vec3> vertices;
     drawdist = 0.0;
     Vertices.clear();
     TriMeshs.clear();
@@ -89,80 +90,91 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings, const R
     }
 
     TriMeshs.clear();
-    std::vector<std::vector<Vertex*>> Polygons;
-    struct clst_v{ Vertex *v = nullptr; int ind = -1;};
+    switchDraw = false;
+    if(!switchDraw){
+       // _faces.clear();
+       //_edges = EdgeCopy(Edges, _vertices);
+       //PlanarityColor.clear();
+       //EdgeRecconection(Poly_V, _faces, _edges);
+        _faces.clear();
 
-    auto getClosestVertex = [](const Vertex *v, const Vertex* o, const Lines& Edges,  bool hasFoldingCurve){
-       std::array<clst_v, 2>V_max;
-       double t_max_top = -1, t_max_btm = -1;
-       int n = (hasFoldingCurve)? 1: 0;
-       for(auto itr = Edges.begin() + n; itr != Edges.end() - n; itr++){
-           if((glm::length((*itr)->v->p - v->p) < 1e-7|| glm::length((*itr)->v->p - o->p) < 1e-7))continue;
-           if(MathTool::is_point_on_line((*itr)->v->p, v->p, o->p)){
-               double t = glm::distance((*itr)->v->p, o->p)/glm::distance(v->p, o->p);
-               if(t > t_max_top){ t_max_top = t; V_max[0].v = (*itr)->v; V_max[0].ind = std::distance(Edges.begin(), itr); }
-           }
-           if((glm::length((*itr)->o->p - v->p) < 1e-7|| glm::length((*itr)->o->p - o->p) < 1e-7))continue;
-           if(MathTool::is_point_on_line((*itr)->o->p, v->p, o->p)){
-               double t = glm::distance((*itr)->o->p, o->p)/glm::distance(v->p, o->p);
-               if(t > t_max_btm){ t_max_btm = t; V_max[0].v = (*itr)->o; V_max[1].ind = std::distance(Edges.begin(), itr); }
-           }
-       }
-       return V_max;
-    };
-    auto InsertV = [&](Vertex *v, Vertex *v_insrt, Vertex *v2_insrt){
-        for(auto& vertices: Vertices){
-            int n = vertices.size();
-            for(int i = 0; i < n; i++){
-                if((vertices[i] == v_insrt->p3 && vertices[(i + 1) % n] == v2_insrt->p3) || (vertices[i] == v2_insrt->p3 && vertices[(i + 1) % n] == v_insrt->p3)){
-                    vertices.insert(vertices.begin() + (i + 1) % n, glm::f64vec3(Scale * Mirror * glm::f64vec4(v->p3,1)));
-                    return;
-                }
+        if(_FoldLine.empty()){
+            for(auto&f: Faces){
+                vertices.clear();
+                HalfEdge *he = f->halfedge;
+                do{
+                    glm::f64vec3 v = glm::f64vec3(Scale * Mirror * glm::f64vec4(he->vertex->p3,1));
+                    vertices.push_back(v);
+                    he = he->next;
+                }while(he != f->halfedge);
+                PlanarityColor.push_back(Planerity(vertices, Poly_V));
+
+                Vertices.push_back(vertices);
             }
-        }
-    };
-
-    int n = (hasFoldingCurve)? 1: 0;
-    for(auto itr = Rulings.begin() + n; itr != Rulings.end() - (n + 1); itr++){
-        std::vector<Vertex*> polygon;
-        polygon.push_back((*itr)->v); polygon.push_back((*(itr + 1))->v); polygon.push_back((*(itr + 1))->o); polygon.push_back((*itr)->o);
-        Polygons.push_back(polygon);
-    }
-    for(auto itr_s = Surface.begin(); itr_s != Surface.end(); itr_s++){
-        if(hasFoldingCurve){
-            auto itr_l = std::find_if(Rulings.begin(), Rulings.end(), [&](Line *line){return (line->v == (*itr_s)->v || line->o == (*itr_s)->v);});
-            if(itr_l == Rulings.end())continue;
-
         }else{
-            std::array<clst_v, 2> clst_line = getClosestVertex((*itr_s)->v, (*itr_s)->o, Rulings, hasFoldingCurve);
-            auto prev = (itr_s != Surface.begin())? itr_s - 1: Surface.end() - 1, next = (itr_s != Surface.end() -1)? itr_s + 1 : Surface.begin();
-            std::array<clst_v, 2> clst_line_prev = getClosestVertex((*prev)->v, (*prev)->o, Rulings, hasFoldingCurve);
-            std::array<clst_v, 2> clst_line_next = getClosestVertex((*next)->o, (*next)->v, Rulings, hasFoldingCurve);
-            if(clst_line[0].ind == -1 && clst_line[1].ind == -1){
-                std::vector<Vertex*> polygon;
-                polygon.push_back(clst_line_prev[0].v); polygon.push_back((*itr_s)->o); polygon.push_back((*itr_s)->v); polygon.push_back(clst_line_next[1].v);
-                Polygons.push_back(polygon);
-            }else{
-                if(clst_line[0].ind == clst_line_next[0].ind){
-                    Polygons.push_back({(*itr_s)->v, Rulings[clst_line[0].ind]->v, Rulings[clst_line[0].ind]->o});
+            auto getClosestVertex = [](const Vertex *v, const Vertex* o, const FoldLine3d& FoldingCurve, bool IsSecond){
+               int V_max = -1;
+               double t_max = -1;
+               for(auto&fc: FoldingCurve){
+                   if(IsSecond){
+                       if((glm::length(fc.second->p - v->p) < 1e-7|| glm::length(fc.second->p - o->p) < 1e-7))continue;
+                       if(MathTool::is_point_on_line(fc.second->p, v->p, o->p)){
+                           double t = glm::distance(fc.second->p, o->p)/glm::distance(v->p, o->p);
+                           if(t > t_max){ t_max = t; V_max = std::distance(FoldingCurve.begin(), std::find(FoldingCurve.begin(), FoldingCurve.end(), fc)); }
+                       }
+                   }else{
+                       if((glm::length(fc.third->p - v->p) < 1e-7|| glm::length(fc.third->p - o->p) < 1e-7))continue;
+                       if(MathTool::is_point_on_line(fc.third->p, v->p, o->p)){
+                           double t = glm::distance(fc.third->p, o->p)/glm::distance(v->p, o->p);
+                           if(t > t_max){ t_max = t; V_max = std::distance(FoldingCurve.begin(), std::find(FoldingCurve.begin(), FoldingCurve.end(), fc)); }
+                       }
+                   }
 
-                }else{
-                    if(MathTool::is_point_on_line(Rulings[clst_line[0].ind - 1]->v->p, (*itr_s)->v->p, (*itr_s)->o->p))
-                        InsertV((*itr_s)->v, Rulings[clst_line[0].ind]->v, Rulings[clst_line_next[0].ind]->v);
-                    else
-                        InsertV((*itr_s)->v, Rulings[clst_line[0].ind]->o, Rulings[clst_line_next[0].ind]->o);
-                }
+               }
+               return V_max;
+            };
+
+            int rsec = getClosestVertex(_FoldLine[0].second, _FoldLine[0].first, _FoldLine, true), rthi = getClosestVertex(_FoldLine[0].third, _FoldLine[0].first, _FoldLine, false);
+            int lsec = getClosestVertex(_FoldLine.back().second, _FoldLine.back().first, _FoldLine, true), lthi = getClosestVertex(_FoldLine.back().third, _FoldLine.back().first, _FoldLine, false);
+
+            for(int i = 0; i < (int)_FoldLine.size() - 1; i++){
+                vertices.clear();
+                vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine[i].first->p3,1)));
+                if(!(rsec != -1 && i == 0))vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine[i].second->p3,1)));
+                if(i == rsec)vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine[0].second->p3,1)));
+                if(i == lsec - 1)vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine.back().second->p3,1)));
+                if(!(lsec != -1 && i == (int)_FoldLine.size() - 2))vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine[i+1].second->p3,1)));
+                vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine[i+1].first->p3,1)));
+                PlanarityColor.push_back(Planerity(vertices, Poly_V));
+                Vertices.push_back(vertices);
+
+                vertices.clear();
+                vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine[i].first->p3,1)));
+                vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine[i+1].first->p3,1)));
+                if(!(lthi != -1 && i == (int)_FoldLine.size() - 2))vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine[i+1].third->p3,1)));
+                if(i == rthi)vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine.front().third->p3,1)));
+                if(i == lthi - 1)vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine.back().third->p3,1)));
+                if(!(rthi != -1 && i == 0))vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(_FoldLine[i].third->p3,1)));
+                PlanarityColor.push_back(Planerity(vertices, Poly_V));
+                Vertices.push_back(vertices);
             }
+        }
+
+    }else{
+        for(auto&f: Faces){         
+            vertices.clear();
+            HalfEdge *he = f->halfedge;
+            do{
+                glm::f64vec3 v = glm::f64vec3(Scale * Mirror * glm::f64vec4(he->vertex->p3,1));
+                vertices.push_back(v);
+                he = he->next;
+            }while(he != f->halfedge);
+
+            PlanarityColor.push_back(Planerity(vertices, Poly_V));
+            Vertices.push_back(vertices);
         }
     }
 
-    for(auto& polygon: Polygons){
-        std::vector<Vertex*> p_sort = SortPolygon(polygon);
-        PlanarityColor.push_back(Planerity(p_sort, Surface));
-        std::vector<glm::f64vec3> vertices;
-        for(auto& p: p_sort)vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(p->p3,1)));
-        Vertices.push_back(vertices);
-    }
 
     for(auto&V: Vertices){
         Triangulation(V, trimesh);

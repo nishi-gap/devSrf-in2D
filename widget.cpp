@@ -137,16 +137,16 @@ void MainWindow::ModelBack(){
         v->p3 = v->p3_ori;
     }
     ui->glWid2dim->update();
-    std::vector<Line*> Lines = ui->glWid2dim->model->outline->getEdges();
-    ui->glWid3dim->setVertices(Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+    ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
 }
 
 void MainWindow::EraseNonFoldEdge(bool state){
     ui->glWid2dim->EraseNonFoldEdge(state);
     ui->glWid3dim->EraseNonFoldEdge(state);
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
-    std::vector<Line*> Lines = ui->glWid2dim->model->outline->getEdges();
-    ui->glWid3dim->setVertices(Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+
+    ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
+                               ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
 }
 
 void MainWindow::changeToleranceValue_Slider(int val){
@@ -157,10 +157,10 @@ void MainWindow::changeToleranceValue_Slider(int val){
     ui->glWid2dim->VisualizeMVColor(true);
     double tol = maxSpin * (double)val/(double)maxSlider;
     ui->TolValue->setValue(tol);
-    ui->glWid2dim->model->FL[0]->SimplifyModel(tol);
+    ui->glWid2dim->model->FL[0]->SimplifyModel(ui->glWid2dim->model->Faces,  ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, tol);
     ui->glWid2dim->update();
-    std::vector<Line*> Lines = ui->glWid2dim->model->outline->getEdges();
-    ui->glWid3dim->setVertices(Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+    ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
+                               ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings, false);
 }
 
 void MainWindow::changeToleranceValue_Spin(double val){
@@ -171,7 +171,7 @@ void MainWindow::changeToleranceValue_Spin(double val){
     ui->glWid2dim->VisualizeMVColor(true);
 
     ui->ToleranceValue->setValue(int(val/maxSpin * maxSlider));
-    ui->glWid2dim->model->FL[0]->SimplifyModel(val);
+    ui->glWid2dim->model->FL[0]->SimplifyModel(ui->glWid2dim->model->Faces,  ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, val);
     fold_Sm();
 }
 
@@ -180,7 +180,7 @@ void MainWindow::StartOptimization(){
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
     auto Poly_V = ui->glWid2dim->model->outline->getVertices();
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-    bool res = ui->glWid2dim->model->FL[0]->Optimization_FlapAngle(ui->glWid2dim->model->Rulings, ui->glWid2dim->model->vertices, Poly_V, wb, wp);
+    bool res = ui->glWid2dim->model->FL[0]->Optimization_FlapAngle(ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, Poly_V, wb, wp);
     if(res)fold_Sm();
 
 }
@@ -212,8 +212,7 @@ void MainWindow::SimpleSmoothing(){
     bool res = ui->glWid2dim->model->FL[0]->SimpleSmooothSrf(Poly_V);
     if(res){
         ui->glWid2dim->update();
-        std::vector<Line*> Lines = ui->glWid2dim->model->outline->getEdges();
-        ui->glWid3dim->setVertices(Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
     }
 }
 
@@ -244,14 +243,10 @@ void MainWindow::fold_Sm(){
     ui->glWid2dim->update();
     if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
     else if(!ui->glWid2dim->model->FL.empty()){
-        std::vector<Line*> Lines = ui->glWid2dim->model->outline->getEdges();
-        ui->glWid3dim->setVertices(Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
-        //ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
     }
     else{
-        std::vector<Line*> Lines = ui->glWid2dim->model->outline->getEdges();
-        ui->glWid3dim->setVertices(Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
-        //ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
     }
 }
 
@@ -303,16 +298,15 @@ void MainWindow::switchActivateCheckBox(PaintTool active){
 void MainWindow::ReassinColor(){
     if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
     else if(!ui->glWid2dim->model->FL.empty() && !ui->glWid2dim->model->FL[0]->FoldingCurve.empty()){
-        ui->glWid2dim->model->FL[0]->ReassignColor(ui->glWid2dim->model->Rulings, ui->glWid2dim->model->ColorPt);
+        ui->glWid2dim->model->FL[0]->ReassignColor(ui->glWid2dim->model->Edges, ui->glWid2dim->model->ColorPt);
         ui->glWid2dim->model->deform();
         ui->glWid2dim->update();
-        ui->glWid2dim->model->FL[0]->modifyFoldingCurvePositionOn3d(ui->glWid2dim->model->Rulings);
-        std::vector<Line*> Lines = ui->glWid2dim->model->outline->getEdges();
-        ui->glWid3dim->setVertices(Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+        ui->glWid2dim->model->FL[0]->modifyFoldingCurvePositionOn3d(ui->glWid2dim->model->Edges);
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
+                                   ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings, false);
     }
     else{
-        std::vector<Line*> Lines = ui->glWid2dim->model->outline->getEdges();
-        ui->glWid3dim->setVertices(Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
     }
 }
 
@@ -324,7 +318,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
         auto Poly_V = ui->glWid2dim->model->outline->getVertices();
         double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-        bool res = ui->glWid2dim->model->FL[0]->Optimization_FlapAngle(ui->glWid2dim->model->Rulings, ui->glWid2dim->model->vertices, Poly_V, wb, wp, false);
+        bool res = ui->glWid2dim->model->FL[0]->Optimization_FlapAngle(ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, Poly_V, wb, wp, false);
         fold_Sm();
     }
     else if(e->key() == Qt::Key_Return){emit PressedEnter();}
@@ -332,29 +326,27 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
 
         if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
         else if(!ui->glWid2dim->model->FL.empty()){
-            ui->glWid2dim->model->FL[0]->ReassignColor(ui->glWid2dim->model->Rulings, ui->glWid2dim->model->ColorPt);
+            ui->glWid2dim->model->FL[0]->ReassignColor(ui->glWid2dim->model->Edges, ui->glWid2dim->model->ColorPt);
             ui->glWid2dim->model->deform();
-            ui->glWid2dim->model->FL[0]->modifyFoldingCurvePositionOn3d(ui->glWid2dim->model->Rulings);
+            ui->glWid2dim->model->FL[0]->modifyFoldingCurvePositionOn3d(ui->glWid2dim->model->Edges);
             ui->glWid2dim->update();
 
-            std::vector<Line*> Lines = ui->glWid2dim->model->outline->getEdges();
-            ui->glWid3dim->setVertices(Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+            ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
+                                       ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings, switchDraw);
         }
         else{
-            std::vector<Line*> Lines = ui->glWid2dim->model->outline->getEdges();
-            ui->glWid3dim->setVertices(Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+            ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
         }
     }
     else if( e->key() == Qt::Key_P){
 
         if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
         else if(!ui->glWid2dim->model->FL.empty()){
-            std::vector<Line*> Lines = ui->glWid2dim->model->outline->getEdges();
-            ui->glWid3dim->setVertices(Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+            ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges,
+                                       ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings, switchDraw);
         }
         else{
-            std::vector<Line*> Lines = ui->glWid2dim->model->outline->getEdges();
-            ui->glWid3dim->setVertices(Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+            ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
         }
     }
     else if(e->key() == Qt::Key_3 ||e->key() == Qt::Key_4){
@@ -396,7 +388,7 @@ void MainWindow::mouseMoveEvent(QMouseEvent *e){
 
 //https://nprogram.hatenablog.com/entry/2017/08/10/082236
 void MainWindow::exportobj(){
-    if(ui->glWid2dim->model->vertices.empty()){
+    if(ui->glWid2dim->model->Faces.empty()){
         QMessageBox msgBox;
         msgBox.setText("There is no developable surface.");
         msgBox.exec();
@@ -458,7 +450,7 @@ void MainWindow::exportobj(){
    };
    std::vector<double> planerity_value;
    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty()){
-       /*for(auto&f: ui->glWid2dim->model->Faces){
+       for(auto&f: ui->glWid2dim->model->Faces){
           std::vector<glm::f64vec3> vertices;
            HalfEdge *he = f->halfedge;
            do{
@@ -467,7 +459,7 @@ void MainWindow::exportobj(){
            }while(he != f->halfedge);
            planerity_value.push_back(Planerity(vertices, Poly_V));
            Vertices.push_back(vertices);
-       }*/
+       }
    }else{
        std::vector<Vertex4d> FoldLine = ui->glWid2dim->model->FL[0]->FoldingCurve;
        int rsec = getClosestVertex(FoldLine[0].second, FoldLine[0].first, FoldLine, true), rthi = getClosestVertex(FoldLine[0].third, FoldLine[0].first, FoldLine, false);
