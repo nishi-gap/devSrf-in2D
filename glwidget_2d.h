@@ -132,12 +132,12 @@ private:
 
     //int referencedRuling(QPointF p);
     void addPoints_intplation(QMouseEvent *e, QPointF& p);
-    int assignment_refHE();
+    int assignment_refL();
     std::vector<glm::f64vec2> CurvePath;
 
     //std::vector<int> ControllPoints_gradation;//0~510 色の範囲, -1指定なし
     int DiffWheel;
-    HalfEdge *refHE;
+    Line *refL;
 
     Vertex *refV;
     Vertex *closestVertex(QPointF p, std::vector<Vertex*>& Vertices);

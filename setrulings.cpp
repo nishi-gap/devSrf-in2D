@@ -668,8 +668,9 @@ void CRV::FillColor(int c){
 OUTLINE::OUTLINE(){
     type = "Rectangle";
     vertices.clear();
-    edges.clear();
-    face = nullptr;
+    //edges.clear();
+    Lines.clear();
+    //face = nullptr;
     VerticesNum = 3;
     origin = glm::f64vec2{-1,-1};
     hasPtNum = 0;
@@ -780,7 +781,7 @@ void OUTLINE::MoveOutline(glm::f64vec3 p){
             T(0,2) = p.x - vertices[ind]->p.x; T(1,2) = p.y - vertices[ind]->p.y;
             for(auto& v: vertices){
                 x = T * Eigen::Vector3d(v->p.x, v->p.y, 1);
-                v->p.x = x(0); v->p.y = x(1);
+                 v->p2_ori.x = v->p.x = x(0);  v->p2_ori.y = v->p.y = x(1);
             }
             x = T * Eigen::Vector3d(origin.x, origin.y, 1);
             origin.x = x(0); origin.y = x(1);
@@ -788,7 +789,7 @@ void OUTLINE::MoveOutline(glm::f64vec3 p){
             T(0,2) = p.x - origin.x; T(1,2) = p.y - origin.y;
             for(auto& v: vertices){
                 x = T * Eigen::Vector3d(v->p.x, v->p.y, 1);
-                v->p.x = x(0); v->p.y = x(1);
+                v->p2_ori.x = v->p.x = x(0);  v->p2_ori.y = v->p.y = x(1);
             }
             x = T * Eigen::Vector3d(origin.x, origin.y, 1);
             origin.x = x(0); origin.y = x(1);
@@ -799,24 +800,31 @@ void OUTLINE::MoveOutline(glm::f64vec3 p){
         T(0,2) = p.x - vertices[ind]->p.x; T(1,2) = p.y - vertices[ind]->p.y;
         for(auto& v: vertices){
             x = T * Eigen::Vector3d(v->p.x, v->p.y, 1);
-            v->p.x = x(0); v->p.y = x(1);
+            v->p2_ori.x = v->p.x = x(0);  v->p2_ori.y = v->p.y = x(1);
         }
     }
 }
 
 void OUTLINE::MoveVertex(glm::f64vec3 p, int ind){
     if(ind < 0 || (int)vertices.size() < ind)return;
-    vertices[ind]->p = p;
+    vertices[ind]->p2_ori = vertices[ind]->p = p;
 }
 
 std::vector<Vertex*> OUTLINE::getVertices(){return vertices;}
-std::vector<HalfEdge*> OUTLINE::getEdges(){return edges;}
-Face* OUTLINE::getFace(){return face;}
+std::vector<Line*> OUTLINE::getEdges(){return Lines;}
+//Face* OUTLINE::getFace(){return face;}
 
 void OUTLINE::ConnectEdges(bool IsConnected){
     //if(!isClosed)return;
     if(vertices.size() < 2)return;
-    edges.clear();
+    Lines.clear();
+    if(IsConnected){
+        for(int i = 0; i < (int)vertices.size(); i++)Lines.push_back(new Line(vertices[i], vertices[(i+1) % (int)vertices.size()], EdgeType::ol));
+        IsConnected = true;
+    }else{
+
+    }
+    /*
     for(auto&v: vertices){
         HalfEdge *he = new HalfEdge(v, EdgeType::ol);
         edges.push_back(he);
@@ -836,18 +844,21 @@ void OUTLINE::ConnectEdges(bool IsConnected){
             edges[i]->prev = edges[(i - 1) % edges.size()];
         }
         edges[edges.size() - 1]->prev = edges[edges.size() - 2];
-    }
+    }*/
 
 }
 
 
 bool OUTLINE::IsClosed(){
-    if(edges.empty())return false;
+    if(Lines.empty())return false;
+    /*
     HalfEdge *h = edges[0];
     do{
         if(h->next == nullptr)return false;
         h = h->next;
     }while(h != edges[0]);
+    */
+    for(auto& l: Lines)if(l == nullptr)return false;
     return true;
 }
 
@@ -889,10 +900,10 @@ int OUTLINE::movePointIndex(glm::f64vec3 p){
     return ind;
 }
 
-std::vector<glm::f64vec3> ConvertDistBasedBezier(std::vector<glm::f64vec3>& CtrlPts, HalfEdge *line){
+std::vector<glm::f64vec3> ConvertDistBasedBezier(std::vector<glm::f64vec3>& CtrlPts, Line *l){
     glm::f64vec3 p, q;
-    if(line->vertex->p.x <= line->next->vertex->p.x){p = line->next->vertex->p; q = line->vertex->p;}
-    else{q = line->next->vertex->p; p = line->vertex->p;}
+    if(l->o->p.x <= l->v->p.x){p = l->v->p; q = l->v->p;}
+    else{q = l->v->p; p = l->v->p;}
     double a = p.y - q.y, b = q.x - p.x, c = p.x * q.y - q.x * p.y;
     int n = CtrlPts.size();
     std::vector<glm::f64vec3> D(n);
@@ -903,8 +914,8 @@ std::vector<glm::f64vec3> ConvertDistBasedBezier(std::vector<glm::f64vec3>& Ctrl
     return D;
 }
 
-std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, HalfEdge *line, int dim){
-    std::vector<glm::f64vec3> base = ConvertDistBasedBezier(CtrlPts, line);
+std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, Line *l, int dim){
+    std::vector<glm::f64vec3> base = ConvertDistBasedBezier(CtrlPts, l);
     std::vector<glm::f64vec3> current;
     std::copy(base.begin(), base.end(), std::back_inserter(current));
     std::array<glm::f64vec3, 2> _line{glm::f64vec3{0.,0.0,0.0}, glm::f64vec3{1.,0.0,0.0}};
@@ -995,4 +1006,52 @@ void EdgeRecconection(const std::vector<Vertex*>& Poly_V, std::vector<Face*>& Fa
     }
 }
 
+std::vector<Vertex*> ConvexHull_polygon(std::vector<Vertex*>& Q){
+    std::vector<Vertex*> P;
+    if((int)Q.size() < 3)return Q;
+    Vertex* p_ml = P[0];
+    for(auto&p: Q){
+        if(p_ml->p.y > p->p.y)p_ml = p;
+        else if(p_ml->p.y == p->p.y && p_ml->p.x > p->p.x) p_ml = p;
+    }
+    std::vector<std::pair<double, Vertex*>>Args;
+    for(auto&p: Q){
+        if(p->p == p_ml->p)continue;
+        double phi = atan2(p->p.y - p_ml->p.y, p->p.x - p_ml->p.x);
+        bool hasSameAngle = false;
+        for(auto& X: Args){
+            if(X.first == phi){
+                if(glm::distance(X.second->p, p_ml->p) < glm::distance(p->p, p_ml->p))X.second = p;
+                hasSameAngle = true;
+            }
+        }
+        if(!hasSameAngle)Args.push_back(std::make_pair(phi, p));
+    }
+    // compare only the first value
+    std::sort(Args.begin(), Args.end(),[](auto const& x, auto const& y) {return x.first < y.first; });
+    if(Args.size() >= 1)P.push_back(Args[Args.size() - 1].second);
+    P.push_back(p_ml);
+    Vertex *top, *next;
+    for(int i = 0; i < (int)Args.size(); i++){
+        do{
+            top = P.back();
+            P.pop_back();
+            next = P.back();
+            if(SignedArea(next->p, Args[i].second->p,top->p) <= 0){
+                P.push_back(top);
+                P.push_back(Args[i].second);
+                break;
+            }
+        }while(1);
+    }
+    return P;
+}
+std::vector<Vertex*> SortPolygon(std::vector<Vertex*>& polygon){
+    glm::f64vec3 Zaxis{0,0,1};//面の表裏の基準
+    auto poly_sort = ConvexHull_polygon(polygon);
+    if((int)poly_sort.size()< 3){std::cout<<"not enought vertices size"<<std::endl; return{};}
+    if(glm::dot(glm::cross(poly_sort[0]->p - poly_sort[1]->p, poly_sort[2]->p - poly_sort[1]->p), Zaxis) < 0)
+        std::reverse(poly_sort.begin(), poly_sort.end());
+    return poly_sort;
+}
 
