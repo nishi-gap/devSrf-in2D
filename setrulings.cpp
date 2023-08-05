@@ -159,42 +159,6 @@ Face::Face(const Face& face){
   halfedge->edgetype = _h->edgetype;
 }
 
-bool Face::IsPointInFace(glm::f64vec3 p){
-    int cnt = 0;
-    double vt;
-    HalfEdge *he = halfedge;
-    do{
-        if(he->vertex->p.y <= p.y && he->next->vertex->p.y > p.y){
-            vt = (p.y - he->vertex->p.y) / (he->next->vertex->p.y - he->vertex->p.y);
-            if(p.x < (he->vertex->p.x + vt * (he->next->vertex->p.x - he->vertex->p.x)))cnt++;
-        }else if(he->vertex->p.y > p.y && he->next->vertex->p.y <= p.y){
-            vt = (p.y - he->vertex->p.y)/(he->next->vertex->p.y - he->vertex->p.y);
-            if(p.x < (he->vertex->p.x + vt * (he->next->vertex->p.x - he->vertex->p.x)))cnt--;
-        }
-        he = he->next;
-    }while(he != halfedge);
-    if (cnt == 0) return false;
-    else return true;
-}
-
-glm::f64vec3 Face::getNormalVec(){
-    glm::f64vec3 N{0,0,0};
-    HalfEdge *h = this->halfedge;
-    do{
-        if(!is_point_on_line(h->vertex->p3, h->prev->vertex->p3, h->next->vertex->p3))
-            return glm::normalize(glm::cross(h->prev->vertex->p3 - h->vertex->p3, h->next->vertex->p3 - h->vertex->p3));
-        h = h->next;
-    }while(h != halfedge);
-    return N;
-}
-
-double Face::sgndist(glm::f64vec3 p){
-    glm::f64vec3 v0 = halfedge->vertex->p3, N = getNormalVec();
-    glm::f64vec3 v = glm::normalize(p - v0);
-    double d = -glm::dot(v0, N);
-    return (glm::dot(v, N) > 0) ? abs(glm::dot(p, N) + d): -abs(glm::dot(p, N) + d);
-}
-
 int Face::edgeNum(bool PrintVertex){
     int cnt = 0;
     HalfEdge *h = halfedge;
@@ -689,7 +653,7 @@ void OUTLINE::addVertex(glm::f64vec3& p){
             vertices.insert(vertices.begin() + 1, new Vertex(glm::f64vec3{p.x, vertices[0]->p.y, 0}));
             vertices.push_back(new Vertex(glm::f64vec3{vertices[0]->p.x, p.y, 0}));
             ConnectEdges();
-            if(glm::dot(getFace()->getNormalVec(), glm::f64vec3{0,0,1}) > 0){
+            if(glm::dot(getNormalVec(), glm::f64vec3{0,0,1}) > 0){
                 //vertices[1]->p = vertices[1]->p3 = glm::f64vec3{p.x, vertices[0]->p.y, 0}; vertices[3]->p = vertices[3]->p3 = glm::f64vec3{vertices[0]->p.x, p.y, 0};
             }
         }
@@ -811,7 +775,6 @@ void OUTLINE::MoveVertex(glm::f64vec3 p, int ind){
 }
 
 std::vector<Vertex*> OUTLINE::getVertices(){return vertices;}
-std::vector<Line*> OUTLINE::getEdges(){return Lines;}
 //Face* OUTLINE::getFace(){return face;}
 
 void OUTLINE::ConnectEdges(bool IsConnected){
@@ -848,6 +811,23 @@ void OUTLINE::ConnectEdges(bool IsConnected){
 
 }
 
+bool OUTLINE::IsPointInFace(glm::f64vec3 p){
+    if(!IsClosed())return false;
+    int cnt = 0;
+    double vt;
+    for(auto&l: Lines){
+        if(l->o->p.y <= p.y && l->v->p.y > p.y){
+            vt = (p.y - l->o->p.y) / (l->v->p.y - l->o->p.y);
+            if(p.x < (l->o->p.x + vt * (l->v->p.x - l->o->p.x)))cnt++;
+        }else if(l->o->p.y > p.y && l->v->p.y <= p.y){
+            vt = (p.y - l->o->p.y)/(l->v->p.y - l->o->p.y);
+            if(p.x < (l->o->p.x + vt * (l->v->p.x - l->o->p.x)))cnt--;
+        }
+    }
+    if (cnt == 0) return false;
+    else return true;
+}
+
 
 bool OUTLINE::IsClosed(){
     if(Lines.empty())return false;
@@ -863,7 +843,7 @@ bool OUTLINE::IsClosed(){
 }
 
 
-void CrossDetection(Face *f, CRV *crvs){
+void CrossDetection(OUTLINE *outline, CRV *crvs){
     if(crvs->isempty)return;
     for(auto&r: crvs->Rulings)r->IsCrossed = -1;
     if(crvs->getCurveType() == CurveType::arc || crvs->getCurveType() == CurveType::line)return;
@@ -873,16 +853,25 @@ void CrossDetection(Face *f, CRV *crvs){
             if(rs){
                 glm::f64vec3 p = getIntersectionPoint(std::get<0>(crvs->Rulings[in]->r)->p, std::get<1>(crvs->Rulings[in]->r)->p, std::get<0>(crvs->Rulings[inn]->r)->p,std::get<1>(crvs->Rulings[inn]->r)->p);
                 bool PointOnLines = false;
-                bool PointInFace = f->IsPointInFace(p);
-                HalfEdge *h = f->halfedge;
-                do{
-                    if(is_point_on_line(p, h->vertex->p, h->next->vertex->p))PointOnLines = true;
-                    h = h->next;
-                }while(h != f->halfedge);
+                bool PointInFace = outline->IsPointInFace(p);
+                for(auto&l: outline->Lines){if(is_point_on_line(p, l->o->p, l->v->p))PointOnLines = true;}
                 if(PointInFace)crvs->Rulings[in]->IsCrossed = crvs->Rulings[inn]->IsCrossed = 0;
             }
         }
     }
+}
+
+glm::f64vec3 OUTLINE::getNormalVec(){
+    glm::f64vec3 N{0,0,0};
+    auto prev = Lines.end() - 1;
+    for(auto cur = Lines.begin(); cur != Lines.end(); cur++){
+        if(abs(glm::dot(glm::normalize((*cur)->v->p - (*cur)->o->p), glm::normalize((*prev)->v->p - (*prev)->o->p))) < 0.9){
+            return glm::normalize(glm::cross((*cur)->v->p - (*cur)->o->p, (*prev)->o->p - (*prev)->v->p));
+        }
+        prev = cur;
+
+    }
+    return N;
 }
 
 
@@ -924,92 +913,10 @@ std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, Line *l, i
     return res;
 }
 
-std::vector<HalfEdge*> EdgeCopy(const std::vector<HalfEdge*> Edges, const std::vector<Vertex*> V){
-    std::vector<HalfEdge*> Edges_cp;
-    std::vector<Vertex*> srfV;
-    for(auto&_v: V){
-        Vertex *v = new Vertex(_v->p, _v->p3);
-        srfV.push_back(v);
-    }
-
-    for(auto e: Edges){
-        int VInd = std::distance(V.begin(), std::find(V.begin(), V.end(), e->vertex));
-        HalfEdge *h = new HalfEdge(srfV[VInd], e->edgetype);
-        h->r = e->r;
-        Edges_cp.push_back(h);
-    }
-    for(int i = 0; i < (int)Edges.size(); i++){
-        auto prevItr = std::find(Edges.begin(), Edges.end(), Edges[i]->prev);
-        auto nextItr = std::find(Edges.begin(), Edges.end(), Edges[i]->next);
-        auto pairItr = std::find(Edges.begin(), Edges.end(), Edges[i]->pair);
-        int prevInd = (prevItr != Edges.end())? std::distance(Edges.begin(), prevItr): -1;
-        int nextInd = (nextItr != Edges.end())?std::distance(Edges.begin(), nextItr): -1;
-        int pairInd = (pairItr != Edges.end())?std::distance(Edges.begin(), pairItr): -1;
-        Edges_cp[i]->prev = (prevInd != -1)?Edges_cp[prevInd]: nullptr;
-        Edges_cp[i]->next = (nextInd != -1)?Edges_cp[nextInd]: nullptr;
-        Edges_cp[i]->pair = (pairInd != -1)? Edges_cp[pairInd]: nullptr;
-    }
-    return Edges_cp;
-}
-
-
-void EdgeRecconection(const std::vector<Vertex*>& Poly_V, std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges){
-    int n = Poly_V.size();
-    for(int i = 0; i < n; i++){
-        Vertex *v1 = Poly_V[i], *v2 = Poly_V[(i + 1) % n];
-        std::vector<PointOnLine> PoL;
-        for(auto&e: Edges){
-            if((e->vertex->p == v1->p || e->vertex->p == v2->p) ||
-                    std::find_if(PoL.begin(), PoL.end(), [&](const PointOnLine &h)->bool{return e->vertex == h.v;}) != PoL.end())continue;
-            if(abs(glm::distance(e->vertex->p, v1->p) + glm::distance(e->vertex->p, v2->p) - glm::distance(v1->p, v2->p)) < 1e-5){
-                double t = glm::distance(e->vertex->p, v2->p)/glm::distance(v1->p, v2->p);
-                auto p = PointOnLine(t, e->vertex);
-                PoL.push_back(p);
-            }
-        }
-        std::sort(PoL.begin(), PoL.end());
-        auto itr_h2 = std::find_if(Edges.begin(), Edges.end(), [&](const HalfEdge&h)->bool{return Poly_V[i]->p == h.vertex->p;});
-        auto itr_h1 = std::find_if(Edges.begin(), Edges.end(), [&](const HalfEdge&h)->bool{return Poly_V[(i+1) % n]->p == h.vertex->p;});
-        if(PoL.empty()){//polygon同士の頂点で一度つなぎなおす
-            (*itr_h1)->next = (*itr_h2); (*itr_h2)->prev = (*itr_h1);
-        }else{
-            for(int j = 1; j < (int)PoL.size(); j++){
-                auto itr_edge1 = std::find_if(PoL[j-1].v->halfedge.begin(), PoL[j-1].v->halfedge.end(), [](const HalfEdge&h)->bool{return h.edgetype == EdgeType::ol;});
-                auto itr_edge2 = std::find_if(PoL[j].v->halfedge.begin(), PoL[j].v->halfedge.end(), [](const HalfEdge&h)->bool{return h.edgetype != EdgeType::ol;});
-                (*itr_edge1)->next = *itr_edge2; (*itr_edge2)->prev = *itr_edge1;
-            }
-            auto itr_H2Edge = std::find_if((*itr_h2)->vertex->halfedge.begin(), (*itr_h2)->vertex->halfedge.end(), [](const HalfEdge&h)->bool{return h.edgetype == EdgeType::ol;});
-            auto itr_H1Edge = std::find_if((*itr_h1)->vertex->halfedge.begin(), (*itr_h1)->vertex->halfedge.end(), [](const HalfEdge&h)->bool{return h.edgetype == EdgeType::ol;});
-            auto itr_LastEdge = std::find_if(PoL.back().v->halfedge.begin(), PoL.back().v->halfedge.end(), [](const HalfEdge&h)->bool{return h.edgetype == EdgeType::ol;});
-            auto itr_FrontEdge = std::find_if(PoL.front().v->halfedge.begin(), PoL.front().v->halfedge.end(), [](const HalfEdge&h)->bool{return h.edgetype != EdgeType::ol;});
-            (*itr_FrontEdge)->prev = (*itr_H1Edge); (*itr_H1Edge)->next = (*itr_FrontEdge);//setuzoku shusei
-            (*itr_LastEdge)->next = (*itr_H2Edge); (*itr_H2Edge)->prev = (*itr_LastEdge);//setuzoku shusei
-
-        }
-    }
-    std::vector<bool> IsReconnected(Edges.size(), false);
-    int faceIndex = 0;
-
-    for(int i = 0; i < (int)IsReconnected.size(); i++){
-        if(IsReconnected[i])continue;
-        auto h = Edges[i];
-        Face *f = new Face(h);
-        Faces.push_back(f);
-        do{
-            int j = std::distance(Edges.begin(), std::find(Edges.begin(), Edges.end(), h));
-            if(j < 0 || j >= Edges.size())break;
-            IsReconnected[j] = true;
-            Edges[j]->face = f;
-            h = h->next;
-        }while(h != Edges[i]);
-        faceIndex++;
-    }
-}
-
 std::vector<Vertex*> ConvexHull_polygon(std::vector<Vertex*>& Q){
     std::vector<Vertex*> P;
     if((int)Q.size() < 3)return Q;
-    Vertex* p_ml = P[0];
+    Vertex* p_ml = Q[0];
     for(auto&p: Q){
         if(p_ml->p.y > p->p.y)p_ml = p;
         else if(p_ml->p.y == p->p.y && p_ml->p.x > p->p.x) p_ml = p;

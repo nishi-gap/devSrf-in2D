@@ -404,47 +404,9 @@ void Model::setGradationValue(int val, Line *refL, int InterpolationType, std::v
 
 void Model::addRulings(){
     if(!outline->IsClosed())return;
-
-    for(auto&c: crvs)CrossDetection(outline->getFace(), c);
+    for(auto&c: crvs)CrossDetection(outline, c);
     CrossDection4AllCurve();
 
-    /*
-    for(auto& c: crvs){
-        if(c->isempty)continue;
-        for(auto rl: c->Rulings){
-            if(rl->IsCrossed != -1)continue;
-            //auto h1 = InsertVertex(std::get<0>(rl->r));
-            //auto h2 = InsertVertex(std::get<1>(rl->r));
-            if(h1 == nullptr || h2 == nullptr)return;
-            HalfEdge *he1 = new HalfEdge(h1->vertex, EdgeType::r);
-            HalfEdge *he2 = new HalfEdge(h2->vertex, EdgeType::r);
-            he1->r = rl; he2->r = rl;
-            he2->pair = he1; he1->pair = he2;
-            he1->prev = h1->prev;
-            he1->next = h2;
-            he2->prev = h2->prev;
-            he2->next = h1; 
-            h1->prev->next = he1;
-            h2->prev->next = he2;
-            h1->prev = he2;
-            h2->prev = he1;
-            h2->face->ReConnect(h1);
-            Face* face2 = new Face(h2);
-            Faces.push_back(face2);
-            face2->ReConnect(h2);
-            Edges.push_back(he1); Edges.push_back(he2);
-            if(std::find(vertices.begin(), vertices.end(), std::get<0>(rl->r)) == vertices.end())vertices.push_back(std::get<0>(rl->r));
-            if(std::find(vertices.begin(), vertices.end(), std::get<1>(rl->r)) == vertices.end())vertices.push_back(std::get<1>(rl->r));
-        }
-    }
-    for(auto&v: vertices){//各vertexが持つhalfedgeのうち、edgesにないものを削除
-        for (auto itr = v->halfedge.begin(); itr != v->halfedge.end();) {
-            if(std::find(Edges.begin(), Edges.end(), *itr) == Edges.end()){
-                //delete *itr;
-                itr = v->halfedge.erase(itr);
-            }else ++itr;
-        }
-    }*/
 }
 
 void Model::SelectCurve(QPointF pt){
@@ -578,14 +540,9 @@ void Model::AddControlPoint(glm::f64vec3& p, int curveDimention, int DivSize){
     else if(crvs[AddPtIndex]->getCurveType() == CurveType::arc){
         if(crvs[AddPtIndex]->ControllPoints.size() == 0){
             if(outline->IsClosed()){
-                Face *f = outline->getFace();
+                bool PointInFace = outline->IsPointInFace(p);
                 bool PointOnLines = false;
-                bool PointInFace = f->IsPointInFace(p);
-                HalfEdge *h = f->halfedge;
-                do{
-                    if(is_point_on_line(p, h->vertex->p, h->next->vertex->p))PointOnLines = true;
-                    h = h->next;
-                }while(h != f->halfedge);
+                for(auto&l : outline->Lines){if(is_point_on_line(p, l->o->p, l->v->p))PointOnLines = true;}
                 if(!PointInFace || PointOnLines)crvs[AddPtIndex]->ControllPoints.push_back(p);
             }
             else crvs[AddPtIndex]->ControllPoints.push_back(p);
@@ -612,14 +569,9 @@ void Model::AddControlPoint(glm::f64vec3& p, int curveDimention, int DivSize){
 void Model::MoveCurvePoint(glm::f64vec3& p, int MoveIndex, int ptInd, int curveDimention, int DivSize){
     if(MoveIndex == -1 || ptInd == -1)return;
     if(crvs[MoveIndex]->getCurveType() == CurveType::arc && ptInd == 0){
-        Face *f = outline->getFace();
         bool PointOnLines = false;
-        bool PointInFace = f->IsPointInFace(p);
-        HalfEdge *h = f->halfedge;
-        do{
-            if(is_point_on_line(p, h->vertex->p, h->next->vertex->p))PointOnLines = true;
-            h = h->next;
-        }while(h != f->halfedge);
+        bool PointInFace = outline->IsPointInFace(p);
+        for(auto&l : outline->Lines){if(is_point_on_line(p, l->o->p, l->v->p))PointOnLines = true;}
         if(!PointInFace || PointOnLines) crvs[MoveIndex]->ControllPoints[ptInd] = p;
     }
     else crvs[MoveIndex]->ControllPoints[ptInd] = p;

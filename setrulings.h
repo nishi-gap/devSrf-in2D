@@ -163,7 +163,6 @@ public:
 
     bool IsPointInFace(glm::f64vec3 p);
     glm::f64vec3 getNormalVec();
-    double sgndist(glm::f64vec3 p);
     void ReConnect(HalfEdge *he);
     void TrianglationSplit(std::vector<HalfEdge*>& Edges, std::vector<Face*>& Faces);
     bool operator == (const Face &_f)const{return bend == _f.bend && hasGradPt == _f.hasGradPt && halfedge == _f.halfedge;}
@@ -184,8 +183,6 @@ public:
     HalfEdge_FL(CrvPt_FL *_v, EdgeType _type): HalfEdge(_v, _type), v(_v){}
     HalfEdge_FL(HalfEdge *h): HalfEdge(h->vertex, h->edgetype){}
 };
-
-
 
 class CRV{
 public:
@@ -248,7 +245,7 @@ public:
     void addVertex(glm::f64vec3& p);
     void eraseVertex();
     std::vector<Vertex*> getVertices();
-    std::vector<Line*> getEdges();
+    std::vector<Line*> Lines;
     Face* getFace();
     void ConnectEdges(bool IsConnected = true);
     void drawPolygon(glm::f64vec3& p, bool IsClicked);
@@ -256,21 +253,21 @@ public:
     void MoveVertex(glm::f64vec3 p, int ind);
     glm::f64vec2 origin;//polygonの始点
     int hasPtNum; //0 ~ 2 (polygonの点の数)
+    bool IsPointInFace(glm::f64vec3 p);
+    glm::f64vec3 getNormalVec();
 private:
     std::vector<Vertex*> vertices;
     //std::vector<HalfEdge*> edges;
-    std::vector<Line*> Lines;
+
     int movePointIndex(glm::f64vec3 p);
     //Face *face;
 };
 
-void CrossDetection(Face *f, CRV *crvs);
+void CrossDetection(OUTLINE *outline, CRV *crvs);
 
 
 std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, Line *l, int dim);
 std::vector<glm::f64vec3> ConvertDistBasedBezier(std::vector<glm::f64vec3>& CtrlPts, Line *l);
- void EdgeRecconection(const std::vector<Vertex*>& Poly_V, std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges);
-std::vector<HalfEdge*> EdgeCopy(const std::vector<HalfEdge*> Edges, const std::vector<Vertex*> V);
 std::vector<Vertex*> SortPolygon(std::vector<Vertex*>& polygon);
 //std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot, double& CurveLen, bool is3d = true, int dim = 3, int t_type = 2);
 

@@ -830,10 +830,6 @@ void GLWidget_2D::wheelEvent(QWheelEvent *we){
         model->setGradationValue(DiffWheel, refL, InterpolationType, CurvePath);
         emit ColorChangeFrom(0, refL->color);
         model->deform();
-        if(model->outline->IsClosed() && !model->FL.empty()){
-            auto oriedge = model->outline->getEdges();
-            //model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention);
-        }
         if(isVisibleTo(gw)) emit CurvePathSet(CurvePath);
     }
     emit foldingSignals();
