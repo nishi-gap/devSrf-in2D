@@ -18,8 +18,10 @@
 #include "foldline.h"
 
 typedef std::vector<std::array<glm::f64vec3, 2>> Ruling3d;
+typedef std::vector<Face*> Faces3d;
 typedef std::vector<Vertex*> Polygon_V;
-typedef std::vector<Line*> Lines;
+typedef std::vector<HalfEdge*> HalfEdges;
+typedef std::vector<Vertex*> Surface_V;
 typedef std::vector<glm::f64vec3> Curve3d;
 //typedef std::vector<CrvPt_FL> CrvFL3d;
 typedef std::vector<Vertex4d> FoldLine3d;
@@ -29,7 +31,8 @@ class GLWidget_3D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
 {
     Q_OBJECT
 public:
-    void setVertices(const Lines Surface = Lines(),  const Lines Rulings = Lines(), const Ruling3d& _AllRulings = Ruling3d(),  bool hasFoldingCurve = false);
+    void setVertices(const Faces3d Faces = Faces3d(), const Polygon_V Poly_V = Polygon_V(), const HalfEdges Edges = HalfEdges(),
+                     const Surface_V _vertices = Surface_V(), const FoldLine3d& _FoldLines = FoldLine3d(), const Ruling3d& _AllRulings = Ruling3d(), bool switchDraw = true);
     void ReceiveParam(std::vector<std::vector<glm::f64vec3>>&_C);
     void receiveKeyEvent(QKeyEvent *e);
     void PlanarityDispay(bool state);
@@ -88,6 +91,10 @@ private:
     void updateRotate();
 
     //ArcBallCam arccam;
+
+    Faces3d _faces;
+    HalfEdges _edges;
+
 
 };
 

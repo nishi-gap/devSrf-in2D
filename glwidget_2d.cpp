@@ -24,7 +24,7 @@ GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
     movePt = -1;
     FoldCurveIndex = SmoothCurveIndex = -1;
     refV = nullptr;
-    refL = nullptr;
+    refHE = nullptr;
     KeyEvent = -1;
     curvetype = CurveType::none;
 
@@ -268,7 +268,7 @@ void GLWidget_2D::checkDevelopability(bool state){
 
 }
 void GLWidget_2D::Start4Debug_CF(){
-    //if(model->Faces.size() < 2 )return;
+    if(model->Faces.size() < 2 )return;
     if(model->FL.empty())return;
     model->FL[0]->drawRulingInAllAngles(AllRulings);
     update();
@@ -277,8 +277,7 @@ void GLWidget_2D::Start4Debug_CF(){
 
 
 void GLWidget_2D::changeBetaValue(double val, int keyType){
-    //if(model->Faces.size() < 2 || IsStop4Debug || model->FL.empty())return;
-    if(model->FL.empty())return;
+    if(model->Faces.size() < 2 || IsStop4Debug || model->FL.empty())return;
     if(model->FL.empty())model->FL.push_back(new FoldLine(1, 1, PaintTool::FoldLine_test) );
 
     auto Poly_V = model->outline->getVertices();
@@ -397,36 +396,41 @@ void GLWidget_2D::paintGL(){
             glEnd();
         }
     }else{
-        for(auto itr_r = model->Rulings.begin(); itr_r != model->Rulings.end(); itr_r++){
+        for(const auto&edge: model->Edges){
             glColor3d(0,0,0);
             glLineWidth(1);
-            if((*itr_r)->et == EdgeType::r){
+            if(edge->edgetype == EdgeType::ol)glLineWidth(1);
+            if(edge->edgetype == EdgeType::r){
                 if(drawtype == PaintTool::NewGradationMode){
                     glLineWidth(rulingWidth);
-                    double color = getcolor(model->ColorPt.color, model->ColorPt.angle, (*itr_r)->color/255.0);
-                    if(color > 1e+3){//mount
+                    glm::f64vec3 f_nv = glm::normalize(glm::cross(edge->vertex->p3 - edge->prev->vertex->p3, edge->next->vertex->p3 - edge->vertex->p3));
+                    glm::f64vec3 fp_nv = glm::normalize(glm::cross(edge->pair->vertex->p3 - edge->pair->prev->vertex->p3, edge->pair->next->vertex->p3 - edge->pair->vertex->p3));
+                    glm::f64vec3 SpinAxis = glm::normalize(edge->next->vertex->p3 - edge->vertex->p3);
+                    double color = getcolor(model->ColorPt.color, model->ColorPt.angle, std::acos(glm::dot(f_nv, fp_nv)));
+                    if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) < -1e-3){//mount
                        if(!IsMVcolor_binary)glColor3d(1,1.0 - color,1.0 - color);
                        else glColor3d(1,0,0);
-                    }else if(color < -1e-3){//valley
+                    }else if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) > 1e-3){//valley
                         if(!IsMVcolor_binary)glColor3d(1.0 - color,1.0 - color,1);
                         else glColor3d(0,0,1);
                     }else{
-                        if(IsEraseNonFoldEdge && (*itr_r)->et == EdgeType::r)continue;
+                        if(IsEraseNonFoldEdge && edge->edgetype == EdgeType::r)continue;
                         glColor3d(0,0,0);
                     }
                 }else{ glLineWidth(1.f); glColor3d(0,0,0); }
                 glBegin(GL_LINES);
-                glVertex2d((*itr_r)->o->p.x, (*itr_r)->o->p.y);
-                glVertex2d((*itr_r)->v->p.x, (*itr_r)->v->p.y);
+                glVertex2d(edge->vertex->p.x, edge->vertex->p.y);
+                glVertex2d(edge->next->vertex->p.x, edge->next->vertex->p.y);
                 glEnd();
-
-                glColor3d(0, 0, 0);
-                glPointSize(3.0f);
+                if(edge->vertex == refV){
+                    glColor3d(1, 0, 0);
+                    glPointSize(6.0f);
+                }else{
+                    glColor3d(0, 0, 0);
+                    glPointSize(3.0f);
+                }
                 glBegin(GL_POINTS);
-                glVertex2d((*itr_r)->o->p.x, (*itr_r)->o->p.y);
-                glEnd();
-                glBegin(GL_POINTS);
-                glVertex2d((*itr_r)->v->p.x, (*itr_r)->v->p.y);
+                glVertex2d(edge->vertex->p.x, edge->vertex->p.y);
                 glEnd();
                 glColor3d(0, 0, 0);
             }
@@ -590,7 +594,7 @@ void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
     //if(e->key() == Qt::Key_1){model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention, 1); emit foldingSignals();}
     if(e->key() == Qt::Key_2){
         if(model->FL.empty())return;
-        res = model->FL[FoldCurveIndex]->modify2DRulings(model->Rulings, model->vertices, Poly_v, curveDimention);
+        res = model->FL[FoldCurveIndex]->modify2DRulings(model->Faces, model->Edges, model->vertices, Poly_v, curveDimention, 2);
         if(res){
             emit foldingSignals();
         }
@@ -598,8 +602,12 @@ void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
     }
     if(e->key() == Qt::Key_Q){
         int type = 1;
-        res = model->FL[FoldCurveIndex]->RevisionCrosPtsPosition();
+        res = model->FL[FoldCurveIndex]->RevisionCrosPtsPosition(model->Faces, model->Edges, model->vertices, Poly_v, type, false);
         if(res) emit foldingSignals();
+    }
+    if(e->key() == Qt::Key_P){
+        model->FL[FoldCurveIndex]->Optimization_Vertices(model->Edges, model->vertices, Poly_v);
+        emit foldingSignals();
     }
     update();
 }
@@ -823,12 +831,12 @@ void GLWidget_2D::wheelEvent(QWheelEvent *we){
     if(drawtype == PaintTool::FoldlineColor){
         emit ColorChangeFrom(0, model->FL[FoldCurveIndex]->getColor());
     }else if(drawtype == PaintTool::NewGradationMode){
-        if(refL == nullptr || std::find(model->Rulings.begin(), model->Rulings.end(), refL) == model->Rulings.end()){
-            std::cout<<"there is no referenced Ruling"<<std::endl;
+        if(refHE == nullptr || std::find(model->Edges.begin(), model->Edges.end(), refHE) == model->Edges.end()){
+            std::cout<<"there is no refHE"<<std::endl;
             return;
         }
-        model->setGradationValue(DiffWheel, refL, InterpolationType, CurvePath);
-        emit ColorChangeFrom(0, refL->color);
+        model->setGradationValue(DiffWheel, refHE, InterpolationType, CurvePath);
+        emit ColorChangeFrom(0, refHE->r->Gradation);
         model->deform();
         if(model->outline->IsClosed() && !model->FL.empty()){
             auto oriedge = model->outline->getEdges();
@@ -844,17 +852,17 @@ void GLWidget_2D::addPoints_intplation(QMouseEvent *e, QPointF& p){
     glm::f64vec3 curPos{p.x(), p.y(), 0};
     double dist = 10;
     if(drawtype == PaintTool::NewGradationMode){
-        refL = nullptr;
-        for(auto* r: model->Rulings){
-            if(r->et == EdgeType::ol || r->et == EdgeType::cl)continue;
-            double d = glm::length(glm::cross((curPos - r->o->p), r->o->p - r->v->p))/glm::length(r->o->p - r->v->p);
+        refHE = nullptr;
+        for(auto* _he: model->Edges){
+            if(_he->edgetype == EdgeType::ol || _he->edgetype == EdgeType::cl)continue;
+            double d = glm::length(glm::cross((curPos - _he->vertex->p), _he->vertex->p - _he->next->vertex->p))/glm::length(_he->vertex->p - _he->next->vertex->p);
             if(d < dist){
-                dist = d; refL = r;
+                dist = d; refHE = _he;
             }
         }
-        if(refL == nullptr || std::find(model->Rulings.begin(), model->Rulings.end(), refL) == model->Rulings.end()){std::cout<<"not found" << std::endl; return;}
-        model->setGradationValue(0, refL, InterpolationType, CurvePath);
-        emit ColorChangeFrom(0, refL->color);
+        if(refHE == nullptr || std::find(model->Edges.begin(), model->Edges.end(), refHE) == model->Edges.end()){std::cout<<"not found" << std::endl; return;}
+        model->setGradationValue(0, refHE, InterpolationType, CurvePath);
+        emit ColorChangeFrom(0, refHE->r->Gradation);
         model->deform();
         if(model->outline->IsClosed() && !model->FL.empty()){
             //auto oriedge = model->outline->getEdges();
@@ -866,17 +874,17 @@ void GLWidget_2D::addPoints_intplation(QMouseEvent *e, QPointF& p){
 }
 
 void GLWidget_2D::ApplyNewGradationMode(){
-    if(refL == nullptr){std::cout << "you neeed to add gradation point"<<std::endl; return;}
+    if(refHE == nullptr){std::cout << "you neeed to add gradation point"<<std::endl; return;}
     emit foldingSignals();
     if(isVisibleTo(gw)) emit CurvePathSet(CurvePath);
     update();
 }
 
 void GLWidget_2D::getGradationFromSlider(int val){
-    if(refL == nullptr) return;
-    refL->color = val;
+    if(refHE == nullptr) return;
+    refHE->r->Gradation = val;
     emit ColorChangeFrom(2, val);
-    model->setGradationValue(0, refL, InterpolationType, CurvePath);
+    model->setGradationValue(0, refHE, InterpolationType, CurvePath);
     emit foldingSignals();
     update();
 }
@@ -888,16 +896,17 @@ void GLWidget_2D::OpenDebugWindwow(){
     gw->show();
 }
 
-int GLWidget_2D::assignment_refL(){
+int GLWidget_2D::assignment_refHE(){
 
     QPointF p = mapFromGlobal(QCursor::pos());
     glm::f64vec3 curPos{p.x(), p.y(), 0};
     int ind = -1;
     double dist = 10;
-    for(int i = 0; i < (int)model->Rulings.size(); i++){
-        Line *r = model->Rulings[i];
-        if(r->et != EdgeType::r)continue;
-        double d = glm::length(glm::cross((curPos - r->o->p), r->o->p - r->v->p))/glm::length(r->o->p - r->v->p);
+    for(int i = 0; i < (int)model->Edges.size(); i++){
+        HalfEdge *_he = model->Edges[i];
+        if(_he->edgetype != EdgeType::r)continue;
+        if(_he->next == nullptr)continue;
+        double d = glm::length(glm::cross((curPos - _he->vertex->p), _he->vertex->p - _he->next->vertex->p))/glm::length(_he->vertex->p - _he->next->vertex->p);
         if(d < dist){
             dist = d; ind = i;
         }
