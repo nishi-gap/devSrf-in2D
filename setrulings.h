@@ -16,43 +16,36 @@
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtx/vector_angle.hpp>
 
-constexpr glm::f64vec3 NullVec = glm::f64vec3{-1,-1,-1};
-
 
 //class ruling;
 class OUTLINE;
 class Vertex;
-class HalfEdge;
-class Face;
-enum class EdgeType;
-enum class CurveType;
-
+class Line;
 
 class Vertex{
 public:
     glm::f64vec3 p;
     glm::f64vec3 p3;
     glm::f64vec3 p3_ori, p2_ori;
-    std::vector<HalfEdge*> halfedge;
+    std::vector<Line*> halfedge;
     bool deformed;
     Vertex(glm::f64vec3 _p);
     Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3);
     Vertex(const Vertex* v);
     ~Vertex();
 
-    void addNewEdge(HalfEdge *he);
+    void addNewEdge(Line *l);
     bool operator != (const Vertex &V)const{return p != V.p || p2_ori != V.p2_ori|| p3 != V.p3 || p3_ori != V.p3_ori || halfedge != V.halfedge || deformed != V.deformed;}
     bool operator == (const Vertex &V)const{return p == V.p && p2_ori == V.p2_ori && p3 == V.p3 && p3_ori == V.p3_ori && halfedge == V.halfedge && deformed == V.deformed;}
 };
-
 
 class CrvPt_FL : public Vertex{
 public:
     double s, rt;
     Vertex *ve, *vo;
     bool IsValid;
-    CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3,  double _s) : Vertex(_p2, _p3), s{_s}, IsValid(true) {}
-    CrvPt_FL(glm::f64vec3 _p2, double _s) : Vertex(_p2), s{_s}, IsValid{true} {}
+    CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3,  double _s) : Vertex(_p2, _p3), s(_s), IsValid(true){}
+    CrvPt_FL(glm::f64vec3 _p2, double _s) : Vertex(_p2), s(_s), IsValid(true){}
     bool operator == (const CrvPt_FL &p)const{return s == p.s && rt == p.rt && ve == p.ve && vo == p.vo && IsValid == p.IsValid;}
     bool operator != (const CrvPt_FL &p)const{return !(s == p.s && rt == p.rt && ve == p.ve && vo == p.vo && IsValid == p.IsValid);}
     void set(glm::f64vec3 _p,Vertex *o, Vertex *e);
@@ -74,99 +67,17 @@ struct Vertex4d{
     void operator = (const Vertex4d &V){first = V.first; second = V.second; third = V.third; IsCalc = V.IsCalc;}
 };
 
-class crvpt{
-public:
-    double color;
-    glm::f64vec3 pt;
-    int ind;
-    crvpt( int _ind,glm::f64vec3 _pt = NullVec, int _color = 0);
-    bool operator != (const crvpt &c)const{return color != c.color || pt != c.pt || ind != c.ind;}
-    bool operator == (const crvpt &c)const{return color == c.color && pt == c.pt && ind == c.ind;}
-};
-
-class ruling
-{
-    public:
-    std::tuple<Vertex*, Vertex*> r;
-    HalfEdge *he[2];
-    int IsCrossed; //-1:交差なし, 0:同じruling上で交差, 1:上にあるレイヤー上のrulingと交差
-    crvpt *pt;
-    double Gradation;
-    bool hasGradPt;
-    ruling(Vertex *a, Vertex *b, crvpt *_pt = nullptr);
-    bool operator == (const ruling &_r)const{return r == _r.r && he == _r.he && IsCrossed == _r.IsCrossed && pt == _r.pt && Gradation == _r.Gradation && hasGradPt == _r.hasGradPt;}
-    bool operator != (const ruling &_r)const{return !(r == _r.r && he == _r.he && IsCrossed == _r.IsCrossed && pt == _r.pt && Gradation == _r.Gradation && hasGradPt == _r.hasGradPt);}
-    ruling();
-};
-
-class HalfEdge{
-public:
-    double angle;
-    int IsCrossed;
-    Vertex *vertex;
-    Face *face;
-    HalfEdge *prev;
-    HalfEdge *next;
-    HalfEdge *pair;
-
-    HalfEdge(Vertex *v, EdgeType _type);
-    HalfEdge(const HalfEdge* he);
-    ~HalfEdge();
-    ruling *r;
-    EdgeType edgetype;
-    std::vector<HalfEdge*> Split(Vertex *v, std::vector<HalfEdge*>& Edges);
-    bool hasCrossPoint2d(glm::f64vec3 p, glm::f64vec3 q, glm::f64vec3& CrossPoint,  bool ConsiderEnd = false);
-    double diffEdgeLength();
-    HalfEdge* erase(std::vector<HalfEdge*>& Edges, std::vector<Face*>& Faces);
-    bool operator !=(const HalfEdge &h)const{return IsCrossed != h.IsCrossed || vertex != h.vertex || face != h.face ||
-                prev != h.prev || next != h.next || pair != h.pair || r != h.r || edgetype != h.edgetype;}
-    bool operator ==(const HalfEdge &h)const{return IsCrossed == h.IsCrossed && vertex == h.vertex && face == h.face &&
-                prev == h.prev && next == h.next && pair == h.pair && r == h.r && edgetype != h.edgetype;}
-
-
-protected:
-    void edgeSwap(HalfEdge *h);
-private:
-};
-
-class RulingVec{
-public:
-    void set(glm::f64vec3 _v){v = _v;}
-    glm::f64vec3 get(){return glm::normalize(v);}
-private:
-    glm::f64vec3 v;
-};
 
 class Line{
 public:
+    int IsCrossed; //-1:交差なし, 0:同じruling上で交差, 1:上にあるレイヤー上のrulingと交差
     double color;
-    int IsCrossed;
     Vertex *o, *v;//原則の方向はv[1] - v[0] (v[0]が原点)
-    RulingVec *r;
-    EdgeType et;
-    Line(Vertex *_o, Vertex *_v, EdgeType _et){o = _o; v = _v; et = _et;}
+    EdgeType et = EdgeType::none;
+    Line(Vertex *_o, Vertex *_v, EdgeType _et): o(_o), v(_v), et(_et), IsCrossed(-1), color(0){}
+    Line():o(nullptr),v(nullptr), IsCrossed(-1), color(0) {}
     bool operator !=(const Line &l)const{return IsCrossed != l.IsCrossed || color != l.color || (v[0] != l.v[0] && v[0] != l.v[1]);}
     bool operator ==(const Line &l)const{return IsCrossed == l.IsCrossed && color == l.color && ((v[0] == l.v[0] && v[1] == l.v[1]) || (v[1] == l.v[0] && v[0] == l.v[1]));}
-};
-
-class Face{
-public:
-    int edgeNum(bool PrintVertex = false);
-    bool bend;
-    bool hasGradPt;
-    HalfEdge* halfedge;
-
-    Face(HalfEdge *_halfedge);
-    Face(){}
-    Face(const Face& face);
-    ~Face(){}
-
-    bool IsPointInFace(glm::f64vec3 p);
-    glm::f64vec3 getNormalVec();
-    void ReConnect(HalfEdge *he);
-    void TrianglationSplit(std::vector<HalfEdge*>& Edges, std::vector<Face*>& Faces);
-    bool operator == (const Face &_f)const{return bend == _f.bend && hasGradPt == _f.hasGradPt && halfedge == _f.halfedge;}
-    bool operator != (const Face &_f)const{return bend != _f.bend || hasGradPt != _f.hasGradPt || halfedge != _f.halfedge;}
 };
 
 struct PointOnLine{
@@ -177,28 +88,22 @@ public:
    bool operator<(const PointOnLine& P) const { return t < P.t; }
 };
 
-class HalfEdge_FL: public HalfEdge{
-public:
-    CrvPt_FL *v;
-    HalfEdge_FL(CrvPt_FL *_v, EdgeType _type): HalfEdge(_v, _type), v(_v){}
-    HalfEdge_FL(HalfEdge *h): HalfEdge(h->vertex, h->edgetype){}
-};
 
 class CRV{
 public:
     CRV(int _crvNum, int DivSize);
 
-    void Bspline(int curveDimention,  int crvPtNum);
-    void Bezier(int curveDimention, int crvPtNum);
+    bool drawBspline(int curveDimention,  int crvPtNum);
+    bool drawBezier(int curveDimention, int crvPtNum);
     void BezierRulings(OUTLINE *outline, int& DivSize, int crvPtNum);
     void BsplineRulings(OUTLINE *outline , int& DivSize, int crvPtNum, int curveDimention);
-    void Line();
+    bool drawLine();
     void LineRulings(OUTLINE *outline, int DivSize);
-    void Arc(int crvPtNum);//制御点 0,3,...: 原点. 1,4,...: 始点. 2,5,...: 終点
+    bool drawArc(int crvPtNum);//制御点 0,3,...: 原点. 1,4,...: 始点. 2,5,...: 終点
     void ArcRulings(OUTLINE *outline, int DivSize);
 
     //void addCtrlPt(QPointF p);
-    void eraseCtrlPt(int curveDimention, int crvPtNum);
+    bool eraseCtrlPt(int curveDimention, int crvPtNum);
     //void movePt(glm::f64vec3 p, int ind);
     int movePtIndex(glm::f64vec3& p, double& dist);
     void ClearPt();
@@ -209,16 +114,13 @@ public:
     CurveType getCurveType();
     void setCurveType(CurveType n);
     std::vector<glm::f64vec3> ControllPoints;
-    std::vector<crvpt> CurvePoints;
-    std::vector<ruling*> Rulings;//偶数番目 ruling　奇数番目 グラデーションの多角形に使用
+    std::vector<glm::f64vec3> CurvePoints;
+    std::vector<Line*> Rulings;//偶数番目 ruling　奇数番目 グラデーションの多角形に使用
     //std::vector<meshline*> meshLines;
     glm::f64vec3 InsertPoint;
     bool isempty;
 
     //グラデーション
-    void FillColor(int c);
-    inline int getColor(int n);
-    void setcolor(int ctype, int cval, int n);
     inline void clearColor();
 private:
 
@@ -246,7 +148,6 @@ public:
     void eraseVertex();
     std::vector<Vertex*> getVertices();
     std::vector<Line*> Lines;
-    Face* getFace();
     void ConnectEdges(bool IsConnected = true);
     void drawPolygon(glm::f64vec3& p, bool IsClicked);
     void MoveOutline(glm::f64vec3 p);//polygonの移動
@@ -266,8 +167,7 @@ private:
 void CrossDetection(OUTLINE *outline, CRV *crvs);
 
 
-std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, Line *l, int dim);
-std::vector<glm::f64vec3> ConvertDistBasedBezier(std::vector<glm::f64vec3>& CtrlPts, Line *l);
+std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, Vertex *p, Vertex *q, int dim);
 std::vector<Vertex*> SortPolygon(std::vector<Vertex*>& polygon);
 //std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot, double& CurveLen, bool is3d = true, int dim = 3, int t_type = 2);
 

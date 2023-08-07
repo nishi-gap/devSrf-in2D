@@ -97,16 +97,23 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings, const R
        double t_max_top = -1, t_max_btm = -1;
        int n = (hasFoldingCurve)? 1: 0;
        for(auto itr = Edges.begin() + n; itr != Edges.end() - n; itr++){
-           if((glm::length((*itr)->v->p - v->p) < 1e-7|| glm::length((*itr)->v->p - o->p) < 1e-7))continue;
-           if(MathTool::is_point_on_line((*itr)->v->p, v->p, o->p)){
-               double t = glm::distance((*itr)->v->p, o->p)/glm::distance(v->p, o->p);
-               if(t > t_max_top){ t_max_top = t; V_max[0].v = (*itr)->v; V_max[0].ind = std::distance(Edges.begin(), itr); }
+           if(!(glm::length((*itr)->v->p - v->p) < 1e-7|| glm::length((*itr)->v->p - o->p) < 1e-7)){
+               if(MathTool::is_point_on_line((*itr)->v->p, v->p, o->p)){
+                   double t = glm::distance((*itr)->v->p, o->p)/glm::distance(v->p, o->p);
+                   if(t > t_max_top){
+                       t_max_top = t; V_max[0].v = (*itr)->v;  V_max[0].ind = std::distance(Edges.begin(), itr);
+                   }
+               }
            }
-           if((glm::length((*itr)->o->p - v->p) < 1e-7|| glm::length((*itr)->o->p - o->p) < 1e-7))continue;
-           if(MathTool::is_point_on_line((*itr)->o->p, v->p, o->p)){
-               double t = glm::distance((*itr)->o->p, o->p)/glm::distance(v->p, o->p);
-               if(t > t_max_btm){ t_max_btm = t; V_max[0].v = (*itr)->o; V_max[1].ind = std::distance(Edges.begin(), itr); }
+           if(!(glm::length((*itr)->o->p - v->p) < 1e-7|| glm::length((*itr)->o->p - o->p) < 1e-7)){
+               if(MathTool::is_point_on_line((*itr)->o->p, v->p, o->p)){
+                   double t = glm::distance((*itr)->o->p, o->p)/glm::distance(v->p, o->p);
+                   if(t > t_max_btm){
+                       t_max_btm = t; V_max[1].v = (*itr)->o; V_max[1].ind = std::distance(Edges.begin(), itr);
+                   }
+               }
            }
+
        }
        return V_max;
     };
@@ -122,43 +129,30 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings, const R
         }
     };
 
-    int n = (hasFoldingCurve)? 1: 0;
-    for(int i = n; i < (int)Rulings.size() - (n+1); i++){
-        std::vector<Vertex*> polygon;
-        polygon.push_back(Rulings[i]->v); polygon.push_back(Rulings[i+1]->v); polygon.push_back(Rulings[i+1]->o); polygon.push_back(Rulings[i]->o);
-        Polygons.push_back(polygon);
-    }
-    for(auto itr_s = Surface.begin(); itr_s != Surface.end(); itr_s++){
-        if(hasFoldingCurve){
-            auto itr_l = std::find_if(Rulings.begin(), Rulings.end(), [&](Line *line){return (line->v == (*itr_s)->v || line->o == (*itr_s)->v);});
-            if(itr_l == Rulings.end())continue;
-
-        }else{
-            std::array<clst_v, 2> clst_line = getClosestVertex((*itr_s)->v, (*itr_s)->o, Rulings, hasFoldingCurve);
-            auto prev = (itr_s != Surface.begin())? itr_s - 1: Surface.end() - 1, next = (itr_s != Surface.end() -1)? itr_s + 1 : Surface.begin();
-            std::array<clst_v, 2> clst_line_prev = getClosestVertex((*prev)->v, (*prev)->o, Rulings, hasFoldingCurve);
-            std::array<clst_v, 2> clst_line_next = getClosestVertex((*next)->o, (*next)->v, Rulings, hasFoldingCurve);
-            if(clst_line[0].ind == -1 && clst_line[1].ind == -1){
-                std::vector<Vertex*> polygon;
-                polygon.push_back(clst_line_prev[0].v); polygon.push_back((*itr_s)->o); polygon.push_back((*itr_s)->v); polygon.push_back(clst_line_next[1].v);
-                Polygons.push_back(polygon);
-            }else{
-                if(clst_line[0].ind == clst_line_next[0].ind){
-                    Polygons.push_back({(*itr_s)->v, Rulings[clst_line[0].ind]->v, Rulings[clst_line[0].ind]->o});
-
-                }else{
-                    if(MathTool::is_point_on_line(Rulings[clst_line[0].ind - 1]->v->p, (*itr_s)->v->p, (*itr_s)->o->p))
-                        InsertV((*itr_s)->v, Rulings[clst_line[0].ind]->v, Rulings[clst_line_next[0].ind]->v);
-                    else
-                        InsertV((*itr_s)->v, Rulings[clst_line[0].ind]->o, Rulings[clst_line_next[0].ind]->o);
-                }
+    std::vector<Vertex*> polygon;
+    for(auto& l: Surface) polygon.push_back(l->v);
+    Polygons.push_back(polygon);
+    for(auto itr_r = Rulings.begin(); itr_r != Rulings.end(); itr_r++){
+        for(auto&P: Polygons){
+            int vind = -1, oind = -1;
+            for(int i = 0; i < (int)P.size(); i++){
+                if(MathTool::is_point_on_line((*itr_r)->o->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))oind = i;
+                if(MathTool::is_point_on_line((*itr_r)->v->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))vind = i;
             }
+            if(vind == -1 || oind == -1)continue;
+            int i_min = std::min(vind, oind) + 1, i_max = std::max(vind, oind) + 1;
+            std::vector<Vertex*> poly2 = {P.begin() + i_min, P.begin() + i_max};
+            P.erase(P.begin() + i_min, P.begin() + i_max);
+            P.push_back((*itr_r)->o); P.push_back((*itr_r)->v); P = SortPolygon(P);
+            poly2.push_back((*itr_r)->o); poly2.push_back((*itr_r)->v); poly2 = SortPolygon(poly2);
+            Polygons.push_back(poly2);
         }
     }
 
     for(auto& polygon: Polygons){
         std::vector<Vertex*> p_sort = SortPolygon(polygon);
-        PlanarityColor.push_back(Planerity(p_sort, Surface));
+        if(!Rulings.empty())PlanarityColor.push_back(Planerity(p_sort, Surface));
+        else PlanarityColor.push_back(0);
         std::vector<glm::f64vec3> vertices;
         for(auto& p: p_sort)vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(p->p3,1)));
         Vertices.push_back(vertices);

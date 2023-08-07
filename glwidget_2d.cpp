@@ -176,9 +176,7 @@ void GLWidget_2D::changeFoldType(PaintTool state){
     drawtype = state;
     if(model->FL.empty())FoldCurveIndex = -1;
     if(state != PaintTool::FoldlineColor){
-        int rulingNum = 30;
-        int crvNum = 1000;
-        FoldLine *fl = new FoldLine(crvNum, rulingNum, state);
+        FoldLine *fl = new FoldLine(state);
         model->FL.push_back(fl);
         FoldCurveIndex++;
     }
@@ -216,17 +214,18 @@ void GLWidget_2D::recieveNewEdgeNum(int num){model->outline->VerticesNum = num; 
 void GLWidget_2D::ChangedDivSizeEdit(int n){
     this->DivSize = (n < 0)? DivSize: (maxDivSize < n)? maxDivSize: n;
     if(SmoothCurveIndex == -1 || model->crvs.empty()) return;
+    bool res = false;
     if(curvetype == CurveType::bezier3){
-        model->crvs[SmoothCurveIndex]->Bezier(curveDimention, crvPtNum);
+       res = model->crvs[SmoothCurveIndex]->drawBezier(curveDimention, crvPtNum);
         //if(model->outline->isClosed  && model->crv->CurvePoints[0].pt != glm::f64vec2{-1,-1})model->crv->BezierRulings(model->outline->vertices,DivSize,crvPtNum);
     }
     if(curvetype == CurveType::bsp3){
-        model->crvs[SmoothCurveIndex]->Bspline(curveDimention, crvPtNum);
-        if(model->outline->IsClosed() && model->crvs[SmoothCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1, -1})model->crvs[SmoothCurveIndex]->BsplineRulings(model->outline,DivSize,crvPtNum, curveDimention);
+        res = model->crvs[SmoothCurveIndex]->drawBspline(curveDimention, crvPtNum);
+        if(model->outline->IsClosed() && res)model->crvs[SmoothCurveIndex]->BsplineRulings(model->outline,DivSize,crvPtNum, curveDimention);
     }
     if(curvetype == CurveType::line){
-        model->crvs[SmoothCurveIndex]->Line();
-        if(model->outline->IsClosed() && model->crvs[SmoothCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1})model->crvs[SmoothCurveIndex]->LineRulings(model->outline,DivSize);
+        res = model->crvs[SmoothCurveIndex]->drawLine();
+        if(model->outline->IsClosed() && res)model->crvs[SmoothCurveIndex]->LineRulings(model->outline,DivSize);
     }
 
     if(model->outline->IsClosed() && model->CrossDection4AllCurve()){
@@ -279,7 +278,7 @@ void GLWidget_2D::Start4Debug_CF(){
 void GLWidget_2D::changeBetaValue(double val, int keyType){
     //if(model->Faces.size() < 2 || IsStop4Debug || model->FL.empty())return;
     if(model->FL.empty())return;
-    if(model->FL.empty())model->FL.push_back(new FoldLine(1, 1, PaintTool::FoldLine_test) );
+    if(model->FL.empty())model->FL.push_back(new FoldLine(PaintTool::FoldLine_test) );
 
     auto Poly_V = model->outline->getVertices();
     model->FL[FoldCurveIndex]->applyAAAMethod(Poly_V, val);
@@ -313,11 +312,9 @@ void GLWidget_2D::paintGL(){
                 glBegin(GL_LINE_STRIP);
                 glColor3d(0,0,0); for(auto&v: fl->CurvePts)glVertex2d(v.x, v.y);
                 glEnd();
-                std::vector<glm::f64vec3> Pts;
-                Pts = fl->getCtrlPt();
                 glColor3d(0,0.3,0.3);
                 glPointSize(5);
-                for(auto&v: Pts){
+                for(auto&v: fl->CtrlPts){
                     glBegin(GL_POINTS);
                     glVertex2d(v.x,v.y);
                     glEnd();
@@ -404,7 +401,7 @@ void GLWidget_2D::paintGL(){
                 if(drawtype == PaintTool::NewGradationMode){
                     glLineWidth(rulingWidth);
                     double color = getcolor(model->ColorPt.color, model->ColorPt.angle, (*itr_r)->color/255.0);
-                    if(color > 1e+3){//mount
+                    if(color > 1e-3){//mount
                        if(!IsMVcolor_binary)glColor3d(1,1.0 - color,1.0 - color);
                        else glColor3d(1,0,0);
                     }else if(color < -1e-3){//valley
@@ -532,7 +529,7 @@ void GLWidget_2D::paintGL(){
             else glColor3d(0.4, 0.4, 0.4);
             glBegin(GL_LINE_STRIP);
             for(auto &c: model->crvs[i]->CurvePoints){
-                glVertex2s(c.pt.x, c.pt.y);
+                glVertex2s(c.x, c.y);
             }
             glEnd();
         }
@@ -586,15 +583,10 @@ void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
     bool res;
     if(e->key() == Qt::Key_V)eraseVec2d = !eraseVec2d;
     if(e->key() == Qt::Key_A) visibleCurve = !visibleCurve;
-    //if(e->key() == Qt::Key_0){model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention, 0); emit foldingSignals();}
-    //if(e->key() == Qt::Key_1){model->FL[0]->modify2DRulings(model->Faces, model->Edges, model->vertices, oriedge, curveDimention, 1); emit foldingSignals();}
     if(e->key() == Qt::Key_2){
         if(model->FL.empty())return;
-        res = model->FL[FoldCurveIndex]->modify2DRulings(model->Rulings, model->vertices, Poly_v, curveDimention);
-        if(res){
-            emit foldingSignals();
-        }
-
+        res = model->SplitRulings(model->FL[FoldCurveIndex], curveDimention);
+        if(res) emit foldingSignals();
     }
     if(e->key() == Qt::Key_Q){
         int type = 1;
@@ -636,21 +628,21 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
             SmoothCurveIndex = -1;
         }
         if(drawtype == PaintTool::Bezier_r || drawtype == PaintTool::Bspline_r || drawtype == PaintTool::Line_r || drawtype == PaintTool::Arc_r){
-            model->AddControlPoint(p_ongrid, curveDimention, DivSize);
-            model->addRulings();
+            bool res = model->AddControlPoint(p_ongrid, curveDimention, DivSize);
+            if(res)model->addRulings();
         }
         else if(drawtype == PaintTool::InsertCtrlPt){
             if(SmoothCurveIndex == -1){
                 model->SelectCurve(p);
                 SmoothCurveIndex = model->IsSelectedCurve();
             }else{
-                if(model->crvs[SmoothCurveIndex]->getCurveType() == CurveType::bsp3 && model->crvs[SmoothCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){
+                if(model->crvs[SmoothCurveIndex]->getCurveType() == CurveType::bsp3 && !model->crvs[SmoothCurveIndex]->isempty){
                     model->crvs[SmoothCurveIndex]->InsertControlPoint2(p_ongrid);
                     model->crvs[SmoothCurveIndex]->SetNewPoint();
-                    model->crvs[SmoothCurveIndex]->Bspline(curveDimention,crvPtNum);
+                    model->crvs[SmoothCurveIndex]->drawBspline(curveDimention,crvPtNum);
                     if(model->outline->IsClosed()){
                         model->crvs[SmoothCurveIndex]->BsplineRulings(model->outline,DivSize,crvPtNum, curveDimention);
-                        if(!model->crvs[SmoothCurveIndex]->isempty){
+                        if(model->crvs[SmoothCurveIndex]->Rulings.front()->v != nullptr){
                             model->addRulings();
                             model->deform();
                             //emit foldingSignals();
@@ -726,19 +718,14 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
     if(drawtype == PaintTool::MoveCtrlPt)model->MoveCurvePoint(p_ongrid,SmoothCurveIndex, movePt, curveDimention, DivSize);
     if(drawtype == PaintTool::FoldLine_move){
         if(model->FL.empty() || FoldCurveIndex == -1)return;
-        //bool res = model->FL[FoldCurveIndex]->moveCtrlPt(p_ongrid);
-        //if(res){
-          //  std::vector<Vertex*> Poly_V = model->outline->getVertices();
-           // model->FL[FoldCurveIndex]->modify2DRulings(model->Faces, model->Edges, model->vertices, Poly_V);
-        //}
 
     }
     if(SmoothCurveIndex != -1){
-        if(drawtype == PaintTool::InsertCtrlPt &&  model->crvs[SmoothCurveIndex]->getCurveType() == CurveType::bsp3 && model->crvs[SmoothCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){//制御点の挿入(B-spline)
+        if(drawtype == PaintTool::InsertCtrlPt &&  model->crvs[SmoothCurveIndex]->getCurveType() == CurveType::bsp3 && !model->crvs[SmoothCurveIndex]->isempty){//制御点の挿入(B-spline)
             model->crvs[SmoothCurveIndex]->InsertControlPoint2(p_ongrid);
         }
         
-        if(drawtype != PaintTool::NewGradationMode && model->outline->IsClosed() && model->crvs[SmoothCurveIndex]->CurvePoints[0].pt != glm::f64vec3{-1,-1,-1}){
+        if(drawtype != PaintTool::NewGradationMode && model->outline->IsClosed() && !model->crvs[SmoothCurveIndex]->isempty){
 
             if(model->crvs[SmoothCurveIndex]->getCurveType() == CurveType::bsp3) model->crvs[SmoothCurveIndex]->BsplineRulings(model->outline,DivSize,crvPtNum, curveDimention);
             if(model->crvs[SmoothCurveIndex]->getCurveType() == CurveType::line) model->crvs[SmoothCurveIndex]->LineRulings(model->outline,DivSize);

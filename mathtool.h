@@ -11,10 +11,10 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
-#include <setrulings.h>
 #include <numbers>
 
 enum class EdgeType{
+    none,
     ol,//outline
     r,//ruling(from curve line)
     cl,//curve line
@@ -81,6 +81,7 @@ double distP2L(glm::f64vec3 la, glm::f64vec3 lb, glm::f64vec3& p, glm::f64vec3& 
 
 bool IsIntersect(glm::f64vec3&p1, glm::f64vec3&p2, glm::f64vec3&p3, glm::f64vec3&p4, bool ConsiderEnd = false);
 glm::f64vec3 getIntersectionPoint(glm::f64vec3& p1, glm::f64vec3& p2, glm::f64vec3& p3, glm::f64vec3& p4);
+glm::f64vec3 calcCrossPoint_2Vector(glm::f64vec3 p1, glm::f64vec3 q1, glm::f64vec3 p2, glm::f64vec3 q2);
 
 void Triangulation(std::vector<glm::f64vec3>&input, std::vector<std::array<glm::f64vec3, 3>>&output);
 bool hasPointInTriangle3D(glm::f64vec3 p, std::array<glm::f64vec3, 3>& V);
@@ -109,111 +110,7 @@ std::vector<double> LSM_apply(std::vector<double>&y, int dim = 1);
 std::vector<glm::f64vec3> getPlaneFromCurvePoints(std::vector<glm::f64vec3>& Points, std::vector<glm::f64vec3>& BasisVectors);
 glm::f64vec3 ProjectionVector(glm::f64vec3 v, glm::f64vec3 n, bool Isnormalize = false);
 
+
 }
-
-
-
-
-/*
-
-class BaseCRV{
-public:
-    std::vector<glm::f64vec3> CtrlPts;
-    std::vector<glm::f64vec3> CurvePts;
-    bool isempty;
-    BaseCRV(PaintTool _type);
-    bool addCtrlPt(glm::f64vec3 p, int dim);
-    int movePtIndex(glm::f64vec3 p);
-    bool moveCtrlPt(glm::f64vec3 p, int moveIndex, int dim);
-    bool deleteCtrlPt(glm::f64vec3 p, int dim);
-    bool deleteCurve();
-    bool modifyRulingVector();
-protected:
-    bool setCurve(int dim);
-    bool updateCurve(int dim);
-    PaintTool type;
-    virtual void Arc();
-    void Line();
-};
-
-class SmoothCRV: BaseCRV{
-public:
-    SmoothCRV(PaintTool _type, int _DivSize): BaseCRV(_type), DivSize(_DivSize){}
-
-    glm::f64vec3 InsertPoint;
-    void InsertCtrlPt(glm::f64vec3& p);
-    void SetNewPoint();
-    bool setPoint(std::vector<HalfEdge*>&outline, glm::f64vec3 N, glm::f64vec3& cp, std::vector<glm::f64vec3>& P);
-    bool setRulingVector(std::vector<HalfEdge*>& SurfaceEdge, int dim);
-    bool updateRulingVector(std::vector<HalfEdge*>& SurfaceEdge, int dim);
-
-    std::vector<HalfEdge*>rulings;
-    std::vector<Vertex*> Vertices;
-private:
-    int InsertPointSegment;
-    int DivSize;
-};
-
-class FoldCRV: BaseCRV{
-
-};
-
-class BaseElem{
-public:
-    bool add();
-    bool del();
-    bool move();
-    bool getElem();
-    bool IsSelected();
-};
-
-class Vertex: public BaseElem{
-
-};
-
-class HalfEdge: public BaseElem{
-
-};
-
-class Face: public BaseElem{
-
-};
-
-class Ruling: public HalfEdge{
-
-};
-
-class EdgeOutLine: public HalfEdge{
-
-};
-class FoldLine: public HalfEdge{
-
-};
-class BaseCRV: public BaseElem{
-
-};
-class Line: public BaseCRV{
-
-};
-class Bezier: public BaseCRV{
-
-};
-class Arc: public BaseCRV{
-
-};
-class Bspline: public BaseCRV{
-
-};
-class Line_crc: public Line{
-
-};
-
-class Arc_crc: public Arc{
-
-};
-class Bspline_crc: public Bspline{
-
-};
-*/
 
 #endif // MATHTOOL_H

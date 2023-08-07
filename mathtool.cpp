@@ -183,6 +183,20 @@ std::vector<glm::f64vec3> GrahamScan(std::vector<glm::f64vec3>& Q){
     }
     return S;
 }
+
+glm::f64vec3 calcCrossPoint_2Vector(glm::f64vec3 p1, glm::f64vec3 q1, glm::f64vec3 p2, glm::f64vec3 q2){
+
+    double t = ((p2.x - p1.x)*(p2.y - q2.y) - (p2.x - q2.x)*(p2.y - p1.y))/((q1.x - p1.x) * (p2.y - q2.y) - (p2.x - q2.x)*(q1.y - p1.y));
+    return glm::f64vec3{t * (q1.x - p1.x) + p1.x, t * (q1.y - p1.y) + p1.y, 0};
+
+    Eigen::Matrix2d A; Eigen::Vector2d b;
+    b(0) = p2.x - p1.x; b(1) = p2.y - p1.y;
+    A(0,0) = (q1 - p1).x; A(0,1) = -(q2 - p2).x;
+    A(1,0) = (q1 - p1).y; A(1,1) = -(q2 - p2).y;
+    Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
+    return  x(0) * (q1 - p1) + p1;
+}
+
 //xy平面上に乗っていると仮定
 double SignedArea(glm::f64vec3 a, glm::f64vec3 b, glm::f64vec3 p){
     glm::f64vec3 v = a-p, v2 = b-p;
@@ -352,9 +366,6 @@ glm::f64vec3 ProjectionVector(glm::f64vec3 v, glm::f64vec3 n, bool Isnormalize){
     return (Isnormalize)? V/glm::length(V): V;
 }
 
-double AngleIn2Edges(HalfEdge *p, HalfEdge *p2, bool Is3d){
-  if(Is3d)return acos(glm::dot(glm::normalize(p->next->vertex->p3 - p->vertex->p3), glm::normalize(p2->next->vertex->p3 - p2->vertex->p3)));
-  return acos(glm::dot(glm::normalize(p->next->vertex->p - p->vertex->p), glm::normalize(p2->next->vertex->p - p2->vertex->p)));
-}
+
 
 }

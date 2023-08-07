@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <numbers>
+#include "mathtool.h"
 #include <setrulings.h>
 #include<glm/gtx/vector_angle.hpp>
 
@@ -13,7 +14,7 @@
 #include <iomanip>
 #include <filesystem>
 
-#include "mathtool.h"
+
 
 #include <nlopt.hpp>
 
@@ -22,9 +23,8 @@
 class FoldLine
 {
 public:
-    FoldLine(int crvNum, int rsize, PaintTool _type);
-    std::vector<glm::f64vec3> getCtrlPt();
-    std::vector<glm::f64vec3> getCtrlPt2d();
+    FoldLine(PaintTool _type);
+    std::vector<glm::f64vec3>CtrlPts;
     bool addCtrlPt(glm::f64vec3& p, int dim);
     bool delCtrlPt(glm::f64vec3& p, int dim, OUTLINE *outline);
     bool moveCtrlPt(glm::f64vec3& p, int movePtIndex);
@@ -45,10 +45,7 @@ public:
     std::vector<glm::f64vec3> point;
     Vertex *vx, *vx2;
 
-    std::vector<glm::f64vec3> CtrlPts_res, Curve_res, CtrlPts_res2d, Curve_res2d;
-    //std::vector<CrvPt_FL> T_crs;
     std::vector<Vertex4d> FoldingCurve;
-    //std::vector<HalfEdge_FL*> FoldingCurve;
     void applyAAAMethod(std::vector<Vertex*>& Poly_V, double a);
 
     std::vector<std::array<glm::f64vec3, 2>>  AllRulings, NewRuling2d;
@@ -57,14 +54,8 @@ public:
 private:
     double color;
     bool setCurve(int dim);
-    void devide(Vertex *v1, Vertex *v2, std::vector<Face*>& Faces, std::vector<HalfEdge*>& Edges, EdgeType _type);
-    bool BezierCrvOn3dSrf(std::vector<glm::f64vec3>& CtrlPts, double t, int dim, std::vector<Face*>& Faces, glm::f64vec3& v_3d);
-    void devide2Faces(std::vector<HalfEdge*>& Inserted, std::vector<HalfEdge*>& Edges, std::vector<Face*>& Faces);
-    std::vector<glm::f64vec3>CtrlPts;
 
-    void TrimPoints(std::vector<HalfEdge*>& Edges, std::vector<Face*>& Faces,std::vector<Vertex*>& Vertices, std::vector<CrvPt_FL*>& T_crs, double tol = 0.2);//kがpiに近い値であるかどうかの検出
     PaintTool type;
-    int maxRsize;
 
     std::vector<CrvPt_FL*> Points_On_Curve;
 

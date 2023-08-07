@@ -383,7 +383,7 @@ void MainWindow::mouseMoveEvent(QMouseEvent *e){
 
 //https://nprogram.hatenablog.com/entry/2017/08/10/082236
 void MainWindow::exportobj(){
-    if(ui->glWid2dim->model->vertices.empty()){
+    if(!ui->glWid2dim->model->outline->IsClosed()){
         QMessageBox msgBox;
         msgBox.setText("There is no developable surface.");
         msgBox.exec();
@@ -396,8 +396,6 @@ void MainWindow::exportobj(){
    //std::vector<Face*> outputFace;
    auto Poly_V = ui->glWid2dim->model->outline->getVertices();
    std::vector<std::vector<glm::f64vec3>> Vertices;
-   //auto _edges = EdgeCopy(ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
-   //EdgeRecconection(Poly_V, outputFace, _edges);
 
    auto Planerity  = [](const std::vector<glm::f64vec3>& vertices, const Polygon_V Poly_V)->double{
        if(vertices.size() == 3)return 0.0;
@@ -444,17 +442,33 @@ void MainWindow::exportobj(){
       return V_max;
    };
    std::vector<double> planerity_value;
+   std::vector<Vertex*> polygon;
+   std::vector<std::vector<Vertex*>> Polygons;
    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty()){
-       /*for(auto&f: ui->glWid2dim->model->Faces){
-          std::vector<glm::f64vec3> vertices;
-           HalfEdge *he = f->halfedge;
-           do{
-               vertices.push_back(Mirror * glm::f64vec4{he->vertex->p3, 1});
-               he = he->next;
-           }while(he != f->halfedge);
-           planerity_value.push_back(Planerity(vertices, Poly_V));
+       for(auto& l: ui->glWid2dim->model->outline->Lines) polygon.push_back(l->v);
+       Polygons.push_back(polygon);
+       for(auto itr_r = ui->glWid2dim->model->Rulings.begin(); itr_r != ui->glWid2dim->model->Rulings.end(); itr_r++){
+           for(auto&P: Polygons){
+               int vind = -1, oind = -1;
+               for(int i = 0; i < (int)P.size(); i++){
+                   if(MathTool::is_point_on_line((*itr_r)->o->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))oind = i;
+                   if(MathTool::is_point_on_line((*itr_r)->v->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))vind = i;
+               }
+               if(vind == -1 || oind == -1)continue;
+               int i_min = std::min(vind, oind) + 1, i_max = std::max(vind, oind) + 1;
+               std::vector<Vertex*> poly2 = {P.begin() + i_min, P.begin() + i_max};
+               P.erase(P.begin() + i_min, P.begin() + i_max);
+               P.push_back((*itr_r)->o); P.push_back((*itr_r)->v); P = SortPolygon(P);
+               poly2.push_back((*itr_r)->o); poly2.push_back((*itr_r)->v); poly2 = SortPolygon(poly2);
+               Polygons.push_back(poly2);
+           }
+       }
+       for(auto& polygon: Polygons){
+           std::vector<Vertex*> p_sort = SortPolygon(polygon);
+           std::vector<glm::f64vec3> vertices;
+           for(auto& p: p_sort)vertices.push_back(p->p3);
            Vertices.push_back(vertices);
-       }*/
+       }
    }else{
        std::vector<Vertex4d> FoldLine = ui->glWid2dim->model->FL[0]->FoldingCurve;
        int rsec = getClosestVertex(FoldLine[0].second, FoldLine[0].first, FoldLine, true), rthi = getClosestVertex(FoldLine[0].third, FoldLine[0].first, FoldLine, false);

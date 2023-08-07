@@ -17,16 +17,6 @@
 #include "foldline.h"
 #include "mathtool.h"
 
-
-struct FaceGradation{
-    HalfEdge *he;
-    double *color;
-    FaceGradation(): color(0), he(nullptr){}
-    FaceGradation(HalfEdge *_he, double *_color): he(_he), color(_color){}
-};
-
-
-
 class Model{
 public:
     std::vector<Vertex*> vertices;
@@ -46,9 +36,7 @@ public:
     //void deform(std::vector<std::vector<glm::f64vec3>>& output, std::vector<ruling*>& Rulings, glm::f64vec3& center);
     void deform();
     void Initialize();
-    bool devide(HalfEdge* he1, HalfEdge* he2, std::vector<Face*>& faces);
 
-    HalfEdge* InsertVertex(Vertex *v);
     void setGradationValue(int val, Line *refL, int InterpolationType, std::vector<glm::f64vec2>& CurvePath);
     void SetMaxFold(double val);
     void drawOutline(QPointF& cursol, int drawtype, double gridsize, bool IsClicked = true);
@@ -60,6 +48,7 @@ public:
 
     //FoldLine
     bool AddControlPoint_FL(glm::f64vec3& p, int event, int curveDimention, int FoldCurveIndex);
+    bool SplitRulings(FoldLine *NewFL, int dim);
     void modify2Druling();
     void applyFL();
 
@@ -67,7 +56,7 @@ public:
 
     //Smooth Surface
     void SelectCurve(QPointF pt);
-    void AddControlPoint(glm::f64vec3& p, int curveDimention, int DivSize);
+    bool AddControlPoint(glm::f64vec3& p, int curveDimention, int DivSize);
     int AddNewCurve(CurveType curveType, int DivSize);
     void DeleteControlPoint(QPointF pt, int curveDimention, int DivSize);
     int DeleteCurve();
@@ -83,19 +72,17 @@ private:
     void SplineInterPolation(std::vector<Line*>& path, std::vector<glm::f64vec2>& CurvePath);
 
     inline void clear();
-    void ConnectEdge(HalfEdge *he);
 
     glm::f64vec3 SetOnGrid(QPointF& cursol, double gridsize);
 
     std::vector<int> refCrv;//0:未参照　1:参照
     std::vector<int> refFL;
-    std::vector<FaceGradation> Fgrad;
 
     int crvPtNum;
     int befFaceNum;
 
     std::vector<Line*> GradationPoints;
-    std::vector<HalfEdge*> makePath();
+    //std::vector<Line*> makePath();
 };
 
 
