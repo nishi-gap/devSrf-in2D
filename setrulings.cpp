@@ -42,6 +42,7 @@ Vertex4d::Vertex4d(const Vertex4d& V4d){
 }
 Vertex4d::Vertex4d(){first = nullptr; second = nullptr; third = nullptr; IsCalc = false;}
 
+bool Line::is_on_line(glm::f64vec3 p){ return MathTool::is_point_on_line(p, v->p, o->p);}
 
 CRV::CRV(int _crvNum, int DivSize){
 
@@ -638,7 +639,7 @@ void CrossDetection(OUTLINE *outline, CRV *crvs){
                 glm::f64vec3 p = getIntersectionPoint(crvs->Rulings[in]->v->p, crvs->Rulings[in]->o->p, crvs->Rulings[inn]->v->p,crvs->Rulings[inn]->o->p);
                 bool PointOnLines = false;
                 bool PointInFace = outline->IsPointInFace(p);
-                for(auto&l: outline->Lines){if(is_point_on_line(p, l->o->p, l->v->p))PointOnLines = true;}
+                for(auto&l: outline->Lines){if(l->is_on_line(p))PointOnLines = true;}
                 if(PointInFace)crvs->Rulings[in]->IsCrossed = crvs->Rulings[inn]->IsCrossed = 0;
             }
         }

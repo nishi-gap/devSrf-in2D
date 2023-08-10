@@ -716,9 +716,10 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
     else if(drawtype == PaintTool::NewGradationMode){}
 
     if(drawtype == PaintTool::MoveCtrlPt)model->MoveCurvePoint(p_ongrid,SmoothCurveIndex, movePt, curveDimention, DivSize);
-    if(drawtype == PaintTool::FoldLine_move){
-        if(model->FL.empty() || FoldCurveIndex == -1)return;
-
+    else if(drawtype == PaintTool::FoldLine_bezier){
+        bool res = model->updateSplitRulings(model->FL[FoldCurveIndex], curveDimention);
+        if(res) emit foldingSignals();
+        update();
     }
     if(SmoothCurveIndex != -1){
         if(drawtype == PaintTool::InsertCtrlPt &&  model->crvs[SmoothCurveIndex]->getCurveType() == CurveType::bsp3 && !model->crvs[SmoothCurveIndex]->isempty){//制御点の挿入(B-spline)

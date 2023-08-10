@@ -1092,16 +1092,27 @@ bool FoldLine::Optimization_FlapAngle(std::vector<Line*>& Rulings, std::vector<V
     double a = 0, a2 = 0.0;
     glm::f64vec3 e = glm::normalize(FoldingCurve[Vertices_Ind[0]].first->p3 - FoldingCurve[Vertices_Ind[1]].first->p3),
             e2 = glm::normalize(FoldingCurve[Vertices_Ind[2]].first->p3 - FoldingCurve[Vertices_Ind[1]].first->p3);
-    glm::f64vec3 Nb = -glm::normalize(glm::cross(e, e2)), N4;
-    N4 = -glm::normalize(glm::cross(FoldingCurve[Vertices_Ind[1]].third->p3 - FoldingCurve[Vertices_Ind[1]].first->p3, FoldingCurve[Vertices_Ind[0]].first->p3 - FoldingCurve[Vertices_Ind[1]].first->p3));
+    glm::f64vec3 SpinAxis = glm::normalize(FoldingCurve[Vertices_Ind[1]].third->p3 - FoldingCurve[Vertices_Ind[1]].first->p3);
+    glm::f64vec3 Nb = -glm::normalize(glm::cross(e, e2)), N4 = glm::normalize(glm::cross(e, SpinAxis));
+
     double a_ll = std::atan2(glm::dot(glm::cross(Nb,N4), e),glm::dot(-Nb, N4));
     if(a_ll < 0)a_ll += 2.0*std::numbers::pi;
     double a_con = a_ll + std::numbers::pi;
     if(a_con > 2.0*std::numbers::pi)a_con -= 2.0*std::numbers::pi;
     if(a_con < 0)a_con +=2.0*std::numbers::pi;
 
-    double _a_con = a_con + std::numbers::pi;
-    if(_a_con < 0)_a_con += 2.0*std::numbers::pi;else if(_a_con > 2.0* std::numbers::pi)_a_con -= 2.0*std::numbers::pi;
+    double phi3 = std::acos(glm::dot(e2,SpinAxis)), phi4 = std::acos(glm::dot(e,SpinAxis));
+    double k = 2.0 * std::numbers::pi - phi3 - phi4;
+    double a_min, a_max;
+
+    glm::f64vec3 FaceNp = glm::normalize(glm::cross(SpinAxis, e2)), CrossV = glm::normalize(glm::cross(N4, FaceNp));
+    bool IsMount = (glm::dot(SpinAxis, CrossV) > 0)? true: false;
+
+    if(k < std::numbers::pi && IsMount){a_min = a_con + std::numbers::pi; a_max = 2.0 * std::numbers::pi;}
+    if(k >= std::numbers::pi && IsMount){a_min = std::numbers::pi; a_max = std::numbers::pi + a_con;}
+    if(k < std::numbers::pi && !IsMount){a_min = 0.0;a_max = a_con - std::numbers::pi;}
+    if(k >= std::numbers::pi && !IsMount){a_min = a_con - std::numbers::pi; a_max = std::numbers::pi;}
+    a = (a_min + a_max)/2.0;
 
     std::cout <<glm::degrees(a_ll) << " , " << glm::degrees(a_con)<<std::endl;
     std::ofstream ofs2;
@@ -1119,27 +1130,6 @@ bool FoldLine::Optimization_FlapAngle(std::vector<Line*>& Rulings, std::vector<V
         a += 1e-3;
     }ofs2.close();
 
-    glm::f64vec3 Axis = (FoldingCurve[Vertices_Ind[1]].third->p3 - FoldingCurve[Vertices_Ind[1]].first->p3)/glm::length((FoldingCurve[Vertices_Ind[1]].third->p3 - FoldingCurve[Vertices_Ind[1]].first->p3));
-    double phi3 = std::acos(glm::dot(glm::normalize(FoldingCurve[Vertices_Ind[2]].first->p3 - FoldingCurve[Vertices_Ind[1]].first->p3),Axis));
-    double phi4 = std::acos(glm::dot(glm::normalize(FoldingCurve[Vertices_Ind[0]].first->p3 - FoldingCurve[Vertices_Ind[1]].first->p3),Axis));
-    double k = 2.0 * std::numbers::pi - phi3 - phi4;
-    double a_min, a_max;
-    bool IsMount;
-    std::cout<<"cannot use optimization flap angle"<<std::endl; return false;
-    /*
-    for(const auto&r: Rulings){
-        if((e->vertex == FoldingCurve[Vertices_Ind[1]].third && e->next->vertex == FoldingCurve[Vertices_Ind[1]].second)){
-            if(e->r->Gradation < 0)IsMount = false;
-            else IsMount = true;
-            break;
-        }
-    }*/
-
-    if(k < std::numbers::pi && IsMount){a_min = a_con + std::numbers::pi; a_max = 2.0 * std::numbers::pi;}
-    if(k >= std::numbers::pi && IsMount){a_min = std::numbers::pi; a_max = std::numbers::pi + a_con;}
-    if(k < std::numbers::pi && !IsMount){a_min = 0.0;a_max = a_con - std::numbers::pi;}
-    if(k >= std::numbers::pi && !IsMount){a_min = a_con - std::numbers::pi; a_max = std::numbers::pi;}
-    a = (a_min + a_max)/2.0;
     RevisionVertices::ObjData od = {FoldingCurve, Vertices, Poly_V};
     if(ConstFunc)od.AddWeight(wb, wp, -1); else od.AddWeight(wb, wp, 100.0);
     nlopt::opt opt;

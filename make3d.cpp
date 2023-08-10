@@ -121,7 +121,7 @@ void Model::deform(){
 bool Model::SplitRulings(FoldLine *NewFL, int dim){
     using namespace MathTool;
     std::vector<CrvPt_FL*> T_crs;
-    auto getCrossPoint = [](std::vector<glm::f64vec3>& CtrlPts,  Vertex *v, Vertex *o, int dim){
+    auto getCrossPoint = [](std::vector<glm::f64vec3>& CtrlPts,  Vertex *v, Vertex *o, int dim)->CrvPt_FL*{
         std::vector<double>arcT = BezierClipping(CtrlPts, v, o, dim);
         for(auto&t: arcT){
             if(t < 0 || 1 < t){std::cout<<"t is not correct value " << t << std::endl; continue;}
@@ -133,42 +133,70 @@ bool Model::SplitRulings(FoldLine *NewFL, int dim){
             P->set(v2, o, v);
             return P;
         }
+        return nullptr;
     };
     if(FL.size() == 1){
         for(auto& r: Rulings){
             CrvPt_FL *P = getCrossPoint(NewFL->CtrlPts, r->v, r->o, dim);
-            if(std::find_if(T_crs.begin(), T_crs.end(), [&P](CrvPt_FL* T){return abs(T->s - P->s) < 1e-9;}) == T_crs.end())T_crs.push_back(P);
+            if(P!= nullptr && std::find_if(T_crs.begin(), T_crs.end(), [&P](CrvPt_FL* T){return abs(T->s - P->s) < 1e-9;}) == T_crs.end())T_crs.push_back(P);
         }
         for(auto& l: outline->Lines){
             CrvPt_FL *P = getCrossPoint(NewFL->CtrlPts, l->v, l->o, dim);
-            if(std::find_if(T_crs.begin(), T_crs.end(), [&P](CrvPt_FL* T){return abs(T->s - P->s) < 1e-9;}) == T_crs.end())T_crs.push_back(P);
+            if(P!= nullptr && P != nullptr && std::find_if(T_crs.begin(), T_crs.end(), [&P](CrvPt_FL* T){return abs(T->s - P->s) < 1e-9;}) == T_crs.end())T_crs.push_back(P);
         }
-        std::sort(T_crs.begin(), T_crs.end(), [](CrvPt_FL* T, CrvPt_FL* T2){return T->s < T2->s;});//左から右への曲線の流れにしたい
+        std::sort(T_crs.begin(), T_crs.end(), [](CrvPt_FL* T, CrvPt_FL* T2){return T->s > T2->s;});//左から右への曲線の流れにしたい
         for(auto&t: T_crs) vertices.push_back(t);
         for(int i = 1; i < T_crs.size() - 1; i++){
             for(auto&r: Rulings){
-                if(!MathTool::is_point_on_line(T_crs[i]->p, r->o->p, r->v->p))continue;
+                if(!r->is_on_line(T_crs[i]->p))continue;
                 NewFL->FoldingCurve.push_back(Vertex4d(T_crs[i], r->v, r->o));
                 break;
             }
         }
         glm::f64vec3 befV = glm::normalize(NewFL->FoldingCurve.front().second->p - NewFL->FoldingCurve.front().first->p);
         for(auto&l: outline->Lines){
-            if(!MathTool::is_point_on_line(T_crs.front()->p, l->v->p, l->o->p))continue;
+            if(!l->is_on_line(T_crs.front()->p))continue;
             if(glm::dot(befV, glm::normalize(l->v->p - l->o->p)) > 0)NewFL->FoldingCurve.insert(NewFL->FoldingCurve.begin(), Vertex4d(T_crs.front(), l->v, l->o));
             NewFL->FoldingCurve.insert(NewFL->FoldingCurve.begin(), Vertex4d(T_crs.front(), l->o, l->v));
         }
         befV = glm::normalize(NewFL->FoldingCurve.back().second->p - NewFL->FoldingCurve.back().first->p);
         for(auto&l: outline->Lines){
-            if(!MathTool::is_point_on_line(T_crs.back()->p, l->v->p, l->o->p))continue;
+            if(!l->is_on_line(T_crs.back()->p))continue;
             if(glm::dot(befV, glm::normalize(l->v->p - l->o->p)) > 0)NewFL->FoldingCurve.push_back(Vertex4d(T_crs.back(), l->v, l->o));
             NewFL->FoldingCurve.push_back(Vertex4d(T_crs.back(), l->o, l->v));
         }
     }else{
+        for(auto&fl: FL){
 
+            if(fl == NewFL)continue;
+            for(auto& r: fl->FoldingCurve){
+                CrvPt_FL *P = getCrossPoint(NewFL->CtrlPts, r.second, r.first, dim);
+                if(P!= nullptr && std::find_if(T_crs.begin(), T_crs.end(), [&P](CrvPt_FL* T){return abs(T->s - P->s) < 1e-9;}) == T_crs.end()){
+                    NewFL->FoldingCurve.push_back(Vertex4d(P, r.second, r.first)); r.second = P; vertices.push_back(P);
+                    continue;
+                }
+                P = getCrossPoint(NewFL->CtrlPts, r.third, r.first, dim);
+                if(P!= nullptr && std::find_if(T_crs.begin(), T_crs.end(), [&P](CrvPt_FL* T){return abs(T->s - P->s) < 1e-9;}) == T_crs.end()){
+                    NewFL->FoldingCurve.push_back(Vertex4d(P, r.third, r.first)); r.third = P; vertices.push_back(P);
+                    continue;
+                }
+            }
+            std::sort(NewFL->FoldingCurve.begin(), NewFL->FoldingCurve.end(), [](Vertex4d& V1, Vertex4d& V2){return V1.first->s > V2.first->s;});//左から右への曲線の流れにしたい
+        }
     }
-
     return true;
+}
+
+bool Model::updateSplitRulings(FoldLine *NewFL, int dim){
+    return false;
+    for(auto&fl: NewFL->FoldingCurve){
+        if(fl == NewFL->FoldingCurve.front() || fl == NewFL->FoldingCurve.back()){
+
+        }else{
+
+        }
+    }
+    return SplitRulings(NewFL, dim);
 }
 
 void Model:: addConstraint(QPointF& cursol, int type, int gridsize, glm::f64vec3 (&axis)[2]){
@@ -539,7 +567,7 @@ bool Model::AddControlPoint(glm::f64vec3& p, int curveDimention, int DivSize){
             if(outline->IsClosed()){
                 bool PointInFace = outline->IsPointInFace(p);
                 bool PointOnLines = false;
-                for(auto&l : outline->Lines){if(is_point_on_line(p, l->o->p, l->v->p))PointOnLines = true;}
+                for(auto&l : outline->Lines){if(l->is_on_line(p))PointOnLines = true;}
                 if(!PointInFace || PointOnLines)crvs[AddPtIndex]->ControllPoints.push_back(p);
             }
             else crvs[AddPtIndex]->ControllPoints.push_back(p);

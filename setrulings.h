@@ -78,6 +78,7 @@ public:
     Line():o(nullptr),v(nullptr), IsCrossed(-1), color(0) {}
     bool operator !=(const Line &l)const{return IsCrossed != l.IsCrossed || color != l.color || (v[0] != l.v[0] && v[0] != l.v[1]);}
     bool operator ==(const Line &l)const{return IsCrossed == l.IsCrossed && color == l.color && ((v[0] == l.v[0] && v[1] == l.v[1]) || (v[1] == l.v[0] && v[0] == l.v[1]));}
+    bool is_on_line(glm::f64vec3 p);
 };
 
 struct PointOnLine{

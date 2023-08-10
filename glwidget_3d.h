@@ -23,13 +23,13 @@ typedef std::vector<Line*> Lines;
 typedef std::vector<glm::f64vec3> Curve3d;
 //typedef std::vector<CrvPt_FL> CrvFL3d;
 typedef std::vector<Vertex4d> FoldLine3d;
-
+typedef std::vector<FoldLine3d> FoldLine3ds;
 
 class GLWidget_3D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
 {
     Q_OBJECT
 public:
-    void setVertices(const Lines Surface = Lines(),  const Lines Rulings = Lines(), const Ruling3d& _AllRulings = Ruling3d(),  bool hasFoldingCurve = false);
+    void setVertices(const Lines Surface = Lines(),  const Lines Rulings = Lines(),  const FoldLine3ds FldCrvs = FoldLine3ds(), const Ruling3d& _AllRulings = Ruling3d());
     void ReceiveParam(std::vector<std::vector<glm::f64vec3>>&_C);
     void receiveKeyEvent(QKeyEvent *e);
     void PlanarityDispay(bool state);
@@ -80,7 +80,7 @@ private:
     double th_planarity = 1e-3;
     int switchTNB;
     double drawdist;
-
+    std::vector<std::array<glm::f64vec3, 2>> drawEdges;
     int drawEdgePlane;
     bool IsEraseNonFoldEdge;
 
