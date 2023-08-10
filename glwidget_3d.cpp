@@ -91,38 +91,8 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
     TriMeshs.clear();
     drawEdges.clear();
     std::vector<std::vector<Vertex*>> Polygons;
-
-
-    /*
-   auto getClosestVertex = [](const Line* l, const FoldLine3ds& FLs){
-       Vertex *vmax = nullptr, *vmin = nullptr;
-       double t_max = -1, t_min = 2;
-       int Cind_max, Cind_min, n_max, n_min;
-       for(int i = 0; i < (int)FLs.size(); i++){
-           for(auto itr = FLs[i].begin(); itr != FLs[i].end(); itr++){
-               if(!(glm::length((*itr).second->p - l->v->p) < 1e-7|| glm::length((*itr).second->p - l->o->p) < 1e-7)){
-                   if(l->is_on_line((*itr).second->p)){
-                       double t = glm::distance((*itr).second->p, l->o->p)/glm::distance(l->v->p, l->o->p); if(t > t_max){t_max = t; vmax = (*itr).second; Cind_max = i;  }
-                       t = glm::distance(fl.second->p, l->v->p)/glm::distance(l->v->p, l->o->p); if(t < t_min){t_min = t; vmin = fl.second;  }
-                   }
-               }
-               if(!(glm::length(fl.third->p - l->v->p) < 1e-7|| glm::length(fl.third->p - l->o->p) < 1e-7)){
-                   if(l->is_on_line(fl.third->p)){
-                       double t = glm::distance(fl.third->p, l->o->p)/glm::distance(l->v->p, l->o->p);
-                       if(t > t_max){t_max = t; v = fl.third; }
-                   }
-               }
-           }
-       }
-       return v;
-    };*/
-
-
-
-    struct Apex{ Vertex *v; int Cind; int n; double t;
-        Apex(Vertex *_v, int c, int _n, double _t):v(_v), Cind(c), n(_n), t(_t){}
-    };
     std::vector<Vertex*> polygon;
+
     if(!FldCrvs.empty()){
         for(auto& l: Surface) polygon.push_back(l->v);
         Polygons.push_back(polygon);
@@ -148,13 +118,17 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
         }
 
         std::vector<std::array<Vertex*,2>> SplitedRulings;
-        auto hasMatchEdge = [&Polygons](Vertex *v, Vertex *o)->bool{
-            for(auto& poly : Polygons){
-                for(int i = 0; i < (int)poly.size(); i++){
-                    if((poly[i] == v && poly[(i + 1) % (int)poly.size()] == o) || (poly[i] == o && poly[(i + 1) % (int)poly.size()] == v))return true;
+        //多角形内にoがあり多角形のエッジ上にのるvがある場合->多角形のindexとoのindex、vがのるエッジのindexのarray{p_ind, o_ind, v_ind}返す, ない場合->空のarrayを返す
+        auto hasMatchEdge = [&Polygons](Vertex *o, Vertex *v)->std::array<int,3>{
+            for(int i = 0; i < (int)Polygons.size(); i++){
+                int o_ind = -1, v_ind = -1;
+                for(int j = 0; j < (int)Polygons[i].size(); j++){
+                    if(Polygons[i][j] == o)o_ind = j;
+                    if(MathTool::is_point_on_line(v->p, Polygons[i][j]->p, Polygons[i][(j + 1) % (int)Polygons[i].size()]->p))v_ind = j;
                 }
+                if(o_ind != -1 && v_ind != -1)return{i, o_ind, v_ind};
             }
-            return false;
+            return{};
         };
         auto hasSplitedRulings = [&SplitedRulings](Vertex *v, Vertex *o)->bool{
             for(auto& sr : SplitedRulings){
@@ -165,10 +139,26 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
 
         for(auto&FC: FldCrvs){
             for(auto itr = FC.begin() + 1; itr != FC.end() - 1; itr++){
-                if(!hasMatchEdge((*itr).second, (*itr).first) && !hasSplitedRulings((*itr).second, (*itr).first)){
+                std::array<int,3> ind_sec = hasMatchEdge((*itr).first, (*itr).second);
+                if(!ind_sec.empty() && !hasSplitedRulings((*itr).second, (*itr).first)){
+                    if(ind_sec[1] == -1 || ind_sec[2] == -1)continue;
+                    int i_min = std::min(ind_sec[1], ind_sec[2]) + 1, i_max = std::max(ind_sec[1], ind_sec[2]) + 1;
+                    std::vector<Vertex*> poly2 = {Polygons[ind_sec[0]].begin() + i_min, Polygons[ind_sec[0]].begin() + i_max};
+                    Polygons[ind_sec[0]].erase(Polygons[ind_sec[0]].begin() + i_min, Polygons[ind_sec[0]].begin() + i_max);
+                    Polygons[ind_sec[0]].push_back((*itr).second); Polygons[ind_sec[0]].push_back((*itr).first); Polygons[ind_sec[0]] = SortPolygon(Polygons[ind_sec[0]]);
+                    poly2.push_back((*itr).second); poly2.push_back((*itr).first); poly2 = SortPolygon(poly2);
+                    Polygons.push_back(poly2);
                     SplitedRulings.push_back({(*itr).first, (*itr).second});
                 }
-                if(!hasMatchEdge((*itr).third, (*itr).first) && !hasSplitedRulings((*itr).third, (*itr).first)){
+                std::array<int,3> ind_thi = hasMatchEdge((*itr).first, (*itr).second);
+                if(!ind_thi.empty() && !hasSplitedRulings((*itr).third, (*itr).first)){
+                    if(ind_thi[1] == -1 || ind_thi[2] == -1)continue;
+                    int i_min = std::min(ind_thi[1], ind_thi[2]) + 1, i_max = std::max(ind_thi[1], ind_thi[2]) + 1;
+                    std::vector<Vertex*> poly2 = {Polygons[ind_thi[0]].begin() + i_min, Polygons[ind_thi[0]].begin() + i_max};
+                    Polygons[ind_thi[0]].erase(Polygons[ind_thi[0]].begin() + i_min, Polygons[ind_thi[0]].begin() + i_max);
+                    Polygons[ind_thi[0]].push_back((*itr).second); Polygons[ind_thi[0]].push_back((*itr).first); Polygons[ind_thi[0]] = SortPolygon(Polygons[ind_thi[0]]);
+                    poly2.push_back((*itr).third); poly2.push_back((*itr).first); poly2 = SortPolygon(poly2);
+                    Polygons.push_back(poly2);
                     SplitedRulings.push_back({(*itr).first, (*itr).third});
                 }
             }
