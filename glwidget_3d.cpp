@@ -146,8 +146,32 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                 }
             }
         }
-        for(auto&FC: FldCrvs){
 
+        std::vector<std::array<Vertex*,2>> SplitedRulings;
+        auto hasMatchEdge = [&Polygons](Vertex *v, Vertex *o)->bool{
+            for(auto& poly : Polygons){
+                for(int i = 0; i < (int)poly.size(); i++){
+                    if((poly[i] == v && poly[(i + 1) % (int)poly.size()] == o) || (poly[i] == o && poly[(i + 1) % (int)poly.size()] == v))return true;
+                }
+            }
+            return false;
+        };
+        auto hasSplitedRulings = [&SplitedRulings](Vertex *v, Vertex *o)->bool{
+            for(auto& sr : SplitedRulings){
+                if((sr[0] == v && sr[1] == o) || (sr[1] == o && sr[0] == v))return true;
+            }
+            return false;
+        };
+
+        for(auto&FC: FldCrvs){
+            for(auto itr = FC.begin() + 1; itr != FC.end() - 1; itr++){
+                if(!hasMatchEdge((*itr).second, (*itr).first) && !hasSplitedRulings((*itr).second, (*itr).first)){
+                    SplitedRulings.push_back({(*itr).first, (*itr).second});
+                }
+                if(!hasMatchEdge((*itr).third, (*itr).first) && !hasSplitedRulings((*itr).third, (*itr).first)){
+                    SplitedRulings.push_back({(*itr).first, (*itr).third});
+                }
+            }
         }
     }else{
         for(auto& l: Surface) polygon.push_back(l->v);
