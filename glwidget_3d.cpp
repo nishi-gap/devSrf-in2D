@@ -130,15 +130,17 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                     Poly.insert(Poly.begin() + i, v);
                     break;
                 }
-                int f_ind, s_ind;
+                int f_ind = -1, s_ind = -1;
                 for(int i = 0; i < (int)Poly.size(); i++){
                     if(Poly[i] == o)f_ind = i;
                     if(Poly[i] == v)s_ind = i;
                 }
+                if(f_ind == -1 || s_ind == -1)continue;
                 int i_min = std::min(f_ind, s_ind), i_max = std::max(f_ind, s_ind);
                 std::vector<Vertex*> poly2(Poly.begin() + i_min, Poly.begin() + i_max + 1);
-                Poly.erase(Poly.begin() + i_min, Poly.begin() + i_max -1);
+                Poly.erase(Poly.begin() + i_min, Poly.begin() + i_max);
                 Polygons.push_back(poly2);
+                return;
             }
         };
 
