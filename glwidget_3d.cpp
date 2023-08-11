@@ -126,8 +126,9 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
         auto SplitPolygon = [](std::vector<std::vector<Vertex*>>& Polygons, Vertex *o, Vertex *v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
             for(auto& Poly :Polygons){
                 for(int i = 0; i < (int)Poly.size(); i++){
+                    if(std::find(Poly.begin(), Poly.end(), v) != Poly.end())break;
                     if(!MathTool::is_point_on_line(v->p, Poly[i]->p, Poly[(i + 1) % (int)Poly.size()]->p))continue;
-                    Poly.insert(Poly.begin() + i, v);
+                    Poly.insert(Poly.begin() + i + 1, v);
                     break;
                 }
                 int f_ind = -1, s_ind = -1;
@@ -137,8 +138,8 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                 }
                 if(f_ind == -1 || s_ind == -1)continue;
                 int i_min = std::min(f_ind, s_ind), i_max = std::max(f_ind, s_ind);
-                std::vector<Vertex*> poly2(Poly.begin() + i_min, Poly.begin() + i_max + 1);
-                Poly.erase(Poly.begin() + i_min, Poly.begin() + i_max);
+                std::vector<Vertex*> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
+                Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
                 Polygons.push_back(poly2);
                 return;
             }
@@ -333,9 +334,14 @@ void GLWidget_3D::DrawMeshLines(){
     //std::vector<std::vector<glm::f64vec3>> TriMeshs;
     glColor3d(0.f, 0.f, 0.f);
     glLineWidth(1.0f);
-    for(const auto& e: drawEdges){
+    /*for(const auto& e: drawEdges){
         glBegin(GL_LINES);
         glVertex3d(e[0].x, e[0].y, e[0].z); glVertex3d(e[1].x, e[1].y, e[1].z);
+        glEnd();
+    }*/
+    for(auto&V: Vertices){
+        glBegin(GL_LINE_LOOP);
+        for(auto&v: V)glVertex3d(v.x, v.y, v.z);
         glEnd();
     }
 }

@@ -307,6 +307,7 @@ double Fparallel(std::vector<Vertex4d>& FoldingCurve){
     double f = 0.0;
     for(int i = 0; i < (int)FoldingCurve.size(); i++){if(FoldingCurve[i].IsCalc)Vertices_Ind.push_back(i);}
     for(int i = 1; i < (int)Vertices_Ind.size() - 2; i++){
+
         f += 1.0 - glm::dot(glm::normalize(FoldingCurve[i].second->p - FoldingCurve[i].first->p), glm::normalize(FoldingCurve[i+1].second->p - FoldingCurve[i+1].first->p));
     }
     return f;
@@ -1106,7 +1107,8 @@ bool FoldLine::Optimization_FlapAngle(std::vector<Line*>& Rulings, std::vector<V
     double a_min, a_max;
 
     glm::f64vec3 FaceNp = glm::normalize(glm::cross(SpinAxis, e2)), CrossV = glm::normalize(glm::cross(N4, FaceNp));
-    bool IsMount = (glm::dot(SpinAxis, CrossV) > 0)? true: false;
+    double val = glm::dot(SpinAxis, CrossV);
+    bool IsMount = (glm::dot(SpinAxis, CrossV) < 0)? true: false;
 
     if(k < std::numbers::pi && IsMount){a_min = a_con + std::numbers::pi; a_max = 2.0 * std::numbers::pi;}
     if(k >= std::numbers::pi && IsMount){a_min = std::numbers::pi; a_max = std::numbers::pi + a_con;}
