@@ -92,7 +92,7 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
     std::vector<Vertex*> polygon;
     for(auto& l: Surface) polygon.push_back(l->v);
     Polygons.push_back(polygon);
-    if(!FldCrvs.empty() ||!FldCrvs[0]->FoldingCurve.empty()){
+    if(!FldCrvs.empty() &&!FldCrvs[0]->FoldingCurve.empty()){
         for(auto&_FC: FldCrvs){
             std::vector<Vertex4d> FldCrv = _FC->FoldingCurve;
             for(auto&P: Polygons){
@@ -107,8 +107,10 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                     int i_min = std::min(ind_fr, ind_bc) + 1, i_max = std::max(ind_fr, ind_bc) + 1;
                     std::vector<Vertex*> poly2 = {P.begin() + i_min, P.begin() + i_max};
                     P.erase(P.begin() + i_min, P.begin() + i_max);
-                    P.insert(P.end(), InsertedV.begin(), InsertedV.end()); P = SortPolygon(P);
-                    poly2.insert(poly2.end(), InsertedV.begin(), InsertedV.end()); poly2 = SortPolygon(poly2);
+                    P.insert(P.begin() + i_min, InsertedV.begin(), InsertedV.end());
+                    //P = SortPolygon(P);
+                    poly2.insert(poly2.end(), InsertedV.begin(), InsertedV.end());
+                    //poly2 = SortPolygon(poly2);
                     Polygons.push_back(poly2);
                     break;
                 }
@@ -143,8 +145,11 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                     int i_min = std::min(ind_sec[1], ind_sec[2]) + 1, i_max = std::max(ind_sec[1], ind_sec[2]) + 1;
                     std::vector<Vertex*> poly2 = {Polygons[ind_sec[0]].begin() + i_min, Polygons[ind_sec[0]].begin() + i_max};
                     Polygons[ind_sec[0]].erase(Polygons[ind_sec[0]].begin() + i_min, Polygons[ind_sec[0]].begin() + i_max);
-                    Polygons[ind_sec[0]].push_back((*itr).second); Polygons[ind_sec[0]].push_back((*itr).first); Polygons[ind_sec[0]] = SortPolygon(Polygons[ind_sec[0]]);
-                    poly2.push_back(itr->second); poly2.push_back((*itr).first); poly2 = SortPolygon(poly2);
+                    Polygons[ind_sec[0]].insert(Polygons[ind_sec[0]].begin() + i_min, {});//i_minがfirstと同じならfirst, secondの順番
+                    //Polygons[ind_sec[0]].push_back((*itr).second); Polygons[ind_sec[0]].push_back((*itr).first);
+                    //Polygons[ind_sec[0]] = SortPolygon(Polygons[ind_sec[0]]);
+                    //poly2.push_back(itr->second); poly2.push_back((*itr).first);
+                    //poly2 = SortPolygon(poly2);
                     Polygons.push_back(poly2);
                     SplitedRulings.push_back({itr->first, itr->second});
                 }
@@ -154,8 +159,10 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                     int i_min = std::min(ind_thi[1], ind_thi[2]) + 1, i_max = std::max(ind_thi[1], ind_thi[2]) + 1;
                     std::vector<Vertex*> poly2 = {Polygons[ind_thi[0]].begin() + i_min, Polygons[ind_thi[0]].begin() + i_max};
                     Polygons[ind_thi[0]].erase(Polygons[ind_thi[0]].begin() + i_min, Polygons[ind_thi[0]].begin() + i_max);
-                    Polygons[ind_thi[0]].push_back((*itr).second); Polygons[ind_thi[0]].push_back((*itr).first); Polygons[ind_thi[0]] = SortPolygon(Polygons[ind_thi[0]]);
-                    poly2.push_back((*itr).third); poly2.push_back((*itr).first); poly2 = SortPolygon(poly2);
+                    //Polygons[ind_thi[0]].push_back((*itr).second); Polygons[ind_thi[0]].push_back((*itr).first);
+                    //Polygons[ind_thi[0]] = SortPolygon(Polygons[ind_thi[0]]);
+                    //poly2.push_back((*itr).third); poly2.push_back((*itr).first);
+                    //poly2 = SortPolygon(poly2);
                     Polygons.push_back(poly2);
                     SplitedRulings.push_back({(*itr).first, (*itr).third});
                 }
@@ -166,6 +173,7 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
             for(auto&P: Polygons){
                 int vind = -1, oind = -1;
                 for(int i = 0; i < (int)P.size(); i++){
+                    //std::cout << glm::to_string((*itr_r)->o->p) << "  ,  "<< glm::to_string((*itr_r)->v->p) << std::endl;
                     if(MathTool::is_point_on_line((*itr_r)->o->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))oind = i;
                     if(MathTool::is_point_on_line((*itr_r)->v->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))vind = i;
                 }
