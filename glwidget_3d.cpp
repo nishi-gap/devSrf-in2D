@@ -1,8 +1,6 @@
 #include "glwidget_3d.h"
 using namespace MathTool;
 
-
-
 GLWidget_3D::GLWidget_3D(QWidget *parent):QOpenGLWidget(parent)
 {
 
@@ -45,7 +43,7 @@ void GLWidget_3D::EraseNonFoldEdge(bool state){
     update();
 }
 
-void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const FoldLine3ds FldCrvs, const Ruling3d& _AllRulings){
+void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const FoldLine3d FldCrvs, const Ruling3d& _AllRulings){
 
     auto Planerity  = [](const std::vector<Vertex*>& vertices, const Lines Poly_V)->double{
         if(vertices.size() == 3)return 0.0;
@@ -92,20 +90,20 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
     drawEdges.clear();
     std::vector<std::vector<Vertex*>> Polygons;
     std::vector<Vertex*> polygon;
-
-    if(!FldCrvs.empty()){
-        for(auto& l: Surface) polygon.push_back(l->v);
-        Polygons.push_back(polygon);
-        for(auto&FC: FldCrvs){
+    for(auto& l: Surface) polygon.push_back(l->v);
+    Polygons.push_back(polygon);
+    if(!FldCrvs.empty() ||!FldCrvs[0]->FoldingCurve.empty()){
+        for(auto&_FC: FldCrvs){
+            std::vector<Vertex4d> FldCrv = _FC->FoldingCurve;
             for(auto&P: Polygons){
                 int ind_fr = -1, ind_bc = -1;
                 for(int i = 0; i < (int)P.size(); i++){
-                    if(MathTool::is_point_on_line(FC.front().first->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))ind_fr = i;
-                    if(MathTool::is_point_on_line(FC.back().first->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))ind_bc = i;
+                    if(MathTool::is_point_on_line(FldCrv.front().first->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))ind_fr = i;
+                    if(MathTool::is_point_on_line(FldCrv.back().first->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))ind_bc = i;
                 }
                 if(ind_fr != -1 && ind_bc != -1){
                     std::vector<Vertex*> InsertedV;
-                    for(auto&v: FC)InsertedV.push_back(v.first);
+                    for(auto&v: FldCrv)InsertedV.push_back(v.first);
                     int i_min = std::min(ind_fr, ind_bc) + 1, i_max = std::max(ind_fr, ind_bc) + 1;
                     std::vector<Vertex*> poly2 = {P.begin() + i_min, P.begin() + i_max};
                     P.erase(P.begin() + i_min, P.begin() + i_max);
@@ -138,7 +136,7 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
         };
 
         for(auto&FC: FldCrvs){
-            for(auto itr = FC.begin() + 1; itr != FC.end() - 1; itr++){
+            for(auto itr = FC->FoldingCurve.begin() + 1; itr != FC->FoldingCurve.end() - 1; itr++){
                 std::array<int,3> ind_sec = hasMatchEdge((*itr).first, (*itr).second);
                 if(!ind_sec.empty() && !hasSplitedRulings((*itr).second, (*itr).first)){
                     if(ind_sec[1] == -1 || ind_sec[2] == -1)continue;
@@ -146,9 +144,9 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                     std::vector<Vertex*> poly2 = {Polygons[ind_sec[0]].begin() + i_min, Polygons[ind_sec[0]].begin() + i_max};
                     Polygons[ind_sec[0]].erase(Polygons[ind_sec[0]].begin() + i_min, Polygons[ind_sec[0]].begin() + i_max);
                     Polygons[ind_sec[0]].push_back((*itr).second); Polygons[ind_sec[0]].push_back((*itr).first); Polygons[ind_sec[0]] = SortPolygon(Polygons[ind_sec[0]]);
-                    poly2.push_back((*itr).second); poly2.push_back((*itr).first); poly2 = SortPolygon(poly2);
+                    poly2.push_back(itr->second); poly2.push_back((*itr).first); poly2 = SortPolygon(poly2);
                     Polygons.push_back(poly2);
-                    SplitedRulings.push_back({(*itr).first, (*itr).second});
+                    SplitedRulings.push_back({itr->first, itr->second});
                 }
                 std::array<int,3> ind_thi = hasMatchEdge((*itr).first, (*itr).second);
                 if(!ind_thi.empty() && !hasSplitedRulings((*itr).third, (*itr).first)){
@@ -164,8 +162,6 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
             }
         }
     }else{
-        for(auto& l: Surface) polygon.push_back(l->v);
-        Polygons.push_back(polygon);
         for(auto itr_r = Rulings.begin(); itr_r != Rulings.end(); itr_r++){
             for(auto&P: Polygons){
                 int vind = -1, oind = -1;
@@ -184,6 +180,7 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
             }
         }
     }
+
     for(auto& polygon: Polygons){
         //std::vector<Vertex*> p_sort = SortPolygon(polygon);
         if(!Rulings.empty())PlanarityColor.push_back(Planerity(polygon, Surface));

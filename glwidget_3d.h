@@ -22,14 +22,13 @@ typedef std::vector<Vertex*> Polygon_V;
 typedef std::vector<Line*> Lines;
 typedef std::vector<glm::f64vec3> Curve3d;
 //typedef std::vector<CrvPt_FL> CrvFL3d;
-typedef std::vector<Vertex4d> FoldLine3d;
-typedef std::vector<FoldLine3d> FoldLine3ds;
+typedef std::vector<FoldLine*> FoldLine3d;
 
 class GLWidget_3D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
 {
     Q_OBJECT
 public:
-    void setVertices(const Lines Surface = Lines(),  const Lines Rulings = Lines(),  const FoldLine3ds FldCrvs = FoldLine3ds(), const Ruling3d& _AllRulings = Ruling3d());
+    void setVertices(const Lines Surface = Lines(),  const Lines Rulings = Lines(),  const FoldLine3d FldCrvs = FoldLine3d(), const Ruling3d& _AllRulings = Ruling3d());
     void ReceiveParam(std::vector<std::vector<glm::f64vec3>>&_C);
     void receiveKeyEvent(QKeyEvent *e);
     void PlanarityDispay(bool state);

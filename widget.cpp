@@ -137,14 +137,14 @@ void MainWindow::ModelBack(){
         v->p3 = v->p3_ori;
     }
     ui->glWid2dim->update();
-    ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+    ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
 }
 
 void MainWindow::EraseNonFoldEdge(bool state){
     ui->glWid2dim->EraseNonFoldEdge(state);
     ui->glWid3dim->EraseNonFoldEdge(state);
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
-    ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+    ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
 }
 
 void MainWindow::changeToleranceValue_Slider(int val){
@@ -157,7 +157,7 @@ void MainWindow::changeToleranceValue_Slider(int val){
     ui->TolValue->setValue(tol);
     ui->glWid2dim->model->FL[0]->SimplifyModel(tol);
     ui->glWid2dim->update();
-    ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+     ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
 }
 
 void MainWindow::changeToleranceValue_Spin(double val){
@@ -209,7 +209,7 @@ void MainWindow::SimpleSmoothing(){
     bool res = ui->glWid2dim->model->FL[0]->SimpleSmooothSrf(Poly_V);
     if(res){
         ui->glWid2dim->update();
-        ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+         ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
     }
 }
 
@@ -240,12 +240,11 @@ void MainWindow::fold_Sm(){
     ui->glWid2dim->update();
     if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
     else if(!ui->glWid2dim->model->FL.empty()){
-        ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
-        //ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
+         ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
+
     }
     else{
-        ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
-        //ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices);
+         ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
     }
 }
 
@@ -301,10 +300,10 @@ void MainWindow::ReassinColor(){
         ui->glWid2dim->model->deform();
         ui->glWid2dim->update();
         ui->glWid2dim->model->FL[0]->modifyFoldingCurvePositionOn3d(ui->glWid2dim->model->Rulings);
-        ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+         ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
     }
     else{
-        ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+         ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
     }
 }
 
@@ -328,20 +327,20 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
             ui->glWid2dim->model->deform();
             ui->glWid2dim->model->FL[0]->modifyFoldingCurvePositionOn3d(ui->glWid2dim->model->Rulings);
             ui->glWid2dim->update();
-            ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+             ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
         }
         else{
-            ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+             ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
         }
     }
     else if( e->key() == Qt::Key_P){
 
         if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
         else if(!ui->glWid2dim->model->FL.empty()){
-            ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+             ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
         }
         else{
-            ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings,ui->glWid2dim->AllRulings);
+             ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
         }
     }
     else if(e->key() == Qt::Key_3 ||e->key() == Qt::Key_4){
@@ -393,18 +392,19 @@ void MainWindow::exportobj(){
     std::vector<glm::f64vec3> Normals;
     glm::f64vec3 befN = {0,0,0}, N;
     glm::f64mat4x4 Mirror = glm::mat4(1.0f); Mirror[1][1] = -1;
-   //std::vector<Face*> outputFace;
-   auto Poly_V = ui->glWid2dim->model->outline->getVertices();
    std::vector<std::vector<glm::f64vec3>> Vertices;
+   std::vector<std::vector<Vertex*>> Polygons;
+   std::vector<Vertex*> polygon;
+   std::vector<double> planerity_value;
 
-   auto Planerity  = [](const std::vector<glm::f64vec3>& vertices, const Polygon_V Poly_V)->double{
+   auto Planerity  = [](const std::vector<glm::f64vec3>& vertices, const std::vector<Line*> lines)->double{
        if(vertices.size() == 3)return 0.0;
        else{
            std::vector<glm::f64vec3> QuadPlane;
            for(auto&v: vertices){
                bool IsOutlineVertices = false;
-               for(auto&p: Poly_V){
-                   if(p->p3 == v)IsOutlineVertices = true;
+               for(auto&l: lines){
+                   if(l->v->p3 == v)IsOutlineVertices = true;
                }
                if(!IsOutlineVertices)QuadPlane.push_back(v);
            }
@@ -420,33 +420,80 @@ void MainWindow::exportobj(){
            return d/l_avg;
        }
    };
-   auto getClosestVertex = [](const Vertex *v, const Vertex* o, const FoldLine3d& FoldingCurve, bool IsSecond){
-      int V_max = -1;
-      double t_max = -1;
-      for(auto&fc: FoldingCurve){
-          if(IsSecond){
-              if((glm::length(fc.second->p - v->p) < 1e-7|| glm::length(fc.second->p - o->p) < 1e-7))continue;
-              if(MathTool::is_point_on_line(fc.second->p, v->p, o->p)){
-                  double t = glm::distance(fc.second->p, o->p)/glm::distance(v->p, o->p);
-                  if(t > t_max){ t_max = t; V_max = std::distance(FoldingCurve.begin(), std::find(FoldingCurve.begin(), FoldingCurve.end(), fc)); }
-              }
-          }else{
-              if((glm::length(fc.third->p - v->p) < 1e-7|| glm::length(fc.third->p - o->p) < 1e-7))continue;
-              if(MathTool::is_point_on_line(fc.third->p, v->p, o->p)){
-                  double t = glm::distance(fc.third->p, o->p)/glm::distance(v->p, o->p);
-                  if(t > t_max){ t_max = t; V_max = std::distance(FoldingCurve.begin(), std::find(FoldingCurve.begin(), FoldingCurve.end(), fc)); }
-              }
-          }
 
-      }
-      return V_max;
-   };
-   std::vector<double> planerity_value;
-   std::vector<Vertex*> polygon;
-   std::vector<std::vector<Vertex*>> Polygons;
-   if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty()){
-       for(auto& l: ui->glWid2dim->model->outline->Lines) polygon.push_back(l->v);
-       Polygons.push_back(polygon);
+
+   for(auto& l: ui->glWid2dim->model->outline->Lines) polygon.push_back(l->v);
+   Polygons.push_back(polygon);
+   if(!ui->glWid2dim->model->FL.empty() ||!ui->glWid2dim->model->FL[0]->FoldingCurve.empty()){
+       for(auto&FC: ui->glWid2dim->model->FL){
+           std::vector<Vertex4d> FldCrv = FC->FoldingCurve;
+           for(auto&P: Polygons){
+               int ind_fr = -1, ind_bc = -1;
+               for(int i = 0; i < (int)P.size(); i++){
+                   if(MathTool::is_point_on_line(FldCrv.front().first->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))ind_fr = i;
+                   if(MathTool::is_point_on_line(FldCrv.back().first->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))ind_bc = i;
+               }
+               if(ind_fr != -1 && ind_bc != -1){
+                   std::vector<Vertex*> InsertedV;
+                   for(auto&v: FldCrv)InsertedV.push_back(v.first);
+                   int i_min = std::min(ind_fr, ind_bc) + 1, i_max = std::max(ind_fr, ind_bc) + 1;
+                   std::vector<Vertex*> poly2 = {P.begin() + i_min, P.begin() + i_max};
+                   P.erase(P.begin() + i_min, P.begin() + i_max);
+                   P.insert(P.end(), InsertedV.begin(), InsertedV.end()); P = SortPolygon(P);
+                   poly2.insert(poly2.end(), InsertedV.begin(), InsertedV.end()); poly2 = SortPolygon(poly2);
+                   Polygons.push_back(poly2);
+                   break;
+               }
+           }
+       }
+
+       std::vector<std::array<Vertex*,2>> SplitedRulings;
+       //多角形内にoがあり多角形のエッジ上にのるvがある場合->多角形のindexとoのindex、vがのるエッジのindexのarray{p_ind, o_ind, v_ind}返す, ない場合->空のarrayを返す
+       auto hasMatchEdge = [&Polygons](Vertex *o, Vertex *v)->std::array<int,3>{
+           for(int i = 0; i < (int)Polygons.size(); i++){
+               int o_ind = -1, v_ind = -1;
+               for(int j = 0; j < (int)Polygons[i].size(); j++){
+                   if(Polygons[i][j] == o)o_ind = j;
+                   if(MathTool::is_point_on_line(v->p, Polygons[i][j]->p, Polygons[i][(j + 1) % (int)Polygons[i].size()]->p))v_ind = j;
+               }
+               if(o_ind != -1 && v_ind != -1)return{i, o_ind, v_ind};
+           }
+           return{};
+       };
+       auto hasSplitedRulings = [&SplitedRulings](Vertex *v, Vertex *o)->bool{
+           for(auto& sr : SplitedRulings){
+               if((sr[0] == v && sr[1] == o) || (sr[1] == o && sr[0] == v))return true;
+           }
+           return false;
+       };
+
+       for(auto&FC: ui->glWid2dim->model->FL){
+           for(auto itr = FC->FoldingCurve.begin() + 1; itr != FC->FoldingCurve.end() - 1; itr++){
+               std::array<int,3> ind_sec = hasMatchEdge((*itr).first, (*itr).second);
+               if(!ind_sec.empty() && !hasSplitedRulings((*itr).second, (*itr).first)){
+                   if(ind_sec[1] == -1 || ind_sec[2] == -1)continue;
+                   int i_min = std::min(ind_sec[1], ind_sec[2]) + 1, i_max = std::max(ind_sec[1], ind_sec[2]) + 1;
+                   std::vector<Vertex*> poly2 = {Polygons[ind_sec[0]].begin() + i_min, Polygons[ind_sec[0]].begin() + i_max};
+                   Polygons[ind_sec[0]].erase(Polygons[ind_sec[0]].begin() + i_min, Polygons[ind_sec[0]].begin() + i_max);
+                   Polygons[ind_sec[0]].push_back((*itr).second); Polygons[ind_sec[0]].push_back((*itr).first); Polygons[ind_sec[0]] = SortPolygon(Polygons[ind_sec[0]]);
+                   poly2.push_back(itr->second); poly2.push_back((*itr).first); poly2 = SortPolygon(poly2);
+                   Polygons.push_back(poly2);
+                   SplitedRulings.push_back({itr->first, itr->second});
+               }
+               std::array<int,3> ind_thi = hasMatchEdge((*itr).first, (*itr).second);
+               if(!ind_thi.empty() && !hasSplitedRulings((*itr).third, (*itr).first)){
+                   if(ind_thi[1] == -1 || ind_thi[2] == -1)continue;
+                   int i_min = std::min(ind_thi[1], ind_thi[2]) + 1, i_max = std::max(ind_thi[1], ind_thi[2]) + 1;
+                   std::vector<Vertex*> poly2 = {Polygons[ind_thi[0]].begin() + i_min, Polygons[ind_thi[0]].begin() + i_max};
+                   Polygons[ind_thi[0]].erase(Polygons[ind_thi[0]].begin() + i_min, Polygons[ind_thi[0]].begin() + i_max);
+                   Polygons[ind_thi[0]].push_back((*itr).second); Polygons[ind_thi[0]].push_back((*itr).first); Polygons[ind_thi[0]] = SortPolygon(Polygons[ind_thi[0]]);
+                   poly2.push_back((*itr).third); poly2.push_back((*itr).first); poly2 = SortPolygon(poly2);
+                   Polygons.push_back(poly2);
+                   SplitedRulings.push_back({(*itr).first, (*itr).third});
+               }
+           }
+       }
+   }else{
        for(auto itr_r = ui->glWid2dim->model->Rulings.begin(); itr_r != ui->glWid2dim->model->Rulings.end(); itr_r++){
            for(auto&P: Polygons){
                int vind = -1, oind = -1;
@@ -463,39 +510,14 @@ void MainWindow::exportobj(){
                Polygons.push_back(poly2);
            }
        }
-       for(auto& polygon: Polygons){
-           std::vector<Vertex*> p_sort = SortPolygon(polygon);
-           std::vector<glm::f64vec3> vertices;
-           for(auto& p: p_sort)vertices.push_back(p->p3);
-           Vertices.push_back(vertices);
-       }
-   }else{
-       std::vector<Vertex4d> FoldLine = ui->glWid2dim->model->FL[0]->FoldingCurve;
-       int rsec = getClosestVertex(FoldLine[0].second, FoldLine[0].first, FoldLine, true), rthi = getClosestVertex(FoldLine[0].third, FoldLine[0].first, FoldLine, false);
-       int lsec = getClosestVertex(FoldLine.back().second, FoldLine.back().first, FoldLine, true), lthi = getClosestVertex(FoldLine.back().third, FoldLine.back().first, FoldLine, false);
-
-       for(int i = 0; i < (int)FoldLine.size() - 1; i++){
-           std::vector<glm::f64vec3> vertices;
-           vertices.push_back(Mirror * glm::f64vec4{FoldLine[i].first->p3, 1});
-           if(!(rsec != -1 && i == 0))vertices.push_back(Mirror * glm::f64vec4{FoldLine[i].second->p3, 1});
-           if(i == rsec)vertices.push_back(Mirror * glm::f64vec4{FoldLine[0].second->p3, 1});
-           if(i == lsec - 1)vertices.push_back(Mirror * glm::f64vec4{FoldLine.back().second->p3, 1});
-           if(!(lsec != -1 && i == (int)FoldLine.size() - 2))vertices.push_back(Mirror * glm::f64vec4{FoldLine[i+1].second->p3, 1});
-           vertices.push_back(Mirror * glm::f64vec4{FoldLine[i+1].first->p3, 1});
-           planerity_value.push_back(Planerity(vertices, Poly_V));
-           Vertices.push_back(vertices);
-
-           vertices.clear();
-           vertices.push_back(Mirror * glm::f64vec4{FoldLine[i].first->p3, 1});
-           vertices.push_back(Mirror * glm::f64vec4{FoldLine[i+1].first->p3, 1});
-           if(!(lthi != -1 && i == (int)FoldLine.size() - 2))vertices.push_back(Mirror * glm::f64vec4{FoldLine[i+1].third->p3, 1});
-           if(i == rthi)vertices.push_back(Mirror * glm::f64vec4{FoldLine.front().third->p3, 1});
-           if(i == lthi - 1)vertices.push_back(Mirror * glm::f64vec4{FoldLine.back().third->p3, 1});
-           if(!(rthi != -1 && i == 0))vertices.push_back(Mirror * glm::f64vec4{FoldLine[i].third->p3, 1});
-           planerity_value.push_back(Planerity(vertices, Poly_V));
-           Vertices.push_back(vertices);
-       }
    }
+
+    for(auto&poly: Polygons){
+        std::vector<glm::f64vec3> V;
+        for(auto&p: poly)V.push_back(p->p3);
+        Vertices.push_back(V);
+        planerity_value.push_back(Planerity(V,ui->glWid2dim->model->outline->Lines));
+    }
 
     for(const auto& mesh: Vertices){
         for(const auto&v: mesh)WriteList.append("v " + QString::number(v.x) + " " + QString::number(v.y) + " " + QString::number(v.z) + "\n");
