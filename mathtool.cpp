@@ -205,7 +205,7 @@ double SignedArea(glm::f64vec3 a, glm::f64vec3 b, glm::f64vec3 p){
 
 bool is_point_on_line(glm::f64vec3 p, glm::f64vec3 lp1, glm::f64vec3 lp2){
     double ac = glm::distance(p, lp1), bc = glm::distance(p, lp2), lp = glm::distance(lp1, lp2);
-    if(ac < 1e-9 || bc < 1e-7)return true;
+    if(ac < 1e-7 || bc < 1e-7)return true;
     if(abs(lp - ac - bc) < 1e-7) return true;
     return false;
 }
