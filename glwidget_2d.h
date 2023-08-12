@@ -120,7 +120,7 @@ private:
 
     bool IsEraseNonFoldEdge;
     int SmoothCurveIndex; //-1: 未参照
-    int FoldCurveIndex;
+
     int KeyEvent; //-1:None  0:Enter  1: Back-Space  2:Other
     //OutlineRectangle, RulingBezier, RulingBspline, RulingLine, RulingArc,  OutlinePolygon, OutlinePolyline, MoveControlPoint, SetColor, NewGradationMode, InsertControlPoint,
     //None(select mode), EditVertex(outline), MoveOutline, DeleteCntrlPt, DeleteCurve, OutlineConst, ConnectVertices, FoldLine, FoldlineColor

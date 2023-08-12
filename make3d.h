@@ -53,6 +53,7 @@ public:
     void modify2Druling();
     void applyFL();
     void modifyFoldingCurvePositionOn3d();
+    void ChangeFoldLineState();
     std::vector<glm::f64vec3> resPts;
 
     //Smooth Surface
@@ -81,6 +82,7 @@ private:
 
     int crvPtNum;
     int befFaceNum;
+    int FoldCurveIndex;
 
     std::vector<Line*> GradationPoints;
     //std::vector<Line*> makePath();

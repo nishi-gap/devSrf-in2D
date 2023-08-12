@@ -118,6 +118,15 @@ void Model::deform(){
     }
 }
 
+void Model::ChangeFoldLineState(){
+    FoldCurveIndex++;
+    for(auto itr = FL.begin(); itr != FL.end();){
+        if((*itr)->FoldingCurve.empty() && std::distance(FL.begin(), itr) != FoldCurveIndex)itr = std::erase(FL.begin(), itr);
+        else itr++;
+    }
+    FoldCurveIndex = FL.size() - 1;
+}
+
 bool Model::SplitRulings(FoldLine *NewFL, int dim){
     using namespace MathTool;
     glm::f64vec3 UpVec{0,-1,0};

@@ -22,7 +22,7 @@ GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
     //ControllPoints_gradation.clear();
     DiffWheel = 0;
     movePt = -1;
-    FoldCurveIndex = SmoothCurveIndex = -1;
+    SmoothCurveIndex = -1;
     refV = nullptr;
     refL = nullptr;
     KeyEvent = -1;
@@ -174,11 +174,10 @@ void GLWidget_2D::DeleteCurve(){
 
 void GLWidget_2D::changeFoldType(PaintTool state){
     drawtype = state;
-    if(model->FL.empty())FoldCurveIndex = -1;
     if(state != PaintTool::FoldlineColor){
         FoldLine *fl = new FoldLine(state);
         model->FL.push_back(fl);
-        FoldCurveIndex++;
+        model->ChangeFoldLineState();
     }
     setMouseTracking(false);
     update();
