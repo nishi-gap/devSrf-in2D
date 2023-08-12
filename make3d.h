@@ -47,13 +47,14 @@ public:
     void addRulings(); //0:move curve point, 1: add(erase, insert) curve point
 
     //FoldLine
-    bool AddControlPoint_FL(glm::f64vec3& p, int event, int curveDimention, int FoldCurveIndex);
-    bool SplitRulings(FoldLine *NewFL, int dim);
-    bool updateSplitRulings(FoldLine *NewFL, int dim);
+    bool AddControlPoint_FL(glm::f64vec3& p, int event, int curveDimention);
+    bool SplitRulings(int dim);
     void modify2Druling();
     void applyFL();
     void modifyFoldingCurvePositionOn3d();
     void ChangeFoldLineState();
+    void applyAAAMethod(double a);
+    bool RevisionCrosPtsPosition();
     std::vector<glm::f64vec3> resPts;
 
     //Smooth Surface

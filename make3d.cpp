@@ -121,13 +121,20 @@ void Model::deform(){
 void Model::ChangeFoldLineState(){
     FoldCurveIndex++;
     for(auto itr = FL.begin(); itr != FL.end();){
-        if((*itr)->FoldingCurve.empty() && std::distance(FL.begin(), itr) != FoldCurveIndex)itr = std::erase(FL.begin(), itr);
+        if((*itr)->FoldingCurve.empty() && std::distance(FL.begin(), itr) != FoldCurveIndex)itr = FL.erase(FL.begin(), itr);
         else itr++;
     }
     FoldCurveIndex = FL.size() - 1;
 }
 
-bool Model::SplitRulings(FoldLine *NewFL, int dim){
+void Model::applyAAAMethod(double a){
+    auto Poly_V = outline->getVertices();
+    FL[FoldCurveIndex]->applyAAAMethod(Poly_V, a);
+}
+
+bool Model::RevisionCrosPtsPosition(){return FL[FoldCurveIndex]->RevisionCrosPtsPosition();}
+
+bool Model::SplitRulings(int dim){
     using namespace MathTool;
     glm::f64vec3 UpVec{0,-1,0};
     auto getCrossPoint = [](std::vector<glm::f64vec3>& CtrlPts,  Vertex *v, Vertex *o, int dim)->CrvPt_FL*{
@@ -145,40 +152,40 @@ bool Model::SplitRulings(FoldLine *NewFL, int dim){
         }
         return nullptr;
     };
-
+    if(FL.empty() || FL[FoldCurveIndex]->FoldingCurve.empty())return false;
     if(FL.size() == 1){
         for(auto& r: Rulings){
-            CrvPt_FL *P = getCrossPoint(NewFL->CtrlPts, r->v, r->o, dim);
+            CrvPt_FL *P = getCrossPoint(FL[0]->CtrlPts, r->v, r->o, dim);
             if(P!= nullptr){
-                if(glm::dot(UpVec, glm::normalize(r->v->p - r->o->p)) > 0)NewFL->FoldingCurve.push_back(Vertex4d(P, r->v, r->o));
-                else NewFL->FoldingCurve.push_back(Vertex4d(P, r->o, r->v));
+                if(glm::dot(UpVec, glm::normalize(r->v->p - r->o->p)) > 0)FL[0]->FoldingCurve.push_back(Vertex4d(P, r->v, r->o));
+                else FL[0]->FoldingCurve.push_back(Vertex4d(P, r->o, r->v));
             }
         }
         for(auto& l: outline->Lines){
-            CrvPt_FL *P = getCrossPoint(NewFL->CtrlPts, l->v, l->o, dim);
+            CrvPt_FL *P = getCrossPoint(FL[0]->CtrlPts, l->v, l->o, dim);
             if(P!= nullptr){
-                if(glm::dot(UpVec, glm::normalize(l->v->p - l->o->p)) > 0)NewFL->FoldingCurve.push_back(Vertex4d(P, l->v, l->o));
-                else NewFL->FoldingCurve.push_back(Vertex4d(P, l->o, l->v));
+                if(glm::dot(UpVec, glm::normalize(l->v->p - l->o->p)) > 0)FL[0]->FoldingCurve.push_back(Vertex4d(P, l->v, l->o));
+                else FL[0]->FoldingCurve.push_back(Vertex4d(P, l->o, l->v));
             }
         }
-        std::sort(NewFL->FoldingCurve.begin(), NewFL->FoldingCurve.end(), [](Vertex4d& V1, Vertex4d& V2){return V1.first->s > V2.first->s;});//左から右への曲線の流れにしたい
+        std::sort(FL[0]->FoldingCurve.begin(), FL[0]->FoldingCurve.end(), [](Vertex4d& V1, Vertex4d& V2){return V1.first->s > V2.first->s;});//左から右への曲線の流れにしたい
     }else{
         for(auto&fl: FL){
 
-            if(fl == NewFL)continue;
+            if(fl == FL[FoldCurveIndex])continue;
             for(auto& r: fl->FoldingCurve){
-                CrvPt_FL *P = getCrossPoint(NewFL->CtrlPts, r.second, r.first, dim);
+                CrvPt_FL *P = getCrossPoint(FL[FoldCurveIndex]->CtrlPts, r.second, r.first, dim);
                 if(P!= nullptr){
-                    NewFL->FoldingCurve.push_back(Vertex4d(P, r.second, r.first)); r.second = P; vertices.push_back(P);
+                    FL[FoldCurveIndex]->FoldingCurve.push_back(Vertex4d(P, r.second, r.first)); r.second = P; vertices.push_back(P);
                     continue;
                 }
-                P = getCrossPoint(NewFL->CtrlPts, r.third, r.first, dim);
+                P = getCrossPoint(FL[FoldCurveIndex]->CtrlPts, r.third, r.first, dim);
                 if(P!= nullptr){
-                    NewFL->FoldingCurve.push_back(Vertex4d(P, r.third, r.first)); r.third = P; vertices.push_back(P);
+                    FL[FoldCurveIndex]->FoldingCurve.push_back(Vertex4d(P, r.third, r.first)); r.third = P; vertices.push_back(P);
                     continue;
                 }
             }
-            std::sort(NewFL->FoldingCurve.begin(), NewFL->FoldingCurve.end(), [](Vertex4d& V1, Vertex4d& V2){return V1.first->s > V2.first->s;});//左から右への曲線の流れにしたい
+            std::sort(FL[FoldCurveIndex]->FoldingCurve.begin(), FL[FoldCurveIndex]->FoldingCurve.end(), [](Vertex4d& V1, Vertex4d& V2){return V1.first->s > V2.first->s;});//左から右への曲線の流れにしたい
         }
     }
     return true;
@@ -202,17 +209,7 @@ void Model::modifyFoldingCurvePositionOn3d(){
         }
     }
 }
-bool Model::updateSplitRulings(FoldLine *NewFL, int dim){
-    return false;
-    for(auto&fl: NewFL->FoldingCurve){
-        if(fl == NewFL->FoldingCurve.front() || fl == NewFL->FoldingCurve.back()){
 
-        }else{
-
-        }
-    }
-    return SplitRulings(NewFL, dim);
-}
 
 void Model:: addConstraint(QPointF& cursol, int type, int gridsize, glm::f64vec3 (&axis)[2]){
     if(outline->IsClosed()){
@@ -630,7 +627,7 @@ void Model::MoveCurvePoint(glm::f64vec3& p, int MoveIndex, int ptInd, int curveD
     }
 }
 
-bool Model::AddControlPoint_FL(glm::f64vec3& p, int event, int curveDimention, int FoldCurveIndex){
+bool Model::AddControlPoint_FL(glm::f64vec3& p, int event, int curveDimention){
     bool res = false;
     if(event == 0){
         res = FL[FoldCurveIndex]->addCtrlPt(p, curveDimention);

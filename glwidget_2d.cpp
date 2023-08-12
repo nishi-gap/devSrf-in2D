@@ -278,10 +278,7 @@ void GLWidget_2D::changeBetaValue(double val, int keyType){
     //if(model->Faces.size() < 2 || IsStop4Debug || model->FL.empty())return;
     if(model->FL.empty())return;
     if(model->FL.empty())model->FL.push_back(new FoldLine(PaintTool::FoldLine_test) );
-
-    auto Poly_V = model->outline->getVertices();
-    model->FL[FoldCurveIndex]->applyAAAMethod(Poly_V, val);
-
+    model->applyAAAMethod(val);
     emit foldingSignals();
     update();
 }
@@ -584,12 +581,12 @@ void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
     if(e->key() == Qt::Key_A) visibleCurve = !visibleCurve;
     if(e->key() == Qt::Key_2){
         if(model->FL.empty())return;
-        res = model->SplitRulings(model->FL[FoldCurveIndex], curveDimention);
+        res = model->SplitRulings(curveDimention);
         if(res) emit foldingSignals();
     }
     if(e->key() == Qt::Key_Q){
         int type = 1;
-        res = model->FL[FoldCurveIndex]->RevisionCrosPtsPosition();
+        res = model->RevisionCrosPtsPosition();
         if(res) emit foldingSignals();
     }
     update();
@@ -613,7 +610,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
         else if(drawtype ==PaintTool::ConnectVertices_ol)model->ConnectOutline(p, gridsize);
         else if(drawtype == PaintTool::NewGradationMode || drawtype ==PaintTool::FoldlineColor)addPoints_intplation(e, p);
         else if(drawtype == PaintTool::FoldLine_bezier || drawtype == PaintTool::FoldLine_arc || drawtype == PaintTool::FoldLine_line ){
-            bool hasRulings = model->AddControlPoint_FL(p_ongrid, 0, curveDimention, FoldCurveIndex);
+            bool hasRulings = model->AddControlPoint_FL(p_ongrid, 0, curveDimention);
             update();
         }
         else if(drawtype == PaintTool::FoldLine_test){
@@ -685,7 +682,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
             if(SmoothCurveIndex != -1) model->crvs[SmoothCurveIndex]->eraseCtrlPt(curveDimention, crvPtNum);
         }
         else if(drawtype == PaintTool::FoldLine_line || drawtype == PaintTool::FoldLine_arc || drawtype == PaintTool::FoldLine_bezier){
-            bool hasRulings = model->AddControlPoint_FL(p_ongrid, 1, curveDimention, FoldCurveIndex);
+            bool hasRulings = model->AddControlPoint_FL(p_ongrid, 1, curveDimention);
         }
 
     }
@@ -716,8 +713,8 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
 
     if(drawtype == PaintTool::MoveCtrlPt)model->MoveCurvePoint(p_ongrid,SmoothCurveIndex, movePt, curveDimention, DivSize);
     else if(drawtype == PaintTool::FoldLine_bezier){
-        bool res = model->updateSplitRulings(model->FL[FoldCurveIndex], curveDimention);
-        if(res) emit foldingSignals();
+        //bool res = model->updateSplitRulings(model->FL[FoldCurveIndex], curveDimention);
+        //if(res) emit foldingSignals();
         update();
     }
     if(SmoothCurveIndex != -1){
@@ -808,7 +805,7 @@ int GLWidget_2D::referencedRuling(QPointF p){
 void GLWidget_2D::wheelEvent(QWheelEvent *we){
     DiffWheel = (we->angleDelta().y() > 0) ? 1 : -1;
     if(drawtype == PaintTool::FoldlineColor){
-        emit ColorChangeFrom(0, model->FL[FoldCurveIndex]->getColor());
+        //emit ColorChangeFrom(0, model->FL[FoldCurveIndex]->getColor());
     }else if(drawtype == PaintTool::NewGradationMode){
         if(refL == nullptr || std::find(model->Rulings.begin(), model->Rulings.end(), refL) == model->Rulings.end()){
             std::cout<<"there is no referenced Ruling"<<std::endl;
