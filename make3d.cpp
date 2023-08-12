@@ -120,13 +120,14 @@ void Model::deform(){
 
 bool Model::SplitRulings(FoldLine *NewFL, int dim){
     using namespace MathTool;
-    std::vector<CrvPt_FL*> T_crs;
+    glm::f64vec3 UpVec{0,-1,0};
     auto getCrossPoint = [](std::vector<glm::f64vec3>& CtrlPts,  Vertex *v, Vertex *o, int dim)->CrvPt_FL*{
         std::vector<double>arcT = BezierClipping(CtrlPts, v, o, dim);
         for(auto&t: arcT){
             if(t < 0 || 1 < t){std::cout<<"t is not correct value " << t << std::endl; continue;}
             glm::f64vec3 v2{0,0,0};
             for (int i = 0; i < int(CtrlPts.size()); i++) v2 += MathTool::BernsteinBasisFunc(dim, i, t) * CtrlPts[i];
+            if(!MathTool::is_point_on_line(v2, v->p, o->p))continue;
             double sa = glm::distance(v2, o->p), sc = glm::distance(o->p, v->p);
             glm::f64vec3 v3 = sa/sc * (v->p3 - o->p3) + o->p3;
             CrvPt_FL *P = new CrvPt_FL(v2, v3, t);
@@ -135,48 +136,35 @@ bool Model::SplitRulings(FoldLine *NewFL, int dim){
         }
         return nullptr;
     };
+
     if(FL.size() == 1){
         for(auto& r: Rulings){
             CrvPt_FL *P = getCrossPoint(NewFL->CtrlPts, r->v, r->o, dim);
-            if(P!= nullptr && std::find_if(T_crs.begin(), T_crs.end(), [&P](CrvPt_FL* T){return abs(T->s - P->s) < 1e-9;}) == T_crs.end())T_crs.push_back(P);
+            if(P!= nullptr){
+                if(glm::dot(UpVec, glm::normalize(r->v->p - r->o->p)) > 0)NewFL->FoldingCurve.push_back(Vertex4d(P, r->v, r->o));
+                else NewFL->FoldingCurve.push_back(Vertex4d(P, r->o, r->v));
+            }
         }
         for(auto& l: outline->Lines){
             CrvPt_FL *P = getCrossPoint(NewFL->CtrlPts, l->v, l->o, dim);
-            if(P!= nullptr && P != nullptr && std::find_if(T_crs.begin(), T_crs.end(), [&P](CrvPt_FL* T){return abs(T->s - P->s) < 1e-9;}) == T_crs.end())T_crs.push_back(P);
-        }
-        std::sort(T_crs.begin(), T_crs.end(), [](CrvPt_FL* T, CrvPt_FL* T2){return T->s > T2->s;});//左から右への曲線の流れにしたい
-        for(auto&t: T_crs) vertices.push_back(t);
-        for(int i = 1; i < T_crs.size() - 1; i++){
-            for(auto&r: Rulings){
-                if(!r->is_on_line(T_crs[i]->p))continue;
-                NewFL->FoldingCurve.push_back(Vertex4d(T_crs[i], r->v, r->o));
-                break;
+            if(P!= nullptr){
+                if(glm::dot(UpVec, glm::normalize(l->v->p - l->o->p)) > 0)NewFL->FoldingCurve.push_back(Vertex4d(P, l->v, l->o));
+                else NewFL->FoldingCurve.push_back(Vertex4d(P, l->o, l->v));
             }
         }
-        glm::f64vec3 befV = glm::normalize(NewFL->FoldingCurve.front().second->p - NewFL->FoldingCurve.front().first->p);
-        for(auto&l: outline->Lines){
-            if(!l->is_on_line(T_crs.front()->p))continue;
-            if(glm::dot(befV, glm::normalize(l->v->p - l->o->p)) > 0)NewFL->FoldingCurve.insert(NewFL->FoldingCurve.begin(), Vertex4d(T_crs.front(), l->v, l->o));
-            NewFL->FoldingCurve.insert(NewFL->FoldingCurve.begin(), Vertex4d(T_crs.front(), l->o, l->v));
-        }
-        befV = glm::normalize(NewFL->FoldingCurve.back().second->p - NewFL->FoldingCurve.back().first->p);
-        for(auto&l: outline->Lines){
-            if(!l->is_on_line(T_crs.back()->p))continue;
-            if(glm::dot(befV, glm::normalize(l->v->p - l->o->p)) > 0)NewFL->FoldingCurve.push_back(Vertex4d(T_crs.back(), l->v, l->o));
-            NewFL->FoldingCurve.push_back(Vertex4d(T_crs.back(), l->o, l->v));
-        }
+        std::sort(NewFL->FoldingCurve.begin(), NewFL->FoldingCurve.end(), [](Vertex4d& V1, Vertex4d& V2){return V1.first->s > V2.first->s;});//左から右への曲線の流れにしたい
     }else{
         for(auto&fl: FL){
 
             if(fl == NewFL)continue;
             for(auto& r: fl->FoldingCurve){
                 CrvPt_FL *P = getCrossPoint(NewFL->CtrlPts, r.second, r.first, dim);
-                if(P!= nullptr && std::find_if(T_crs.begin(), T_crs.end(), [&P](CrvPt_FL* T){return abs(T->s - P->s) < 1e-9;}) == T_crs.end()){
+                if(P!= nullptr){
                     NewFL->FoldingCurve.push_back(Vertex4d(P, r.second, r.first)); r.second = P; vertices.push_back(P);
                     continue;
                 }
                 P = getCrossPoint(NewFL->CtrlPts, r.third, r.first, dim);
-                if(P!= nullptr && std::find_if(T_crs.begin(), T_crs.end(), [&P](CrvPt_FL* T){return abs(T->s - P->s) < 1e-9;}) == T_crs.end()){
+                if(P!= nullptr){
                     NewFL->FoldingCurve.push_back(Vertex4d(P, r.third, r.first)); r.third = P; vertices.push_back(P);
                     continue;
                 }

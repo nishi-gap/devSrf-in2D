@@ -307,8 +307,9 @@ double Fparallel(std::vector<Vertex4d>& FoldingCurve){
     double f = 0.0;
     for(int i = 0; i < (int)FoldingCurve.size(); i++){if(FoldingCurve[i].IsCalc)Vertices_Ind.push_back(i);}
     for(int i = 1; i < (int)Vertices_Ind.size() - 2; i++){
-
-        f += 1.0 - glm::dot(glm::normalize(FoldingCurve[i].second->p - FoldingCurve[i].first->p), glm::normalize(FoldingCurve[i+1].second->p - FoldingCurve[i+1].first->p));
+        glm::f64vec3 v = glm::normalize(FoldingCurve[i].second->p - FoldingCurve[i].first->p), v2 = glm::normalize(FoldingCurve[i+1].second->p - FoldingCurve[i+1].first->p);
+        double _f = glm::dot(v, v2);
+        f += 1.0 - _f;
     }
     return f;
 }
@@ -1207,95 +1208,6 @@ inline double RevisionVertices::getK(const glm::f64vec3 o, const glm::f64vec3 x,
     double k = std::acos(glm::dot(glm::normalize(x - o), glm::normalize(x2 - o)));
     if(glm::dot(glm::f64vec3{0,0,1}, glm::cross(glm::normalize(x - o), glm::normalize(x2 - o))) > 0)k = 2.0*std::numbers::pi - k;
     return k;
-}
-
-
-bool FoldLine::modify2DRulings(std::vector<Line*>& Rulings, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_v, int dim){
-    using namespace MathTool;
-
-    std::vector<CrvPt_FL*> T_crs;
-    double t_max = -1, t_min = 1;
-    if(type == PaintTool::FoldLine_arc){
-        /*
-        for(auto& e: Edges){
-            if((e->edgetype == EdgeType::r && (std::find(SearchedEdge.begin(), SearchedEdge.end(), e) != SearchedEdge.end() || std::find(SearchedEdge.begin(), SearchedEdge.end(), e->pair) != SearchedEdge.end()))
-                    || e->edgetype != EdgeType::r)continue;
-            SearchedEdge.push_back(e);
-            glm::f64vec3 v{0,0,0};
-            double x1 = e->vertex->p.x, y1 = e->vertex->p.y, x2 = e->next->vertex->p.x, y2 = e->next->vertex->p.y;
-            double xd = x2 - x1, yd = y2 - y1, X = x1 - CtrlPts[0].x, Y = y1 - CtrlPts[0].y;
-            double a = xd * xd + yd * yd, b = xd * X + yd * Y, c = X * X + Y * Y - pow(glm::distance(CtrlPts[1], CtrlPts[0]),2);
-            double D = b * b - a*c;
-            if(D < 0) continue;
-            double s1 = (-b + sqrt(D)) / a;
-            double s2 = (-b - sqrt(D)) / a;
-            if(0 <= s1 && s1 <= 1 && face_ol->IsPointInFace(glm::f64vec3{x1 + xd*s1, y1 + yd*s1, 0}))v = glm::f64vec3{x1 + xd*s1, y1 + yd*s1, 0};
-            if(0 <= s2 && s2 <= 1 && face_ol->IsPointInFace(glm::f64vec3{x1 + xd*s1, y1 + yd*s1, 0}))v = glm::f64vec3{x1 + xd*s2, y1 + yd*s2, 0};
-
-            if(!is_point_on_line(v, e->vertex->p, e->next->vertex->p)) continue;
-            double sa = glm::distance(v, e->vertex->p), sc = glm::distance(e->vertex->p, e->next->vertex->p);
-            glm::f64vec3 v3 = sa/sc * (e->next->vertex->p3 - e->vertex->p3) + e->vertex->p3;
-            CrvPt_FL *P = new CrvPt_FL{v, v3, 0};
-            T_crs.push_back(P);
-
-        }*/
-    }else if(type == PaintTool::FoldLine_bezier){
-        for(auto& r: Rulings){
-            //if(std::find_if(T_crs.begin(), T_crs.end(), [&e](CrvPt_FL* T){return T->p == e->vertex->p || T->p == e->next->vertex->p;}) != T_crs.end())continue;
-            //std::vector<double>arcT = BezierClipping(CtrlPts, r, dim);
-            std::vector<double>arcT;
-            for(auto&t: arcT){
-                if(t < 0 || 1 < t){std::cout<<"t is not correct value " << t << std::endl; continue;}
-                if(!T_crs.empty() && std::find_if(T_crs.begin(), T_crs.end(), [&t](CrvPt_FL* T){return abs(T->s - t) < 1e-9;}) != T_crs.end()){continue;}
-                glm::f64vec3 v2{0,0,0};
-                for (int i = 0; i < int(CtrlPts.size()); i++) v2 += MathTool::BernsteinBasisFunc(dim, i, t) * CtrlPts[i];
-                //if(!is_point_on_line(v2, e->vertex->p, e->next->vertex->p)){std::cout<<"not on line  "<< t << std::endl; continue;}
-                double sa = glm::distance(v2, r->o->p), sc = glm::distance(r->o->p, r->v->p);
-                glm::f64vec3 v3 = sa/sc * (r->v->p3 - r->o->p3) + r->o->p3;
-                t_max = std::max(t_max, t); t_min = std::min(t_min, t);
-                CrvPt_FL *P = new CrvPt_FL(v2, v3, t);
-                P->set(v2, r->o, r->v);
-                T_crs.push_back(P);
-            }
-        }
-    }
-    FoldingCurve.clear();
-    std::sort(T_crs.begin(), T_crs.end(), [](CrvPt_FL* T, CrvPt_FL* T2){return T->s < T2->s;});//左から右への曲線の流れにしたい
-    for(auto&t: T_crs){
-        Vertices.push_back(t);
-    }
-    glm::f64vec3 UpVec{0,-1,0};
-    for(auto&t: T_crs){
-        if(t == T_crs.front() || t == T_crs.back()){
-            for(int i = 0; i < (int)Poly_v.size(); i++){
-                if(!MathTool::is_point_on_line(t->p, Poly_v[i]->p, Poly_v[(i + 1) % (int)Poly_v.size()]->p))continue;
-                Vertex *top, *bottom;
-                if(glm::dot(UpVec, glm::normalize(Poly_v[i]->p - Poly_v[(i + 1) % (int)Poly_v.size()]->p)) > 0){
-                    for(auto&r: Rulings){
-                        if(r->v->p == Poly_v[i]->p){top = r->v; bottom = r->o;}
-                        if(r->o->p == Poly_v[(i + 1) % (int)Poly_v.size()]->p){top = r->o; bottom = r->v;}
-                    }
-                }
-                else {
-                    for(auto&r: Rulings){
-                        if(r->o->p == Poly_v[i]->p){top = r->o; bottom = r->v;}
-                        if(r->v->p == Poly_v[(i + 1) % (int)Poly_v.size()]->p){top = r->v; bottom = r->o;}
-                    }
-                }
-                FoldingCurve.push_back(Vertex4d(t, top, bottom));
-                break;
-            }
-        }else{
-            for(auto&r: Rulings){
-                if(!MathTool::is_point_on_line(t->p, r->o->p, r->v->p))continue;
-                if(glm::dot(UpVec, glm::normalize(r->v->p - r->o->p)) > 0)FoldingCurve.push_back(Vertex4d(t, r->v, r->o));
-                else FoldingCurve.push_back(Vertex4d(t, r->o, r->v));
-                break;
-            }
-        }
-
-    }
-    return true;
 }
 
 void FoldLine::SimplifyModel(double tol){

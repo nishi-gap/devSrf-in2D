@@ -421,12 +421,13 @@ void MainWindow::exportobj(){
        }
    };
 
-
    for(auto& l: ui->glWid2dim->model->outline->Lines) polygon.push_back(l->v);
    Polygons.push_back(polygon);
+
    if(!ui->glWid2dim->model->FL.empty() ||!ui->glWid2dim->model->FL[0]->FoldingCurve.empty()){
        for(auto&FC: ui->glWid2dim->model->FL){
            std::vector<Vertex4d> FldCrv = FC->FoldingCurve;
+           glm::f64vec3 CrvDir = glm::normalize(FldCrv.back().first->p - FldCrv.front().first->p);
            for(auto&P: Polygons){
                int ind_fr = -1, ind_bc = -1;
                for(int i = 0; i < (int)P.size(); i++){
@@ -434,70 +435,60 @@ void MainWindow::exportobj(){
                    if(MathTool::is_point_on_line(FldCrv.back().first->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))ind_bc = i;
                }
                if(ind_fr != -1 && ind_bc != -1){
-                   std::vector<Vertex*> InsertedV;
-                   for(auto&v: FldCrv)InsertedV.push_back(v.first);
+                   std::vector<Vertex*> InsertedV, InsertedV_inv;
+                   for(auto&v: FldCrv){InsertedV.push_back(v.first);InsertedV_inv.insert(InsertedV_inv.begin(), v.first);}
+
                    int i_min = std::min(ind_fr, ind_bc) + 1, i_max = std::max(ind_fr, ind_bc) + 1;
+                   glm::f64vec3 Dir_prev = glm::normalize(P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p);
                    std::vector<Vertex*> poly2 = {P.begin() + i_min, P.begin() + i_max};
                    P.erase(P.begin() + i_min, P.begin() + i_max);
-                   P.insert(P.end(), InsertedV.begin(), InsertedV.end()); P = SortPolygon(P);
-                   poly2.insert(poly2.end(), InsertedV.begin(), InsertedV.end()); poly2 = SortPolygon(poly2);
+                   if(glm::dot(glm::cross(CrvDir, Dir_prev), glm::f64vec3{0,0,1}) < 0){
+                       P.insert(P.begin() + i_min, InsertedV.begin(), InsertedV.end());
+                       poly2.insert(poly2.end(), InsertedV_inv.begin(), InsertedV_inv.end());
+                   }else{
+                       P.insert(P.begin() + i_min, InsertedV_inv.begin(), InsertedV_inv.end());
+                       poly2.insert(poly2.end(), InsertedV.begin(), InsertedV.end());
+                   }
                    Polygons.push_back(poly2);
                    break;
                }
            }
        }
 
-       std::vector<std::array<Vertex*,2>> SplitedRulings;
-       //多角形内にoがあり多角形のエッジ上にのるvがある場合->多角形のindexとoのindex、vがのるエッジのindexのarray{p_ind, o_ind, v_ind}返す, ない場合->空のarrayを返す
-       auto hasMatchEdge = [&Polygons](Vertex *o, Vertex *v)->std::array<int,3>{
-           for(int i = 0; i < (int)Polygons.size(); i++){
-               int o_ind = -1, v_ind = -1;
-               for(int j = 0; j < (int)Polygons[i].size(); j++){
-                   if(Polygons[i][j] == o)o_ind = j;
-                   if(MathTool::is_point_on_line(v->p, Polygons[i][j]->p, Polygons[i][(j + 1) % (int)Polygons[i].size()]->p))v_ind = j;
+       auto SplitPolygon = [](std::vector<std::vector<Vertex*>>& Polygons, Vertex *o, Vertex *v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
+           for(auto& Poly :Polygons){
+               for(int i = 0; i < (int)Poly.size(); i++){
+                   if(std::find(Poly.begin(), Poly.end(), v) != Poly.end())break;
+                   if(!MathTool::is_point_on_line(v->p, Poly[i]->p, Poly[(i + 1) % (int)Poly.size()]->p))continue;
+                   Poly.insert(Poly.begin() + i + 1, v);
+                   break;
                }
-               if(o_ind != -1 && v_ind != -1)return{i, o_ind, v_ind};
+               int f_ind = -1, s_ind = -1;
+               for(int i = 0; i < (int)Poly.size(); i++){
+                   if(Poly[i] == o)f_ind = i;
+                   if(Poly[i] == v)s_ind = i;
+               }
+               if(f_ind == -1 || s_ind == -1)continue;
+               int i_min = std::min(f_ind, s_ind), i_max = std::max(f_ind, s_ind);
+               std::vector<Vertex*> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
+               Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
+               Polygons.push_back(poly2);
+               return;
            }
-           return{};
-       };
-       auto hasSplitedRulings = [&SplitedRulings](Vertex *v, Vertex *o)->bool{
-           for(auto& sr : SplitedRulings){
-               if((sr[0] == v && sr[1] == o) || (sr[1] == o && sr[0] == v))return true;
-           }
-           return false;
        };
 
        for(auto&FC: ui->glWid2dim->model->FL){
            for(auto itr = FC->FoldingCurve.begin() + 1; itr != FC->FoldingCurve.end() - 1; itr++){
-               std::array<int,3> ind_sec = hasMatchEdge((*itr).first, (*itr).second);
-               if(!ind_sec.empty() && !hasSplitedRulings((*itr).second, (*itr).first)){
-                   if(ind_sec[1] == -1 || ind_sec[2] == -1)continue;
-                   int i_min = std::min(ind_sec[1], ind_sec[2]) + 1, i_max = std::max(ind_sec[1], ind_sec[2]) + 1;
-                   std::vector<Vertex*> poly2 = {Polygons[ind_sec[0]].begin() + i_min, Polygons[ind_sec[0]].begin() + i_max};
-                   Polygons[ind_sec[0]].erase(Polygons[ind_sec[0]].begin() + i_min, Polygons[ind_sec[0]].begin() + i_max);
-                   Polygons[ind_sec[0]].push_back((*itr).second); Polygons[ind_sec[0]].push_back((*itr).first); Polygons[ind_sec[0]] = SortPolygon(Polygons[ind_sec[0]]);
-                   poly2.push_back(itr->second); poly2.push_back((*itr).first); poly2 = SortPolygon(poly2);
-                   Polygons.push_back(poly2);
-                   SplitedRulings.push_back({itr->first, itr->second});
-               }
-               std::array<int,3> ind_thi = hasMatchEdge((*itr).first, (*itr).second);
-               if(!ind_thi.empty() && !hasSplitedRulings((*itr).third, (*itr).first)){
-                   if(ind_thi[1] == -1 || ind_thi[2] == -1)continue;
-                   int i_min = std::min(ind_thi[1], ind_thi[2]) + 1, i_max = std::max(ind_thi[1], ind_thi[2]) + 1;
-                   std::vector<Vertex*> poly2 = {Polygons[ind_thi[0]].begin() + i_min, Polygons[ind_thi[0]].begin() + i_max};
-                   Polygons[ind_thi[0]].erase(Polygons[ind_thi[0]].begin() + i_min, Polygons[ind_thi[0]].begin() + i_max);
-                   Polygons[ind_thi[0]].push_back((*itr).second); Polygons[ind_thi[0]].push_back((*itr).first); Polygons[ind_thi[0]] = SortPolygon(Polygons[ind_thi[0]]);
-                   poly2.push_back((*itr).third); poly2.push_back((*itr).first); poly2 = SortPolygon(poly2);
-                   Polygons.push_back(poly2);
-                   SplitedRulings.push_back({(*itr).first, (*itr).third});
-               }
+               SplitPolygon(Polygons, itr->first, itr->second);
+               SplitPolygon(Polygons, itr->first, itr->third);
            }
-       }
+      }
    }else{
        for(auto itr_r = ui->glWid2dim->model->Rulings.begin(); itr_r != ui->glWid2dim->model->Rulings.end(); itr_r++){
            for(auto&P: Polygons){
                int vind = -1, oind = -1;
                for(int i = 0; i < (int)P.size(); i++){
+                   //std::cout << glm::to_string((*itr_r)->o->p) << "  ,  "<< glm::to_string((*itr_r)->v->p) << std::endl;
                    if(MathTool::is_point_on_line((*itr_r)->o->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))oind = i;
                    if(MathTool::is_point_on_line((*itr_r)->v->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))vind = i;
                }
@@ -514,6 +505,7 @@ void MainWindow::exportobj(){
 
     for(auto&poly: Polygons){
         std::vector<glm::f64vec3> V;
+        poly = SortPolygon(poly);
         for(auto&p: poly)V.push_back(p->p3);
         Vertices.push_back(V);
         planerity_value.push_back(Planerity(V,ui->glWid2dim->model->outline->Lines));
