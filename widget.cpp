@@ -299,7 +299,7 @@ void MainWindow::ReassinColor(){
         ui->glWid2dim->model->FL[0]->ReassignColor(ui->glWid2dim->model->Rulings, ui->glWid2dim->model->ColorPt);
         ui->glWid2dim->model->deform();
         ui->glWid2dim->update();
-        ui->glWid2dim->model->FL[0]->modifyFoldingCurvePositionOn3d(ui->glWid2dim->model->Rulings);
+        ui->glWid2dim->model->modifyFoldingCurvePositionOn3d();
          ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
     }
     else{
@@ -325,7 +325,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         else if(!ui->glWid2dim->model->FL.empty()){
             ui->glWid2dim->model->FL[0]->ReassignColor(ui->glWid2dim->model->Rulings, ui->glWid2dim->model->ColorPt);
             ui->glWid2dim->model->deform();
-            ui->glWid2dim->model->FL[0]->modifyFoldingCurvePositionOn3d(ui->glWid2dim->model->Rulings);
+            ui->glWid2dim->model->modifyFoldingCurvePositionOn3d();
             ui->glWid2dim->update();
              ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
         }
@@ -506,17 +506,18 @@ void MainWindow::exportobj(){
     for(auto&poly: Polygons){
         std::vector<glm::f64vec3> V;
         poly = SortPolygon(poly);
-        for(auto&p: poly)V.push_back(p->p3);
+
+        for(auto&p: poly)V.push_back(Mirror * glm::f64vec4{p->p3, 1});
         Vertices.push_back(V);
         planerity_value.push_back(Planerity(V,ui->glWid2dim->model->outline->Lines));
     }
 
     for(const auto& mesh: Vertices){
         for(const auto&v: mesh)WriteList.append("v " + QString::number(v.x) + " " + QString::number(v.y) + " " + QString::number(v.z) + "\n");
-        glm::f64vec3 v = Mirror * glm::f64vec4{mesh[0], 1};
-        glm::f64vec3 v2 = Mirror * glm::f64vec4{mesh[1], 1};
-        glm::f64vec3 v3 = Mirror * glm::f64vec4{mesh[2], 1};
-        N = glm::normalize(glm::cross(v3 - v, v2 - v));
+        glm::f64vec3 v =  glm::f64vec4{mesh[0], 1};
+        glm::f64vec3 v2 =  glm::f64vec4{mesh[1], 1};
+        glm::f64vec3 v3 =   glm::f64vec4{mesh[2], 1};
+        N = -glm::normalize(glm::cross(v3 - v, v2 - v));
         Normals.push_back(N);
         befN = N;
     }

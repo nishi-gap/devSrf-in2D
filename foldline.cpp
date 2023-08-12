@@ -1331,7 +1331,7 @@ void FoldLine::ReassignColor(std::vector<Line*>& Rulings, ColorPoint& CP){
         else color = ((255.0 - CP.color)*(phi - CP.angle)/(std::numbers::pi - CP.angle) + CP.color);
         for(auto&r: Rulings){
             if(r->et == EdgeType::r && MathTool::is_point_on_line(FoldingCurve[Vertices_Ind[i]].first->p, r->v->p, r->o->p)){
-                int mv = (r->color == 0)? -1: (r->color > 0)? color: -color;
+                int mv = (r->color == 0)? -1: (r->color > 0)? 0: 1;
                 int type_mvk = (mv == 0 && k < std::numbers::pi)? 0: (mv == 0 && k >= std::numbers::pi)? 1: (mv == 1 && k < std::numbers::pi)? 2: (mv == 1 && k >= std::numbers::pi)? 3: -1;
                 InitState.push_back(MVK(r, type_mvk));
                 MV[type_mvk + 1] += 1;
@@ -1358,16 +1358,6 @@ void FoldLine::ReassignColor(std::vector<Line*>& Rulings, ColorPoint& CP){
     std::cout <<"color changed"<<std::endl;
 }
 
-void FoldLine::modifyFoldingCurvePositionOn3d(const std::vector<Line*>& Rulings){
-    for(auto&fc: FoldingCurve){
-        for(auto&r: Rulings){
-            if(!MathTool::is_point_on_line(fc.first->p, r->o->p, r->v->p))continue;
-            double t = glm::length(fc.first->p - r->o->p)/glm::length(r->o->p - r->v->p);
-            fc.first->p3_ori = fc.first->p3 = t * (r->v->p3 - r->o->p3) + r->o->p3;
-            break;
-        }
-    }
-}
 
 void FoldLine::drawRulingInAllAngles(std::vector<std::array<glm::f64vec3, 2>>& _Rulings){
 

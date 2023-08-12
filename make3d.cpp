@@ -175,6 +175,24 @@ bool Model::SplitRulings(FoldLine *NewFL, int dim){
     return true;
 }
 
+void Model::modifyFoldingCurvePositionOn3d(){
+    for(auto&FC: FL){
+        for(auto&fldCrv: FC->FoldingCurve){
+            for(auto&r: Rulings){
+                if(!MathTool::is_point_on_line(fldCrv.first->p, r->o->p, r->v->p))continue;
+                double t = glm::length(fldCrv.first->p - r->o->p)/glm::length(r->o->p - r->v->p);
+                fldCrv.first->p3_ori = fldCrv.first->p3 = t * (r->v->p3 - r->o->p3) + r->o->p3;
+                break;
+            }
+            for(auto&l: outline->Lines){
+                if(!MathTool::is_point_on_line(fldCrv.first->p, l->o->p, l->v->p))continue;
+                double t = glm::length(fldCrv.first->p - l->o->p)/glm::length(l->o->p - l->v->p);
+                fldCrv.first->p3_ori = fldCrv.first->p3 = t * (l->v->p3 - l->o->p3) + l->o->p3;
+                break;
+            }
+        }
+    }
+}
 bool Model::updateSplitRulings(FoldLine *NewFL, int dim){
     return false;
     for(auto&fl: NewFL->FoldingCurve){

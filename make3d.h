@@ -52,7 +52,7 @@ public:
     bool updateSplitRulings(FoldLine *NewFL, int dim);
     void modify2Druling();
     void applyFL();
-
+    void modifyFoldingCurvePositionOn3d();
     std::vector<glm::f64vec3> resPts;
 
     //Smooth Surface
