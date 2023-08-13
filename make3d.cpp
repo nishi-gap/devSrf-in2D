@@ -132,17 +132,85 @@ void Model::ChangeFoldLineState(){
     FoldCurveIndex = FL.size() - 1;
 }
 
+template <typename T>
+class NTreeNode{
+public:
+  T data;
+  std::vector<NTreeNode<T>*> children;
+  NTreeNode(const T& val): data(val){}
+};
+
+template <typename T>
+class NTree {
+private:
+    NTreeNode<T>* root;
+
+public:
+    NTree(const T& val) { root = new NTreeNode<T>(val);}
+    void insert(const T& parentVal, const T& val) {
+           NTreeNode<T>* newNode = new NTreeNode<T>(val);
+           insertRecursive(root, parentVal, newNode);
+    }
+
+   void insertRecursive(NTreeNode<T>* node, const T& parentVal, NTreeNode<T>* newNode) {
+       if (node == nullptr) return;
+       if (node->data == parentVal) {
+           node->children.push_back(newNode);
+           return;
+       }
+   }
+   void printTree(NTreeNode<T>* node, int depth = 0) {
+       if (node == nullptr)return;
+
+       for (int i = 0; i < depth; ++i)std::cout << "  ";
+       std::cout << node->data << std::endl;
+       for (NTreeNode<T>* child : node->children)printTree(child, depth + 1);
+   }
+   void print() {printTree(root);}
+};
+
 bool Model::BendingModel(double wb, double wp, bool ConstFunc){
-    //下から上へと
-    std::vector<FoldLine*> FL_b2t;
-    for(auto&fl: FL){
+    //下から上へとn分木での実装が必要かも
+    std::vector<FoldLine*> FL_b2t;//下から上(0 ~ n)
+    for(int i = 0; i < (int)FL.size(); i++){
         //最初は中央のvertex4d一つを判定に使う(second, third両方)
         //ほかの折曲線上にある->secondかthirdかで順番をきめ、FL_b2tになければ入れる
         //輪郭上にある場合、ほかのsecond、thirdすべて調べて輪郭上にあれば一番上か下のいずれかになる
         //すべての折曲線に対して行う
-        if(std::find(FL_b2t.begin(), FL_b2t.end(), fl) != FL_b2t.end())continue;
+        if(std::find(FL_b2t.begin(), FL_b2t.end(), FL[i]) != FL_b2t.end() || FL[i]->FoldingCurve.empty())continue;
+        Vertex *sec = FL[i]->FoldingCurve[floor(FL[i]->FoldingCurve.size()/2)].second, *thi = FL[i]->FoldingCurve[floor(FL[i]->FoldingCurve.size()/2)].third;
+        for(auto&fl: FL){
+            if(fl->FoldingCurve.empty())continue;
+            for(auto& v: fl->FoldingCurve){
+                if(v.first == sec){FL_b2t.insert(FL.begin() + i + 1, fl); break;}
+                if(v.first == thi){FL_b2t.insert(FL.begin() + i, fl); break;}
+            }
+        }
+        for(auto&l : outline->Lines){
+            bool IsOnOutLine = true;
+            if(l->is_on_line(sec->p)){
+                for(auto&l2 : outline->Lines){
+                    if(!l2->is_on_line(sec->p)){
+                        IsOnOutLine = false;
+                        break;
+                    }
+                }
+                if(IsOnOutLine)FL_b2t.push_back(FL[i]);
+            }
+            IsOnOutLine = true;
+            if(l->is_on_line(thi->p)){
+                for(auto&l2 : outline->Lines){
+                    if(!l2->is_on_line(thi->p)){
+                        IsOnOutLine = false;
+                        break;
+                    }
+                }
+                if(IsOnOutLine)FL_b2t.insert(FL_b2t.begin(), FL[i]);
+            }
+        }
 
     }
+    return true;
 }
 
 void Model::applyAAAMethod(double a){
