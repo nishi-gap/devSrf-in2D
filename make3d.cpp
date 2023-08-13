@@ -159,10 +159,17 @@ public:
            return;
        }
    }
+   void changeRoot(const T& val){
+           NTreeNode<T>* newNode = new NTreeNode<T>(val);
+           NTreeNode<T>* tmp = root;
+           root = newNode;
+           root->children.push_back(tmp);
+    }
+
    void printTree(NTreeNode<T>* node, int depth = 0) {
        if (node == nullptr)return;
 
-       for (int i = 0; i < depth; ++i)std::cout << "  ";
+       for (int i = 0; i < depth; ++i)std::cout << "*";
        std::cout << node->data << std::endl;
        for (NTreeNode<T>* child : node->children)printTree(child, depth + 1);
    }
