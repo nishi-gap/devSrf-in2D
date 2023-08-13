@@ -12,6 +12,7 @@
 #include <sstream>
 #include <algorithm>
 #include <numbers>
+#include <queue>
 
 enum class EdgeType{
     none,
@@ -124,47 +125,43 @@ template <typename T>
 class NTree {
 private:
     NTreeNode<T>* root;
-
 public:
     NTree(const T& val) { root = new NTreeNode<T>(val);}
-    void insert(const T& parentVal, const T& val) {
-           NTreeNode<T>* newNode = new NTreeNode<T>(val);
-           insertRecursive(root, parentVal, newNode);
+    void insert(const T& parentVal, const T& val){
+        NTreeNode<T>* newNode = new NTreeNode<T>(val);
+        insertRecursive(root, parentVal, newNode);
     }
-
-   void insertRecursive(NTreeNode<T>* node, const T& parentVal, NTreeNode<T>* newNode) {
-       if (node == nullptr) return;
-       if (node->data == parentVal) {
-           node->children.push_back(newNode);
-           return;
-       }
-   }
-   void changeRoot(const T& val){
-           NTreeNode<T>* newNode = new NTreeNode<T>(val);
-           NTreeNode<T>* tmp = root;
-           root = newNode;
-           root->children.push_back(tmp);
+    void insertRecursive(NTreeNode<T>* node, const T& parentVal, NTreeNode<T>* newNode){
+        if (node == nullptr) return;
+        if (node->data == parentVal) {
+            node->children.push_back(newNode);
+            return;
+        }
     }
-
-   bool find(const T& val){
-       if (root == nullptr)return false;
-       std::queue<NTreeNode<T>*> q;
-       q.push(root);
-       while (!q.empty()) {
-           NTreeNode<T>* cur = q.front(); q.pop();
-           if(cur->data == val)return true;
-           for (NTreeNode<T>* child : cur->children)  q.push(child);
-       }
-       return false;
-   }
-
-   void printTree(NTreeNode<T>* node, int depth = 0) {
-       if (node == nullptr)return;
-       for (int i = 0; i < depth; ++i)std::cout << "*";
-       std::cout << node->data << std::endl;
-       for (NTreeNode<T>* child : node->children)printTree(child, depth + 1);
-   }
-   void print() {printTree(root);}
+    void changeRoot(const T& val){
+        NTreeNode<T>* newNode = new NTreeNode<T>(val);
+        NTreeNode<T>* tmp = root;
+        root = newNode;
+        root->children.push_back(tmp);
+    }
+    bool find(const T& val){
+        if (root == nullptr)return false;
+        std::queue<NTreeNode<T>*> q;
+        q.push(root);
+        while (!q.empty()) {
+            NTreeNode<T>* cur = q.front(); q.pop();
+            if(cur->data == val)return true;
+            for (NTreeNode<T>* child : cur->children)  q.push(child);
+        }
+        return false;
+    }
+    void printTree(NTreeNode<T>* node, int depth = 0){
+        if (node == nullptr)return;
+        for (int i = 0; i < depth; ++i)std::cout << "*";
+        std::cout << node->data << std::endl;
+        for (NTreeNode<T>* child : node->children)printTree(child, depth + 1);
+    }
+    void print(){printTree(root);}
 };
 
 #endif // MATHTOOL_H
