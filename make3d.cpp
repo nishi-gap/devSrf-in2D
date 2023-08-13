@@ -133,7 +133,16 @@ void Model::ChangeFoldLineState(){
 }
 
 bool Model::BendingModel(double wb, double wp, bool ConstFunc){
+    //下から上へと
+    std::vector<FoldLine*> FL_b2t;
+    for(auto&fl: FL){
+        //最初は中央のvertex4d一つを判定に使う(second, third両方)
+        //ほかの折曲線上にある->secondかthirdかで順番をきめ、FL_b2tになければ入れる
+        //輪郭上にある場合、ほかのsecond、thirdすべて調べて輪郭上にあれば一番上か下のいずれかになる
+        //すべての折曲線に対して行う
+        if(std::find(FL_b2t.begin(), FL_b2t.end(), fl) != FL_b2t.end())continue;
 
+    }
 }
 
 void Model::applyAAAMethod(double a){
