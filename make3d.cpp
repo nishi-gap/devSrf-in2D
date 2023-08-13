@@ -166,6 +166,18 @@ public:
            root->children.push_back(tmp);
     }
 
+   bool find(const NTreeNode<T>* node){
+       if (root == nullptr)return false;
+       std::queue<NTreeNode<T>*> q;
+       q.push(root);
+       while (!q.empty()) {
+           NTreeNode<T>* cur = q.front(); q.pop();
+           if(cur->data == node)return true;
+           for (NTreeNode<T>* child : cur->children)  q.push(child);
+       }
+       return false;
+   }
+
    void printTree(NTreeNode<T>* node, int depth = 0) {
        if (node == nullptr)return;
 
