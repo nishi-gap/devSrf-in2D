@@ -139,10 +139,22 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
         if(!fl->CtrlPts.size() > dim)hasFoldingCurve.push_back(fl);
     }
     NTree<FoldLine*> NTree_fl(hasFoldingCurve.front());
-    Line *btm = outline->Lines.front();
+    Line *btm = outline->Lines.front();//一番下の辺を探索
     for(auto&l: outline->Lines){
         if(((l->v->p + l->o->p)/2.0).y < ((btm->v->p + btm->o->p)/2.0).y)btm = l;
     }
+    int btm_i = std::distance(outline->Lines.begin(), btm);
+    int i = btm_i;
+    std::queue<FoldLine*> Queue_FL;//frontかbackのいずれかが探索するline上にある時、先頭と違っていれば先頭の要素を親に新しいものを子としてNTree_flに挿入、同じであればqueueから吐き出す
+    do{
+        for(auto&fl: hasFoldingCurve){
+            if(!NTree_fl.find(fl)){
+
+            }
+        }
+        i = (i + 1) % (int)outline->Lines.size();
+    }while(i != btm_i);
+
     for(auto it = hasFoldingCurve.begin() + 1; it != hasFoldingCurve.end(); it++){
         //最初は中央のvertex4d一つを判定に使う(second, third両方)
         //ほかの折曲線上にある->secondかthirdかで順番をきめ、FL_b2tになければ入れる
