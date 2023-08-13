@@ -147,6 +147,7 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
         }
 
         for(auto&FC: FldCrvs){
+            if(FC->FoldingCurve.empty())continue;
             for(auto itr = FC->FoldingCurve.begin() + 1; itr != FC->FoldingCurve.end() - 1; itr++){
                 SplitPolygon(Polygons, itr->first, itr->second);
                 SplitPolygon(Polygons, itr->first, itr->third);
