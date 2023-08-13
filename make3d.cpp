@@ -13,7 +13,7 @@ Model::Model(int _crvPtNum){
     outline = new OUTLINE(); 
     refCrv.clear();
     refFL.clear();
-    befFaceNum = 0;
+    FoldCurveIndex = befFaceNum = 0;
 }
 
 void Model::clear(){
@@ -119,11 +119,16 @@ void Model::deform(){
 }
 
 void Model::ChangeFoldLineState(){
+    if((int)FL.size() == 1)return;
     FoldCurveIndex++;
     for(auto itr = FL.begin(); itr != FL.end();){
-        if((*itr)->FoldingCurve.empty() && std::distance(FL.begin(), itr) != FoldCurveIndex)itr = FL.erase(FL.begin(), itr);
+        if((*itr)->FoldingCurve.empty() && std::distance(FL.begin(), itr) < FoldCurveIndex){
+            delete *itr;
+            itr = FL.erase(itr);
+        }
         else itr++;
     }
+    vertices.shrink_to_fit();
     FoldCurveIndex = FL.size() - 1;
 }
 
@@ -152,7 +157,7 @@ bool Model::SplitRulings(int dim){
         }
         return nullptr;
     };
-    if(FL.empty() || FL[FoldCurveIndex]->FoldingCurve.empty())return false;
+    if(FL.empty() || FL[FoldCurveIndex]->CtrlPts.size() <= dim)return false;
     if(FL.size() == 1){
         for(auto& r: Rulings){
             CrvPt_FL *P = getCrossPoint(FL[0]->CtrlPts, r->v, r->o, dim);

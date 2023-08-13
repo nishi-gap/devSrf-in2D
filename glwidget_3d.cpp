@@ -92,36 +92,7 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
     std::vector<Vertex*> polygon;
     for(auto& l: Surface) polygon.push_back(l->v);
     Polygons.push_back(polygon);
-    if(!FldCrvs.empty() &&!FldCrvs[0]->FoldingCurve.empty()){
-        for(auto&_FC: FldCrvs){
-            std::vector<Vertex4d> FldCrv = _FC->FoldingCurve;
-            glm::f64vec3 CrvDir = glm::normalize(FldCrv.back().first->p - FldCrv.front().first->p);
-            for(auto&P: Polygons){
-                int ind_fr = -1, ind_bc = -1;
-                for(int i = 0; i < (int)P.size(); i++){
-                    if(MathTool::is_point_on_line(FldCrv.front().first->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))ind_fr = i;
-                    if(MathTool::is_point_on_line(FldCrv.back().first->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))ind_bc = i;
-                }
-                if(ind_fr != -1 && ind_bc != -1){
-                    std::vector<Vertex*> InsertedV, InsertedV_inv;
-                    for(auto&v: FldCrv){InsertedV.push_back(v.first);InsertedV_inv.insert(InsertedV_inv.begin(), v.first);}
-
-                    int i_min = std::min(ind_fr, ind_bc) + 1, i_max = std::max(ind_fr, ind_bc) + 1;
-                    glm::f64vec3 Dir_prev = glm::normalize(P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p);
-                    std::vector<Vertex*> poly2 = {P.begin() + i_min, P.begin() + i_max};
-                    P.erase(P.begin() + i_min, P.begin() + i_max);
-                    if(glm::dot(glm::cross(CrvDir, Dir_prev), glm::f64vec3{0,0,1}) < 0){
-                        P.insert(P.begin() + i_min, InsertedV.begin(), InsertedV.end());
-                        poly2.insert(poly2.end(), InsertedV_inv.begin(), InsertedV_inv.end());
-                    }else{
-                        P.insert(P.begin() + i_min, InsertedV_inv.begin(), InsertedV_inv.end());
-                        poly2.insert(poly2.end(), InsertedV.begin(), InsertedV.end());
-                    }
-                    Polygons.push_back(poly2);
-                    break;
-                }
-            }
-        }
+    if(!FldCrvs.empty()){
 
         auto SplitPolygon = [](std::vector<std::vector<Vertex*>>& Polygons, Vertex *o, Vertex *v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
             for(auto& Poly :Polygons){
@@ -144,6 +115,36 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                 return;
             }
         };
+
+        for(auto&FC: FldCrvs){
+            if(FC->FoldingCurve.empty())continue;
+            glm::f64vec3 CrvDir = glm::normalize(FC->FoldingCurve.back().first->p - FC->FoldingCurve.front().first->p);
+            for(auto&P: Polygons){
+                int ind_fr = -1, ind_bc = -1;
+                for(int i = 0; i < (int)P.size(); i++){
+                    if(MathTool::is_point_on_line(FC->FoldingCurve.front().first->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))ind_fr = i;
+                    if(MathTool::is_point_on_line(FC->FoldingCurve.back().first->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))ind_bc = i;
+                }
+                if(ind_fr != -1 && ind_bc != -1){
+                    std::vector<Vertex*> InsertedV, InsertedV_inv;
+                    for(auto&v: FC->FoldingCurve){InsertedV.push_back(v.first);InsertedV_inv.insert(InsertedV_inv.begin(), v.first);}
+
+                    int i_min = std::min(ind_fr, ind_bc) + 1, i_max = std::max(ind_fr, ind_bc) + 1;
+                    glm::f64vec3 Dir_prev = glm::normalize(P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p);
+                    std::vector<Vertex*> poly2 = {P.begin() + i_min, P.begin() + i_max};
+                    P.erase(P.begin() + i_min, P.begin() + i_max);
+                    if(glm::dot(glm::cross(CrvDir, Dir_prev), glm::f64vec3{0,0,1}) < 0){
+                        P.insert(P.begin() + i_min, InsertedV.begin(), InsertedV.end());
+                        poly2.insert(poly2.end(), InsertedV_inv.begin(), InsertedV_inv.end());
+                    }else{
+                        P.insert(P.begin() + i_min, InsertedV_inv.begin(), InsertedV_inv.end());
+                        poly2.insert(poly2.end(), InsertedV.begin(), InsertedV.end());
+                    }
+                    Polygons.push_back(poly2);
+                    break;
+                }
+            }
+        }
 
         for(auto&FC: FldCrvs){
             for(auto itr = FC->FoldingCurve.begin() + 1; itr != FC->FoldingCurve.end() - 1; itr++){
