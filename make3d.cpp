@@ -143,14 +143,23 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
     for(auto&l: outline->Lines){
         if(((l->v->p + l->o->p)/2.0).y < ((btm->v->p + btm->o->p)/2.0).y)btm = l;
     }
-    int btm_i = std::distance(outline->Lines.begin(), btm);
+    int btm_i = std::distance(outline->Lines.begin(), std::find(outline->Lines.begin(), outline->Lines.end(),btm));
     int i = btm_i;
-    std::queue<FoldLine*> Queue_FL;//frontかbackのいずれかが探索するline上にある時、先頭と違っていれば先頭の要素を親に新しいものを子としてNTree_flに挿入、同じであればqueueから吐き出す
+    std::stack<FoldLine*> Stack_FL;//frontかbackのいずれかが探索するline上にある時、先頭と違っていれば先頭の要素を親に新しいものを子としてNTree_flに挿入、同じであればqueueから吐き出す
     do{
         for(auto&fl: hasFoldingCurve){
-            if(!NTree_fl.find(fl)){
+            if((outline->Lines[i]->is_on_line(fl->FoldingCurve.front().first->p) || outline->Lines[i]->is_on_line(fl->FoldingCurve.back().first->p))){
+                if(Stack_FL.top() == fl){
+
+                }else{
+                    Stack_FL.push(fl);
+                }
+                if(!NTree_fl.find(fl)){
+
+                }
 
             }
+
         }
         i = (i + 1) % (int)outline->Lines.size();
     }while(i != btm_i);
