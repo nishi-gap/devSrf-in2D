@@ -166,13 +166,13 @@ public:
            root->children.push_back(tmp);
     }
 
-   bool find(const NTreeNode<T>* node){
+   bool find(const T& val){
        if (root == nullptr)return false;
        std::queue<NTreeNode<T>*> q;
        q.push(root);
        while (!q.empty()) {
            NTreeNode<T>* cur = q.front(); q.pop();
-           if(cur->data == node)return true;
+           if(cur->data == val)return true;
            for (NTreeNode<T>* child : cur->children)  q.push(child);
        }
        return false;
@@ -190,14 +190,26 @@ public:
 
 bool Model::BendingModel(double wb, double wp, bool ConstFunc){
     //下から上へとn分木での実装が必要かも
-    std::vector<FoldLine*> FL_b2t;//下から上(0 ~ n)
-    for(int i = 0; i < (int)FL.size(); i++){
+    std::vector<FoldLine*> hasFoldingCurve;
+    for(auto&fl: FL){
+        if(!fl->FoldingCurve.empty())hasFoldingCurve.push_back(fl);
+    }
+    NTree<FoldLine*> NTree_fl(hasFoldingCurve.front());
+
+    for(auto it = hasFoldingCurve.begin() + 1; it != hasFoldingCurve.end(); it++){
         //最初は中央のvertex4d一つを判定に使う(second, third両方)
         //ほかの折曲線上にある->secondかthirdかで順番をきめ、FL_b2tになければ入れる
         //輪郭上にある場合、ほかのsecond、thirdすべて調べて輪郭上にあれば一番上か下のいずれかになる
         //すべての折曲線に対して行う
-        if(std::find(FL_b2t.begin(), FL_b2t.end(), FL[i]) != FL_b2t.end() || FL[i]->FoldingCurve.empty())continue;
-        Vertex *sec = FL[i]->FoldingCurve[floor(FL[i]->FoldingCurve.size()/2)].second, *thi = FL[i]->FoldingCurve[floor(FL[i]->FoldingCurve.size()/2)].third;
+        if(NTree_fl.find((*it)))continue;
+        for(auto&v: (*it)->FoldingCurve){
+            Vertex *sec = v.second, *thi = v.third;
+            for(auto& fl: NTree_fl){
+                if(fl == (*it) || NTree_fl.find(fl))continue;
+
+            }
+        }
+        Vertex *sec = (*it)->FoldingCurve[floor((*it)->FoldingCurve.size()/2)].second, *thi = (*it)->FoldingCurve[floor(->FoldingCurve.size()/2)].third;
         for(auto&fl: FL){
             if(fl->FoldingCurve.empty())continue;
             for(auto& v: fl->FoldingCurve){
