@@ -145,21 +145,34 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
     }
     int btm_i = std::distance(outline->Lines.begin(), std::find(outline->Lines.begin(), outline->Lines.end(),btm));
     int i = btm_i;
-    std::stack<FoldLine*> Stack_FL;//frontかbackのいずれかが探索するline上にある時、先頭と違っていれば先頭の要素を親に新しいものを子としてNTree_flに挿入、同じであればqueueから吐き出す
+    std::list<FoldLine*> List_FL;//frontかbackのいずれかが探索するline上にある時、先頭と違っていれば先頭の要素を親に新しいものを子としてNTree_flに挿入、同じであればqueueから吐き出す
+    //折曲線が交差しないという前提ならこの実装方法で正しいはず
+    class LineOnFL{
+    public:
+        FoldLine *FL;
+        double t;
+        LineOnFL(FoldLine *_FL, double _t): FL(_FL), t(_t){}
+    };
+
     do{
+       std::vector<LineOnFL> LoF;
         for(auto&fl: hasFoldingCurve){
-            if((outline->Lines[i]->is_on_line(fl->FoldingCurve.front().first->p) || outline->Lines[i]->is_on_line(fl->FoldingCurve.back().first->p))){
-                if(Stack_FL.top() == fl){
-                    Stack_FL.pop();
-                }else{
-                    Stack_FL.push(fl);
-                }
+            if(outline->Lines[i]->is_on_line(fl->FoldingCurve.front().first->p))
+                LoF.push_back(LineOnFL(fl, glm::length(fl->FoldingCurve.front().first->p - outline->Lines[i]->o->p)/glm::length(outline->Lines[i]->v->p - outline->Lines[i]->o->p)));
+
+        }
+        std::sort(LoF.begin(), LoF.end(), [](LineOnFL& a, LineOnFL& b){return a.t > b.t;});
+        if(Stack_FL.empty()){
+
+        }else{
+            if(Stack_FL.top() == fl){
+                Stack_FL.pop();
+            }else{
                 if(!NTree_fl.find(fl)){
 
                 }
-
+                Stack_FL.push(fl);
             }
-
         }
         i = (i + 1) % (int)outline->Lines.size();
     }while(i != btm_i);
@@ -290,7 +303,6 @@ void Model::modifyFoldingCurvePositionOn3d(){
         }
     }
 }
-
 
 void Model:: addConstraint(QPointF& cursol, int type, int gridsize, glm::f64vec3 (&axis)[2]){
     if(outline->IsClosed()){
