@@ -136,7 +136,7 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
     //下から上へとn分木での実装が必要かも
     std::vector<FoldLine*> hasFoldingCurve;
     for(auto&fl: FL){
-        if(!fl->CtrlPts.size() > dim)hasFoldingCurve.push_back(fl);
+        if(!(int)fl->CtrlPts.size() > dim)hasFoldingCurve.push_back(fl);
     }
     NTree<FoldLine*> NTree_fl(hasFoldingCurve.front());
     Line *btm = outline->Lines.front();//一番下の辺を探索
@@ -150,7 +150,7 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
         for(auto&fl: hasFoldingCurve){
             if((outline->Lines[i]->is_on_line(fl->FoldingCurve.front().first->p) || outline->Lines[i]->is_on_line(fl->FoldingCurve.back().first->p))){
                 if(Stack_FL.top() == fl){
-
+                    Stack_FL.pop();
                 }else{
                     Stack_FL.push(fl);
                 }
