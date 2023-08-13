@@ -132,70 +132,17 @@ void Model::ChangeFoldLineState(){
     FoldCurveIndex = FL.size() - 1;
 }
 
-template <typename T>
-class NTreeNode{
-public:
-  T data;
-  std::vector<NTreeNode<T>*> children;
-  NTreeNode(const T& val): data(val){}
-};
-
-template <typename T>
-class NTree {
-private:
-    NTreeNode<T>* root;
-
-public:
-    NTree(const T& val) { root = new NTreeNode<T>(val);}
-    void insert(const T& parentVal, const T& val) {
-           NTreeNode<T>* newNode = new NTreeNode<T>(val);
-           insertRecursive(root, parentVal, newNode);
-    }
-
-   void insertRecursive(NTreeNode<T>* node, const T& parentVal, NTreeNode<T>* newNode) {
-       if (node == nullptr) return;
-       if (node->data == parentVal) {
-           node->children.push_back(newNode);
-           return;
-       }
-   }
-   void changeRoot(const T& val){
-           NTreeNode<T>* newNode = new NTreeNode<T>(val);
-           NTreeNode<T>* tmp = root;
-           root = newNode;
-           root->children.push_back(tmp);
-    }
-
-   bool find(const T& val){
-       if (root == nullptr)return false;
-       std::queue<NTreeNode<T>*> q;
-       q.push(root);
-       while (!q.empty()) {
-           NTreeNode<T>* cur = q.front(); q.pop();
-           if(cur->data == val)return true;
-           for (NTreeNode<T>* child : cur->children)  q.push(child);
-       }
-       return false;
-   }
-
-   void printTree(NTreeNode<T>* node, int depth = 0) {
-       if (node == nullptr)return;
-
-       for (int i = 0; i < depth; ++i)std::cout << "*";
-       std::cout << node->data << std::endl;
-       for (NTreeNode<T>* child : node->children)printTree(child, depth + 1);
-   }
-   void print() {printTree(root);}
-};
-
-bool Model::BendingModel(double wb, double wp, bool ConstFunc){
+bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
     //下から上へとn分木での実装が必要かも
     std::vector<FoldLine*> hasFoldingCurve;
     for(auto&fl: FL){
-        if(!fl->FoldingCurve.empty())hasFoldingCurve.push_back(fl);
+        if(!fl->CtrlPts.size() > dim)hasFoldingCurve.push_back(fl);
     }
     NTree<FoldLine*> NTree_fl(hasFoldingCurve.front());
-
+    Line *btm = outline->Lines.front();
+    for(auto&l: outline->Lines){
+        if(((l->v->p + l->o->p)/2.0).y < ((btm->v->p + btm->o->p)/2.0).y)btm = l;
+    }
     for(auto it = hasFoldingCurve.begin() + 1; it != hasFoldingCurve.end(); it++){
         //最初は中央のvertex4d一つを判定に使う(second, third両方)
         //ほかの折曲線上にある->secondかthirdかで順番をきめ、FL_b2tになければ入れる
@@ -204,17 +151,13 @@ bool Model::BendingModel(double wb, double wp, bool ConstFunc){
         if(NTree_fl.find((*it)))continue;
         for(auto&v: (*it)->FoldingCurve){
             Vertex *sec = v.second, *thi = v.third;
-            for(auto& fl: NTree_fl){
-                if(fl == (*it) || NTree_fl.find(fl))continue;
 
-            }
-        }
-        Vertex *sec = (*it)->FoldingCurve[floor((*it)->FoldingCurve.size()/2)].second, *thi = (*it)->FoldingCurve[floor(->FoldingCurve.size()/2)].third;
-        for(auto&fl: FL){
-            if(fl->FoldingCurve.empty())continue;
-            for(auto& v: fl->FoldingCurve){
-                if(v.first == sec){FL_b2t.insert(FL.begin() + i + 1, fl); break;}
-                if(v.first == thi){FL_b2t.insert(FL.begin() + i, fl); break;}
+            for(auto& fl: hasFoldingCurve){
+                if(fl == (*it) || NTree_fl.find(fl))continue;
+                for(auto& v: fl->FoldingCurve){
+                    if(v.first == sec){FL_b2t.insert(FL.begin() + i + 1, fl); break;}
+                    if(v.first == thi){FL_b2t.insert(FL.begin() + i, fl); break;}
+                }
             }
         }
         for(auto&l : outline->Lines){

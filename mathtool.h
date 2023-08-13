@@ -110,7 +110,61 @@ std::vector<double> LSM_apply(std::vector<double>&y, int dim = 1);
 std::vector<glm::f64vec3> getPlaneFromCurvePoints(std::vector<glm::f64vec3>& Points, std::vector<glm::f64vec3>& BasisVectors);
 glm::f64vec3 ProjectionVector(glm::f64vec3 v, glm::f64vec3 n, bool Isnormalize = false);
 
-
 }
+
+template <typename T>
+class NTreeNode{
+public:
+  T data;
+  std::vector<NTreeNode<T>*> children;
+  NTreeNode(const T& val): data(val){}
+};
+
+template <typename T>
+class NTree {
+private:
+    NTreeNode<T>* root;
+
+public:
+    NTree(const T& val) { root = new NTreeNode<T>(val);}
+    void insert(const T& parentVal, const T& val) {
+           NTreeNode<T>* newNode = new NTreeNode<T>(val);
+           insertRecursive(root, parentVal, newNode);
+    }
+
+   void insertRecursive(NTreeNode<T>* node, const T& parentVal, NTreeNode<T>* newNode) {
+       if (node == nullptr) return;
+       if (node->data == parentVal) {
+           node->children.push_back(newNode);
+           return;
+       }
+   }
+   void changeRoot(const T& val){
+           NTreeNode<T>* newNode = new NTreeNode<T>(val);
+           NTreeNode<T>* tmp = root;
+           root = newNode;
+           root->children.push_back(tmp);
+    }
+
+   bool find(const T& val){
+       if (root == nullptr)return false;
+       std::queue<NTreeNode<T>*> q;
+       q.push(root);
+       while (!q.empty()) {
+           NTreeNode<T>* cur = q.front(); q.pop();
+           if(cur->data == val)return true;
+           for (NTreeNode<T>* child : cur->children)  q.push(child);
+       }
+       return false;
+   }
+
+   void printTree(NTreeNode<T>* node, int depth = 0) {
+       if (node == nullptr)return;
+       for (int i = 0; i < depth; ++i)std::cout << "*";
+       std::cout << node->data << std::endl;
+       for (NTreeNode<T>* child : node->children)printTree(child, depth + 1);
+   }
+   void print() {printTree(root);}
+};
 
 #endif // MATHTOOL_H
