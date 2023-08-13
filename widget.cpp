@@ -315,7 +315,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
         auto Poly_V = ui->glWid2dim->model->outline->getVertices();
         double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-        bool res = ui->glWid2dim->model->FL[0]->Optimization_FlapAngle(ui->glWid2dim->model->Rulings, ui->glWid2dim->model->vertices, Poly_V, wb, wp, false);
+        bool res = ui->glWid2dim->model->BendingModel(wb, wp, false);
         fold_Sm();
     }
     else if(e->key() == Qt::Key_Return){emit PressedEnter();}

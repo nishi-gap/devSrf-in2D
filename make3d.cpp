@@ -132,6 +132,10 @@ void Model::ChangeFoldLineState(){
     FoldCurveIndex = FL.size() - 1;
 }
 
+bool Model::BendingModel(double wb, double wp, bool ConstFunc){
+
+}
+
 void Model::applyAAAMethod(double a){
     auto Poly_V = outline->getVertices();
     FL[FoldCurveIndex]->applyAAAMethod(Poly_V, a);

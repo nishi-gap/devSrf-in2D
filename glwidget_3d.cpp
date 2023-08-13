@@ -92,7 +92,7 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
     std::vector<Vertex*> polygon;
     for(auto& l: Surface) polygon.push_back(l->v);
     Polygons.push_back(polygon);
-    if(!FldCrvs.empty()){
+    if(!FldCrvs.empty() && !FldCrvs.front()->FoldingCurve.empty()){
 
         auto SplitPolygon = [](std::vector<std::vector<Vertex*>>& Polygons, Vertex *o, Vertex *v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
             for(auto& Poly :Polygons){

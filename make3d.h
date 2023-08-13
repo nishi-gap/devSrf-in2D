@@ -55,6 +55,7 @@ public:
     void ChangeFoldLineState();
     void applyAAAMethod(double a);
     bool RevisionCrosPtsPosition();
+    bool BendingModel(double wb, double wp, bool ConstFunc = true);
     std::vector<glm::f64vec3> resPts;
 
     //Smooth Surface
