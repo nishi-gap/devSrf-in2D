@@ -167,11 +167,13 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
         for(auto&x: LoF)std::cout << x.FL << "  ,  " << x.t << " : ";
         std::cout<<std::endl;
         if(!LoF.empty()){
-            std::sort(LoF.begin(), LoF.end(), [](LineOnFL& a, LineOnFL& b){return a.t < b.t;});
+            std::sort(LoF.begin(), LoF.end(), [](const LineOnFL& a, const LineOnFL& b){return a.t < b.t;});
+            for(auto&x: LoF)std::cout << x.FL << "  ,  " << x.t << " : ";
+            std::cout<<std::endl;
             for(auto&x: LoF){
                 std::cout << x.t  << " , " << x.FL << std::endl;
                 if(List_FL.empty()){
-                    LoF.push_back(x);
+                    List_FL.push_back(x.FL);
                     if(NTree_fl.empty())NTree_fl = NTree(x.FL);
                 }else{
                     auto it = std::find(List_FL.begin(), List_FL.end(), x.FL);
@@ -234,7 +236,7 @@ bool Model::SplitRulings(int dim){
                 else FL[0]->FoldingCurve.push_back(Vertex4d(P, l->o, l->v));
             }
         }
-        std::sort(FL[0]->FoldingCurve.begin(), FL[0]->FoldingCurve.end(), [](Vertex4d& V1, Vertex4d& V2){return V1.first->s > V2.first->s;});//左から右への曲線の流れにしたい
+        std::sort(FL[0]->FoldingCurve.begin(), FL[0]->FoldingCurve.end(), [](const Vertex4d& V1, const Vertex4d& V2){return V1.first->s > V2.first->s;});//左から右への曲線の流れにしたい
     }else{
         for(auto&fl: FL){
 
@@ -251,7 +253,7 @@ bool Model::SplitRulings(int dim){
                     continue;
                 }
             }
-            std::sort(FL[FoldCurveIndex]->FoldingCurve.begin(), FL[FoldCurveIndex]->FoldingCurve.end(), [](Vertex4d& V1, Vertex4d& V2){return V1.first->s > V2.first->s;});//左から右への曲線の流れにしたい
+            std::sort(FL[FoldCurveIndex]->FoldingCurve.begin(), FL[FoldCurveIndex]->FoldingCurve.end(), [](const Vertex4d& V1, const Vertex4d& V2){return V1.first->s > V2.first->s;});//左から右への曲線の流れにしたい
         }
     }
     return true;
