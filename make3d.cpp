@@ -163,7 +163,6 @@ void Model::UpdateFL(int dim){
             if(outline->Lines[i]->is_on_line(fl->FoldingCurve.back().first->p))
                 LoF.push_back(LineOnFL(fl, glm::length(fl->FoldingCurve.back().first->p - outline->Lines[i]->o->p)/glm::length(outline->Lines[i]->v->p - outline->Lines[i]->o->p)));
         }
-        std::cout<<std::endl;
         if(!LoF.empty()){
             std::sort(LoF.begin(), LoF.end(), [](const LineOnFL& a, const LineOnFL& b){return a.t < b.t;});
             for(auto&x: LoF){

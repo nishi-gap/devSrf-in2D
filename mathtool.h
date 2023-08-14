@@ -198,7 +198,9 @@ public:
         while (!q.empty()) {
             NTreeNode<T>* cur = q.front(); q.pop();
             if(cur->data == val)return cur;
-            for (NTreeNode<T>* child : cur->children)  q.push(child);
+            for (NTreeNode<T>* child : cur->children){
+                if(child != nullptr)q.push(child);
+            }
         }
         return nullptr;
     }
