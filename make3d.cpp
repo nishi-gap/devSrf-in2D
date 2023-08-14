@@ -18,7 +18,7 @@ Model::Model(int _crvPtNum){
 }
 
 void Model::clear(){
-    vertices.clear();
+    //vertices.clear();
     Rulings.clear();
     //Faces.clear();
     ol_vertices.clear();
@@ -129,7 +129,7 @@ void Model::ChangeFoldLineState(){
         }
         else itr++;
     }
-    vertices.shrink_to_fit();
+    //vertices.shrink_to_fit();
     FoldCurveIndex = FL.size() - 1;
 }
 
@@ -194,6 +194,7 @@ void Model::UpdateFL(int dim){
 
 bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
     UpdateFL(dim);
+
     return true;
 }
 
@@ -223,6 +224,7 @@ bool Model::SplitRulings(int dim){
         return nullptr;
     };
     if(FL.empty() || FL[FoldCurveIndex]->CtrlPts.size() <= dim)return false;
+    /*
     if(FL.size() == 1){
         for(auto& r: Rulings){
             CrvPt_FL *P = getCrossPoint(FL[0]->CtrlPts, r->v, r->o, dim);
@@ -246,19 +248,45 @@ bool Model::SplitRulings(int dim){
             for(auto& r: fl->FoldingCurve){
                 CrvPt_FL *P = getCrossPoint(FL[FoldCurveIndex]->CtrlPts, r.second, r.first, dim);
                 if(P!= nullptr){
-                    FL[FoldCurveIndex]->FoldingCurve.push_back(Vertex4d(P, r.second, r.first)); r.second = P; vertices.push_back(P);
+                    FL[FoldCurveIndex]->FoldingCurve.push_back(Vertex4d(P, r.second, r.first)); r.second = P;
                     continue;
                 }
                 P = getCrossPoint(FL[FoldCurveIndex]->CtrlPts, r.third, r.first, dim);
                 if(P!= nullptr){
-                    FL[FoldCurveIndex]->FoldingCurve.push_back(Vertex4d(P, r.third, r.first)); r.third = P; vertices.push_back(P);
+                    FL[FoldCurveIndex]->FoldingCurve.push_back(Vertex4d(P, r.third, r.first)); r.third = P;
                     continue;
                 }
             }
             std::sort(FL[FoldCurveIndex]->FoldingCurve.begin(), FL[FoldCurveIndex]->FoldingCurve.end(), [](const Vertex4d& V1, const Vertex4d& V2){return V1.first->s > V2.first->s;});//左から右への曲線の流れにしたい
         }
+    }*/
+    for(auto&fl: FL){
+        for(auto& l: outline->Lines){
+            CrvPt_FL *P = getCrossPoint(fl->CtrlPts, l->v, l->o, dim);
+            if(P!= nullptr){
+                if(glm::dot(UpVec, glm::normalize(l->v->p - l->o->p)) > 0)fl->FoldingCurve.push_back(Vertex4d(P, l->v, l->o));
+                else fl->FoldingCurve.push_back(Vertex4d(P, l->o, l->v));
+            }
+        }
+        std::sort(fl->FoldingCurve.begin(), fl->FoldingCurve.end(), [](const Vertex4d& V1, const Vertex4d& V2){return V1.first->s > V2.first->s;});//左から右への曲線の流れにしたい
     }
+    UpdateFL(dim);
+    FoldLine *root = NTree_fl.GetRootNode();
+    if(root == nullptr)return false;
+
     return true;
+}
+
+void Model::reassinruling(FoldLine *parent, FoldLine *child){
+    if(parent->FoldingCurve.empty() || child->FoldingCurve.empty())return;
+    auto fl = child->FoldingCurve;
+    for(auto it = fl.begin() + 1; it != fl.end() - 1;){
+        delete it->first;
+        it = child->FoldingCurve.erase(it);
+    }
+    for(auto it = parent->FoldingCurve.begin() + 1; it != parent->FoldingCurve.end() - 1; it++){
+
+    }
 }
 
 void Model::modifyFoldingCurvePositionOn3d(){

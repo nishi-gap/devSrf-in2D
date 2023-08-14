@@ -149,6 +149,7 @@ public:
         NTreeNode<T>* newNode = new NTreeNode<T>(val);
         insertRecursive(root, parentVal, newNode);
     }
+    T GetRootNode(){return (root != nullptr)? root->data: nullptr;}
     void insertRecursive(NTreeNode<T>* node, const T& parentVal, NTreeNode<T>* newNode){
         if (node == nullptr) return;
         if (node->data == parentVal) {
