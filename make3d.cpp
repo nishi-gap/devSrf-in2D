@@ -163,14 +163,10 @@ void Model::UpdateFL(int dim){
             if(outline->Lines[i]->is_on_line(fl->FoldingCurve.back().first->p))
                 LoF.push_back(LineOnFL(fl, glm::length(fl->FoldingCurve.back().first->p - outline->Lines[i]->o->p)/glm::length(outline->Lines[i]->v->p - outline->Lines[i]->o->p)));
         }
-        for(auto&x: LoF)std::cout << x.FL << "  ,  " << x.t << " : ";
         std::cout<<std::endl;
         if(!LoF.empty()){
             std::sort(LoF.begin(), LoF.end(), [](const LineOnFL& a, const LineOnFL& b){return a.t < b.t;});
-            for(auto&x: LoF)std::cout << x.FL << "  ,  " << x.t << " : ";
-            std::cout<<std::endl;
             for(auto&x: LoF){
-                std::cout << x.t  << " , " << x.FL << std::endl;
                 if(List_FL.empty()){
                     List_FL.push_back(x.FL);
                     if(NTree_fl.empty())NTree_fl = NTree(x.FL);

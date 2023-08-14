@@ -122,6 +122,7 @@ public:
   void releaseAll(){
 
   }
+
 };
 
 template <typename T>
@@ -179,8 +180,8 @@ public:
         q.push(root);
         while (!q.empty()) {
             NTreeNode<T>* cur = q.front(); q.pop();
-            if(cur->children.empty()){ delete cur; continue;}
             for (NTreeNode<T>* child : cur->children)q.push(child);
+            delete cur;
         }
     }
 
