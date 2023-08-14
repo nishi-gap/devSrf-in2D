@@ -194,6 +194,7 @@ void Model::UpdateFL(int dim){
 
 bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
     UpdateFL(dim);
+    FoldLine *root = NTree_fl.GetRootNode();
 
     return true;
 }

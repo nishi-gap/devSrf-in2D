@@ -32,7 +32,7 @@ public:
     std::vector<std::array<glm::f64vec3, 2>> Rulings_3dL, Rulings_3dR, Rulings_2dL, Rulings_2dR;
     double getColor();
     bool RevisionCrosPtsPosition();
-    bool Optimization_FlapAngle(std::vector<Line*>& Rulings, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V, double wb, double wp, bool ConstFunc = true);
+    bool Optimization_FlapAngle(std::vector<Vertex*>& Poly_V, double wb, double wp, bool ConstFunc = true);
     std::vector<std::vector<glm::f64vec3>> Optimization_SmooothSrf(const std::vector<Vertex*>& Poly_v, bool IsConnectEndPoint);
     std::vector<std::vector<glm::f64vec3>> Optimization_PlanaritySrf(const std::vector<Vertex*>& Poly_v);
     void ReassignColor(std::vector<Line*>& Rulings, ColorPoint& CP);

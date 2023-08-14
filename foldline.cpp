@@ -51,20 +51,20 @@ namespace RevisionVertices{
     using FoldLine3d = std::vector<Vertex4d>;
     struct OptimizeParam{
         FoldLine3d FC;
-        std::vector<Vertex*> Vertices, Poly_V;
+        std::vector<Vertex*> Poly_V;
         std::vector<double*> res_Fbend, res_Fruling, res_a;
         double wb, wp ,wr;
         void AddWeight(double _wb, double _wp, double _wr){ wb = _wb; wp = _wp; wr = _wr;}
 
-        OptimizeParam(FoldLine3d& _FC, std::vector<Vertex*>& _Vertices, std::vector<Vertex*>& _Poly_V):FC{_FC}, Vertices{_Vertices}, Poly_V{_Poly_V}{}
+        OptimizeParam(FoldLine3d& _FC,  std::vector<Vertex*>& _Poly_V):FC{_FC}, Poly_V{_Poly_V}{}
         ~OptimizeParam(){}
     private:
 
     };
     struct OptimizeParam_v: public OptimizeParam{
         double a;
-        OptimizeParam_v(double _a, FoldLine3d& _FC,  std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V):
-            a{_a}, OptimizeParam::OptimizeParam( _FC, Vertices,  Poly_V){}
+        OptimizeParam_v(double _a, FoldLine3d& _FC, std::vector<Vertex*>& Poly_V):
+            a{_a}, OptimizeParam::OptimizeParam( _FC,  Poly_V){}
         ~OptimizeParam_v(){}
     };
     struct SmoothingArea{
@@ -990,7 +990,7 @@ std::vector<std::vector<glm::f64vec3>> FoldLine::Optimization_PlanaritySrf(const
     return res_qt;
 }
 
-bool FoldLine::Optimization_FlapAngle(std::vector<Line*>& Rulings, std::vector<Vertex*>& Vertices, std::vector<Vertex*>& Poly_V, double wb, double wp, bool ConstFunc){
+bool FoldLine::Optimization_FlapAngle(std::vector<Vertex*>& Poly_V, double wb, double wp, bool ConstFunc){
     if(FoldingCurve.empty())return false;
 
     std::vector<int> Vertices_Ind;for(int i = 0; i < (int)FoldingCurve.size(); i++){if(FoldingCurve[i].IsCalc)Vertices_Ind.push_back(i);}
@@ -1037,7 +1037,7 @@ bool FoldLine::Optimization_FlapAngle(std::vector<Line*>& Rulings, std::vector<V
         a += 1e-3;
     }ofs2.close();
 
-    RevisionVertices::ObjData od = {FoldingCurve, Vertices, Poly_V};
+    RevisionVertices::ObjData od = {FoldingCurve, Poly_V};
     if(ConstFunc)od.AddWeight(wb, wp, -1); else od.AddWeight(wb, wp, 100.0);
     nlopt::opt opt;
     opt = nlopt::opt(nlopt::LD_MMA, 1);
