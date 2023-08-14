@@ -144,12 +144,16 @@ private:
 public:
     NTree(const T& val) { root = new NTreeNode<T>(val);}
     NTree(){root = nullptr;}
+
     bool empty(){return (root == nullptr)? true: false;}
     void insert(const T& parentVal, const T& val){
         NTreeNode<T>* newNode = new NTreeNode<T>(val);
         insertRecursive(root, parentVal, newNode);
     }
-    T GetRootNode(){return (root != nullptr)? root->data: nullptr;}
+    NTreeNode<T>* GetRoot(){return (root != nullptr)? root: nullptr;}
+    std::vector<NTreeNode<T>*> GetChildren(NTreeNode<T>* parent){
+        return parent->children;
+    }
     void insertRecursive(NTreeNode<T>* node, const T& parentVal, NTreeNode<T>* newNode){
         if (node == nullptr) return;
         if (node->data == parentVal) {

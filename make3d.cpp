@@ -194,7 +194,23 @@ void Model::UpdateFL(int dim){
 
 bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
     UpdateFL(dim);
-    FoldLine *root = NTree_fl.GetRootNode();
+    NTreeNode<FoldLine*>* root = NTree_fl.GetRoot();
+    if(root == nullptr)return false;
+    std::queue<NTreeNode<FoldLine*>*> q;
+    std::vector<Vertex*> Poly_V = outline->getVertices();
+    root->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
+    q.push(root);
+    while (!q.empty()) {
+        NTreeNode<FoldLine*>* cur = q.front(); q.pop();
+        cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
+        for (NTreeNode<FoldLine*>* child : cur->children){
+            if(child != nullptr){
+                child->data->reassinruling(cur->data);
+                q.push(child);
+            }
+
+        }
+    }
 
     return true;
 }
@@ -272,16 +288,16 @@ bool Model::SplitRulings(int dim){
         fl->SortCurve();
     }
     UpdateFL(dim);
-    FoldLine *root = NTree_fl.GetRootNode();
+    NTreeNode<FoldLine*> *root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
     for(auto& r: Rulings){
-        CrvPt_FL *P = getCrossPoint(root->CtrlPts, r->v, r->o, dim);
+        CrvPt_FL *P = getCrossPoint(root->data->CtrlPts, r->v, r->o, dim);
         if(P!= nullptr){
-            if(glm::dot(UpVec, glm::normalize(r->v->p - r->o->p)) > 0)root->FoldingCurve.push_back(Vertex4d(P, r->v, r->o));
-            else root->FoldingCurve.push_back(Vertex4d(P, r->o, r->v));
+            if(glm::dot(UpVec, glm::normalize(r->v->p - r->o->p)) > 0)root->data->FoldingCurve.push_back(Vertex4d(P, r->v, r->o));
+            else root->data->FoldingCurve.push_back(Vertex4d(P, r->o, r->v));
         }
     }
-    root->SortCurve();
+    root->data->SortCurve();
     return true;
 }
 
