@@ -170,7 +170,8 @@ void Model::UpdateFL(int dim){
                     List_FL.push_back(x.FL);
                     if(NTree_fl.empty())NTree_fl = NTree(x.FL);
                 }else{
-                    if(NTree_fl.find(x.FL) != nullptr){
+                    auto res = NTree_fl.find(x.FL);
+                    if(res == nullptr){
                         NTree_fl.insert(List_FL.front(), x.FL);
                         List_FL.push_front(x.FL);
                     }else{
