@@ -294,6 +294,18 @@ bool Model::SplitRulings(int dim){
         }
     }
     root->data->SortCurve();
+    std::queue<NTreeNode<FoldLine*>*> q;
+    q.push(root);
+    while (!q.empty()) {
+        NTreeNode<FoldLine*>* cur = q.front(); q.pop();
+        for (NTreeNode<FoldLine*>* child : cur->children){
+            if(child != nullptr){
+                child->data->reassinruling(cur->data);
+                q.push(child);
+            }
+
+        }
+    }
     return true;
 }
 
