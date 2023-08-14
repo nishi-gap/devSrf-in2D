@@ -157,14 +157,19 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
     do{
        std::vector<LineOnFL> LoF;
         for(auto&fl: hasFoldingCurve){
+
             if(outline->Lines[i]->is_on_line(fl->FoldingCurve.front().first->p))
                 LoF.push_back(LineOnFL(fl, glm::length(fl->FoldingCurve.front().first->p - outline->Lines[i]->o->p)/glm::length(outline->Lines[i]->v->p - outline->Lines[i]->o->p)));
             if(outline->Lines[i]->is_on_line(fl->FoldingCurve.back().first->p))
                 LoF.push_back(LineOnFL(fl, glm::length(fl->FoldingCurve.back().first->p - outline->Lines[i]->o->p)/glm::length(outline->Lines[i]->v->p - outline->Lines[i]->o->p)));
         }
+        std::cout <<"size " << LoF.size() << std::endl;
+        for(auto&x: LoF)std::cout << x.FL << "  ,  " << x.t << " : ";
+        std::cout<<std::endl;
         if(!LoF.empty()){
             std::sort(LoF.begin(), LoF.end(), [](LineOnFL& a, LineOnFL& b){return a.t < b.t;});
             for(auto&x: LoF){
+                std::cout << x.t  << " , " << x.FL << std::endl;
                 if(List_FL.empty()){
                     LoF.push_back(x);
                     if(NTree_fl.empty())NTree_fl = NTree(x.FL);
