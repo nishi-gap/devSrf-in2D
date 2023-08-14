@@ -158,11 +158,11 @@ public:
     }
 
     void erase(const T& val){
-        if(!find(val))return;
-        auto par = getParent(val);
-        for(const auto&child: val->children)
-        par->children.push_back();
-        delete val;
+        NTreeNode<T>* Tree = find(val);
+        if(Tree == nullptr)return;
+        NTreeNode<T>* par = getParent(val);
+        for(const auto&child: Tree->children)par->children.push_back(child);
+        delete Tree;
     }
 
     void changeRoot(const T& val){
