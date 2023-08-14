@@ -267,6 +267,7 @@ bool Model::SplitRulings(int dim){
                 if(glm::dot(UpVec, glm::normalize(l->v->p - l->o->p)) > 0)fl->FoldingCurve.push_back(Vertex4d(P, l->v, l->o));
                 else fl->FoldingCurve.push_back(Vertex4d(P, l->o, l->v));
             }
+        }
         fl->SortCurve();
     }
     UpdateFL(dim);
@@ -280,7 +281,6 @@ bool Model::SplitRulings(int dim){
         }
     }
     root->SortCurve();
-
     return true;
 }
 
