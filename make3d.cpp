@@ -161,18 +161,23 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
                 LoF.push_back(LineOnFL(fl, glm::length(fl->FoldingCurve.front().first->p - outline->Lines[i]->o->p)/glm::length(outline->Lines[i]->v->p - outline->Lines[i]->o->p)));
 
         }
-        std::sort(LoF.begin(), LoF.end(), [](LineOnFL& a, LineOnFL& b){return a.t > b.t;});
-        if(Stack_FL.empty()){
-
-        }else{
-            if(Stack_FL.top() == fl){
-                Stack_FL.pop();
-            }else{
-                if(!NTree_fl.find(fl)){
-
+        if(!LoF.empty()){
+            std::sort(LoF.begin(), LoF.end(), [](LineOnFL& a, LineOnFL& b){return a.t < b.t;});
+            for(auto&x: LoF){
+                if(List_FL.empty()){
+                    LoF.push_back(x);
+                }else{
+                    auto it = std::find(List_FL.begin(), List_FL.end(), x.FL);
+                    if(it != List_FL.end()) List_FL.erase(it);
+                    else{
+                        if(!NTree_fl.find(x.FL)){
+                            NTree_fl.insert(List_FL.front(), x.FL);
+                        }
+                        List_FL.push_front(x.FL);
+                    }
                 }
-                Stack_FL.push(fl);
             }
+
         }
         i = (i + 1) % (int)outline->Lines.size();
     }while(i != btm_i);
