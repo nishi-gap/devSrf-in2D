@@ -132,7 +132,7 @@ void Model::ChangeFoldLineState(){
     FoldCurveIndex = FL.size() - 1;
 }
 
-bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
+void Model::UpdateFL(){
     //下から上へとn分木での実装が必要かも
     std::vector<FoldLine*> hasFoldingCurve;
     for(auto&fl: FL){
@@ -191,6 +191,10 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
     }while(i != btm_i);
 
     NTree_fl.print();
+}
+
+bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
+
     return true;
 }
 
