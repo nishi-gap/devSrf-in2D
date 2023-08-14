@@ -38,7 +38,7 @@ public:
     void ReassignColor(std::vector<Line*>& Rulings, ColorPoint& CP);
     void SimplifyModel( double tol);
     bool SimpleSmooothSrf(const std::vector<Vertex*>& Poly_v);
-
+    void SortCurve(bool ascending = false);
     //HalfEdge *he, *he2;
     std::vector<glm::f64vec3> point;
     Vertex *vx, *vx2;

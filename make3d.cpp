@@ -240,7 +240,7 @@ bool Model::SplitRulings(int dim){
                 else FL[0]->FoldingCurve.push_back(Vertex4d(P, l->o, l->v));
             }
         }
-        std::sort(FL[0]->FoldingCurve.begin(), FL[0]->FoldingCurve.end(), [](const Vertex4d& V1, const Vertex4d& V2){return V1.first->s > V2.first->s;});//左から右への曲線の流れにしたい
+        FL[0]->SortCurve();
     }else{
         for(auto&fl: FL){
 
@@ -257,7 +257,7 @@ bool Model::SplitRulings(int dim){
                     continue;
                 }
             }
-            std::sort(FL[FoldCurveIndex]->FoldingCurve.begin(), FL[FoldCurveIndex]->FoldingCurve.end(), [](const Vertex4d& V1, const Vertex4d& V2){return V1.first->s > V2.first->s;});//左から右への曲線の流れにしたい
+            FL[FoldCurveIndex]->SortCurve();
         }
     }*/
     for(auto&fl: FL){
@@ -267,12 +267,19 @@ bool Model::SplitRulings(int dim){
                 if(glm::dot(UpVec, glm::normalize(l->v->p - l->o->p)) > 0)fl->FoldingCurve.push_back(Vertex4d(P, l->v, l->o));
                 else fl->FoldingCurve.push_back(Vertex4d(P, l->o, l->v));
             }
-        }
-        std::sort(fl->FoldingCurve.begin(), fl->FoldingCurve.end(), [](const Vertex4d& V1, const Vertex4d& V2){return V1.first->s > V2.first->s;});//左から右への曲線の流れにしたい
+        fl->SortCurve();
     }
     UpdateFL(dim);
     FoldLine *root = NTree_fl.GetRootNode();
     if(root == nullptr)return false;
+    for(auto& r: Rulings){
+        CrvPt_FL *P = getCrossPoint(root->CtrlPts, r->v, r->o, dim);
+        if(P!= nullptr){
+            if(glm::dot(UpVec, glm::normalize(r->v->p - r->o->p)) > 0)root->FoldingCurve.push_back(Vertex4d(P, r->v, r->o));
+            else root->FoldingCurve.push_back(Vertex4d(P, r->o, r->v));
+        }
+    }
+    root->SortCurve();
 
     return true;
 }

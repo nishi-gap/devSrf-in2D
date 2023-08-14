@@ -187,6 +187,12 @@ FoldLine::FoldLine(PaintTool _type)
     type = _type;
 }
 
+void FoldLine::SortCurve(bool ascending){
+    if(FoldingCurve.empty())return;
+    if(!ascending)std::sort(FoldingCurve.begin(), FoldingCurve.end(), [](const Vertex4d& V1, const Vertex4d& V2){return V1.first->s > V2.first->s;});//左から右への曲線の流れにしたい
+    else std::sort(FoldingCurve.begin(), FoldingCurve.end(), [](const Vertex4d& V1, const Vertex4d& V2){return V1.first->s < V2.first->s;});//左から右への曲線の流れにしたい
+}
+
 double FoldLine::getColor(){return color;}
 
 bool FoldLine::delCtrlPt(glm::f64vec3& p, int dim, OUTLINE *outline){
