@@ -136,7 +136,7 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
     //下から上へとn分木での実装が必要かも
     std::vector<FoldLine*> hasFoldingCurve;
     for(auto&fl: FL){
-        if(!(int)fl->CtrlPts.size() > dim)hasFoldingCurve.push_back(fl);
+        if((int)fl->CtrlPts.size() > dim)hasFoldingCurve.push_back(fl);
     }
     NTree<FoldLine*> NTree_fl(hasFoldingCurve.front());
     Line *btm = outline->Lines.front();//一番下の辺を探索
@@ -159,7 +159,8 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
         for(auto&fl: hasFoldingCurve){
             if(outline->Lines[i]->is_on_line(fl->FoldingCurve.front().first->p))
                 LoF.push_back(LineOnFL(fl, glm::length(fl->FoldingCurve.front().first->p - outline->Lines[i]->o->p)/glm::length(outline->Lines[i]->v->p - outline->Lines[i]->o->p)));
-
+            if(outline->Lines[i]->is_on_line(fl->FoldingCurve.back().first->p))
+                LoF.push_back(LineOnFL(fl, glm::length(fl->FoldingCurve.back().first->p - outline->Lines[i]->o->p)/glm::length(outline->Lines[i]->v->p - outline->Lines[i]->o->p)));
         }
         if(!LoF.empty()){
             std::sort(LoF.begin(), LoF.end(), [](LineOnFL& a, LineOnFL& b){return a.t < b.t;});
@@ -182,47 +183,7 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
         i = (i + 1) % (int)outline->Lines.size();
     }while(i != btm_i);
 
-    for(auto it = hasFoldingCurve.begin() + 1; it != hasFoldingCurve.end(); it++){
-        //最初は中央のvertex4d一つを判定に使う(second, third両方)
-        //ほかの折曲線上にある->secondかthirdかで順番をきめ、FL_b2tになければ入れる
-        //輪郭上にある場合、ほかのsecond、thirdすべて調べて輪郭上にあれば一番上か下のいずれかになる
-        //すべての折曲線に対して行う
-        if(NTree_fl.find((*it)))continue;
-        for(auto&v: (*it)->FoldingCurve){
-            Vertex *sec = v.second, *thi = v.third;
-
-            for(auto& fl: hasFoldingCurve){
-                if(fl == (*it) || NTree_fl.find(fl))continue;
-                for(auto& v: fl->FoldingCurve){
-                    if(v.first == sec){FL_b2t.insert(FL.begin() + i + 1, fl); break;}
-                    if(v.first == thi){FL_b2t.insert(FL.begin() + i, fl); break;}
-                }
-            }
-        }
-        for(auto&l : outline->Lines){
-            bool IsOnOutLine = true;
-            if(l->is_on_line(sec->p)){
-                for(auto&l2 : outline->Lines){
-                    if(!l2->is_on_line(sec->p)){
-                        IsOnOutLine = false;
-                        break;
-                    }
-                }
-                if(IsOnOutLine)FL_b2t.push_back(FL[i]);
-            }
-            IsOnOutLine = true;
-            if(l->is_on_line(thi->p)){
-                for(auto&l2 : outline->Lines){
-                    if(!l2->is_on_line(thi->p)){
-                        IsOnOutLine = false;
-                        break;
-                    }
-                }
-                if(IsOnOutLine)FL_b2t.insert(FL_b2t.begin(), FL[i]);
-            }
-        }
-
-    }
+    NTree_fl.print();
     return true;
 }
 
