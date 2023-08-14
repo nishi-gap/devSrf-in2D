@@ -183,10 +183,10 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
         Vertices.push_back(vertices);
     }
 
-    for(auto&V: Vertices){
-        Triangulation(V, trimesh);
-        TriMeshs.insert(TriMeshs.end(), trimesh.begin(), trimesh.end());
-    }
+    //for(auto&V: Vertices){
+        //Triangulation(V, trimesh);
+        //TriMeshs.insert(TriMeshs.end(), trimesh.begin(), trimesh.end());
+    //}
     for(auto&tri : TriMeshs){
         _center = (tri[2] + tri[1] + tri[0])/3.0;
         double area = glm::length(glm::cross(tri[2] - tri[0], tri[1] - tri[0]))/2.0;

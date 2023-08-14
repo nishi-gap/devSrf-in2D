@@ -130,6 +130,17 @@ class NTree {
 private:
     NTreeNode<T>* root;
 
+public:
+    NTree(const T& val) { root = new NTreeNode<T>(val);}
+    NTree(){root = nullptr;}
+
+    bool empty(){return (root == nullptr)? true: false;}
+    void insert(const T& parentVal, const T& val){
+        NTreeNode<T>* newNode = new NTreeNode<T>(val);
+        insertRecursive(root, parentVal, newNode);
+    }
+    NTreeNode<T>* GetRoot(){return (root != nullptr)? root: nullptr;}
+
     NTreeNode<T>* getParent(const T& val){
         if (root == nullptr)return nullptr;
         std::queue<NTreeNode<T>*> q;
@@ -142,19 +153,10 @@ private:
         return nullptr;
     }
 
-public:
-    NTree(const T& val) { root = new NTreeNode<T>(val);}
-    NTree(){root = nullptr;}
-
-    bool empty(){return (root == nullptr)? true: false;}
-    void insert(const T& parentVal, const T& val){
-        NTreeNode<T>* newNode = new NTreeNode<T>(val);
-        insertRecursive(root, parentVal, newNode);
-    }
-    NTreeNode<T>* GetRoot(){return (root != nullptr)? root: nullptr;}
     std::vector<NTreeNode<T>*> GetChildren(NTreeNode<T>* parent){
         return parent->children;
     }
+
     void insertRecursive(NTreeNode<T>* node, const T& parentVal, NTreeNode<T>* newNode){
         if (node == nullptr) return;
         if (node->data == parentVal) {
@@ -183,6 +185,7 @@ public:
             for (NTreeNode<T>* child : cur->children)q.push(child);
             delete cur;
         }
+        root = nullptr;
     }
 
     void changeRoot(const T& val){

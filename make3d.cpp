@@ -133,7 +133,7 @@ void Model::ChangeFoldLineState(){
     FoldCurveIndex = FL.size() - 1;
 }
 
-void Model::UpdateFL(int dim){
+void Model::UpdateFLOrder(int dim){
     //下から上へとn分木での実装が必要かも
     std::vector<FoldLine*> hasFoldingCurve;
     for(auto&fl: FL){
@@ -189,7 +189,7 @@ void Model::UpdateFL(int dim){
 }
 
 bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
-    UpdateFL(dim);
+    UpdateFLOrder(dim);
     NTreeNode<FoldLine*>* root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
     std::queue<NTreeNode<FoldLine*>*> q;
@@ -283,7 +283,7 @@ bool Model::SplitRulings(int dim){
         }
         fl->SortCurve();
     }
-    UpdateFL(dim);
+    UpdateFLOrder(dim);
     NTreeNode<FoldLine*> *root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
     for(auto& r: Rulings){
