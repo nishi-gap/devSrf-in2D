@@ -127,6 +127,8 @@ private:
     NTreeNode<T>* root;
 public:
     NTree(const T& val) { root = new NTreeNode<T>(val);}
+    NTree(){root = nullptr;}
+    bool empty(){return (root == nullptr)? true: false;}
     void insert(const T& parentVal, const T& val){
         NTreeNode<T>* newNode = new NTreeNode<T>(val);
         insertRecursive(root, parentVal, newNode);

@@ -138,10 +138,10 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
     for(auto&fl: FL){
         if((int)fl->CtrlPts.size() > dim)hasFoldingCurve.push_back(fl);
     }
-    NTree<FoldLine*> NTree_fl(hasFoldingCurve.front());
+
     Line *btm = outline->Lines.front();//一番下の辺を探索
     for(auto&l: outline->Lines){
-        if(((l->v->p + l->o->p)/2.0).y < ((btm->v->p + btm->o->p)/2.0).y)btm = l;
+        if(((l->v->p + l->o->p)/2.0).y > ((btm->v->p + btm->o->p)/2.0).y)btm = l;
     }
     int btm_i = std::distance(outline->Lines.begin(), std::find(outline->Lines.begin(), outline->Lines.end(),btm));
     int i = btm_i;
@@ -153,7 +153,7 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
         double t;
         LineOnFL(FoldLine *_FL, double _t): FL(_FL), t(_t){}
     };
-
+    NTree<FoldLine*> NTree_fl;
     do{
        std::vector<LineOnFL> LoF;
         for(auto&fl: hasFoldingCurve){
@@ -167,6 +167,7 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
             for(auto&x: LoF){
                 if(List_FL.empty()){
                     LoF.push_back(x);
+                    if(NTree_fl.empty())NTree_fl = NTree(x.FL);
                 }else{
                     auto it = std::find(List_FL.begin(), List_FL.end(), x.FL);
                     if(it != List_FL.end()) List_FL.erase(it);
