@@ -83,7 +83,7 @@ private:
 
     std::vector<int> refCrv;//0:未参照　1:参照
     std::vector<int> refFL;
-
+    NTree<FoldLine*> NTree_fl;
     int crvPtNum;
     int befFaceNum;
     int FoldCurveIndex;

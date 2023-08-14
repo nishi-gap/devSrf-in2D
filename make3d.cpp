@@ -14,6 +14,7 @@ Model::Model(int _crvPtNum){
     refCrv.clear();
     refFL.clear();
     FoldCurveIndex = befFaceNum = 0;
+    NTree_fl = NTree<FoldLine*>();
 }
 
 void Model::clear(){
@@ -153,17 +154,15 @@ void Model::UpdateFL(int dim){
         double t;
         LineOnFL(FoldLine *_FL, double _t): FL(_FL), t(_t){}
     };
-    NTree<FoldLine*> NTree_fl;
+    NTree_fl.clear();
     do{
        std::vector<LineOnFL> LoF;
         for(auto&fl: hasFoldingCurve){
-
             if(outline->Lines[i]->is_on_line(fl->FoldingCurve.front().first->p))
                 LoF.push_back(LineOnFL(fl, glm::length(fl->FoldingCurve.front().first->p - outline->Lines[i]->o->p)/glm::length(outline->Lines[i]->v->p - outline->Lines[i]->o->p)));
             if(outline->Lines[i]->is_on_line(fl->FoldingCurve.back().first->p))
                 LoF.push_back(LineOnFL(fl, glm::length(fl->FoldingCurve.back().first->p - outline->Lines[i]->o->p)/glm::length(outline->Lines[i]->v->p - outline->Lines[i]->o->p)));
         }
-        std::cout <<"size " << LoF.size() << std::endl;
         for(auto&x: LoF)std::cout << x.FL << "  ,  " << x.t << " : ";
         std::cout<<std::endl;
         if(!LoF.empty()){
@@ -194,7 +193,7 @@ void Model::UpdateFL(int dim){
 }
 
 bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
-
+    UpdateFL(dim);
     return true;
 }
 

@@ -119,6 +119,9 @@ public:
   T data;
   std::vector<NTreeNode<T>*> children;
   NTreeNode(const T& val): data(val){}
+  void releaseAll(){
+
+  }
 };
 
 template <typename T>
@@ -162,7 +165,18 @@ public:
         if(Tree == nullptr)return;
         NTreeNode<T>* par = getParent(val);
         for(const auto&child: Tree->children)par->children.push_back(child);
-        delete Tree;
+        delete Tree;//内部の変数のアドレスは解放されていない
+    }
+
+    void clear(){
+        if (root == nullptr)return;
+        std::queue<NTreeNode<T>*> q;
+        q.push(root);
+        while (!q.empty()) {
+            NTreeNode<T>* cur = q.front(); q.pop();
+            if(cur->children.empty()){ delete cur; continue;}
+            for (NTreeNode<T>* child : cur->children)q.push(child);
+        }
     }
 
     void changeRoot(const T& val){
