@@ -176,13 +176,12 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
                     List_FL.push_back(x.FL);
                     if(NTree_fl.empty())NTree_fl = NTree(x.FL);
                 }else{
-                    auto it = std::find(List_FL.begin(), List_FL.end(), x.FL);
-                    if(it != List_FL.end()) List_FL.erase(it);
-                    else{
-                        if(!NTree_fl.find(x.FL)){
-                            NTree_fl.insert(List_FL.front(), x.FL);
-                        }
+                    if(!NTree_fl.find(x.FL)){
+                        NTree_fl.insert(List_FL.front(), x.FL);
                         List_FL.push_front(x.FL);
+                    }else{
+                        auto it = std::find(List_FL.begin(), List_FL.end(), x.FL);
+                        if(it != List_FL.end()) List_FL.erase(it);
                     }
                 }
             }

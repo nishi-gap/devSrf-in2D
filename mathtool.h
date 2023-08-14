@@ -139,6 +139,9 @@ public:
             node->children.push_back(newNode);
             return;
         }
+        for (NTreeNode<T>* child : node->children) {
+            insertRecursive(child, parentVal, newNode);
+        }
     }
     void changeRoot(const T& val){
         NTreeNode<T>* newNode = new NTreeNode<T>(val);
