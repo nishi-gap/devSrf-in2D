@@ -928,108 +928,6 @@ std::vector<std::vector<glm::f64vec3>> FoldLine::Optimization_SmooothSrf(const s
     return res_qt;
 }
 
-/*
-std::vector<std::vector<glm::f64vec3>> FoldLine::Optimization_SmooothSrf2(const std::vector<Vertex*>& Poly_v, bool IsConnectEndPoint){
-
-    std::vector<std::vector<glm::f64vec3>> res_qt;
-    Vertex4d bef = FoldingCurve.front();
-    std::vector<RevisionVertices::SmoothingArea> SA;
-    std::vector<Vertex*> OriginalVertices;
-    int bef_ind;
-    for(auto itr = FoldingCurve.begin()+1; itr != FoldingCurve.end() - 1; itr++){
-        if(itr->IsCalc)continue;
-        std::vector<double> X;
-        X.push_back(itr->first->p3_ori.x); X.push_back(itr->first->p3_ori.y); X.push_back(itr->first->p3_ori.z);
-        auto itr2 = itr + 1;
-        nlopt::opt opt;
-        while(!itr2->IsCalc)itr2++;
-        opt = nlopt::opt(nlopt::LD_MMA, X.size());
-        opt.set_min_objective(RevisionVertices::Minimize_SmoothSrf, &od);
-        opt.add_inequality_constraint(RevisionVertices::Const_Edev, &od);
-        opt.add_inequality_constraint(RevisionVertices::Const_Econv, &od);
-        opt.set_xtol_rel(1e-13);
-    }
-    RevisionVertices::ObjData_smooth od = {SA, IsConnectEndPoint};
-    if(X.empty())return res_qt;
-
-
-
-    double minf;
-    try {
-        nlopt::result result = opt.optimize(X, minf);
-        std::cout <<"result :  smoothing  " <<result << std::endl;
-        std::cout << "found minimum at f = "  << std::setprecision(10) << minf << std::endl;
-        int i = 0;
-        for(auto&FC: FoldingCurve){
-            if(!FC.IsCalc){
-                FC.first->p3 = glm::f64vec3{X[i], X[i+1], X[i+2]}; i += 3;
-            }
-        }
-        glm::f64vec3 p, r3d, r2d;
-        for(auto sm: od.SA){
-            glm::f64vec3 vt = glm::normalize(sm.stP.second->p3 - sm.stP.first->p3), vt2d = glm::normalize(sm.stP.second->p - sm.stP.first->p);
-            glm::f64vec3 SpinAxis = (vt2d.y < 0)? glm::f64vec3{0,0,-1}: glm::f64vec3{0,0,1};
-            for(int j = sm.st_ind + 1; j < sm.last_ind; j++){
-                glm::f64vec3 e = FoldingCurve[j].first->p3 - FoldingCurve[j-1].first->p3;
-                double l = glm::length(e), phi = std::acos(glm::dot(vt, glm::normalize(e)));
-                FoldingCurve[j].first->p = l * glm::f64vec3{glm::rotate(phi, SpinAxis)* glm::f64vec4{ vt2d, 1.0}} + FoldingCurve[j-1].first->p;
-
-                if(sm.qt == nullptr){
-                    if(sm.st_ind != 0){r2d = glm::normalize(sm.stP.second->p - sm.stP.first->p); r3d = glm::normalize(sm.stP.second->p3 - sm.stP.first->p3);}
-                    else {r2d = glm::normalize(sm.lastP.second->p - sm.lastP.first->p); r3d = glm::normalize(sm.lastP.second->p3 - sm.lastP.first->p3);}
-                }else{
-                    res_qt.push_back({sm.stP.first->p3, sm.qt->p3, sm.lastP.first->p3});
-
-                    r2d = glm::normalize(sm.qt->p - FoldingCurve[j].first->p);
-                    if(glm::dot(r2d, FoldingCurve[sm.st_ind].second->p - FoldingCurve[sm.st_ind].first->p) < 0)r2d *= -1;
-                    FoldingCurve[j].second->p = MathTool::calcCrossPoint_2Vector(FoldingCurve[j].first->p, 1000.0 * r2d + FoldingCurve[j].first->p, sm.stP.second->p, sm.lastP.second->p);
-                    r3d = glm::normalize(sm.qt->p3 - FoldingCurve[j].first->p3);
-                    if(glm::dot(r3d, glm::normalize(sm.stP.second->p3 - sm.stP.first->p3)) < 0)r3d *= -1;
-                    vt =glm::normalize(sm.qt->p3 - FoldingCurve[j].first->p3); vt2d =glm::normalize(sm.qt->p - FoldingCurve[j].first->p);
-                    SpinAxis = (vt2d.y < 0)? glm::f64vec3{0,0,-1}: glm::f64vec3{0,0,1};
-                }
-                for(int k = 0; k < (int)Poly_v.size(); k++){
-                    p = MathTool::calcCrossPoint_2Vector(FoldingCurve[j].first->p, 1000.0 * r2d + FoldingCurve[j].first->p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p);
-                    if(MathTool::is_point_on_line(p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p) && glm::dot(r2d, p - FoldingCurve[j].first->p) > 0)break;
-                }
-                FoldingCurve[j].second->p = p;
-                FoldingCurve[j].second->p3 = glm::length(FoldingCurve[j].second->p - FoldingCurve[j].first->p) * r3d + FoldingCurve[j].first->p3;
-
-                if(sm.qb == nullptr){
-                    if(sm.st_ind != 0){r2d = glm::normalize(sm.stP.third->p - sm.stP.first->p); r3d = glm::normalize(sm.stP.third->p3 - sm.stP.first->p3);}
-                    else {r2d = glm::normalize(sm.lastP.third->p - sm.lastP.first->p); r3d = glm::normalize(sm.lastP.third->p3 - sm.lastP.first->p3);}
-                }else{
-                    r2d = glm::normalize(sm.qb->p - FoldingCurve[j].first->p);r3d = glm::normalize(sm.qb->p3 - FoldingCurve[j].first->p3);
-                    if(glm::dot(r2d, FoldingCurve[sm.st_ind].third->p - FoldingCurve[sm.st_ind].first->p) < 0)r2d *= -1;
-                }
-                for(int k = 0; k < (int)Poly_v.size(); k++){
-                    p = MathTool::calcCrossPoint_2Vector(FoldingCurve[j].first->p, 1000.0 * r2d + FoldingCurve[j].first->p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p);
-                    if(MathTool::is_point_on_line(p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p) && glm::dot(r2d, p - FoldingCurve[j].first->p) > 0)break;
-                }
-                FoldingCurve[j].third->p = p;
-                FoldingCurve[j].third->p3 = glm::length(p - FoldingCurve[j].first->p) * r3d + FoldingCurve[j].first->p3;
-            }
-        }
-        Vertex* v_clst = getClosestVertex(FoldingCurve[0].second, FoldingCurve[0].first, FoldingCurve, false);
-        if(v_clst != nullptr){
-            int j; for(j = 0; j < (int)FoldingCurve.size(); j++){if(v_clst == FoldingCurve[j].second)break;}
-            FoldingCurve[0].second->p3 = calcTargetDistanceOnPlane(FoldingCurve[0].second->p, FoldingCurve[j].first, FoldingCurve[j].second, FoldingCurve[j+1].second);
-        } else FoldingCurve[0].second->p3 = calcTargetDistanceOnPlane(FoldingCurve[0].second->p, FoldingCurve[1].second, FoldingCurve[0].first, FoldingCurve[1].first);
-        v_clst = getClosestVertex(FoldingCurve.back().second, FoldingCurve.back().first, FoldingCurve, false);
-        if(v_clst != nullptr){
-            int j; for(j = 0; j < (int)FoldingCurve.size(); j++){if(v_clst == FoldingCurve[j].second)break;}
-            FoldingCurve.back().second->p3 = calcTargetDistanceOnPlane(FoldingCurve.back().second->p, FoldingCurve[j].first, FoldingCurve[j].second, FoldingCurve[j-1].second);
-        }else FoldingCurve.back().second->p3 = calcTargetDistanceOnPlane(FoldingCurve.back().second->p, FoldingCurve.end()[-2].second, FoldingCurve.end()[-2].first, FoldingCurve.back().first);
-        std::cout<<"smoothing finish"<<std::endl;
-    }catch (std::exception& e) {std::cout << "nlopt failed: " << e.what() << std::endl; }
-
-    for(auto&sm: od.SA){
-        delete sm.qb; delete sm.qt;
-    }
-
-    return res_qt;
-}
-*/
 std::vector<std::vector<glm::f64vec3>> FoldLine::Optimization_PlanaritySrf(const std::vector<Vertex*>& Poly_v){
     std::vector<double> X;
     std::vector<std::vector<glm::f64vec3>> res_qt;
@@ -1364,6 +1262,33 @@ void FoldLine::ReassignColor(std::vector<Line*>& Rulings, ColorPoint& CP){
     std::cout <<"color changed"<<std::endl;
 }
 
+void FoldLine::reassinruling(FoldLine *parent){
+    auto getCrossPoint = [](std::vector<glm::f64vec3>& CtrlPts,  Vertex *v, Vertex *o, int dim)->CrvPt_FL*{
+        std::vector<double>arcT = BezierClipping(CtrlPts, v, o, dim);
+        for(auto&t: arcT){
+            if(t < 0 || 1 < t){std::cout<<"t is not correct value " << t << std::endl; continue;}
+            glm::f64vec3 v2{0,0,0};
+            for (int i = 0; i < int(CtrlPts.size()); i++) v2 += MathTool::BernsteinBasisFunc(dim, i, t) * CtrlPts[i];
+            if(!MathTool::is_point_on_line(v2, v->p, o->p))continue;
+            double sa = glm::distance(v2, o->p), sc = glm::distance(o->p, v->p);
+            glm::f64vec3 v3 = sa/sc * (v->p3 - o->p3) + o->p3;
+            CrvPt_FL *P = new CrvPt_FL(v2, v3, t);
+            P->set(v2, o, v);
+            return P;
+        }
+        return nullptr;
+    };
+    if(parent->FoldingCurve.empty() || FoldingCurve.empty())return;
+    int dim = FoldingCurve.size() - 1;
+    for(auto it = parent->FoldingCurve.begin() + 1; it != parent->FoldingCurve.end() - 1; it++){
+        CrvPt_FL *p = getCrossPoint(CtrlPts, (*it).first, (*it).second, dim);
+        if(p != nullptr){
+            FoldingCurve.push_back(Vertex4d(p, (*it).second, (*it).first));
+            (*it).second = p;
+        }
+    }
+    SortCurve();
+}
 
 void FoldLine::drawRulingInAllAngles(std::vector<std::array<glm::f64vec3, 2>>& _Rulings){
 

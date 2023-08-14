@@ -58,7 +58,7 @@ public:
     bool RevisionCrosPtsPosition();
     void SortFoldingCurve(int dim);
     bool BendingModel(double wb, double wp, int dim, bool ConstFunc = true);
-    void reassinruling(FoldLine *parent, FoldLine *child);
+
     std::vector<glm::f64vec3> resPts;
 
     //Smooth Surface

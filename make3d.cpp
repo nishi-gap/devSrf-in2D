@@ -284,18 +284,6 @@ bool Model::SplitRulings(int dim){
     return true;
 }
 
-void Model::reassinruling(FoldLine *parent, FoldLine *child){
-    if(parent->FoldingCurve.empty() || child->FoldingCurve.empty())return;
-    auto fl = child->FoldingCurve;
-    for(auto it = fl.begin() + 1; it != fl.end() - 1;){
-        delete it->first;
-        it = child->FoldingCurve.erase(it);
-    }
-    for(auto it = parent->FoldingCurve.begin() + 1; it != parent->FoldingCurve.end() - 1; it++){
-
-    }
-}
-
 void Model::modifyFoldingCurvePositionOn3d(){
     for(auto&FC: FL){
         for(auto&fldCrv: FC->FoldingCurve){
