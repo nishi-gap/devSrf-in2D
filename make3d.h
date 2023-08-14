@@ -49,7 +49,7 @@ public:
     //FoldLine
     bool AddControlPoint_FL(glm::f64vec3& p, int event, int curveDimention);
     bool SplitRulings(int dim);
-    void UpdateFL();
+    void UpdateFL(int dim);
     void modify2Druling();
     void applyFL();
     void modifyFoldingCurvePositionOn3d();

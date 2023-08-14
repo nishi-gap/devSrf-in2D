@@ -132,7 +132,7 @@ void Model::ChangeFoldLineState(){
     FoldCurveIndex = FL.size() - 1;
 }
 
-void Model::UpdateFL(){
+void Model::UpdateFL(int dim){
     //下から上へとn分木での実装が必要かも
     std::vector<FoldLine*> hasFoldingCurve;
     for(auto&fl: FL){
@@ -176,7 +176,7 @@ void Model::UpdateFL(){
                     List_FL.push_back(x.FL);
                     if(NTree_fl.empty())NTree_fl = NTree(x.FL);
                 }else{
-                    if(!NTree_fl.find(x.FL)){
+                    if(NTree_fl.find(x.FL) != nullptr){
                         NTree_fl.insert(List_FL.front(), x.FL);
                         List_FL.push_front(x.FL);
                     }else{

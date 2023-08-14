@@ -125,6 +125,19 @@ template <typename T>
 class NTree {
 private:
     NTreeNode<T>* root;
+
+    NTreeNode<T>* getParent(const T& val){
+        if (root == nullptr)return nullptr;
+        std::queue<NTreeNode<T>*> q;
+        q.push(root);
+        while (!q.empty()) {
+            NTreeNode<T>* cur = q.front(); q.pop();
+            if(cur->data == val)return cur;
+            for (NTreeNode<T>* child : cur->children)  q.push(child);
+        }
+        return nullptr;
+    }
+
 public:
     NTree(const T& val) { root = new NTreeNode<T>(val);}
     NTree(){root = nullptr;}
@@ -143,22 +156,31 @@ public:
             insertRecursive(child, parentVal, newNode);
         }
     }
+
+    void erase(const T& val){
+        if(!find(val))return;
+        auto par = getParent(val);
+        for(const auto&child: val->children)
+        par->children.push_back();
+        delete val;
+    }
+
     void changeRoot(const T& val){
         NTreeNode<T>* newNode = new NTreeNode<T>(val);
         NTreeNode<T>* tmp = root;
         root = newNode;
         root->children.push_back(tmp);
     }
-    bool find(const T& val){
-        if (root == nullptr)return false;
+    NTreeNode<T>* find(const T& val){
+        if (root == nullptr)return nullptr;
         std::queue<NTreeNode<T>*> q;
         q.push(root);
         while (!q.empty()) {
             NTreeNode<T>* cur = q.front(); q.pop();
-            if(cur->data == val)return true;
+            if(cur->data == val)return cur;
             for (NTreeNode<T>* child : cur->children)  q.push(child);
         }
-        return false;
+        return nullptr;
     }
     void printTree(NTreeNode<T>* node, int depth = 0){
         if (node == nullptr)return;
