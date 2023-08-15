@@ -39,7 +39,7 @@ public:
     void SimplifyModel( double tol);
     bool SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void SortCurve(bool ascending = false);
-    void reassinruling(const std::shared_ptr<FoldLine>& parent);
+    void reassinruling(std::shared_ptr<FoldLine>& parent);
     //HalfEdge *he, *he2;
     std::vector<glm::f64vec3> point;
     //Vertex *vx, *vx2;

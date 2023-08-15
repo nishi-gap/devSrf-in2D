@@ -389,11 +389,11 @@ void MainWindow::exportobj(){
     glm::f64vec3 befN = {0,0,0}, N;
     glm::f64mat4x4 Mirror = glm::mat4(1.0f); Mirror[1][1] = -1;
    std::vector<std::vector<glm::f64vec3>> Vertices;
-   std::vector<std::vector<Vertex*>> Polygons;
-   std::vector<Vertex*> polygon;
+   std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons;
+   std::vector<std::shared_ptr<Vertex>> polygon;
    std::vector<double> planerity_value;
 
-   auto Planerity  = [](const std::vector<glm::f64vec3>& vertices, const std::vector<Line*> lines)->double{
+   auto Planerity  = [](const std::vector<glm::f64vec3>& vertices, const std::vector<std::shared_ptr<Line>>& lines)->double{
        if(vertices.size() == 3)return 0.0;
        else{
            std::vector<glm::f64vec3> QuadPlane;
@@ -431,12 +431,12 @@ void MainWindow::exportobj(){
                    if(MathTool::is_point_on_line(FldCrv.back().first->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))ind_bc = i;
                }
                if(ind_fr != -1 && ind_bc != -1){
-                   std::vector<Vertex*> InsertedV, InsertedV_inv;
+                   std::vector<std::shared_ptr<Vertex>> InsertedV, InsertedV_inv;
                    for(auto&v: FldCrv){InsertedV.push_back(v.first);InsertedV_inv.insert(InsertedV_inv.begin(), v.first);}
 
                    int i_min = std::min(ind_fr, ind_bc) + 1, i_max = std::max(ind_fr, ind_bc) + 1;
                    glm::f64vec3 Dir_prev = glm::normalize(P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p);
-                   std::vector<Vertex*> poly2 = {P.begin() + i_min, P.begin() + i_max};
+                   std::vector<std::shared_ptr<Vertex>> poly2 = {P.begin() + i_min, P.begin() + i_max};
                    P.erase(P.begin() + i_min, P.begin() + i_max);
                    if(glm::dot(glm::cross(CrvDir, Dir_prev), glm::f64vec3{0,0,1}) < 0){
                        P.insert(P.begin() + i_min, InsertedV.begin(), InsertedV.end());
@@ -451,7 +451,7 @@ void MainWindow::exportobj(){
            }
        }
 
-       auto SplitPolygon = [](std::vector<std::vector<Vertex*>>& Polygons, Vertex *o, Vertex *v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
+       auto SplitPolygon = [](std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons, std::shared_ptr<Vertex> o, std::shared_ptr<Vertex> v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
            for(auto& Poly :Polygons){
                for(int i = 0; i < (int)Poly.size(); i++){
                    if(std::find(Poly.begin(), Poly.end(), v) != Poly.end())break;
@@ -466,7 +466,7 @@ void MainWindow::exportobj(){
                }
                if(f_ind == -1 || s_ind == -1)continue;
                int i_min = std::min(f_ind, s_ind), i_max = std::max(f_ind, s_ind);
-               std::vector<Vertex*> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
+               std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
                Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
                Polygons.push_back(poly2);
                return;
@@ -474,9 +474,9 @@ void MainWindow::exportobj(){
        };
 
        for(auto&FC: ui->glWid2dim->model->FL){
-           for(auto itr = FC->FoldingCurve.begin() + 1; itr != FC->FoldingCurve.end() - 1; itr++){
-               SplitPolygon(Polygons, itr->first, itr->second);
-               SplitPolygon(Polygons, itr->first, itr->third);
+           for(int i = 1; i < FC->FoldingCurve.size() - 1; i++){
+               SplitPolygon(Polygons, FC->FoldingCurve[i].first, FC->FoldingCurve[i].second);
+               SplitPolygon(Polygons, FC->FoldingCurve[i].first, FC->FoldingCurve[i].third);
            }
       }
    }else{
@@ -490,7 +490,7 @@ void MainWindow::exportobj(){
                }
                if(vind == -1 || oind == -1)continue;
                int i_min = std::min(vind, oind) + 1, i_max = std::max(vind, oind) + 1;
-               std::vector<Vertex*> poly2 = {P.begin() + i_min, P.begin() + i_max};
+               std::vector<std::shared_ptr<Vertex>> poly2 = {P.begin() + i_min, P.begin() + i_max};
                P.erase(P.begin() + i_min, P.begin() + i_max);
                P.push_back((*itr_r)->o); P.push_back((*itr_r)->v); P = SortPolygon(P);
                poly2.push_back((*itr_r)->o); poly2.push_back((*itr_r)->v); poly2 = SortPolygon(poly2);

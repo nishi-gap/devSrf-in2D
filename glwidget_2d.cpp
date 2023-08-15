@@ -175,7 +175,7 @@ void GLWidget_2D::DeleteCurve(){
 void GLWidget_2D::changeFoldType(PaintTool state){
     drawtype = state;
     if(state != PaintTool::FoldlineColor){
-        FoldLine *fl = new FoldLine(state);
+        std::shared_ptr<FoldLine> fl = std::make_shared<FoldLine>(state);
         model->FL.push_back(fl);
         model->ChangeFoldLineState();
     }
@@ -277,7 +277,7 @@ void GLWidget_2D::Start4Debug_CF(){
 void GLWidget_2D::changeBetaValue(double val, int keyType){
     //if(model->Faces.size() < 2 || IsStop4Debug || model->FL.empty())return;
     if(model->FL.empty())return;
-    if(model->FL.empty())model->FL.push_back(new FoldLine(PaintTool::FoldLine_test) );
+    if(model->FL.empty())model->FL.push_back(std::make_shared<FoldLine>(PaintTool::FoldLine_test) );
     model->applyAAAMethod(val);
     emit foldingSignals();
     update();
@@ -654,10 +654,12 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
             SmoothCurveIndex = model->searchPointIndex(p, movePt, 0);
 
         }else if(drawtype == PaintTool::CheckDevelopability){
-            int ind = -1; FoldLine *_fl = nullptr; refV = nullptr;
+            int ind = -1;
+            std::shared_ptr<FoldLine> _fl = std::shared_ptr<FoldLine>(nullptr);
+            refV = nullptr;
             double dist = 3.0;
             if(model->FL.empty())return;
-            for(const auto&fl: model->FL){
+            for(auto&fl: model->FL){
                 for(auto itr = fl->FoldingCurve.begin() + 1; itr != fl->FoldingCurve.end() - 1; itr++){
                     if(glm::length(glm::f64vec3{p.x(), p.y(), 0} - (*itr).first->p) < dist){
                         ind = std::distance(fl->FoldingCurve.begin(), itr); dist = glm::length(glm::f64vec3{p.x(), p.y(), 0} - (*itr).first->p);
@@ -825,7 +827,8 @@ void GLWidget_2D::addPoints_intplation(QMouseEvent *e, QPointF& p){
     double dist = 10;
     if(drawtype == PaintTool::NewGradationMode){
         refL = nullptr;
-        for(auto* r: model->Rulings){
+        for(auto& r: model->Rulings){
+
             if(r->et == EdgeType::ol || r->et == EdgeType::cl)continue;
             double d = glm::length(glm::cross((curPos - r->o->p), r->o->p - r->v->p))/glm::length(r->o->p - r->v->p);
             if(d < dist){
@@ -875,7 +878,7 @@ int GLWidget_2D::assignment_refL(){
     int ind = -1;
     double dist = 10;
     for(int i = 0; i < (int)model->Rulings.size(); i++){
-        Line *r = model->Rulings[i];
+        std::shared_ptr<Line> r = model->Rulings[i];
         if(r->et != EdgeType::r)continue;
         double d = glm::length(glm::cross((curPos - r->o->p), r->o->p - r->v->p))/glm::length(r->o->p - r->v->p);
         if(d < dist){

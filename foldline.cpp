@@ -1249,7 +1249,7 @@ void FoldLine::ReassignColor(const std::vector<std::shared_ptr<Line>>& Rulings, 
     std::cout <<"color changed"<<std::endl;
 }
 
-void FoldLine::reassinruling(const std::shared_ptr<FoldLine>& parent){
+void FoldLine::reassinruling(std::shared_ptr<FoldLine>& parent){
     auto getCrossPoint = [](std::vector<glm::f64vec3>& CtrlPts,  const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o, int dim){
         std::vector<double>arcT = BezierClipping(CtrlPts, v, o, dim);
         for(auto&t: arcT){
@@ -1270,6 +1270,7 @@ void FoldLine::reassinruling(const std::shared_ptr<FoldLine>& parent){
     for(auto it = parent->FoldingCurve.begin() + 1; it != parent->FoldingCurve.end() - 1; it++){
         std::shared_ptr<CrvPt_FL> p = getCrossPoint(CtrlPts, (*it).first, (*it).second, dim);
         if(p != nullptr){
+
             FoldingCurve.push_back(Vertex4d(p, (*it).second, (*it).first));
             (*it).second = p;
         }

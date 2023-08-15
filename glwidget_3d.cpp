@@ -45,7 +45,7 @@ void GLWidget_3D::EraseNonFoldEdge(bool state){
 
 void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const FoldLine3d FldCrvs, const Ruling3d& _AllRulings){
 
-    auto Planerity  = [](const std::vector<Vertex*>& vertices, const Lines Poly_V)->double{
+    auto Planerity  = [](const std::vector<std::shared_ptr<Vertex>>& vertices, const Lines Poly_V)->double{
         if(vertices.size() == 3)return 0.0;
         else{
             std::vector<glm::f64vec3> QuadPlane;
@@ -93,8 +93,8 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
     for(auto& l: Surface) polygon.push_back(l->v);
     Polygons.push_back(polygon);
     if(!FldCrvs.empty() && !FldCrvs.front()->FoldingCurve.empty()){
-
-        auto SplitPolygon = [](const std::vector<std::vector<std::shared_ptr<Vertex>>>& Polygons, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
+        //splitPolygonで正しく挿入されているか確認が必要
+        auto SplitPolygon = [](std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
             for(auto& Poly :Polygons){
                 for(int i = 0; i < (int)Poly.size(); i++){
                     if(std::find(Poly.begin(), Poly.end(), v) != Poly.end())break;
@@ -109,7 +109,7 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                 }
                 if(f_ind == -1 || s_ind == -1)continue;
                 int i_min = std::min(f_ind, s_ind), i_max = std::max(f_ind, s_ind);
-                std::vector<Vertex*> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
+                std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
                 Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
                 Polygons.push_back(poly2);
                 return;
@@ -164,7 +164,7 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                 }
                 if(vind == -1 || oind == -1)continue;
                 int i_min = std::min(vind, oind) + 1, i_max = std::max(vind, oind) + 1;
-                std::vector<Vertex*> poly2 = {P.begin() + i_min, P.begin() + i_max};
+                std::vector<std::shared_ptr<Vertex>> poly2 = {P.begin() + i_min, P.begin() + i_max};
                 P.erase(P.begin() + i_min, P.begin() + i_max);
                 P.push_back((*itr_r)->o); P.push_back((*itr_r)->v); P = SortPolygon(P);
                 poly2.push_back((*itr_r)->o); poly2.push_back((*itr_r)->v); poly2 = SortPolygon(poly2);
