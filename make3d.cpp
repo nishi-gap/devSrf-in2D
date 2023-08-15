@@ -14,7 +14,7 @@ Model::Model(int _crvPtNum){
     refCrv.clear();
     refFL.clear();
     FoldCurveIndex = befFaceNum = 0;
-    NTree_fl = NTree<FoldLine*>();
+    NTree_fl = NTree<std::shared_ptr<FoldLine>>();
 }
 
 void Model::clear(){
@@ -124,7 +124,6 @@ void Model::ChangeFoldLineState(){
     FoldCurveIndex++;
     for(auto itr = FL.begin(); itr != FL.end();){
         if((*itr)->FoldingCurve.empty() && std::distance(FL.begin(), itr) < FoldCurveIndex){
-            delete *itr;
             itr = FL.erase(itr);
         }
         else itr++;
@@ -135,7 +134,7 @@ void Model::ChangeFoldLineState(){
 
 void Model::UpdateFLOrder(int dim){
     //下から上へとn分木での実装が必要かも
-    std::vector<FoldLine*> hasFoldingCurve;
+    std::vector<std::shared_ptr<FoldLine>> hasFoldingCurve;
     for(auto&fl: FL){
         if((int)fl->CtrlPts.size() > dim)hasFoldingCurve.push_back(fl);
     }
@@ -146,13 +145,13 @@ void Model::UpdateFLOrder(int dim){
     }
     int btm_i = std::distance(outline->Lines.begin(), std::find(outline->Lines.begin(), outline->Lines.end(),btm));
     int i = btm_i;
-    std::list<FoldLine*> List_FL;//frontかbackのいずれかが探索するline上にある時、先頭と違っていれば先頭の要素を親に新しいものを子としてNTree_flに挿入、同じであればqueueから吐き出す
+    std::list<std::shared_ptr<FoldLine>> List_FL;//frontかbackのいずれかが探索するline上にある時、先頭と違っていれば先頭の要素を親に新しいものを子としてNTree_flに挿入、同じであればqueueから吐き出す
     //折曲線が交差しないという前提ならこの実装方法で正しいはず
     class LineOnFL{
     public:
-        FoldLine *FL;
+        std::shared_ptr<FoldLine> FL;
         double t;
-        LineOnFL(FoldLine *_FL, double _t): FL(_FL), t(_t){}
+        LineOnFL(std::shared_ptr<FoldLine> _FL, double _t): FL(_FL), t(_t){}
     };
     NTree_fl.clear();
     do{
@@ -190,16 +189,16 @@ void Model::UpdateFLOrder(int dim){
 
 bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
     UpdateFLOrder(dim);
-    NTreeNode<FoldLine*>* root = NTree_fl.GetRoot();
+    std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>> root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
-    std::queue<NTreeNode<FoldLine*>*> q;
+    std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>> q;
     std::vector<Vertex*> Poly_V = outline->getVertices();
     root->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
     q.push(root);
     while (!q.empty()) {
-        NTreeNode<FoldLine*>* cur = q.front(); q.pop();
+        auto cur = q.front(); q.pop();
         cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
-        for (NTreeNode<FoldLine*>* child : cur->children){
+        for (const auto& child : cur->children){
             if(child != nullptr){
                 child->data->reassinruling(cur->data);
                 q.push(child);
@@ -285,7 +284,7 @@ bool Model::SplitRulings(int dim){
         fl->SortCurve();
     }
     UpdateFLOrder(dim);
-    NTreeNode<FoldLine*> *root = NTree_fl.GetRoot();
+    auto root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
     for(auto& r: Rulings){
         std::shared_ptr<CrvPt_FL> P = getCrossPoint(root->data->CtrlPts, r->v, r->o, dim);
@@ -295,11 +294,11 @@ bool Model::SplitRulings(int dim){
         }
     }
     root->data->SortCurve();
-    std::queue<NTreeNode<FoldLine*>*> q;
+    std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>>q;
     q.push(root);
     while (!q.empty()) {
-        NTreeNode<FoldLine*>* cur = q.front(); q.pop();
-        for (NTreeNode<FoldLine*>* child : cur->children){
+        auto cur = q.front(); q.pop();
+        for (const auto& child : cur->children){
             if(child != nullptr){
                 child->data->reassinruling(cur->data);
                 q.push(child);
@@ -411,7 +410,7 @@ void Model::ConnectOutline(QPointF& cursol, double gridsize){
     }
 }
 
-void Model::LinearInterPolation(std::vector<Line*>& path){
+void Model::LinearInterPolation(const std::vector<std::shared_ptr<Line>>& path){
     if(path.size() < 2)return;
 
     glm::f64vec3 befcenter = glm::f64vec3{-1,-1,-1}, center;
@@ -441,7 +440,7 @@ void Model::LinearInterPolation(std::vector<Line*>& path){
     }
 }
 
-void Model::SplineInterPolation(std::vector<Line*>& path, std::vector<glm::f64vec2>& CurvePath){//凹型に関してはとりあえず虫
+void Model::SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, std::vector<glm::f64vec2>& CurvePath){//凹型に関してはとりあえず虫
     if((int)GradationPoints.size() < 2)return;
     CurvePath.clear();
     int N =(int)GradationPoints.size() - 1;
@@ -517,7 +516,7 @@ void Model::SplineInterPolation(std::vector<Line*>& path, std::vector<glm::f64ve
     }
 }
 
-void Model::setGradationValue(int val, Line *refL, int InterpolationType, std::vector<glm::f64vec2>& CurvePath){
+void Model::setGradationValue(int val, const std::shared_ptr<Line>& refL, int InterpolationType, std::vector<glm::f64vec2>& CurvePath){
     //if(Faces.size() == 0 || std::find(Edges.begin(), Edges.end(), refHE) == Edges.end()){std::cout<<"no selected" << std::endl; return;
     if(Rulings.empty() || std::find(Rulings.begin(), Rulings.end(), refL) == Rulings.end()){std::cout<<"no selected" << std::endl; return;}
     if(refL->et != EdgeType::r)return;
@@ -528,7 +527,7 @@ void Model::setGradationValue(int val, Line *refL, int InterpolationType, std::v
         if(GradationPoints.size() == 0)GradationPoints.push_back(refL);
         if(std::find(GradationPoints.begin(), GradationPoints.end(), refL) == GradationPoints.end() && GradationPoints.size() < 2)GradationPoints.push_back(refL);
         if(GradationPoints.empty())return;
-        std::vector<Line*> path;
+        std::vector<std::shared_ptr<Line>> path;
         if(GradationPoints.size() == 1) path = {refL};
         else{
             int i0 = std::distance(Rulings.begin(), std::find(Rulings.begin(), Rulings.end(), GradationPoints[0]));

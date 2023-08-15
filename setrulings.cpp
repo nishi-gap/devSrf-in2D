@@ -237,8 +237,8 @@ void CRV::BsplineRulings(OUTLINE *outline, int& DivSize, int crvPtNum, int curve
     //ruling *r;
     while(n < eind){
         Rulings[rind]->et = EdgeType::r;
-        Rulings[rind]->v = new Vertex(CrossPoints[floor(n)][0]);
-        Rulings[rind]->o = new Vertex(CrossPoints[floor(n)][1]);
+        Rulings[rind]->v = std::make_shared<Vertex>(Vertex(CrossPoints[floor(n)][0]));
+        Rulings[rind]->o = std::make_shared<Vertex>(Vertex(CrossPoints[floor(n)][1]));
         rind++;
         n += (double)(eind - sind + 1)/(double)(DivSize - 1);
     }
@@ -283,8 +283,8 @@ void CRV::LineRulings(OUTLINE *outline, int DivSize){
     int rind = 0;
     while(n < eind){
         Rulings[rind]->et = EdgeType::r;
-        Rulings[rind]->v = new Vertex(CrossPoints[floor(n)][0]);
-        Rulings[rind]->o = new Vertex(CrossPoints[floor(n)][1]);
+        Rulings[rind]->v = std::make_shared<Vertex>(Vertex(CrossPoints[floor(n)][0]));
+        Rulings[rind]->o = std::make_shared<Vertex>(Vertex(CrossPoints[floor(n)][1]));
         rind++;
         n += (double)(eind - sind + 1)/(double)(DivSize - 1);
     }
@@ -328,8 +328,8 @@ void CRV::ArcRulings(OUTLINE *outline, int DivSize){
     int rind = 0;
     while(n < eind){
         Rulings[rind]->et = EdgeType::r;
-        Rulings[rind]->v = new Vertex(CrossPoints[floor(n)][0]);
-        Rulings[rind]->o = new Vertex(CrossPoints[floor(n)][1]);
+        Rulings[rind]->v = std::make_shared<Vertex>(Vertex(CrossPoints[floor(n)][0]));
+        Rulings[rind]->o = std::make_shared<Vertex>(Vertex(CrossPoints[floor(n)][1]));
         rind++;
         n += (double)(eind - sind + 1)/(double)(DivSize - 1);
     }
@@ -558,7 +558,7 @@ void OUTLINE::ConnectEdges(bool IsConnected){
     if(vertices.size() < 2)return;
     Lines.clear();
     if(IsConnected){
-        for(int i = 0; i < (int)vertices.size(); i++)Lines.push_back(new Line(vertices[i], vertices[(i+1) % (int)vertices.size()], EdgeType::ol));
+        for(int i = 0; i < (int)vertices.size(); i++)Lines.push_back(std::make_shared<Line>(Line(vertices[i], vertices[(i+1) % (int)vertices.size()], EdgeType::ol)));
         IsConnected = true;
     }else{
 

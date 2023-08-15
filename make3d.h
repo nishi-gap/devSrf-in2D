@@ -4,7 +4,6 @@
 #include <QMessageBox>
 #include <QString>
 #include <iostream>
-#include <vector>
 #include <stack>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
@@ -16,6 +15,7 @@
 #include "setrulings.h"
 #include "foldline.h"
 #include "mathtool.h"
+
 
 class Model{
 public:
@@ -37,7 +37,7 @@ public:
     void deform();
     void Initialize();
 
-    void setGradationValue(int val, Line *refL, int InterpolationType, std::vector<glm::f64vec2>& CurvePath);
+    void setGradationValue(int val, const std::shared_ptr<Line>& refL, int InterpolationType, std::vector<glm::f64vec2>& CurvePath);
     void SetMaxFold(double val);
     void drawOutline(QPointF& cursol, int drawtype, double gridsize, bool IsClicked = true);
     void editOutlineVertex(QPointF& cursol, double gridsize, int event);
@@ -75,8 +75,8 @@ public:
     int searchPointIndex(QPointF pt, int& ptInd, int type);//type = 0 -> Control Point, 1: Curve Point
 
 private:
-    void LinearInterPolation(std::vector<Line*>& path);
-    void SplineInterPolation(std::vector<Line*>& path, std::vector<glm::f64vec2>& CurvePath);
+    void LinearInterPolation(const std::vector<std::shared_ptr<Line>>& path);
+    void SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, std::vector<glm::f64vec2>& CurvePath);
 
     inline void clear();
 
@@ -84,12 +84,12 @@ private:
 
     std::vector<int> refCrv;//0:未参照　1:参照
     std::vector<int> refFL;
-    NTree<FoldLine*> NTree_fl;
+    NTree<std::shared_ptr<FoldLine>> NTree_fl;
     int crvPtNum;
     int befFaceNum;
     int FoldCurveIndex;
 
-    std::vector<Line*> GradationPoints;
+    std::vector<std::shared_ptr<Line>> GradationPoints;
     //std::vector<Line*> makePath();
 };
 

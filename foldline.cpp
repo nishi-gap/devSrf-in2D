@@ -85,7 +85,7 @@ namespace RevisionVertices{
             if(IsParallel(o, x, o2, x2))return nullptr;
             glm::f64vec3 p2d = calcCrossPoint_2Vertex(o, x, o2, x2);
             glm::f64vec3 p3d = calcTargetDistanceOnPlane(p2d, o,  x, x2);
-            return   std::make_shared<Vertex>(new Vertex(p2d, p3d));
+            return  std::make_shared<Vertex>(Vertex(p2d, p3d));
         }
 
 

@@ -71,11 +71,13 @@ class Line{
 public:
     int IsCrossed; //-1:交差なし, 0:同じruling上で交差, 1:上にあるレイヤー上のrulingと交差
     double color;
-    Vertex *o, *v;//原則の方向はv[1] - v[0] (v[0]が原点)
+    std::shared_ptr<Vertex> o;
+    std::shared_ptr<Vertex> v;//原則の方向はv[1] - v[0] (v[0]が原点)
     EdgeType et = EdgeType::none;
-    Line(Vertex *_o, Vertex *_v, EdgeType _et): o(_o), v(_v), et(_et), IsCrossed(-1), color(0){}
+    Line(const std::shared_ptr<Vertex>& _o, const std::shared_ptr<Vertex>& _v, EdgeType _et): o(_o), v(_v), et(_et), IsCrossed(-1), color(0){}
     Line():o(nullptr),v(nullptr), IsCrossed(-1), color(0) {}
-    bool operator !=(const Line &l)const{return IsCrossed != l.IsCrossed || color != l.color || (v[0] != l.v[0] && v[0] != l.v[1]);}
+    bool operator !=(const Line& l)const{
+        return IsCrossed != l.IsCrossed || color != l.color || (v[0] != l.v[0] && v[0] != l.v[1]);}
     bool operator ==(const Line &l)const{return IsCrossed == l.IsCrossed && color == l.color && ((v[0] == l.v[0] && v[1] == l.v[1]) || (v[1] == l.v[0] && v[0] == l.v[1]));}
     bool is_on_line(glm::f64vec3 p);
 };
