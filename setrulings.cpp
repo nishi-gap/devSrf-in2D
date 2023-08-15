@@ -124,7 +124,7 @@ void CRV::swap(glm::f64vec3&a, glm::f64vec3& b){
     return;
 }
 
-bool CRV::setPoint(std::vector<Vertex*>&outline, glm::f64vec3 N, glm::f64vec3& cp, std::vector<glm::f64vec3>& P){
+bool CRV::setPoint(const std::vector<std::shared_ptr<Vertex>>&outline, glm::f64vec3 N, glm::f64vec3& cp, std::vector<glm::f64vec3>& P){
     glm::f64vec3 N0 = N + cp, N1 = -N + cp;
     glm::f64vec3 v, v2;
     std::vector<glm::f64vec3> crossPoint;
@@ -207,7 +207,7 @@ void CRV::BsplineRulings(OUTLINE *outline, int& DivSize, int crvPtNum, int curve
     std::vector<glm::f64vec3> crossPoint;
     std::vector<std::vector<glm::f64vec3>> CrossPoints;
     double t = 0.0;
-    std::vector<Vertex*> vertices = outline->getVertices();
+    std::vector<std::shared_ptr<Vertex>> vertices = outline->getVertices();
     int knotSize = (int)ControllPoints.size() + curveDimention + 1;
     std::vector<double>Knot(knotSize);
     for(int j = 0; j < knotSize; j++)Knot[j] = (double)j/(double)knotSize;
@@ -313,7 +313,7 @@ void CRV::ArcRulings(OUTLINE *outline, int DivSize){
     std::vector<glm::f64vec3> crossPoint;
     std::vector<std::vector<glm::f64vec3>> CrossPoints;
     int sind = -1, eind = curveNum - 1;
-    std::vector<Vertex*> vertices = outline->getVertices();
+    std::vector<std::shared_ptr<Vertex>> vertices = outline->getVertices();
     glm::f64vec3 V, N;
     for(int i = 0; i < curveNum; i++){
         if(i == 0)V = glm::normalize(CurvePoints[1] - CurvePoints[0]);
@@ -417,7 +417,7 @@ OUTLINE::OUTLINE(){
     hasPtNum = 0;
 }
 
-void OUTLINE::addVertex(Vertex*v, int n){
+void OUTLINE::addVertex(const std::shared_ptr<Vertex>& v, int n){
     if(n > (int)vertices.size())vertices.push_back(v);
     else vertices.insert(vertices.begin() + n, v);
 }
@@ -551,7 +551,7 @@ void OUTLINE::MoveVertex(glm::f64vec3 p, int ind){
     vertices[ind]->p2_ori = vertices[ind]->p = p;
 }
 
-std::vector<Vertex*> OUTLINE::getVertices(){return vertices;}
+std::vector<std::shared_ptr<Vertex>> OUTLINE::getVertices(){return vertices;}
 
 void OUTLINE::ConnectEdges(bool IsConnected){
     //if(!isClosed)return;

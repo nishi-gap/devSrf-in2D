@@ -139,7 +139,7 @@ void Model::UpdateFLOrder(int dim){
         if((int)fl->CtrlPts.size() > dim)hasFoldingCurve.push_back(fl);
     }
 
-    Line *btm = outline->Lines.front();//一番下の辺を探索
+    std::shared_ptr<Line> btm = outline->Lines.front();//一番下の辺を探索
     for(auto&l: outline->Lines){
         if(((l->v->p + l->o->p)/2.0).y > ((btm->v->p + btm->o->p)/2.0).y)btm = l;
     }
@@ -192,7 +192,7 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
     std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>> root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
     std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>> q;
-    std::vector<Vertex*> Poly_V = outline->getVertices();
+    std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
     root->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
     q.push(root);
     while (!q.empty()) {
@@ -338,13 +338,13 @@ void Model:: addConstraint(QPointF& cursol, int type, int gridsize, glm::f64vec3
     else if(axis[1] == glm::f64vec3{-1,-1,0} && axis[0] != p)axis[1] = p;
     glm::f64vec3 V = glm::normalize(axis[1] - axis[0]);
     glm::f64vec3 N = glm::f64vec3{-V.y, V.x, 0};
-    std::vector<Vertex*> SymPts;
-    std::vector<Vertex*> Vertices = outline->getVertices();
+    std::vector<std::shared_ptr<Vertex>> SymPts;
+    std::vector<std::shared_ptr<Vertex>> Vertices = outline->getVertices();
     if(type == 0){
         for(auto&v: Vertices){
             double t = glm::length(glm::cross((v->p - axis[0]), (axis[0] - axis[1])))/glm::length(axis[0] - axis[1]);
             if(glm::dot(axis[0] - v->p, N) < 0) N *= -1;
-            SymPts.push_back(new Vertex(v->p + 2 * t * N));
+            SymPts.push_back(std::make_shared<Vertex>(new Vertex(v->p + 2 * t * N)));
         }
     }
     //鏡映反転したことで作成した曲線の始点、終点が元の曲線の始点、終点のいずれかと十分近い場合接続する。
@@ -387,7 +387,7 @@ void Model::editOutlineVertex(QPointF& cursol, double gridsize, int event){
     if(event == 0){
         float dist = 5;
         grabedOutlineVertex = -1;//0~: vertex
-        std::vector<Vertex*> _vertices = outline->getVertices();
+        std::vector<std::shared_ptr<Vertex>> _vertices = outline->getVertices();
         for(int i = 0; i < (int)_vertices.size(); i++){
             if(glm::distance(_vertices[i]->p, p) < dist){
                 grabedOutlineVertex = i; dist = glm::distance(_vertices[i]->p, p);
@@ -401,7 +401,7 @@ void Model::editOutlineVertex(QPointF& cursol, double gridsize, int event){
 
 void Model::ConnectOutline(QPointF& cursol, double gridsize){
     glm::f64vec3 p = SetOnGrid(cursol, gridsize);
-    std::vector<Vertex*> V = outline->getVertices();
+    std::vector<std::shared_ptr<Vertex>> V = outline->getVertices();
     for(auto&v: V){
         if(p == v->p){
             if(Connect2Vertices[0] == nullptr)Connect2Vertices[0] = v;
@@ -426,7 +426,7 @@ void Model::LinearInterPolation(const std::vector<std::shared_ptr<Line>>& path){
     }
     double r = (GradationPoints[1]->color - GradationPoints[0]->color)/len;
     befcenter = glm::f64vec3{-1,-1,-1};
-    Line *bef = nullptr;
+    std::shared_ptr<Line> bef = std::shared_ptr<Line>(nullptr);
     for(auto&l : path){
         if(bef == nullptr){
             bef = l;
@@ -444,7 +444,7 @@ void Model::SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, 
     if((int)GradationPoints.size() < 2)return;
     CurvePath.clear();
     int N =(int)GradationPoints.size() - 1;
-    auto getCenter = [](Line *L) { return glm::f64vec3(L->o->p + L->v->p)/2.0;};
+    auto getCenter = [](const std::shared_ptr<Line>& L) { return glm::f64vec3(L->o->p + L->v->p)/2.0;};
     Eigen::VectorXd v(N - 1);
     std::vector<double>h(N);
     for(int i = 1; i < N + 1; i++)h[i - 1] = glm::distance(getCenter(GradationPoints[i]),getCenter(GradationPoints[i - 1]));

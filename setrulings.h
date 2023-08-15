@@ -76,9 +76,8 @@ public:
     EdgeType et = EdgeType::none;
     Line(const std::shared_ptr<Vertex>& _o, const std::shared_ptr<Vertex>& _v, EdgeType _et): o(_o), v(_v), et(_et), IsCrossed(-1), color(0){}
     Line():o(nullptr),v(nullptr), IsCrossed(-1), color(0) {}
-    bool operator !=(const Line& l)const{
-        return IsCrossed != l.IsCrossed || color != l.color || (v[0] != l.v[0] && v[0] != l.v[1]);}
-    bool operator ==(const Line &l)const{return IsCrossed == l.IsCrossed && color == l.color && ((v[0] == l.v[0] && v[1] == l.v[1]) || (v[1] == l.v[0] && v[0] == l.v[1]));}
+    //bool operator !=(const Line& l)const{return IsCrossed != l.IsCrossed || color != l.color || (v[0] != l.v[0] && v[0] != l.v[1]);}
+    //bool operator ==(const Line &l)const{return IsCrossed == l.IsCrossed && color == l.color && ((v[0] == l.v[0] && v[1] == l.v[1]) || (v[1] == l.v[0] && v[0] == l.v[1]));}
     bool is_on_line(glm::f64vec3 p);
 };
 
@@ -129,7 +128,7 @@ private:
     bool IsInsertNewPoint;
     int OnCurvesORLines(glm::f64vec3& p, int& ind);//-1：どこにものっかっていない　0：曲線上　1：制御点を結んだ線上
     CurveType curveType;
-    bool setPoint(std::vector<Vertex*>&outline, glm::f64vec3 N, glm::f64vec3& cp, std::vector<glm::f64vec3>& P);
+    bool setPoint(const std::vector<std::shared_ptr<Vertex>>&outline, glm::f64vec3 N, glm::f64vec3& cp, std::vector<glm::f64vec3>& P);
     inline void swap(glm::f64vec3&a, glm::f64vec3& b);
 
     double crvStep;
@@ -145,11 +144,11 @@ public:
 
     bool IsClosed();
     int VerticesNum;
-    void addVertex(Vertex*v, int n);
+    void addVertex(const std::shared_ptr<Vertex>&v, int n);
     void addVertex(glm::f64vec3& p);
     void eraseVertex();
-    std::vector<Vertex*> getVertices();
-    std::vector<Line*> Lines;
+    std::vector<std::shared_ptr<Vertex>> getVertices();
+    std::vector<std::shared_ptr<Line>> Lines;
     void ConnectEdges(bool IsConnected = true);
     void drawPolygon(glm::f64vec3& p, bool IsClicked);
     void MoveOutline(glm::f64vec3 p);//polygonの移動
@@ -159,7 +158,7 @@ public:
     bool IsPointInFace(glm::f64vec3 p);
     glm::f64vec3 getNormalVec();
 private:
-    std::vector<Vertex*> vertices;
+    std::vector<std::shared_ptr<Vertex>> vertices;
     //std::vector<HalfEdge*> edges;
 
     int movePointIndex(glm::f64vec3 p);
