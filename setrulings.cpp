@@ -179,7 +179,7 @@ void CRV::BezierRulings(OUTLINE *outline, int& DivSize, int crvPtNum){
     //int m = std::min(2 * DivSize - 3, crvPtNum);//2 * DivSize - 1 ... DivSize: the number of mesh , DivSize - 1: rulings(folding line)
     int m = DivSize - 1;
     int i = 0, rind = 0;
-    std::vector<Vertex*> vertices = outline->getVertices();
+    std::vector<std::shared_ptr<Vertex>> vertices = outline->getVertices();
 
     while(i < m){
         T = 3.0 * (-ControllPoints[0] + 3.0 * ControllPoints[1] - 3.0 * ControllPoints[2] + ControllPoints[3]) * t * t
@@ -270,7 +270,7 @@ void CRV::LineRulings(OUTLINE *outline, int DivSize){
     glm::f64vec3 N = l * glm::f64vec3{-V.y, V.x, 0};
     int i = 0;
     int sind = -1, eind = curveNum - 1;
-    std::vector<Vertex*> vertices = outline->getVertices();
+    std::vector<std::shared_ptr<Vertex>> vertices = outline->getVertices();
 
     for(i = 0; i < curveNum; i++){
         bool IsIntersected = setPoint(vertices, N, CurvePoints[i], crossPoint);
@@ -425,10 +425,10 @@ void OUTLINE::addVertex(const std::shared_ptr<Vertex>& v, int n){
 void OUTLINE::addVertex(glm::f64vec3& p){
     if(IsClosed()) return;
     if(type == "Rectangle"){
-        vertices.push_back(new Vertex(p));
+        vertices.push_back(std::make_shared<Vertex>(new Vertex(p)));
         if((int)vertices.size() == 2){
-            vertices.insert(vertices.begin() + 1, new Vertex(glm::f64vec3{p.x, vertices[0]->p.y, 0}));
-            vertices.push_back(new Vertex(glm::f64vec3{vertices[0]->p.x, p.y, 0}));
+            vertices.insert(vertices.begin() + 1, std::make_shared<Vertex>(new Vertex(glm::f64vec3{p.x, vertices[0]->p.y, 0})));
+            vertices.push_back(std::make_shared<Vertex>(new Vertex(glm::f64vec3{vertices[0]->p.x, p.y, 0})));
             ConnectEdges();
             if(glm::dot(getNormalVec(), glm::f64vec3{0,0,1}) > 0){
                 //vertices[1]->p = vertices[1]->p3 = glm::f64vec3{p.x, vertices[0]->p.y, 0}; vertices[3]->p = vertices[3]->p3 = glm::f64vec3{vertices[0]->p.x, p.y, 0};
@@ -447,7 +447,7 @@ void OUTLINE::addVertex(glm::f64vec3& p){
             ConnectEdges();
             return;
         }
-        else vertices.push_back(new Vertex(p));
+        else vertices.push_back(std::make_shared<Vertex>(new Vertex(p)));
     }
 }
 

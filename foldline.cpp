@@ -9,11 +9,11 @@ std::string File_Eruling = "./Optimization/Eruling.csv";
 std::ofstream ofs_Ebend, ofs_Eruling;
 
 inline glm::f64vec3 _calcruling3d(const double& a, glm::f64vec3 e, glm::f64vec3 e2, glm::f64vec3 axis, double& beta, std::vector<double>& Phi);
-void CalcRuling(double a, Vertex4d& xbef, Vertex4d& x, Vertex4d& xnext, std::vector<Vertex*>& Poly_V, double& a2, glm::f64vec3& SrfN);
+void CalcRuling(double a, Vertex4d& xbef, Vertex4d& x, Vertex4d& xnext, const std::vector<std::shared_ptr<Vertex>>& Poly_V, double& a2, glm::f64vec3& SrfN);
 inline double update_flapangle(double a, const glm::f64vec3& befN, const glm::f64vec3& SrfN, const glm::f64vec3& e);
-void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex*>& Poly_V,double a);
+void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, const std::vector<std::shared_ptr<Vertex>>& Poly_V,double a);
 std::vector<Vertex4d> TrimPoints2(std::vector<Vertex4d>& FoldingCurve, double tol);
-bool IsRulingCrossed(glm::f64vec3 N, glm::f64vec3& cp, glm::f64vec3& crossPoint,  std::vector<Vertex*>& Poly_V);
+bool IsRulingCrossed(glm::f64vec3 N, glm::f64vec3& cp, glm::f64vec3& crossPoint,  const std::vector<std::shared_ptr<Vertex>>& Poly_V);
 void Douglas_Peucker_algorithm(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex4d>& res, double tol = std::numbers::pi/9.0);
 void Douglas_Peucker_algorithm2(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex4d>& res, int size);
 std::shared_ptr<Vertex> getClosestVertex(const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o,  const std::vector<Vertex4d>& FoldingCurve, bool SkipTrimedPoint = true);
@@ -46,19 +46,19 @@ namespace RevisionVertices{
     using FoldLine3d = std::vector<Vertex4d>;
     struct OptimizeParam{
         FoldLine3d FC;
-        std::vector<Vertex*> Poly_V;
+        std::vector<std::shared_ptr<Vertex>> Poly_V;
         std::vector<double*> res_Fbend, res_Fruling, res_a;
         double wb, wp ,wr;
         void AddWeight(double _wb, double _wp, double _wr){ wb = _wb; wp = _wp; wr = _wr;}
 
-        OptimizeParam(FoldLine3d& _FC,  std::vector<Vertex*>& _Poly_V):FC{_FC}, Poly_V{_Poly_V}{}
+        OptimizeParam(FoldLine3d& _FC,  const std::vector<std::shared_ptr<Vertex>>& _Poly_V):FC{_FC}, Poly_V{_Poly_V}{}
         ~OptimizeParam(){}
     private:
 
     };
     struct OptimizeParam_v: public OptimizeParam{
         double a;
-        OptimizeParam_v(double _a, FoldLine3d& _FC, std::vector<Vertex*>& Poly_V):
+        OptimizeParam_v(double _a, FoldLine3d& _FC, const std::vector<std::shared_ptr<Vertex>>& Poly_V):
             a{_a}, OptimizeParam::OptimizeParam( _FC,  Poly_V){}
         ~OptimizeParam_v(){}
     };
@@ -278,7 +278,7 @@ bool FoldLine::setCurve(int dim){
     return true;
 }
 
-bool IsRulingCrossed (glm::f64vec3 N, glm::f64vec3& cp, glm::f64vec3& crossPoint,  std::vector<Vertex*>& Poly_V){
+bool IsRulingCrossed (glm::f64vec3 N, glm::f64vec3& cp, glm::f64vec3& crossPoint,  const std::vector<std::shared_ptr<Vertex>>& Poly_V){
     double l = 1000, minDist = 1000;
     bool IsIntersected = false;
     Eigen::Matrix2d A;
@@ -390,7 +390,7 @@ double Fruling(const std::vector<double> &a, std::vector<double> &grad, void* f_
     RevisionVertices::FoldLine3d FoldingCurve = od->FC;
     double f = RulingsCrossed(FoldingCurve);
     if(!grad.empty()){
-        std::vector<Vertex*> Poly_V = od->Poly_V;
+        std::vector<std::shared_ptr<Vertex>> Poly_V = od->Poly_V;
         _FoldingAAAMethod(FoldingCurve, Poly_V, a[0] + eps);
        double fp = RulingsCrossed(FoldingCurve);
         _FoldingAAAMethod(FoldingCurve, Poly_V, a[0] - eps);
@@ -405,7 +405,7 @@ double Fruling(const std::vector<double> &a, std::vector<double> &grad, void* f_
 double ObjFunc_FlapAngle(const std::vector<double> &a, std::vector<double> &grad, void* f_data){
     RevisionVertices::ObjData *od = (RevisionVertices::ObjData *)f_data;
     RevisionVertices::FoldLine3d FoldingCurve = od->FC;
-    std::vector<Vertex*>Poly_V = od->Poly_V;
+    std::vector<std::shared_ptr<Vertex>>Poly_V = od->Poly_V;
     _FoldingAAAMethod(FoldingCurve, Poly_V, a[0]);
     double fb =  Fbend2(FoldingCurve), fp = Fparallel(FoldingCurve);
     double fr = (od->wr != -1)?RulingsCrossed2(FoldingCurve): 0;
@@ -731,13 +731,13 @@ double RevisionVertices::Minimize_PlanaritySrf(const std::vector<double>& X, std
     return f;
 }
 
-bool FoldLine::SimpleSmooothSrf(const std::vector<Vertex*>& Poly_v){
+bool FoldLine::SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v){
 
     auto getV = [](const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& x, const std::shared_ptr<Vertex>& o2, const std::shared_ptr<Vertex>& x2){
         if(IsParallel(o, x, o2, x2))return std::shared_ptr<Vertex>(nullptr);
         glm::f64vec3 p2d = calcCrossPoint_2Vertex(o, x, o2, x2);
         glm::f64vec3 p3d = calcTargetDistanceOnPlane(p2d, o,  x, x2);
-        return  std::make_shared<Vertex>(new Vertex(p2d, p3d));
+        return  std::shared_ptr<Vertex>(Vertex(p2d, p3d));
     };
 
     glm::f64vec3 r3d, r2d, _r3d, _r2d;
@@ -805,7 +805,7 @@ bool FoldLine::SimpleSmooothSrf(const std::vector<Vertex*>& Poly_v){
     return true;
 }
 
-std::vector<std::vector<glm::f64vec3>> FoldLine::Optimization_SmooothSrf(const std::vector<Vertex*>& Poly_v, bool IsConnectEndPoint){
+std::vector<std::vector<glm::f64vec3>> FoldLine::Optimization_SmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v, bool IsConnectEndPoint){
     std::vector<double> X;
     std::vector<std::vector<glm::f64vec3>> res_qt;
     Vertex4d bef = FoldingCurve.front();
@@ -915,7 +915,7 @@ std::vector<std::vector<glm::f64vec3>> FoldLine::Optimization_SmooothSrf(const s
     return res_qt;
 }
 
-std::vector<std::vector<glm::f64vec3>> FoldLine::Optimization_PlanaritySrf(const std::vector<Vertex*>& Poly_v){
+std::vector<std::vector<glm::f64vec3>> FoldLine::Optimization_PlanaritySrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v){
     std::vector<double> X;
     std::vector<std::vector<glm::f64vec3>> res_qt;
     for(int i = 0; i < (int)FoldingCurve.size(); i++){
@@ -977,7 +977,7 @@ std::vector<std::vector<glm::f64vec3>> FoldLine::Optimization_PlanaritySrf(const
     return res_qt;
 }
 
-bool FoldLine::Optimization_FlapAngle(std::vector<Vertex*>& Poly_V, double wb, double wp, bool ConstFunc){
+bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double wb, double wp, bool ConstFunc){
     if(FoldingCurve.empty())return false;
 
     std::vector<int> Vertices_Ind;for(int i = 0; i < (int)FoldingCurve.size(); i++){if(FoldingCurve[i].IsCalc)Vertices_Ind.push_back(i);}
@@ -1194,10 +1194,10 @@ bool FoldLine::RevisionCrosPtsPosition(){
 
 }
 
-void FoldLine::ReassignColor(std::vector<Line*>& Rulings, ColorPoint& CP){
+void FoldLine::ReassignColor(const std::vector<std::shared_ptr<Line>>& Rulings, ColorPoint& CP){
     //Y字のとき折り線は山であると仮定(谷の場合は色を反転)
     typedef struct {
-        Line *r;
+        std::shared_ptr<Line> r;
         int type_mvk;//0:mountain && k < pi, 1: mountain && k >= pi, 2: vally && k < pi, 3: vally && k >= pi, -1: gradation = 0
         //0の数 + 3の数 == rulingの数 || 1の数 + 2の数 == rulingの数 -> 山谷とkの割り当てが正しい
         //それ以外
@@ -1332,7 +1332,7 @@ void FoldLine::drawRulingInAllAngles(std::vector<std::array<glm::f64vec3, 2>>& _
 
 }
 
-void FoldLine::applyAAAMethod(std::vector<Vertex*>& Poly_V, double a){
+void FoldLine::applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double a){
     if(FoldingCurve.empty())return;
      _FoldingAAAMethod(FoldingCurve, Poly_V, a);
      return;
@@ -1387,7 +1387,7 @@ void CalcRuling(double a, Vertex4d& xbef, Vertex4d& x, Vertex4d& xnext, const st
     SrfN = MathTool::ProjectionVector(glm::cross(e, e2), e2, true);
 }
 
-std::shared_ptr<Vertex> getClosestVertex(const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex> o,  const std::vector<Vertex4d>& FoldingCurve, bool SkipTrimedPoint){
+std::shared_ptr<Vertex> getClosestVertex(const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o,  const std::vector<Vertex4d>& FoldingCurve, bool SkipTrimedPoint){
    std::shared_ptr<Vertex> V_max = nullptr;
    double t_max = -1;
    for(auto&fc: FoldingCurve){
