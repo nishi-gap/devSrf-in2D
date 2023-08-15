@@ -42,7 +42,7 @@ public:
     void reassinruling(FoldLine *parent);
     //HalfEdge *he, *he2;
     std::vector<glm::f64vec3> point;
-    Vertex *vx, *vx2;
+    //Vertex *vx, *vx2;
 
     std::vector<Vertex4d> FoldingCurve;
     void applyAAAMethod(std::vector<Vertex*>& Poly_V, double a);

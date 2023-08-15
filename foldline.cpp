@@ -85,7 +85,7 @@ namespace RevisionVertices{
             if(IsParallel(o, x, o2, x2))return nullptr;
             glm::f64vec3 p2d = calcCrossPoint_2Vertex(o, x, o2, x2);
             glm::f64vec3 p3d = calcTargetDistanceOnPlane(p2d, o,  x, x2);
-            return   std::shared_ptr<Vertex>(new Vertex(p2d, p3d));
+            return   std::make_shared<Vertex>(new Vertex(p2d, p3d));
         }
 
 
@@ -391,8 +391,6 @@ double Fruling(const std::vector<double> &a, std::vector<double> &grad, void* f_
     double f = RulingsCrossed(FoldingCurve);
     if(!grad.empty()){
         std::vector<Vertex*> Poly_V = od->Poly_V;
-        std::vector<Vertex> tmp;
-        for(auto v: FoldingCurve)tmp.push_back(v.second);
         _FoldingAAAMethod(FoldingCurve, Poly_V, a[0] + eps);
        double fp = RulingsCrossed(FoldingCurve);
         _FoldingAAAMethod(FoldingCurve, Poly_V, a[0] - eps);
@@ -736,17 +734,17 @@ double RevisionVertices::Minimize_PlanaritySrf(const std::vector<double>& X, std
 bool FoldLine::SimpleSmooothSrf(const std::vector<Vertex*>& Poly_v){
 
     auto getV = [](const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& x, const std::shared_ptr<Vertex>& o2, const std::shared_ptr<Vertex>& x2){
-        if(IsParallel(o, x, o2, x2))return nullptr;
+        if(IsParallel(o, x, o2, x2))return std::shared_ptr<Vertex>(nullptr);
         glm::f64vec3 p2d = calcCrossPoint_2Vertex(o, x, o2, x2);
         glm::f64vec3 p3d = calcTargetDistanceOnPlane(p2d, o,  x, x2);
-        return  std::shared_ptr<Vertex>(new Vertex(p2d, p3d));
+        return  std::make_shared<Vertex>(new Vertex(p2d, p3d));
     };
 
     glm::f64vec3 r3d, r2d, _r3d, _r2d;
     std::vector<int>Vertices_Ind;
     for(int i = 0; i < (int)FoldingCurve.size(); i++){if(FoldingCurve[i].IsCalc)Vertices_Ind.push_back(i);}
 
-    Vertex *qt;
+    std::shared_ptr<Vertex> qt;
     for(int j = 0; j < (int)Vertices_Ind.size() - 1; j++){
         qt = nullptr;
         if(j != 0 && j != (int)Vertices_Ind.size() - 2){
@@ -814,7 +812,7 @@ std::vector<std::vector<glm::f64vec3>> FoldLine::Optimization_SmooothSrf(const s
     std::vector<std::vector<glm::f64vec3>> res_qt;
     Vertex4d bef = FoldingCurve.front();
     std::vector<RevisionVertices::SmoothingArea> SA;
-    std::vector<Vertex*> OriginalVertices;
+    std::vector<std::shared_ptr<Vertex>> OriginalVertices;
     int bef_ind;
     for(auto&FC : FoldingCurve){
         if(!FC.IsCalc){
@@ -903,7 +901,7 @@ std::vector<std::vector<glm::f64vec3>> FoldLine::Optimization_SmooothSrf(const s
                 std::cout << j << " : " << abs(2.0*std::numbers::pi - phi1 - phi2 - phi3 - phi4)  << " , " << glm::degrees(phi1) << " , " << glm::degrees(phi2) << " , " << glm::degrees(phi3) << ", " << glm::degrees(phi4) << std::endl;
             }
         }
-        Vertex* v_clst = getClosestVertex(FoldingCurve[0].second, FoldingCurve[0].first, FoldingCurve, false);
+        std::shared_ptr<Vertex> v_clst = getClosestVertex(FoldingCurve[0].second, FoldingCurve[0].first, FoldingCurve, false);
         if(v_clst != nullptr){
             int j; for(j = 0; j < (int)FoldingCurve.size(); j++){if(v_clst == FoldingCurve[j].second)break;}
             FoldingCurve[0].second->p3 = calcTargetDistanceOnPlane(FoldingCurve[0].second->p, FoldingCurve[j].first, FoldingCurve[j].second, FoldingCurve[j+1].second);
@@ -915,10 +913,6 @@ std::vector<std::vector<glm::f64vec3>> FoldLine::Optimization_SmooothSrf(const s
         }else FoldingCurve.back().second->p3 = calcTargetDistanceOnPlane(FoldingCurve.back().second->p, FoldingCurve.end()[-2].second, FoldingCurve.end()[-2].first, FoldingCurve.back().first);
         std::cout<<"smoothing finish"<<std::endl;
     }catch (std::exception& e) {std::cout << "nlopt failed: " << e.what() << std::endl; }
-
-    for(auto&sm: od.SA){
-        delete sm.qb; delete sm.qt;
-    }
 
     return res_qt;
 }
@@ -1162,7 +1156,7 @@ bool FoldLine::RevisionCrosPtsPosition(){
         auto ReviseEndPosition = [](glm::f64vec3 e,  double k)->glm::f64vec3{
             return glm::normalize(glm::rotate (k, glm::f64vec3{0,0,-1})  * glm::f64vec4{e,1.0});
         };
-        auto getCrossPosition = [](Vertex* v, Vertex* o, Vertex *p, Vertex *q){
+        auto getCrossPosition = [](const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& p, const std::shared_ptr<Vertex>& q){
             Eigen::Matrix2d A;
             Eigen::Vector2d b;
             glm::f64vec3 v2 = q->p - p->p;
@@ -1258,7 +1252,7 @@ void FoldLine::ReassignColor(std::vector<Line*>& Rulings, ColorPoint& CP){
 }
 
 void FoldLine::reassinruling(FoldLine *parent){
-    auto getCrossPoint = [](std::vector<glm::f64vec3>& CtrlPts,  Vertex *v, Vertex *o, int dim)->CrvPt_FL*{
+    auto getCrossPoint = [](std::vector<glm::f64vec3>& CtrlPts,  const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o, int dim){
         std::vector<double>arcT = BezierClipping(CtrlPts, v, o, dim);
         for(auto&t: arcT){
             if(t < 0 || 1 < t){std::cout<<"t is not correct value " << t << std::endl; continue;}
@@ -1267,11 +1261,11 @@ void FoldLine::reassinruling(FoldLine *parent){
             if(!MathTool::is_point_on_line(v2, v->p, o->p))continue;
             double sa = glm::distance(v2, o->p), sc = glm::distance(o->p, v->p);
             glm::f64vec3 v3 = sa/sc * (v->p3 - o->p3) + o->p3;
-            CrvPt_FL *P = new CrvPt_FL(v2, v3, t);
+            std::shared_ptr<CrvPt_FL> P = std::make_shared<CrvPt_FL>(new CrvPt_FL(v2, v3, t));
             P->set(v2, o, v);
             return P;
         }
-        return nullptr;
+        return std::shared_ptr<CrvPt_FL>(nullptr);
     };
     if(parent->FoldingCurve.empty() || FoldingCurve.empty())return;
     int dim = CtrlPts.size() - 1;
