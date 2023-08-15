@@ -1279,7 +1279,7 @@ void FoldLine::reassinruling(FoldLine *parent){
         return nullptr;
     };
     if(parent->FoldingCurve.empty() || FoldingCurve.empty())return;
-    int dim = FoldingCurve.size() - 1;
+    int dim = CtrlPts.size() - 1;
     for(auto it = parent->FoldingCurve.begin() + 1; it != parent->FoldingCurve.end() - 1; it++){
         CrvPt_FL *p = getCrossPoint(CtrlPts, (*it).first, (*it).second, dim);
         if(p != nullptr){
