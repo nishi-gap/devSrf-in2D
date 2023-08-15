@@ -15,7 +15,7 @@
 #include <Eigen/Dense>
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtx/vector_angle.hpp>
-
+#include <memory>
 
 //class ruling;
 class OUTLINE;
@@ -27,22 +27,20 @@ public:
     glm::f64vec3 p;
     glm::f64vec3 p3;
     glm::f64vec3 p3_ori, p2_ori;
-    std::vector<Line*> halfedge;
     bool deformed;
-    Vertex(glm::f64vec3 _p);
-    Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3);
-    Vertex(const Vertex* v);
-    ~Vertex();
-
-    void addNewEdge(Line *l);
-    bool operator != (const Vertex &V)const{return p != V.p || p2_ori != V.p2_ori|| p3 != V.p3 || p3_ori != V.p3_ori || halfedge != V.halfedge || deformed != V.deformed;}
-    bool operator == (const Vertex &V)const{return p == V.p && p2_ori == V.p2_ori && p3 == V.p3 && p3_ori == V.p3_ori && halfedge == V.halfedge && deformed == V.deformed;}
+    Vertex(glm::f64vec3 _p, bool _deformed = false);
+    Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3, bool _deformed = false);
+    std::shared_ptr<Vertex> deepCopy();
+    //~Vertex();
+    bool operator != (const Vertex &V)const{return p != V.p || p2_ori != V.p2_ori|| p3 != V.p3 || p3_ori != V.p3_ori || deformed != V.deformed;}
+    bool operator == (const Vertex &V)const{return p == V.p && p2_ori == V.p2_ori && p3 == V.p3 && p3_ori == V.p3_ori && deformed == V.deformed;}
 };
 
 class CrvPt_FL : public Vertex{
 public:
     double s, rt;
-    Vertex *ve, *vo;
+    Vertex *ve;
+    Vertex *vo;
     bool IsValid;
     CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3,  double _s) : Vertex(_p2, _p3), s(_s), IsValid(true){}
     CrvPt_FL(glm::f64vec3 _p2, double _s) : Vertex(_p2), s(_s), IsValid(true){}
@@ -54,16 +52,17 @@ public:
 
 struct Vertex4d{
     bool IsCalc;
-    CrvPt_FL *first;
-    Vertex *second;
-    Vertex *third;
-    Vertex4d(CrvPt_FL *v, Vertex *v2, Vertex *v3);
+    std::shared_ptr<CrvPt_FL> first;
+    std::shared_ptr<Vertex> second;
+    std::shared_ptr<Vertex> third;
+    Vertex4d(std::shared_ptr<CrvPt_FL>& v, std::shared_ptr<Vertex>& v2, std::shared_ptr<Vertex>& v3);
     Vertex4d(const Vertex4d& V4d);
     Vertex4d();
+    void release();
     bool operator == (const Vertex4d &V4d)const{return first == V4d.first && second == V4d.second && third == V4d.third && IsCalc == V4d.IsCalc;}
     bool operator != (const Vertex4d &V4d)const{ return first != V4d.first || second != V4d.second || third != V4d.third || IsCalc != V4d.IsCalc; }
-    bool operator == (const Vertex &V)const{return first == V; }
-    bool operator != (const Vertex &V)const{return first != V; }
+    bool operator == (const std::shared_ptr<Vertex> &V)const{return first == V; }
+    bool operator != (const std::shared_ptr<Vertex> &V)const{return first != V; }
     void operator = (const Vertex4d &V){first = V.first; second = V.second; third = V.third; IsCalc = V.IsCalc;}
 };
 

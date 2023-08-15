@@ -16,29 +16,24 @@ std::vector<Vertex4d> TrimPoints2(std::vector<Vertex4d>& FoldingCurve, double to
 bool IsRulingCrossed(glm::f64vec3 N, glm::f64vec3& cp, glm::f64vec3& crossPoint,  std::vector<Vertex*>& Poly_V);
 void Douglas_Peucker_algorithm(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex4d>& res, double tol = std::numbers::pi/9.0);
 void Douglas_Peucker_algorithm2(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex4d>& res, int size);
-Vertex* getClosestVertex(Vertex *v, Vertex* o,  const std::vector<Vertex4d>& FoldingCurve, bool SkipTrimedPoint = true);
+std::shared_ptr<Vertex> getClosestVertex(const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o,  const std::vector<Vertex4d>& FoldingCurve, bool SkipTrimedPoint = true);
 
-inline glm::f64vec3 calcCrossPoint_2Vertex(Vertex* p1, Vertex* q1, Vertex* p2, Vertex* q2){
+inline glm::f64vec3 calcCrossPoint_2Vertex(const std::shared_ptr<Vertex>& p1, const std::shared_ptr<Vertex>& q1, const std::shared_ptr<Vertex>& p2, const std::shared_ptr<Vertex>& q2){
     Eigen::Matrix2d A; Eigen::Vector2d b;
     glm::f64vec3 v1 = q1->p - p1->p, v2 = q2->p - p2->p;
     b(0) = p2->p.x - p1->p.x; b(1) = p2->p.y - p1->p.y;
     A(0,0) = v1.x; A(0,1) = -v2.x;
     A(1,0) = v1.y; A(1,1) = -v2.y;
     return MathTool::calcCrossPoint_2Vector(p1->p, q1->p, p2->p, q2->p);
-
-    double t = ((p2->p.x - p1->p.x)*(p2->p.y - q2->p.y) - (p2->p.x - q2->p.x)*(p2->p.y - p1->p.y))/((q1->p.x - p1->p.x) * (p2->p.y - q2->p.y) - (p2->p.x - q2->p.x)*(q1->p.y - p1->p.y));
-    return glm::f64vec3{t * (q1->p.x - p1->p.x) + p1->p.x, t * (q1->p.y - p1->p.y) + p1->p.y, 0};
-    Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
-    return  x(0) * v1 + p1->p;
 }
 
-inline bool IsParallel(Vertex* p1, Vertex* q1, Vertex* p2, Vertex* q2){
+inline bool IsParallel(const std::shared_ptr<Vertex>& p1, const std::shared_ptr<Vertex>& q1, const std::shared_ptr<Vertex>& p2, const std::shared_ptr<Vertex>& q2){
     glm::f64vec3 v1 = glm::normalize(q1->p - p1->p), v2 = glm::normalize(q2->p - p2->p);
     if(abs(glm::dot(v1, v2)) >= 1.0 - 1e-5)return true;
     return false;
 }
 
-inline glm::f64vec3 calcTargetDistanceOnPlane(glm::f64vec3 p, Vertex *o, Vertex *v1, Vertex *v2){
+inline glm::f64vec3 calcTargetDistanceOnPlane(glm::f64vec3 p, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& v1, const std::shared_ptr<Vertex>& v2){
     Eigen::Matrix2d A; Eigen::Vector2d b;
     b(0) = p.x - o->p.x; b(1) = p.y - o->p.y;
     A(0,0) = v1->p.x - o->p.x; A(0,1) = v2->p.x - o->p.x;
@@ -70,11 +65,11 @@ namespace RevisionVertices{
     struct SmoothingArea{
     public:
         Vertex4d stP, lastP;
-        std::vector<Vertex*> OriginalVertices;
+        std::vector<std::shared_ptr<Vertex>> OriginalVertices;
         int st_ind, last_ind;
-        Vertex *qt, *qb;
+        std::shared_ptr<Vertex> qt,qb;
 
-        SmoothingArea(Vertex4d& a, Vertex4d& _end, int si, int li, std::vector<Vertex*>& OV): stP{a}, lastP{_end}, st_ind{si}, last_ind{li}, OriginalVertices{OV}{
+        SmoothingArea(Vertex4d& a, Vertex4d& _end, int si, int li, std::vector<std::shared_ptr<Vertex>>& OV): stP{a}, lastP{_end}, st_ind{si}, last_ind{li}, OriginalVertices{OV}{
             qt = getV(stP.first, stP.second, lastP.first, lastP.second);
             qb = getV(stP.first, stP.third, lastP.first, lastP.third);
         }
@@ -86,11 +81,11 @@ namespace RevisionVertices{
 
         ~SmoothingArea(){}
     private:
-        Vertex *getV(Vertex *o, Vertex *x, Vertex *o2, Vertex *x2){
+        std::shared_ptr<Vertex> getV(const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& x, const std::shared_ptr<Vertex>& o2, const std::shared_ptr<Vertex>& x2){
             if(IsParallel(o, x, o2, x2))return nullptr;
             glm::f64vec3 p2d = calcCrossPoint_2Vertex(o, x, o2, x2);
             glm::f64vec3 p3d = calcTargetDistanceOnPlane(p2d, o,  x, x2);
-            return  new Vertex(p2d, p3d);
+            return   std::shared_ptr<Vertex>(new Vertex(p2d, p3d));
         }
 
 
@@ -740,11 +735,11 @@ double RevisionVertices::Minimize_PlanaritySrf(const std::vector<double>& X, std
 
 bool FoldLine::SimpleSmooothSrf(const std::vector<Vertex*>& Poly_v){
 
-    auto getV = [](Vertex *o, Vertex *x, Vertex *o2, Vertex *x2)->Vertex*{
+    auto getV = [](const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& x, const std::shared_ptr<Vertex>& o2, const std::shared_ptr<Vertex>& x2){
         if(IsParallel(o, x, o2, x2))return nullptr;
         glm::f64vec3 p2d = calcCrossPoint_2Vertex(o, x, o2, x2);
         glm::f64vec3 p3d = calcTargetDistanceOnPlane(p2d, o,  x, x2);
-        return  new Vertex(p2d, p3d);
+        return  std::shared_ptr<Vertex>(new Vertex(p2d, p3d));
     };
 
     glm::f64vec3 r3d, r2d, _r3d, _r2d;
@@ -796,7 +791,7 @@ bool FoldLine::SimpleSmooothSrf(const std::vector<Vertex*>& Poly_v){
             FoldingCurve[i].third->p3 = FoldingCurve[i].third->p3_ori;
         }
     }
-    Vertex* v_clst = getClosestVertex(FoldingCurve[0].second, FoldingCurve[0].first, FoldingCurve, false);
+    std::shared_ptr<Vertex> v_clst = getClosestVertex(FoldingCurve[0].second, FoldingCurve[0].first, FoldingCurve, false);
     if(v_clst != nullptr){
         int j;
         for(j = 0; j < (int)FoldingCurve.size(); j++){if(v_clst == FoldingCurve[j].second)break;}
@@ -1400,8 +1395,8 @@ void CalcRuling(double a, Vertex4d& xbef, Vertex4d& x, Vertex4d& xnext, std::vec
     SrfN = MathTool::ProjectionVector(glm::cross(e, e2), e2, true);
 }
 
-Vertex* getClosestVertex(Vertex *v, Vertex* o,  const std::vector<Vertex4d>& FoldingCurve, bool SkipTrimedPoint){
-   Vertex *V_max = nullptr;
+std::shared_ptr<Vertex> getClosestVertex(const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex> o,  const std::vector<Vertex4d>& FoldingCurve, bool SkipTrimedPoint){
+   std::shared_ptr<Vertex> V_max = nullptr;
    double t_max = -1;
    for(auto&fc: FoldingCurve){
        if(SkipTrimedPoint && !fc.IsCalc)continue;

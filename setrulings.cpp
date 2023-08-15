@@ -1,29 +1,20 @@
 #include "setrulings.h"
 using namespace MathTool;
 
-Vertex::Vertex(glm::f64vec3 _p){
+Vertex::Vertex(glm::f64vec3 _p, bool _deformed){
     p2_ori = p = _p;
     p3_ori = p3 = _p;
-    halfedge.clear();
-    deformed = false;
+    deformed = _deformed;
 }
-Vertex::Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3){
+Vertex::Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3, bool _deformed){
     p2_ori = p = _p2;
     p3_ori = p3 = _p3;
-    halfedge.clear();
-    deformed = false;
-}
-void Vertex::addNewEdge(Line *l){
-    if(std::find_if(halfedge.begin(), halfedge.end(), [&](Line *l){return (l->v == this || l->o == this);}) == halfedge.end())halfedge.push_back(l);
+    deformed = _deformed;
 }
 
-Vertex::Vertex(const Vertex* v){
-    p2_ori = p = v->p; p3_ori = p3 = v->p3;
-    halfedge = v->halfedge;
-    deformed = v->deformed;
+std::shared_ptr<Vertex> Vertex::deepCopy(){
+    return std::shared_ptr<Vertex>(new Vertex(p, p3, deformed));
 }
-
-Vertex::~Vertex(){ for(auto* h: halfedge){if(h == nullptr)delete h;}}
 
 void CrvPt_FL::set(glm::f64vec3 _p, Vertex *o, Vertex *e){
     double sa = glm::distance(_p, o->p), sc = glm::distance(o->p, e->p);
@@ -34,7 +25,7 @@ void CrvPt_FL::set(glm::f64vec3 _p, Vertex *o, Vertex *e){
     this->p = _p;
 }
 
-Vertex4d::Vertex4d(CrvPt_FL *v, Vertex *v2, Vertex *v3){
+Vertex4d::Vertex4d(std::shared_ptr<CrvPt_FL>& v, std::shared_ptr<Vertex>& v2, std::shared_ptr<Vertex>& v3){
     first = v; second = v2; third = v3; IsCalc = true;
 }
 Vertex4d::Vertex4d(const Vertex4d& V4d){
