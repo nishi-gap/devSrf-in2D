@@ -733,11 +733,11 @@ double RevisionVertices::Minimize_PlanaritySrf(const std::vector<double>& X, std
 
 bool FoldLine::SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v){
 
-    auto getV = [](const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& x, const std::shared_ptr<Vertex>& o2, const std::shared_ptr<Vertex>& x2){
+    auto getV = [](const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& x, const std::shared_ptr<Vertex>& o2, const std::shared_ptr<Vertex>& x2)->std::shared_ptr<Vertex>{
         if(IsParallel(o, x, o2, x2))return std::shared_ptr<Vertex>(nullptr);
         glm::f64vec3 p2d = calcCrossPoint_2Vertex(o, x, o2, x2);
         glm::f64vec3 p3d = calcTargetDistanceOnPlane(p2d, o,  x, x2);
-        return  std::shared_ptr<Vertex>(Vertex(p2d, p3d));
+        return std::shared_ptr<Vertex>(Vertex(p2d, p3d));
     };
 
     glm::f64vec3 r3d, r2d, _r3d, _r2d;

@@ -61,8 +61,8 @@ void Model::deform(){
     if(Rulings.empty() || !outline->IsClosed())return;
     glm::f64mat4x4 T, R, M;
     std::vector<glm::f64mat4x4> TMs;
-    std::vector<std::vector<Vertex*>> Polygons;
-    std::vector<Vertex*> polygon;
+    std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons;
+    std::vector<std::shared_ptr<Vertex>> polygon;
 
     for(auto& l: outline->Lines) polygon.push_back(l->v);
     Polygons.push_back(polygon);
@@ -75,7 +75,7 @@ void Model::deform(){
             }
             if(vind == -1 || oind == -1)continue;
             int i_min = std::min(vind, oind) + 1, i_max = std::max(vind, oind) + 1;
-            std::vector<Vertex*> poly2 = {P.begin() + i_min, P.begin() + i_max};
+            std::vector<std::shared_ptr<Vertex>> poly2 = {P.begin() + i_min, P.begin() + i_max};
             P.erase(P.begin() + i_min, P.begin() + i_max);
             P.push_back((*itr_r)->o); P.push_back((*itr_r)->v); P = SortPolygon(P);
             poly2.push_back((*itr_r)->o); poly2.push_back((*itr_r)->v); poly2 = SortPolygon(poly2);
@@ -344,7 +344,7 @@ void Model:: addConstraint(QPointF& cursol, int type, int gridsize, glm::f64vec3
         for(auto&v: Vertices){
             double t = glm::length(glm::cross((v->p - axis[0]), (axis[0] - axis[1])))/glm::length(axis[0] - axis[1]);
             if(glm::dot(axis[0] - v->p, N) < 0) N *= -1;
-            SymPts.push_back(std::make_shared<Vertex>(new Vertex(v->p + 2 * t * N)));
+            SymPts.push_back(std::make_shared<Vertex>(v->p + 2 * t * N));
         }
     }
     //鏡映反転したことで作成した曲線の始点、終点が元の曲線の始点、終点のいずれかと十分近い場合接続する。
@@ -661,8 +661,8 @@ void Model::Check4Param(int curveDimention, std::vector<int>& deleteIndex){
     GradationPoints.clear();
     Axis4Const[0] = glm::f64vec3{-1,-1,0};
     Axis4Const[1] = glm::f64vec3{-1,-1,0};
-    Connect2Vertices[0] = nullptr;
-    Connect2Vertices[1] = nullptr;
+    Connect2Vertices[0] = std::shared_ptr<Vertex>(nullptr);
+    Connect2Vertices[1] = std::shared_ptr<Vertex>(nullptr);
 }
 
 int Model::AddNewCurve(CurveType curveType, int DivSize){

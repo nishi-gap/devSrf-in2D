@@ -1,21 +1,10 @@
 #ifndef SETRULINGS_H
 #define SETRULINGS_H
 
-#include <fstream>
-#include <sstream>
-#include <iostream>
-#include <algorithm>
-#include <vector>
 #include "mathtool.h"
-#include <glm/gtx/transform.hpp>
-#include <tuple>
-#include <QDebug>
 #include <QPointF>
 #include <QString>
-#include <Eigen/Dense>
-#include <glm/gtx/string_cast.hpp>
 #include <glm/gtx/vector_angle.hpp>
-#include <memory>
 
 //class ruling;
 class OUTLINE;
@@ -116,7 +105,7 @@ public:
     void setCurveType(CurveType n);
     std::vector<glm::f64vec3> ControllPoints;
     std::vector<glm::f64vec3> CurvePoints;
-    std::vector<Line*> Rulings;//偶数番目 ruling　奇数番目 グラデーションの多角形に使用
+    std::vector<std::shared_ptr<Line>> Rulings;//偶数番目 ruling　奇数番目 グラデーションの多角形に使用
     //std::vector<meshline*> meshLines;
     glm::f64vec3 InsertPoint;
     bool isempty;
@@ -169,7 +158,7 @@ void CrossDetection(OUTLINE *outline, CRV *crvs);
 
 
 std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, const std::shared_ptr<Vertex>& p, const std::shared_ptr<Vertex>& q, int dim);
-std::vector<Vertex*> SortPolygon(std::vector<Vertex*>& polygon);
+std::vector<std::shared_ptr<Vertex>> SortPolygon(std::vector<std::shared_ptr<Vertex>>& polygon);
 //std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot, double& CurveLen, bool is3d = true, int dim = 3, int t_type = 2);
 
 

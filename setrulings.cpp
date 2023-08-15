@@ -13,7 +13,7 @@ Vertex::Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3, bool _deformed){
 }
 
 std::shared_ptr<Vertex> Vertex::deepCopy(){
-    return std::shared_ptr<Vertex>(new Vertex(p, p3, deformed));
+    return std::make_shared<Vertex>(p, p3, deformed);
 }
 
 void CrvPt_FL::set(glm::f64vec3 _p, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& e){
@@ -39,7 +39,7 @@ CRV::CRV(int _crvNum, int DivSize){
 
     curveNum = _crvNum;
     for(int i = 0; i < curveNum; i++)CurvePoints.resize(i);
-    for(int i = 0; i < DivSize-1;i++)Rulings.push_back(new Line());
+    for(int i = 0; i < DivSize-1;i++)Rulings.push_back(std::make_share<Line>());
 
     isempty = true;
     curveType = CurveType::none;
@@ -425,10 +425,10 @@ void OUTLINE::addVertex(const std::shared_ptr<Vertex>& v, int n){
 void OUTLINE::addVertex(glm::f64vec3& p){
     if(IsClosed()) return;
     if(type == "Rectangle"){
-        vertices.push_back(std::make_shared<Vertex>(new Vertex(p)));
+        vertices.push_back(std::make_shared<Vertex>(p));
         if((int)vertices.size() == 2){
-            vertices.insert(vertices.begin() + 1, std::make_shared<Vertex>(new Vertex(glm::f64vec3{p.x, vertices[0]->p.y, 0})));
-            vertices.push_back(std::make_shared<Vertex>(new Vertex(glm::f64vec3{vertices[0]->p.x, p.y, 0})));
+            vertices.insert(vertices.begin() + 1, std::make_shared<Vertex>(glm::f64vec3{p.x, vertices[0]->p.y, 0}));
+            vertices.push_back(std::make_shared<Vertex>(glm::f64vec3{vertices[0]->p.x, p.y, 0}));
             ConnectEdges();
             if(glm::dot(getNormalVec(), glm::f64vec3{0,0,1}) > 0){
                 //vertices[1]->p = vertices[1]->p3 = glm::f64vec3{p.x, vertices[0]->p.y, 0}; vertices[3]->p = vertices[3]->p3 = glm::f64vec3{vertices[0]->p.x, p.y, 0};
@@ -447,7 +447,7 @@ void OUTLINE::addVertex(glm::f64vec3& p){
             ConnectEdges();
             return;
         }
-        else vertices.push_back(std::make_shared<Vertex>(new Vertex(p)));
+        else vertices.push_back(std::make_shared<Vertex>(p));
     }
 }
 
@@ -491,7 +491,7 @@ void OUTLINE::drawPolygon(glm::f64vec3& p, bool IsClicked){
         Eigen::Matrix3d invT = Eigen::Matrix3d::Identity();
         Eigen::Matrix3d R = Eigen::Matrix3d::Identity();
 
-        vertices.push_back(new Vertex(p));
+        vertices.push_back(std::make_shared<Vertex>(p));
         double a = 2 * std::numbers::pi /VerticesNum;
 
         R(0,0) = R(1,1) = cos(a); R(0,1) = -sin(a); R(1,0) = sin(a);
@@ -502,7 +502,7 @@ void OUTLINE::drawPolygon(glm::f64vec3& p, bool IsClicked){
         for(int n = 0; n < VerticesNum - 1; n++){
             x = Eigen::Vector3d(vertices[n]->p.x, vertices[n]->p.y, 1);
             x = T * R * invT * x;
-            vertices.push_back(new Vertex(glm::f64vec3{x(0), x(1), 0}));
+            vertices.push_back(std::make_shared<Vertex>(glm::f64vec3{x(0), x(1), 0}));
         }
         ConnectEdges();
         hasPtNum = 2;
@@ -687,15 +687,15 @@ std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, const std:
     return res;
 }
 
-std::vector<Vertex*> ConvexHull_polygon(std::vector<Vertex*>& Q){
-    std::vector<Vertex*> P;
+std::vector<std::shared_ptr<Vertex>> ConvexHull_polygon(const std::vector<std::shared_ptr<Vertex>>& Q){
+    std::vector<std::shared_ptr<Vertex>> P;
     if((int)Q.size() < 3)return Q;
-    Vertex* p_ml = Q[0];
+    std::shared_ptr<Vertex> p_ml = Q[0];
     for(auto&p: Q){
         if(p_ml->p.y > p->p.y)p_ml = p;
         else if(p_ml->p.y == p->p.y && p_ml->p.x > p->p.x) p_ml = p;
     }
-    std::vector<std::pair<double, Vertex*>>Args;
+    std::vector<std::pair<double, std::shared_ptr<Vertex>>>Args;
     for(auto&p: Q){
         if(p->p == p_ml->p)continue;
         double phi = atan2(p->p.y - p_ml->p.y, p->p.x - p_ml->p.x);
@@ -712,7 +712,7 @@ std::vector<Vertex*> ConvexHull_polygon(std::vector<Vertex*>& Q){
     std::sort(Args.begin(), Args.end(),[](auto const& x, auto const& y) {return x.first < y.first; });
     if(Args.size() >= 1)P.push_back(Args[Args.size() - 1].second);
     P.push_back(p_ml);
-    Vertex *top, *next;
+    std::shared_ptr<Vertex> top, next;
     for(int i = 0; i < (int)Args.size(); i++){
         do{
             top = P.back();
@@ -728,7 +728,7 @@ std::vector<Vertex*> ConvexHull_polygon(std::vector<Vertex*>& Q){
     P.pop_back();
     return P;
 }
-std::vector<Vertex*> SortPolygon(std::vector<Vertex*>& polygon){
+std::vector<std::shared_ptr<Vertex>> SortPolygon(std::vector<std::shared_ptr<Vertex>>& polygon){
     glm::f64vec3 Zaxis{0,0,1};//面の表裏の基準
     auto poly_sort = ConvexHull_polygon(polygon);
     if((int)poly_sort.size()< 3){std::cout<<"not enought vertices size"<<std::endl; return{};}
