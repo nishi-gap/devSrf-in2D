@@ -22,11 +22,11 @@ public:
     //std::vector<Vertex*> vertices;
     //std::vector<Face*> Faces;
     //std::vector<HalfEdge*> Edges;
-    std::vector<Line*> Rulings;
+    std::vector<std::shared_ptr<Line>> Rulings;
     OUTLINE *outline;
     std::vector<std::vector<Vertex*>> ol_vertices;
     std::vector<CRV*> crvs;
-    std::vector<FoldLine*> FL;
+    std::vector<std::shared_ptr<FoldLine>> FL;
     glm::f64vec3 Axis4Const[2];
     Vertex* Connect2Vertices[2];
     ColorPoint ColorPt;

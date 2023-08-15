@@ -802,8 +802,6 @@ bool FoldLine::SimpleSmooothSrf(const std::vector<Vertex*>& Poly_v){
         for(j = 0; j < (int)FoldingCurve.size(); j++){if(v_clst == FoldingCurve[j].second)break;}
         FoldingCurve.back().second->p3 = calcTargetDistanceOnPlane(FoldingCurve.back().second->p, FoldingCurve[j].first, FoldingCurve[j].second, FoldingCurve[j-1].second);
     }else FoldingCurve.back().second->p3 = calcTargetDistanceOnPlane(FoldingCurve.back().second->p, FoldingCurve.end()[-2].first, FoldingCurve.back().first, FoldingCurve.end()[-2].second);
-
-    delete qt;
     return true;
 }
 
@@ -1251,7 +1249,7 @@ void FoldLine::ReassignColor(std::vector<Line*>& Rulings, ColorPoint& CP){
     std::cout <<"color changed"<<std::endl;
 }
 
-void FoldLine::reassinruling(FoldLine *parent){
+void FoldLine::reassinruling(const std::shared_ptr<FoldLine>& parent){
     auto getCrossPoint = [](std::vector<glm::f64vec3>& CtrlPts,  const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o, int dim){
         std::vector<double>arcT = BezierClipping(CtrlPts, v, o, dim);
         for(auto&t: arcT){
@@ -1261,7 +1259,7 @@ void FoldLine::reassinruling(FoldLine *parent){
             if(!MathTool::is_point_on_line(v2, v->p, o->p))continue;
             double sa = glm::distance(v2, o->p), sc = glm::distance(o->p, v->p);
             glm::f64vec3 v3 = sa/sc * (v->p3 - o->p3) + o->p3;
-            std::shared_ptr<CrvPt_FL> P = std::make_shared<CrvPt_FL>(new CrvPt_FL(v2, v3, t));
+            std::shared_ptr<CrvPt_FL> P = std::make_shared<CrvPt_FL>(CrvPt_FL(v2, v3, t));
             P->set(v2, o, v);
             return P;
         }
@@ -1270,7 +1268,7 @@ void FoldLine::reassinruling(FoldLine *parent){
     if(parent->FoldingCurve.empty() || FoldingCurve.empty())return;
     int dim = CtrlPts.size() - 1;
     for(auto it = parent->FoldingCurve.begin() + 1; it != parent->FoldingCurve.end() - 1; it++){
-        CrvPt_FL *p = getCrossPoint(CtrlPts, (*it).first, (*it).second, dim);
+        std::shared_ptr<CrvPt_FL> p = getCrossPoint(CtrlPts, (*it).first, (*it).second, dim);
         if(p != nullptr){
             FoldingCurve.push_back(Vertex4d(p, (*it).second, (*it).first));
             (*it).second = p;
@@ -1362,7 +1360,7 @@ inline glm::f64vec3 _calcruling3d(const double& a, glm::f64vec3 e, glm::f64vec3 
     return RevisionVertices::decideRulingDirectionOn3d(e, glm::cross(e,e2), a, Phi[0]);//新しいruling方向
 }
 
-void CalcRuling(double a, Vertex4d& xbef, Vertex4d& x, Vertex4d& xnext, std::vector<Vertex*>& Poly_V,  double& a2, glm::f64vec3& SrfN){
+void CalcRuling(double a, Vertex4d& xbef, Vertex4d& x, Vertex4d& xnext, const std::vector<std::shared_ptr<Vertex>>& Poly_V,  double& a2, glm::f64vec3& SrfN){
 
     glm::f64vec3 e = glm::normalize(xbef.first->p3 - x.first->p3), e2 = glm::normalize(xnext.first->p3 - x.first->p3);
     double beta;
@@ -1405,9 +1403,9 @@ std::shared_ptr<Vertex> getClosestVertex(const std::shared_ptr<Vertex>& v, const
    return V_max;
 }
 
-void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex*>& Poly_V, double a){
+void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, const std::vector<std::shared_ptr<Vertex>>& Poly_V, double a){
 
-    auto SetOnPlane = [&](Vertex4d& V, std::vector<Vertex*>& Poly_V, Vertex4d& p, Vertex4d& p2, Vertex *q, Vertex *q2, int IsEnd){
+    auto SetOnPlane = [&](Vertex4d& V, const std::vector<std::shared_ptr<Vertex>>& Poly_V, Vertex4d& p, Vertex4d& p2, const std::shared_ptr<Vertex>& q, const std::shared_ptr<Vertex>& q2, int IsEnd){
         //p, q: 左、p2, q2：右
         glm::f64vec3 vec;
         if(IsEnd == -1){vec = glm::normalize(q2->p - p2.first->p);}//左が端
@@ -1425,7 +1423,7 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex*>
 
         }
         vec = 1000. * vec + V.first->p;
-        Vertex *Qv = new Vertex(vec);
+        std::shared_ptr<Vertex> Qv = std::make_shared<Vertex>(Vertex(vec));
 
         for(int k = 0; k < (int)Poly_V.size(); k++){
             glm::f64vec3 q;
@@ -1469,7 +1467,7 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex*>
         }
     }
     {//i = 0(端の面)
-        Vertex *v_clst = getClosestVertex(FoldingCurve[Vertices_Ind[0]].second , FoldingCurve[Vertices_Ind[0]].first, FoldingCurve);
+        std::shared_ptr<Vertex> v_clst = getClosestVertex(FoldingCurve[Vertices_Ind[0]].second , FoldingCurve[Vertices_Ind[0]].first, FoldingCurve);
         if(v_clst == nullptr){
             x = FoldingCurve[Vertices_Ind[0]].first->p3;
             e = glm::normalize(FoldingCurve[Vertices_Ind[1]].first->p3 - x);
@@ -1497,7 +1495,7 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex*>
     }
 
     {
-        Vertex *v_clst = getClosestVertex(FoldingCurve[Vertices_Ind.back()].second , FoldingCurve[Vertices_Ind.back()].first, FoldingCurve);
+        std::shared_ptr<Vertex> v_clst = getClosestVertex(FoldingCurve[Vertices_Ind.back()].second , FoldingCurve[Vertices_Ind.back()].first, FoldingCurve);
         if(v_clst == nullptr){
             x = FoldingCurve[Vertices_Ind.back()].first->p3;
             e = glm::normalize(FoldingCurve[Vertices_Ind.end()[-2]].first->p3 - x);

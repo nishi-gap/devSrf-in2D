@@ -39,14 +39,14 @@ public:
 class CrvPt_FL : public Vertex{
 public:
     double s, rt;
-    Vertex *ve;
-    Vertex *vo;
+    std::shared_ptr<Vertex> ve;
+    std::shared_ptr<Vertex> vo;
     bool IsValid;
     CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3,  double _s) : Vertex(_p2, _p3), s(_s), IsValid(true){}
     CrvPt_FL(glm::f64vec3 _p2, double _s) : Vertex(_p2), s(_s), IsValid(true){}
     bool operator == (const CrvPt_FL &p)const{return s == p.s && rt == p.rt && ve == p.ve && vo == p.vo && IsValid == p.IsValid;}
     bool operator != (const CrvPt_FL &p)const{return !(s == p.s && rt == p.rt && ve == p.ve && vo == p.vo && IsValid == p.IsValid);}
-    void set(glm::f64vec3 _p,Vertex *o, Vertex *e);
+    void set(glm::f64vec3 _p,const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& e);
 
 };
 
@@ -167,7 +167,7 @@ private:
 void CrossDetection(OUTLINE *outline, CRV *crvs);
 
 
-std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, Vertex *p, Vertex *q, int dim);
+std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, const std::shared_ptr<Vertex>& p, const std::shared_ptr<Vertex>& q, int dim);
 std::vector<Vertex*> SortPolygon(std::vector<Vertex*>& polygon);
 //std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot, double& CurveLen, bool is3d = true, int dim = 3, int t_type = 2);
 

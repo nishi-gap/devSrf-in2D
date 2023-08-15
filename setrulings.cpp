@@ -16,7 +16,7 @@ std::shared_ptr<Vertex> Vertex::deepCopy(){
     return std::shared_ptr<Vertex>(new Vertex(p, p3, deformed));
 }
 
-void CrvPt_FL::set(glm::f64vec3 _p, Vertex *o, Vertex *e){
+void CrvPt_FL::set(glm::f64vec3 _p, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& e){
     double sa = glm::distance(_p, o->p), sc = glm::distance(o->p, e->p);
     ve = e; vo = o;
     rt = sa/sc;
@@ -666,7 +666,7 @@ int OUTLINE::movePointIndex(glm::f64vec3 p){
 }
 
 
-std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, Vertex *p, Vertex *q, int dim){
+std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, const std::shared_ptr<Vertex>& p, const std::shared_ptr<Vertex>& q, int dim){
     double a, b, c;
     if(p->p.x <= q->p.x){
         a = q->p.y - p->p.y, b = p->p.x - q->p.x, c = q->p.x * p->p.y - p->p.x * q->p.y;

@@ -221,7 +221,7 @@ bool Model::RevisionCrosPtsPosition(){return FL[FoldCurveIndex]->RevisionCrosPts
 bool Model::SplitRulings(int dim){
     using namespace MathTool;
     glm::f64vec3 UpVec{0,-1,0};
-    auto getCrossPoint = [](std::vector<glm::f64vec3>& CtrlPts,  Vertex *v, Vertex *o, int dim)->CrvPt_FL*{
+    auto getCrossPoint = [](std::vector<glm::f64vec3>& CtrlPts,  const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o, int dim){
         std::vector<double>arcT = BezierClipping(CtrlPts, v, o, dim);
         for(auto&t: arcT){
             if(t < 0 || 1 < t){std::cout<<"t is not correct value " << t << std::endl; continue;}
@@ -230,11 +230,11 @@ bool Model::SplitRulings(int dim){
             if(!MathTool::is_point_on_line(v2, v->p, o->p))continue;
             double sa = glm::distance(v2, o->p), sc = glm::distance(o->p, v->p);
             glm::f64vec3 v3 = sa/sc * (v->p3 - o->p3) + o->p3;
-            CrvPt_FL *P = new CrvPt_FL(v2, v3, t);
+            std::shared_ptr<CrvPt_FL> P = std::make_shared<CrvPt_FL>(CrvPt_FL(v2, v3, t));
             P->set(v2, o, v);
             return P;
         }
-        return nullptr;
+        return std::shared_ptr<CrvPt_FL>(nullptr);
     };
     if(FL.empty() || FL[FoldCurveIndex]->CtrlPts.size() <= dim)return false;
     /*
@@ -276,7 +276,7 @@ bool Model::SplitRulings(int dim){
 
     for(auto&fl: FL){
         for(auto& l: outline->Lines){
-            CrvPt_FL *P = getCrossPoint(fl->CtrlPts, l->v, l->o, dim);
+            std::shared_ptr<CrvPt_FL> P = getCrossPoint(fl->CtrlPts, l->v, l->o, dim);
             if(P!= nullptr){
                 if(glm::dot(UpVec, glm::normalize(l->v->p - l->o->p)) > 0)fl->FoldingCurve.push_back(Vertex4d(P, l->v, l->o));
                 else fl->FoldingCurve.push_back(Vertex4d(P, l->o, l->v));
@@ -288,7 +288,7 @@ bool Model::SplitRulings(int dim){
     NTreeNode<FoldLine*> *root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
     for(auto& r: Rulings){
-        CrvPt_FL *P = getCrossPoint(root->data->CtrlPts, r->v, r->o, dim);
+        std::shared_ptr<CrvPt_FL> P = getCrossPoint(root->data->CtrlPts, r->v, r->o, dim);
         if(P!= nullptr){
             if(glm::dot(UpVec, glm::normalize(r->v->p - r->o->p)) > 0)root->data->FoldingCurve.push_back(Vertex4d(P, r->v, r->o));
             else root->data->FoldingCurve.push_back(Vertex4d(P, r->o, r->v));
