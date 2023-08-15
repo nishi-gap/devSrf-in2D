@@ -273,7 +273,12 @@ bool Model::SplitRulings(int dim){
             FL[FoldCurveIndex]->SortCurve();
         }
     }*/
+
     for(auto&fl: FL){
+        for(auto* ptr : fl->FoldingCurve){
+            delete ptr;
+
+        }
         for(auto& l: outline->Lines){
             CrvPt_FL *P = getCrossPoint(fl->CtrlPts, l->v, l->o, dim);
             if(P!= nullptr){
