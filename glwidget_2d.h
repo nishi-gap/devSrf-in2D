@@ -7,18 +7,12 @@
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QWheelEvent>
-#include <iostream>
-#include <vector>
-#include <glm/glm.hpp>
-#include <glm/gtx/string_cast.hpp>
-#include <tuple>
 #include <QPointF>
 #include <QMessageBox>
 #include <gtoolwnd.h>
 #include <QString>
 #include <QPushButton>
 #include "setrulings.h"
-#include "make3d.h"
 #include "mathtool.h"
 
 class GLWidget_2D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
@@ -137,10 +131,8 @@ private:
 
     //std::vector<int> ControllPoints_gradation;//0~510 色の範囲, -1指定なし
     int DiffWheel;
-    Line *refL;
-
-    Vertex *refV;
-    Vertex *closestVertex(QPointF p, std::vector<Vertex*>& Vertices);
+    std::shared_ptr<Line> refL;
+    std::shared_ptr<Vertex> refV;
 
     int movePt;
     CurveType curvetype;

@@ -88,13 +88,13 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
 
     TriMeshs.clear();
     drawEdges.clear();
-    std::vector<std::vector<Vertex*>> Polygons;
-    std::vector<Vertex*> polygon;
+    std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons;
+    std::vector<std::shared_ptr<Vertex>> polygon;
     for(auto& l: Surface) polygon.push_back(l->v);
     Polygons.push_back(polygon);
     if(!FldCrvs.empty() && !FldCrvs.front()->FoldingCurve.empty()){
 
-        auto SplitPolygon = [](std::vector<std::vector<Vertex*>>& Polygons, Vertex *o, Vertex *v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
+        auto SplitPolygon = [](const std::vector<std::vector<std::shared_ptr<Vertex>>>& Polygons, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
             for(auto& Poly :Polygons){
                 for(int i = 0; i < (int)Poly.size(); i++){
                     if(std::find(Poly.begin(), Poly.end(), v) != Poly.end())break;
@@ -126,12 +126,12 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                     if(MathTool::is_point_on_line(FC->FoldingCurve.back().first->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))ind_bc = i;
                 }
                 if(ind_fr != -1 && ind_bc != -1){
-                    std::vector<Vertex*> InsertedV, InsertedV_inv;
+                    std::vector<std::shared_ptr<Vertex>> InsertedV, InsertedV_inv;
                     for(auto&v: FC->FoldingCurve){InsertedV.push_back(v.first);InsertedV_inv.insert(InsertedV_inv.begin(), v.first);}
 
                     int i_min = std::min(ind_fr, ind_bc) + 1, i_max = std::max(ind_fr, ind_bc) + 1;
                     glm::f64vec3 Dir_prev = glm::normalize(P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p);
-                    std::vector<Vertex*> poly2 = {P.begin() + i_min, P.begin() + i_max};
+                    std::vector<std::shared_ptr<Vertex>> poly2 = {P.begin() + i_min, P.begin() + i_max};
                     P.erase(P.begin() + i_min, P.begin() + i_max);
                     if(glm::dot(glm::cross(CrvDir, Dir_prev), glm::f64vec3{0,0,1}) < 0){
                         P.insert(P.begin() + i_min, InsertedV.begin(), InsertedV.end());

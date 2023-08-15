@@ -23,8 +23,8 @@ GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
     DiffWheel = 0;
     movePt = -1;
     SmoothCurveIndex = -1;
-    refV = nullptr;
-    refL = nullptr;
+    refV = std::shared_ptr<Vertex>(nullptr);
+    refL = std::shared_ptr<Line>(nullptr);
     KeyEvent = -1;
     curvetype = CurveType::none;
 
@@ -345,7 +345,7 @@ void GLWidget_2D::paintGL(){
                 glEnd();
             }
             //p0:描画するエッジの始点, p1: 描画するエッジの端点, p2: 片側の平面上の点, p3: もう片方の平面上の点
-            auto DrawEdge = [&](Vertex *p0, Vertex *p1, Vertex *p2, Vertex *p3, double LineWidth, bool IsGradation, bool IsRuling){
+            auto DrawEdge = [&](const std::shared_ptr<Vertex>& p0, const std::shared_ptr<Vertex>& p1, const std::shared_ptr<Vertex>& p2, const std::shared_ptr<Vertex>& p3, double LineWidth, bool IsGradation, bool IsRuling){
                 glLineWidth(LineWidth);
                 glm::f64vec3 f_nv = glm::normalize(glm::cross(p1->p3 - p0->p3, p2->p3 - p0->p3)),fp_nv = glm::normalize(glm::cross(p3->p3 - p0->p3, p1->p3 - p0->p3));
                 glm::f64vec3 SpinAxis = glm::normalize(p1->p3 - p0->p3);

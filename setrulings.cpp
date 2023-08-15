@@ -39,7 +39,7 @@ CRV::CRV(int _crvNum, int DivSize){
 
     curveNum = _crvNum;
     for(int i = 0; i < curveNum; i++)CurvePoints.resize(i);
-    for(int i = 0; i < DivSize-1;i++)Rulings.push_back(std::make_share<Line>());
+    for(int i = 0; i < DivSize-1;i++)Rulings.push_back(std::make_shared<Line>());
 
     isempty = true;
     curveType = CurveType::none;

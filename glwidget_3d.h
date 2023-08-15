@@ -6,23 +6,19 @@
 #include <QOpenGLWidget>
 #include <QKeyEvent>
 #include <QMouseEvent>
-#include <iostream>
-#include <vector>
+
 #include <glm/glm.hpp>
 #include <QPointF>
 #include<GL/glu.h>
 #include <QKeyEvent>
-#include <glm/gtx/string_cast.hpp>
-//#include "arcball.h"
-#include "setrulings.h"
 #include "foldline.h"
 
 typedef std::vector<std::array<glm::f64vec3, 2>> Ruling3d;
-typedef std::vector<Vertex*> Polygon_V;
-typedef std::vector<Line*> Lines;
+typedef std::vector<std::shared_ptr<Vertex>> Polygon_V;
+typedef std::vector<std::shared_ptr<Line>> Lines;
 typedef std::vector<glm::f64vec3> Curve3d;
 //typedef std::vector<CrvPt_FL> CrvFL3d;
-typedef std::vector<FoldLine*> FoldLine3d;
+typedef std::vector<std::shared_ptr<FoldLine>> FoldLine3d;
 
 class GLWidget_3D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
 {

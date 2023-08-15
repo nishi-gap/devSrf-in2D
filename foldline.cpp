@@ -737,7 +737,7 @@ bool FoldLine::SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly
         if(IsParallel(o, x, o2, x2))return std::shared_ptr<Vertex>(nullptr);
         glm::f64vec3 p2d = calcCrossPoint_2Vertex(o, x, o2, x2);
         glm::f64vec3 p3d = calcTargetDistanceOnPlane(p2d, o,  x, x2);
-        return std::shared_ptr<Vertex>(Vertex(p2d, p3d));
+        return std::make_shared<Vertex>(p2d, p3d);
     };
 
     glm::f64vec3 r3d, r2d, _r3d, _r2d;
