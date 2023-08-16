@@ -1,17 +1,14 @@
 #ifndef GLWIDGET_3D_H
 #define GLWIDGET_3D_H
 
+#include<foldline.h>
 #include <QWheelEvent>
 #include <QOpenGLFunctions_3_0>
 #include <QOpenGLWidget>
 #include <QKeyEvent>
 #include <QMouseEvent>
-
-#include <glm/glm.hpp>
 #include <QPointF>
 #include<GL/glu.h>
-#include <QKeyEvent>
-#include "foldline.h"
 
 typedef std::vector<std::array<glm::f64vec3, 2>> Ruling3d;
 typedef std::vector<std::shared_ptr<Vertex>> Polygon_V;

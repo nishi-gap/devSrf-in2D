@@ -1,20 +1,10 @@
 #ifndef MAKE3D_H
 #define MAKE3D_H
 
-#include <QMessageBox>
-#include <QString>
-#include <iostream>
-#include <stack>
-#include <glm/glm.hpp>
-#include <glm/gtx/transform.hpp>
-#include <glm/gtx/string_cast.hpp>
-#include <queue>
 #include <list>
 #include <numeric>
 #include <QPointF>
-#include "setrulings.h"
 #include "foldline.h"
-#include "mathtool.h"
 
 
 class Model{

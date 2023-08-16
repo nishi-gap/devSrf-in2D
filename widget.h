@@ -9,7 +9,6 @@
 #include <QPushButton>
 #include <QSlider>
 #include <QLineEdit>
-#include <QOpenGLWidget>
 #include <gtoolwnd.h>
 #include <QCheckBox>
 #include <QAbstractButton>
@@ -19,7 +18,7 @@
 #include <QFileDialog>
 #include "make3d.h"
 #include "originalbutton.h"
-#include "mathtool.h"
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
