@@ -171,7 +171,7 @@ void MainWindow::changeToleranceValue_Spin(double val){
 void MainWindow::StartOptimization(){
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-    bool res = ui->glWid2dim->model->BendingModel(wb, wp, false);
+    bool res = ui->glWid2dim->model->BendingModel(wb, wp, 3, false);
     fold_Sm();
     if(res)fold_Sm();
 
@@ -310,7 +310,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
         auto Poly_V = ui->glWid2dim->model->outline->getVertices();
         double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-        bool res = ui->glWid2dim->model->BendingModel(wb, wp, false);
+        bool res = ui->glWid2dim->model->BendingModel(wb, wp, 3, false);
         fold_Sm();
     }
     else if(e->key() == Qt::Key_Return){emit PressedEnter();}

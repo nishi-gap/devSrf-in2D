@@ -178,8 +178,8 @@ void Model::UpdateFLOrder(int dim){
                     else fl->FoldingCurve.push_back(Vertex4d(P, l->o, l->v));
                 }
             }
+            fl->SortCurve();
         }
-        fl->SortCurve();
     }
 
     NTree_fl.clear();
