@@ -1008,6 +1008,7 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     if(k >= std::numbers::pi && !IsMount){a_min = a_con - std::numbers::pi; a_max = std::numbers::pi;}
     a = (a_min + a_max)/2.0;
 
+    /*
     std::cout <<glm::degrees(a_ll) << " , " << glm::degrees(a_con)<<std::endl;
     std::ofstream ofs2;
     std::filesystem::create_directory("./Optimization");
@@ -1024,6 +1025,19 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
         a += 1e-3;
     }ofs2.close();
 
+    AngleFile = "./Optimization/OptimArea.csv";
+    ofs2.open(AngleFile, std::ios::out);
+    ofs2 << "a(radian), a(degree) , Eruling, Ebend, Eparalell, Ebend, Eruling2"<<std::endl;
+    for(double _a = a_min; _a <= a_max; _a+= 1e-3){
+         _FoldingAAAMethod(FoldingCurve, Poly_V, _a);
+         double f = RulingsCrossed(FoldingCurve);
+         double fb = Fbend2(FoldingCurve);
+          double fp =  Fparallel(FoldingCurve);
+         double fr = RulingsCrossed2(FoldingCurve);
+        ofs2 << _a << ", " << glm::degrees(_a) << " , " << f << ", " << fb << ", " <<fp <<", "<< fr << std::endl;
+    }ofs2.close();
+    */
+
     RevisionVertices::ObjData od = {FoldingCurve, Poly_V};
     if(ConstFunc)od.AddWeight(wb, wp, -1); else od.AddWeight(wb, wp, 100.0);
     nlopt::opt opt;
@@ -1036,21 +1050,7 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     opt.set_maxtime(2.0);//stop over this time
     //opt.set_ftol_rel(1e-10);
     opt.set_xtol_rel(1e-13);
-    //
-    //a = a_min;
     std::cout << "area " << glm::degrees(a_min) << " < " << glm::degrees(a) << " < " << glm::degrees(a_max) << std::endl;
-
-    AngleFile = "./Optimization/OptimArea.csv";
-    ofs2.open(AngleFile, std::ios::out);
-    ofs2 << "a(radian), a(degree) , Eruling, Ebend, Eparalell, Ebend, Eruling2"<<std::endl;
-    for(double _a = a_min; _a <= a_max; _a+= 1e-3){
-         _FoldingAAAMethod(FoldingCurve, Poly_V, _a);
-         double f = RulingsCrossed(FoldingCurve);
-         double fb = Fbend2(FoldingCurve);
-          double fp =  Fparallel(FoldingCurve);
-         double fr = RulingsCrossed2(FoldingCurve);
-        ofs2 << _a << ", " << glm::degrees(_a) << " , " << f << ", " << fb << ", " <<fp <<", "<< fr << std::endl;
-    }ofs2.close();
 
     double minf_amin, minf_amax, f_ruling_amin, f_ruling_amax;
     double res_amin, res_amax;
@@ -1272,7 +1272,6 @@ void FoldLine::reassinruling(std::shared_ptr<FoldLine>& parent){
         auto p = getCrossPoint(CtrlPts, c.first, c.second, dim);
         if(p != nullptr){
             FoldingCurve.push_back(Vertex4d(p, c.second, c.first));
-            std::cout << glm::to_string(p->p) << " , " << glm::to_string(c.first->p) << glm::to_string(c.second->p) << std::endl;
             c.second = p;
         }
     }
