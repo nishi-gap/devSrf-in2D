@@ -11,12 +11,12 @@ GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
     crvPtNum = 3000;
     maxDivSize = 3000;
     standardDist = 2.5;
-    gw = new GToolWnd(this);
+    gw = std::make_shared<GToolWnd>(this);
     gw->hide();
 
     cval = 128;
     ctype = 1;
-    connect(this , &GLWidget_2D::CurvePathSet, gw, &GToolWnd::set);
+    connect(this , &GLWidget_2D::CurvePathSet, gw.get(), &GToolWnd::set);
 
     InterpolationType = 0;
     //ControllPoints_gradation.clear();
@@ -34,7 +34,7 @@ GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
     eraseVec2d = false;
     IsEraseNonFoldEdge = false;
     visibleCurve = true;
-    model = new Model(crvPtNum);
+    model = std::make_shared<Model>(crvPtNum);
 
 }
 GLWidget_2D::~GLWidget_2D(){}
@@ -98,7 +98,7 @@ void GLWidget_2D::DrawOutlineRectangle(){
     model->Check4Param(curveDimention, deleteIndex);
     if(model->crvs.empty()) SmoothCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
-    model->outline = new OUTLINE();
+    model->outline = std::make_shared<OUTLINE>();
     model->outline->type = "Rectangle";
     this->setMouseTracking(false);
     emit SendNewActiveCheckBox(PaintTool::Rectangle_ol);
@@ -111,7 +111,7 @@ void GLWidget_2D::DrawOutlinePolygon(int state){
     model->Check4Param(curveDimention, deleteIndex);
     if(model->crvs.empty()) SmoothCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
-    model->outline = new OUTLINE();
+    model->outline = std::make_shared<OUTLINE>();
     model->outline->type = "Polygon";
     for(auto&c: model->crvs)c->isempty = true;
     emit getEdgeNum();
@@ -126,7 +126,7 @@ void GLWidget_2D::DrawOutlinePolyline(int state){
     model->Check4Param(curveDimention, deleteIndex);
     if(model->crvs.empty()) SmoothCurveIndex = -1;
     emit deleteCrvSignal(deleteIndex);
-    model->outline = new OUTLINE();
+    model->outline = std::make_shared<OUTLINE>();
     model->outline->type = "Polyline";
     for(auto&c: model->crvs)c->isempty = true;
     emit SendNewActiveCheckBox(PaintTool::Polyline_ol);
@@ -768,9 +768,8 @@ void GLWidget_2D::cb_DeleteCurve(){
 }
 
 void GLWidget_2D::Reset(){
-    delete model;
+    model = std::make_shared<Model>(crvPtNum);
     tmp_c.clear();
-    model = new Model(crvPtNum);
     emit SendNewActiveCheckBox(PaintTool::Reset);
     SmoothCurveIndex = -1;
     emit foldingSignals();
@@ -816,7 +815,7 @@ void GLWidget_2D::wheelEvent(QWheelEvent *we){
         model->setGradationValue(DiffWheel, refL, InterpolationType, CurvePath);
         emit ColorChangeFrom(0, refL->color);
         model->deform();
-        if(isVisibleTo(gw)) emit CurvePathSet(CurvePath);
+        if(isVisibleTo(gw.get())) emit CurvePathSet(CurvePath);
     }
     emit foldingSignals();
     update();
@@ -851,7 +850,7 @@ void GLWidget_2D::addPoints_intplation(QMouseEvent *e, QPointF& p){
 void GLWidget_2D::ApplyNewGradationMode(){
     if(refL == nullptr){std::cout << "you neeed to add gradation point"<<std::endl; return;}
     emit foldingSignals();
-    if(isVisibleTo(gw)) emit CurvePathSet(CurvePath);
+    if(isVisibleTo(gw.get())) emit CurvePathSet(CurvePath);
     update();
 }
 
@@ -865,7 +864,7 @@ void GLWidget_2D::getGradationFromSlider(int val){
 }
 
 void GLWidget_2D::OpenDebugWindwow(){
-    if(!isVisibleTo(gw)) gw = new GToolWnd(this);
+    if(!isVisibleTo(gw.get())) gw = std::make_shared<GToolWnd>(this);
     emit CurvePathSet(CurvePath);
 
     gw->show();

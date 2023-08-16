@@ -4,13 +4,13 @@ using namespace MathTool;
 
 Model::Model(){
     clear();
-    outline = new OUTLINE();
+    outline = std::make_shared<OUTLINE>();
 }
 
 Model::Model(int _crvPtNum){
     crvPtNum = _crvPtNum;
     clear();
-    outline = new OUTLINE(); 
+    outline = std::make_shared<OUTLINE>();
     refCrv.clear();
     refFL.clear();
     FoldCurveIndex = befFaceNum = 0;
@@ -27,7 +27,7 @@ void Model::clear(){
 
 void Model::Initialize(){
     clear();
-    outline = new OUTLINE();
+    outline = std::make_shared<OUTLINE>();
     refCrv.clear();
 }
 
@@ -666,7 +666,7 @@ void Model::Check4Param(int curveDimention, std::vector<int>& deleteIndex){
 }
 
 int Model::AddNewCurve(CurveType curveType, int DivSize){
-    CRV *crv = new CRV(crvPtNum, DivSize);
+    std::shared_ptr<CRV> crv = std::make_shared<CRV>(crvPtNum, DivSize);
     crv->setCurveType(curveType);
     crvs.insert(crvs.begin(), crv);
     refCrv.insert(refCrv.begin(), 0);
@@ -757,10 +757,10 @@ bool Model::AddControlPoint_FL(glm::f64vec3& p, int event, int curveDimention){
 bool Model::CrossDection4AllCurve(){
     if(crvs.empty() || crvs[0]->isempty)return false;
     for(int i = 0; i < (int)crvs.size(); i++){
-        CRV *c1 = crvs[i];
+        std::shared_ptr<CRV> c1 = crvs[i];
         if(c1->isempty)continue;
         for(int j = i + 1; j < (int)crvs.size(); j++){
-            CRV *c2 = crvs[j];
+            std::shared_ptr<CRV> c2 = crvs[j];
             if(c2->isempty)continue;
             for(auto& r1: c1->Rulings){
                 for(auto& r2: c2->Rulings){

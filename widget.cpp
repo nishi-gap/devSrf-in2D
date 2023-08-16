@@ -118,7 +118,6 @@ MainWindow::~MainWindow()
 void MainWindow::SymmetricConstraint(){ emit constraintType(0);}
 
 void MainWindow::Initialize(){
-    for(auto&v: LayerList)delete v;
     LayerList.clear();
     update();
 }
@@ -351,7 +350,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
 
 void MainWindow::mouseMoveEvent(QMouseEvent *e){
     if(SelectedBtn == nullptr)return;
-    std::vector<Btn4Crv*>::iterator itr = std::find(LayerList.begin(), LayerList.end(), SelectedBtn);
+    std::vector<std::shared_ptr<Btn4Crv>>::iterator itr = std::find(LayerList.begin(), LayerList.end(), SelectedBtn);
     if(itr == LayerList.end())return;
     int n = std::distance(LayerList.begin(),itr);
     QPoint p = ui->LayerListWidget->mapFromGlobal(QCursor::pos());
@@ -583,8 +582,8 @@ void MainWindow::addCurveBtn(){
     else if(ui->glWid2dim->model->crvs[0]->getCurveType() == CurveType::line)text = "Line" + QString::number(++CurvesNum[2]);
     else if(ui->glWid2dim->model->crvs[0]->getCurveType() == CurveType::arc)text = "Arc"+QString::number(++CurvesNum[3]);
 
-    Btn4Crv *newbtn = new Btn4Crv(ui->glWid2dim->model->crvs[0],text, ui->LayerListWidget);
-    connect(newbtn, &Btn4Crv::clicked, this, &MainWindow::SetHandleCrv);
+    std::shared_ptr<Btn4Crv> newbtn = std::make_shared<Btn4Crv>(ui->glWid2dim->model->crvs[0],text, ui->LayerListWidget);
+    connect(newbtn.get(), &Btn4Crv::clicked, this, &MainWindow::SetHandleCrv);
     for(int i = 0; i < (int)LayerList.size(); i++) LayerList[i]->setGeometry(pad, btn_h + (i + 1) * (btn_h + pad), btn_w, btn_h);
     LayerList.insert(LayerList.begin(), newbtn);
 
@@ -605,7 +604,7 @@ void MainWindow::RemoveBtnFromLayerCrv(std::vector<int> deleteIndex){
     }
 }
 
-void MainWindow::SetHandleCrv(Btn4Crv *btn, QMouseEvent *e){
+void MainWindow::SetHandleCrv(std::shared_ptr<Btn4Crv>& btn, QMouseEvent *e){
     if(LayerList.empty())return;
     SelectedBtn = btn;
     int ind;
@@ -618,7 +617,7 @@ void MainWindow::SetHandleCrv(Btn4Crv *btn, QMouseEvent *e){
         if(e->button() == Qt::LeftButton){
             dragPos = btn->mapFromGlobal(QCursor::pos());
             originalPos = btn->geometry();
-            std::vector<Btn4Crv*>::iterator itr = std::find(LayerList.begin(), LayerList.end(), btn);
+            std::vector<std::shared_ptr<Btn4Crv>>::iterator itr = std::find(LayerList.begin(), LayerList.end(), btn);
             if(itr == LayerList.end())ind = -1;
             else ind = std::distance(LayerList.begin(), itr);
         }

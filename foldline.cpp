@@ -190,7 +190,7 @@ void FoldLine::SortCurve(bool ascending){
 
 double FoldLine::getColor(){return color;}
 
-bool FoldLine::delCtrlPt(glm::f64vec3& p, int dim, OUTLINE *outline){
+bool FoldLine::delCtrlPt(glm::f64vec3& p, int dim, std::shared_ptr<OUTLINE>& outline){
     if(!outline->IsClosed()) return false;
     if(!CtrlPts.empty())CtrlPts.pop_back();
     double dist = 10;
@@ -1194,7 +1194,7 @@ bool FoldLine::RevisionCrosPtsPosition(){
 
 }
 
-void FoldLine::ReassignColor(const std::vector<std::shared_ptr<Line>>& Rulings, ColorPoint& CP){
+void FoldLine::ReassignColor(std::vector<std::shared_ptr<Line>>& Rulings, ColorPoint& CP){
     //Y字のとき折り線は山であると仮定(谷の場合は色を反転)
     typedef struct {
         std::shared_ptr<Line> r;
@@ -1250,7 +1250,7 @@ void FoldLine::ReassignColor(const std::vector<std::shared_ptr<Line>>& Rulings, 
 }
 
 void FoldLine::reassinruling(std::shared_ptr<FoldLine>& parent){
-    auto getCrossPoint = [](std::vector<glm::f64vec3>& CtrlPts,  const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o, int dim){
+    auto getCrossPoint = [](std::vector<glm::f64vec3>& CtrlPts, std::shared_ptr<Vertex> v, std::shared_ptr<Vertex> o, int dim){
         std::vector<double>arcT = BezierClipping(CtrlPts, v, o, dim);
         for(auto&t: arcT){
             if(t < 0 || 1 < t){std::cout<<"t is not correct value " << t << std::endl; continue;}
@@ -1267,12 +1267,13 @@ void FoldLine::reassinruling(std::shared_ptr<FoldLine>& parent){
     };
     if(parent->FoldingCurve.empty() || FoldingCurve.empty())return;
     int dim = CtrlPts.size() - 1;
-    for(auto it = parent->FoldingCurve.begin() + 1; it != parent->FoldingCurve.end() - 1; it++){
-        std::shared_ptr<CrvPt_FL> p = getCrossPoint(CtrlPts, (*it).first, (*it).second, dim);
+    for(auto& c : parent->FoldingCurve){
+        if(c == parent->FoldingCurve.front() || c == parent->FoldingCurve.back())continue;
+        auto p = getCrossPoint(CtrlPts, c.first, c.second, dim);
         if(p != nullptr){
-
-            FoldingCurve.push_back(Vertex4d(p, (*it).second, (*it).first));
-            (*it).second = p;
+            auto tmp = Vertex4d(p, c.second, c.first);
+            FoldingCurve.push_back(tmp);
+            c.second = p;
         }
     }
     SortCurve();

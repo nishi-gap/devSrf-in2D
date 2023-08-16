@@ -25,12 +25,10 @@ void CrvPt_FL::set(glm::f64vec3 _p, const std::shared_ptr<Vertex>& o, const std:
     this->p = _p;
 }
 
-Vertex4d::Vertex4d(std::shared_ptr<CrvPt_FL>& v, std::shared_ptr<Vertex>& v2, std::shared_ptr<Vertex>& v3){
+Vertex4d::Vertex4d(const std::shared_ptr<CrvPt_FL>& v, const std::shared_ptr<Vertex>& v2, const std::shared_ptr<Vertex>& v3){
     first = v; second = v2; third = v3; IsCalc = true;
 }
-Vertex4d::Vertex4d(const Vertex4d& V4d){
-    first = V4d.first; second = V4d.second; third = V4d.third; IsCalc = V4d.IsCalc;
-}
+
 Vertex4d::Vertex4d(){first = nullptr; second = nullptr; third = nullptr; IsCalc = false;}
 
 bool Line::is_on_line(glm::f64vec3 p){ return MathTool::is_point_on_line(p, v->p, o->p);}
@@ -167,7 +165,7 @@ bool CRV::setPoint(const std::vector<std::shared_ptr<Vertex>>&outline, glm::f64v
     return IsIntersected;
 }
 
-void CRV::BezierRulings(OUTLINE *outline, int& DivSize, int crvPtNum){
+void CRV::BezierRulings(std::shared_ptr<OUTLINE>& outline, int& DivSize, int crvPtNum){
     std::cout << "you can't use now"<<std::endl;
     return;
     double l = 1000; //適当に大きな値
@@ -200,7 +198,7 @@ void CRV::BezierRulings(OUTLINE *outline, int& DivSize, int crvPtNum){
     return;
 }
 
-void CRV::BsplineRulings(OUTLINE *outline, int& DivSize, int crvPtNum, int curveDimention){
+void CRV::BsplineRulings(std::shared_ptr<OUTLINE>& outline, int& DivSize, int crvPtNum, int curveDimention){
     if((int)ControllPoints.size() <= curveDimention) return;
     double l = 1000;//適当に大きな値
     glm::f64vec3 N, T;
@@ -260,7 +258,7 @@ bool CRV::drawLine(){
     return true;
 }
 
-void CRV::LineRulings(OUTLINE *outline, int DivSize){
+void CRV::LineRulings(std::shared_ptr<OUTLINE>& outline, int DivSize){
     if(ControllPoints.size() != 2)return;
     double l = 1000;//適当に大きな値
 
@@ -307,7 +305,7 @@ bool CRV::drawArc(int crvPtNum){
     return true;
 }
 
-void CRV::ArcRulings(OUTLINE *outline, int DivSize){
+void CRV::ArcRulings(std::shared_ptr<OUTLINE>& outline, int DivSize){
     if(ControllPoints.size() != 3)return;
     double l = 1000;//適当に大きな値
     std::vector<glm::f64vec3> crossPoint;

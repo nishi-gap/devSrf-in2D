@@ -26,9 +26,9 @@ public:
     int ctype;//1 red, -1 blue
     int cval;
     int crvPtNum;
-    GToolWnd *gw;
+    std::shared_ptr<GToolWnd> gw;
 
-    Model *model;
+    std::shared_ptr<Model> model;
     //new gradation mode
     int InterpolationType;//0:直線, 1:spline, 2:B-spline
 

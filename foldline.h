@@ -26,7 +26,7 @@ public:
     FoldLine(PaintTool _type);
     std::vector<glm::f64vec3>CtrlPts;
     bool addCtrlPt(glm::f64vec3& p, int dim);
-    bool delCtrlPt(glm::f64vec3& p, int dim, OUTLINE *outline);
+    bool delCtrlPt(glm::f64vec3& p, int dim, std::shared_ptr<OUTLINE>& outline);
     bool moveCtrlPt(glm::f64vec3& p, int movePtIndex);
     std::vector<glm::f64vec3> CurvePts;
     std::vector<std::array<glm::f64vec3, 2>> Rulings_3dL, Rulings_3dR, Rulings_2dL, Rulings_2dR;
@@ -35,7 +35,7 @@ public:
     bool Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double wb, double wp, bool ConstFunc = true);
     std::vector<std::vector<glm::f64vec3>> Optimization_SmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v, bool IsConnectEndPoint);
     std::vector<std::vector<glm::f64vec3>> Optimization_PlanaritySrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
-    void ReassignColor(const std::vector<std::shared_ptr<Line>>& Rulings, ColorPoint& CP);
+    void ReassignColor(std::vector<std::shared_ptr<Line>>& Rulings, ColorPoint& CP);
     void SimplifyModel( double tol);
     bool SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void SortCurve(bool ascending = false);

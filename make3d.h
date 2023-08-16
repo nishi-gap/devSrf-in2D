@@ -19,13 +19,10 @@
 
 class Model{
 public:
-    //std::vector<Vertex*> vertices;
-    //std::vector<Face*> Faces;
-    //std::vector<HalfEdge*> Edges;
     std::vector<std::shared_ptr<Line>> Rulings;
-    OUTLINE *outline;
+    std::shared_ptr<OUTLINE> outline;
     std::vector<std::vector<std::shared_ptr<Vertex>>> ol_vertices;
-    std::vector<CRV*> crvs;
+    std::vector<std::shared_ptr<CRV>> crvs;
     std::vector<std::shared_ptr<FoldLine>> FL;
     glm::f64vec3 Axis4Const[2];
     std::shared_ptr<Vertex> Connect2Vertices[2];

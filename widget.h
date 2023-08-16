@@ -66,7 +66,7 @@ public slots:
     //layer関係
     void addCurveBtn();
     void RemoveBtnFromLayerCrv(std::vector<int> n);
-    void SetHandleCrv(Btn4Crv *btn, QMouseEvent *e);
+    void SetHandleCrv(std::shared_ptr<Btn4Crv>& btn, QMouseEvent *e);
 
     //fold line
     void moveCtrlPts_fl();
@@ -94,15 +94,15 @@ public slots:
     void StartOptimization_plararity();
 private:
     Ui::MainWindow *ui;
-    Model *model;
+    std::shared_ptr<Model> model;
     QList<std::tuple<QCheckBox *, PaintTool >> CBoxlist;
     int crvPtNum;
     std::vector<std::vector<glm::f64vec3>> output;
     void exportobj();
 
-    std::vector<Btn4Crv*> LayerList;
+    std::vector<std::shared_ptr<Btn4Crv>> LayerList;
 
-    Btn4Crv *SelectedBtn;
+    std::shared_ptr<Btn4Crv> SelectedBtn;
     QPoint dragPos;
     QRect originalPos;
     int CurvesNum[4];

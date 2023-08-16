@@ -44,8 +44,8 @@ struct Vertex4d{
     std::shared_ptr<CrvPt_FL> first;
     std::shared_ptr<Vertex> second;
     std::shared_ptr<Vertex> third;
-    Vertex4d(std::shared_ptr<CrvPt_FL>& v, std::shared_ptr<Vertex>& v2, std::shared_ptr<Vertex>& v3);
-    Vertex4d(const Vertex4d& V4d);
+    Vertex4d(const std::shared_ptr<CrvPt_FL>& v, const std::shared_ptr<Vertex>& v2, const std::shared_ptr<Vertex>& v3);
+
     Vertex4d();
     void release();
     bool operator == (const Vertex4d &V4d)const{return first == V4d.first && second == V4d.second && third == V4d.third && IsCalc == V4d.IsCalc;}
@@ -70,27 +70,18 @@ public:
     bool is_on_line(glm::f64vec3 p);
 };
 
-struct PointOnLine{
-public:
-   double t;
-   Vertex *v;
-   PointOnLine(double _t, Vertex *_v): t(_t), v(_v){}
-   bool operator<(const PointOnLine& P) const { return t < P.t; }
-};
-
-
 class CRV{
 public:
     CRV(int _crvNum, int DivSize);
 
     bool drawBspline(int curveDimention,  int crvPtNum);
     bool drawBezier(int curveDimention, int crvPtNum);
-    void BezierRulings(OUTLINE *outline, int& DivSize, int crvPtNum);
-    void BsplineRulings(OUTLINE *outline , int& DivSize, int crvPtNum, int curveDimention);
+    void BezierRulings(std::shared_ptr<OUTLINE>& outline, int& DivSize, int crvPtNum);
+    void BsplineRulings(std::shared_ptr<OUTLINE>& outline , int& DivSize, int crvPtNum, int curveDimention);
     bool drawLine();
-    void LineRulings(OUTLINE *outline, int DivSize);
+    void LineRulings(std::shared_ptr<OUTLINE>& outline, int DivSize);
     bool drawArc(int crvPtNum);//制御点 0,3,...: 原点. 1,4,...: 始点. 2,5,...: 終点
-    void ArcRulings(OUTLINE *outline, int DivSize);
+    void ArcRulings(std::shared_ptr<OUTLINE>& outline, int DivSize);
 
     //void addCtrlPt(QPointF p);
     bool eraseCtrlPt(int curveDimention, int crvPtNum);
@@ -154,7 +145,7 @@ private:
     //Face *face;
 };
 
-void CrossDetection(OUTLINE *outline, CRV *crvs);
+void CrossDetection(std::shared_ptr<OUTLINE>& outline, std::shared_ptr<CRV>& crvs);
 
 
 std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, const std::shared_ptr<Vertex>& p, const std::shared_ptr<Vertex>& q, int dim);
