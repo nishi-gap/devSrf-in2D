@@ -1271,8 +1271,8 @@ void FoldLine::reassinruling(std::shared_ptr<FoldLine>& parent){
         if(c == parent->FoldingCurve.front() || c == parent->FoldingCurve.back())continue;
         auto p = getCrossPoint(CtrlPts, c.first, c.second, dim);
         if(p != nullptr){
-            auto tmp = Vertex4d(p, c.second, c.first);
-            FoldingCurve.push_back(tmp);
+            FoldingCurve.push_back(Vertex4d(p, c.second, c.first));
+            std::cout << glm::to_string(p->p) << " , " << glm::to_string(c.first->p) << glm::to_string(c.second->p) << std::endl;
             c.second = p;
         }
     }

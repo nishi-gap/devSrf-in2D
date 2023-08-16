@@ -274,6 +274,7 @@ bool Model::SplitRulings(int dim){
     }*/
 
     for(auto&fl: FL){
+        fl->FoldingCurve.clear();
         for(auto& l: outline->Lines){
             std::shared_ptr<CrvPt_FL> P = getCrossPoint(fl->CtrlPts, l->v, l->o, dim);
             if(P!= nullptr){
@@ -283,6 +284,7 @@ bool Model::SplitRulings(int dim){
         }
         fl->SortCurve();
     }
+
     UpdateFLOrder(dim);
     auto root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
