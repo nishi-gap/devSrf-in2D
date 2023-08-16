@@ -193,9 +193,9 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
     if(root == nullptr)return false;
     std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>> q;
     std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
-    root->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
+    //root->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
     q.push(root);
-    while (!q.empty()) {
+    while(!q.empty()){
         auto cur = q.front(); q.pop();
         cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
         for (const auto& child : cur->children){
@@ -203,10 +203,8 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
                 child->data->reassinruling(cur->data);
                 q.push(child);
             }
-
         }
     }
-
     return true;
 }
 
@@ -296,6 +294,7 @@ bool Model::SplitRulings(int dim){
         }
     }
     root->data->SortCurve();
+    /*
     std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>>q;
     q.push(root);
     while (!q.empty()) {
@@ -307,7 +306,7 @@ bool Model::SplitRulings(int dim){
             }
 
         }
-    }
+    }*/
     return true;
 }
 
