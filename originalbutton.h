@@ -21,13 +21,13 @@ class Btn4Crv : public OriginalButton
 {
     Q_OBJECT
 public:
-    Btn4Crv(CRV *_crv, QString &text, QWidget *parent = nullptr);
+    Btn4Crv(std::shared_ptr<CRV>& _crv, QString &text, QWidget *parent = nullptr);
 protected:
-    CRV *crv;
+    std::shared_ptr<CRV> crv;
     void mousePressEvent(QMouseEvent *e);
     void mouseReleaseEvent(QMouseEvent *e);
 signals:
-    void clicked(Btn4Crv *click, QMouseEvent *e);
+    void clicked(Btn4Crv* click, QMouseEvent *e);
 private:
 
 };

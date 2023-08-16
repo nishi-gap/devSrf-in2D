@@ -66,7 +66,7 @@ public slots:
     //layer関係
     void addCurveBtn();
     void RemoveBtnFromLayerCrv(std::vector<int> n);
-    void SetHandleCrv(std::shared_ptr<Btn4Crv>& btn, QMouseEvent *e);
+    void SetHandleCrv(Btn4Crv *btn, QMouseEvent *e);
 
     //fold line
     void moveCtrlPts_fl();

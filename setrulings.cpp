@@ -617,7 +617,7 @@ bool OUTLINE::IsClosed(){
 }
 
 
-void CrossDetection(OUTLINE *outline, CRV *crvs){
+void CrossDetection(std::shared_ptr<OUTLINE>& outline, std::shared_ptr<CRV>& crvs){
     if(crvs->Rulings.front()->v == nullptr)return;
     for(auto&r: crvs->Rulings)r->IsCrossed = -1;
     if(crvs->getCurveType() == CurveType::arc || crvs->getCurveType() == CurveType::line)return;

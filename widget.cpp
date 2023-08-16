@@ -604,22 +604,26 @@ void MainWindow::RemoveBtnFromLayerCrv(std::vector<int> deleteIndex){
     }
 }
 
-void MainWindow::SetHandleCrv(std::shared_ptr<Btn4Crv>& btn, QMouseEvent *e){
+void MainWindow::SetHandleCrv(Btn4Crv *btn, QMouseEvent *e){
     if(LayerList.empty())return;
-    SelectedBtn = btn;
+
     int ind;
     if(btn == nullptr){
         ind = -1;
         int pad = 5, btn_h = LayerList[0]->height();
         for(int i = 0; i < (int)LayerList.size(); i++) LayerList[i]->move(pad, btn_h + i * (btn_h + pad));
+        SelectedBtn = nullptr;
     }
     else{
         if(e->button() == Qt::LeftButton){
             dragPos = btn->mapFromGlobal(QCursor::pos());
             originalPos = btn->geometry();
-            std::vector<std::shared_ptr<Btn4Crv>>::iterator itr = std::find(LayerList.begin(), LayerList.end(), btn);
+            std::vector<std::shared_ptr<Btn4Crv>>::iterator itr = std::find_if(LayerList.begin(), LayerList.end(), [&btn](std::shared_ptr<Btn4Crv>& b){return b.get() == btn;});
             if(itr == LayerList.end())ind = -1;
-            else ind = std::distance(LayerList.begin(), itr);
+            else{
+                ind = std::distance(LayerList.begin(), itr);
+                SelectedBtn = *itr;
+            }
         }
         else if(e->button() == Qt::RightButton){
             ind = -1;
