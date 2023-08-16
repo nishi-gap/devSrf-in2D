@@ -160,7 +160,6 @@ void Model::UpdateFLOrder(int dim){
     int i = btm_i;
     std::list<std::shared_ptr<FoldLine>> List_FL;
 
-    //折曲線が交差しないという前提ならこの実装方法で正しいはず
     class LineOnFL{
     public:
         std::shared_ptr<FoldLine> FL;
@@ -306,8 +305,6 @@ bool Model::SplitRulings(int dim){
             FL[FoldCurveIndex]->SortCurve();
         }
     }*/
-
-    UpdateFLOrder(dim);
     auto root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
     for(auto& r: Rulings){
