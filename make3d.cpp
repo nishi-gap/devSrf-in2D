@@ -132,20 +132,34 @@ void Model::ChangeFoldLineState(){
     FoldCurveIndex = FL.size() - 1;
 }
 
-void Model::UpdateFLOrder(int dim){
-    //下から上へとn分木での実装が必要かも
-    std::vector<std::shared_ptr<FoldLine>> hasFoldingCurve;
-    for(auto&fl: FL){
-        if((int)fl->CtrlPts.size() > dim)hasFoldingCurve.push_back(fl);
+std::shared_ptr<CrvPt_FL> getCrossPoint(std::vector<glm::f64vec3>& CtrlPts,  const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o, int dim){
+    std::vector<double>arcT = BezierClipping(CtrlPts, v, o, dim);
+    for(auto&t: arcT){
+        if(t < 0 || 1 < t){std::cout<<"t is not correct value " << t << std::endl; continue;}
+        glm::f64vec3 v2{0,0,0};
+        for (int i = 0; i < int(CtrlPts.size()); i++) v2 += MathTool::BernsteinBasisFunc(dim, i, t) * CtrlPts[i];
+        if(!MathTool::is_point_on_line(v2, v->p, o->p))continue;
+        double sa = glm::distance(v2, o->p), sc = glm::distance(o->p, v->p);
+        glm::f64vec3 v3 = sa/sc * (v->p3 - o->p3) + o->p3;
+        std::shared_ptr<CrvPt_FL> P = std::make_shared<CrvPt_FL>(CrvPt_FL(v2, v3, t));
+        P->set(v2, o, v);
+        return P;
     }
+    return std::shared_ptr<CrvPt_FL>(nullptr);
+}
 
+void Model::UpdateFLOrder(int dim){
+    glm::f64vec3 UpVec{0,-1,0};
+    std::vector<std::shared_ptr<FoldLine>> hasFoldingCurve;
     std::shared_ptr<Line> btm = outline->Lines.front();//一番下の辺を探索
+
     for(auto&l: outline->Lines){
         if(((l->v->p + l->o->p)/2.0).y > ((btm->v->p + btm->o->p)/2.0).y)btm = l;
     }
     int btm_i = std::distance(outline->Lines.begin(), std::find(outline->Lines.begin(), outline->Lines.end(),btm));
     int i = btm_i;
-    std::list<std::shared_ptr<FoldLine>> List_FL;//frontかbackのいずれかが探索するline上にある時、先頭と違っていれば先頭の要素を親に新しいものを子としてNTree_flに挿入、同じであればqueueから吐き出す
+    std::list<std::shared_ptr<FoldLine>> List_FL;
+
     //折曲線が交差しないという前提ならこの実装方法で正しいはず
     class LineOnFL{
     public:
@@ -153,6 +167,22 @@ void Model::UpdateFLOrder(int dim){
         double t;
         LineOnFL(std::shared_ptr<FoldLine> _FL, double _t): FL(_FL), t(_t){}
     };
+
+    for(auto&fl: FL){
+        fl->FoldingCurve.clear();
+        if((int)fl->CtrlPts.size() > dim){
+            hasFoldingCurve.push_back(fl);
+            for(auto& l: outline->Lines){
+                std::shared_ptr<CrvPt_FL> P = getCrossPoint(fl->CtrlPts, l->v, l->o, dim);
+                if(P!= nullptr){
+                    if(glm::dot(UpVec, glm::normalize(l->v->p - l->o->p)) > 0)fl->FoldingCurve.push_back(Vertex4d(P, l->v, l->o));
+                    else fl->FoldingCurve.push_back(Vertex4d(P, l->o, l->v));
+                }
+            }
+        }
+        fl->SortCurve();
+    }
+
     NTree_fl.clear();
     do{
        std::vector<LineOnFL> LoF;
@@ -183,12 +213,15 @@ void Model::UpdateFLOrder(int dim){
         }
         i = (i + 1) % (int)outline->Lines.size();
     }while(i != btm_i);
-
+    std::cout <<"order of FoldLines"<<std::endl;
     NTree_fl.print();
+    return;
 }
+
 
 bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
     UpdateFLOrder(dim);
+    SplitRulings(dim);
     std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>> root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
     std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>> q;
@@ -215,24 +248,27 @@ void Model::applyAAAMethod(double a){
 
 bool Model::RevisionCrosPtsPosition(){return FL[FoldCurveIndex]->RevisionCrosPtsPosition();}
 
-bool Model::SplitRulings(int dim){
-    using namespace MathTool;
-    glm::f64vec3 UpVec{0,-1,0};
-    auto getCrossPoint = [](std::vector<glm::f64vec3>& CtrlPts,  const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o, int dim){
-        std::vector<double>arcT = BezierClipping(CtrlPts, v, o, dim);
-        for(auto&t: arcT){
-            if(t < 0 || 1 < t){std::cout<<"t is not correct value " << t << std::endl; continue;}
-            glm::f64vec3 v2{0,0,0};
-            for (int i = 0; i < int(CtrlPts.size()); i++) v2 += MathTool::BernsteinBasisFunc(dim, i, t) * CtrlPts[i];
-            if(!MathTool::is_point_on_line(v2, v->p, o->p))continue;
-            double sa = glm::distance(v2, o->p), sc = glm::distance(o->p, v->p);
-            glm::f64vec3 v3 = sa/sc * (v->p3 - o->p3) + o->p3;
-            std::shared_ptr<CrvPt_FL> P = std::make_shared<CrvPt_FL>(CrvPt_FL(v2, v3, t));
-            P->set(v2, o, v);
-            return P;
+bool Model::AssignRuling(int dim){
+    UpdateFLOrder(dim);
+    SplitRulings(dim);
+    auto root = NTree_fl.GetRoot();
+    if(root == nullptr)return false;
+    std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>>q;
+    q.push(root);
+    while (!q.empty()) {
+        auto cur = q.front(); q.pop();
+        for (const auto& child : cur->children){
+            if(child != nullptr){
+                child->data->reassinruling(cur->data);
+                q.push(child);
+            }
         }
-        return std::shared_ptr<CrvPt_FL>(nullptr);
-    };
+    }
+    return true;
+}
+
+bool Model::SplitRulings(int dim){
+    glm::f64vec3 UpVec{0,-1,0};
     if(FL.empty() || FL[FoldCurveIndex]->CtrlPts.size() <= dim)return false;
     /*
     if(FL.size() == 1){
@@ -271,18 +307,6 @@ bool Model::SplitRulings(int dim){
         }
     }*/
 
-    for(auto&fl: FL){
-        fl->FoldingCurve.clear();
-        for(auto& l: outline->Lines){
-            std::shared_ptr<CrvPt_FL> P = getCrossPoint(fl->CtrlPts, l->v, l->o, dim);
-            if(P!= nullptr){
-                if(glm::dot(UpVec, glm::normalize(l->v->p - l->o->p)) > 0)fl->FoldingCurve.push_back(Vertex4d(P, l->v, l->o));
-                else fl->FoldingCurve.push_back(Vertex4d(P, l->o, l->v));
-            }
-        }
-        fl->SortCurve();
-    }
-
     UpdateFLOrder(dim);
     auto root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
@@ -294,19 +318,6 @@ bool Model::SplitRulings(int dim){
         }
     }
     root->data->SortCurve();
-    /*
-    std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>>q;
-    q.push(root);
-    while (!q.empty()) {
-        auto cur = q.front(); q.pop();
-        for (const auto& child : cur->children){
-            if(child != nullptr){
-                child->data->reassinruling(cur->data);
-                q.push(child);
-            }
-
-        }
-    }*/
     return true;
 }
 

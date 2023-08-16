@@ -35,7 +35,7 @@ public:
 
     //FoldLine
     bool AddControlPoint_FL(glm::f64vec3& p, int event, int curveDimention);
-    bool SplitRulings(int dim);
+
     void UpdateFLOrder(int dim);
     void modify2Druling();
     void applyFL();
@@ -45,7 +45,7 @@ public:
     bool RevisionCrosPtsPosition();
     void SortFoldingCurve(int dim);
     bool BendingModel(double wb, double wp, int dim, bool ConstFunc = true);
-
+    bool AssignRuling(int dim);
     std::vector<glm::f64vec3> resPts;
 
     //Smooth Surface
@@ -62,6 +62,8 @@ public:
     int searchPointIndex(QPointF pt, int& ptInd, int type);//type = 0 -> Control Point, 1: Curve Point
 
 private:
+
+    bool SplitRulings(int dim);
     void LinearInterPolation(const std::vector<std::shared_ptr<Line>>& path);
     void SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, std::vector<glm::f64vec2>& CurvePath);
 
