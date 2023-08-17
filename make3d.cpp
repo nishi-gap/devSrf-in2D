@@ -241,9 +241,9 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
     return true;
 }
 
-void Model::applyAAAMethod(double a){
+void Model::applyAAAMethod(double a, bool begincenter){
     auto Poly_V = outline->getVertices();
-    FL[FoldCurveIndex]->applyAAAMethod(Poly_V, a);
+    FL[FoldCurveIndex]->applyAAAMethod(Poly_V, a, begincenter);
 }
 
 bool Model::RevisionCrosPtsPosition(){return FL[FoldCurveIndex]->RevisionCrosPtsPosition();}
@@ -270,42 +270,6 @@ bool Model::AssignRuling(int dim){
 bool Model::SplitRulings(int dim){
     glm::f64vec3 UpVec{0,-1,0};
     if(FL.empty() || FL[FoldCurveIndex]->CtrlPts.size() <= dim)return false;
-    /*
-    if(FL.size() == 1){
-        for(auto& r: Rulings){
-            CrvPt_FL *P = getCrossPoint(FL[0]->CtrlPts, r->v, r->o, dim);
-            if(P!= nullptr){
-                if(glm::dot(UpVec, glm::normalize(r->v->p - r->o->p)) > 0)FL[0]->FoldingCurve.push_back(Vertex4d(P, r->v, r->o));
-                else FL[0]->FoldingCurve.push_back(Vertex4d(P, r->o, r->v));
-            }
-        }
-        for(auto& l: outline->Lines){
-            CrvPt_FL *P = getCrossPoint(FL[0]->CtrlPts, l->v, l->o, dim);
-            if(P!= nullptr){
-                if(glm::dot(UpVec, glm::normalize(l->v->p - l->o->p)) > 0)FL[0]->FoldingCurve.push_back(Vertex4d(P, l->v, l->o));
-                else FL[0]->FoldingCurve.push_back(Vertex4d(P, l->o, l->v));
-            }
-        }
-        FL[0]->SortCurve();
-    }else{
-        for(auto&fl: FL){
-
-            if(fl == FL[FoldCurveIndex])continue;
-            for(auto& r: fl->FoldingCurve){
-                CrvPt_FL *P = getCrossPoint(FL[FoldCurveIndex]->CtrlPts, r.second, r.first, dim);
-                if(P!= nullptr){
-                    FL[FoldCurveIndex]->FoldingCurve.push_back(Vertex4d(P, r.second, r.first)); r.second = P;
-                    continue;
-                }
-                P = getCrossPoint(FL[FoldCurveIndex]->CtrlPts, r.third, r.first, dim);
-                if(P!= nullptr){
-                    FL[FoldCurveIndex]->FoldingCurve.push_back(Vertex4d(P, r.third, r.first)); r.third = P;
-                    continue;
-                }
-            }
-            FL[FoldCurveIndex]->SortCurve();
-        }
-    }*/
     auto root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
     for(auto& r: Rulings){

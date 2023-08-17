@@ -41,7 +41,7 @@ public:
     void applyFL();
     void modifyFoldingCurvePositionOn3d();
     void ChangeFoldLineState();
-    void applyAAAMethod(double a);
+    void applyAAAMethod(double a, bool begincenter);
     bool RevisionCrosPtsPosition();
     void SortFoldingCurve(int dim);
     bool BendingModel(double wb, double wp, int dim, bool ConstFunc = true);

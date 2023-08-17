@@ -45,7 +45,7 @@ public:
     //Vertex *vx, *vx2;
 
     std::vector<Vertex4d> FoldingCurve;
-    void applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double a);
+    void applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double a, bool begincenter);
 
     std::vector<std::array<glm::f64vec3, 2>>  AllRulings, NewRuling2d;
     void drawRulingInAllAngles(std::vector<std::array<glm::f64vec3, 2>>& _Rulings);

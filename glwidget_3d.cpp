@@ -399,7 +399,7 @@ void GLWidget_3D::wheelEvent(QWheelEvent *we){
 }
 
 void GLWidget_3D::receiveKeyEvent(QKeyEvent *e){
-    if(e->key() == Qt::Key_M)eraseMesh = !eraseMesh;
+    //if(e->key() == Qt::Key_M)eraseMesh = !eraseMesh;
     if(e->key() == Qt::Key_C)eraseCtrlPt = !eraseCtrlPt;
     if(e->key() == Qt::Key_X)eraseCrossPt = !eraseCrossPt;
     if(e->key() == Qt::Key_D)eraseCurve = !eraseCurve;

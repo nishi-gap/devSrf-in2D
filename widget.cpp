@@ -81,7 +81,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->angleSlider, &QSlider::sliderMoved, this, &MainWindow::changeAngleFromSlider);
     connect(ui->angleA, &QDoubleSpinBox::valueChanged, this, &MainWindow::changeAngleFromSpinBox);
-    connect(this, &MainWindow::sendAngle, ui->glWid2dim, &GLWidget_2D::changeBetaValue);
+    connect(this, &MainWindow::sendAngle, ui->glWid2dim, &GLWidget_2D::changeflapgnle);
 
     connect(ui->DebugWindow, &QPushButton::clicked,ui->glWid2dim,&GLWidget_2D::OpenDebugWindwow);
     connect(ui->SaveButton, &QPushButton::clicked,this, &MainWindow::exportobj);
@@ -108,7 +108,7 @@ MainWindow::MainWindow(QWidget *parent)
     SelectedBtn = nullptr;
 }
 
-static int keyType = 0;
+static bool begin_center = true;
 
 MainWindow::~MainWindow()
 {
@@ -211,13 +211,13 @@ void MainWindow::SimpleSmoothing(){
 void MainWindow::changeAngleFromSlider(int val){
     ui->angleA->setValue((double)val/100);
     double a = (double)val/18000.0 * std::numbers::pi;
-    emit sendAngle(a, keyType);
+    emit sendAngle(a, begin_center);
 }
 
 void MainWindow::changeAngleFromSpinBox(double val){
     ui->angleSlider->setValue(val*100);
     double a = (double)val*std::numbers::pi/180.0;
-    emit sendAngle(a, keyType);
+    emit sendAngle(a, begin_center);
 
 }
 
@@ -341,6 +341,10 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     else if(e->key() == Qt::Key_3 ||e->key() == Qt::Key_4){
     }else if(e->modifiers().testFlag(Qt::ControlModifier)){
         if(e->key() == Qt::Key_S)exportobj();
+    }
+    else if(e->key() == Qt::Key_K){
+        begin_center = !begin_center;
+        std::cout << "flap angle start  " << ((!begin_center)? "end point": "center") << std::endl;
     }
     else{
 
