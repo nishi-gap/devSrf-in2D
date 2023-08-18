@@ -4,7 +4,6 @@
 #include "mathtool.h"
 #include <QPointF>
 #include <QString>
-#include <glm/gtx/vector_angle.hpp>
 
 //class ruling;
 class OUTLINE;

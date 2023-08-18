@@ -1,8 +1,7 @@
 #ifndef MATHTOOL_H
 #define MATHTOOL_H
 
-#include <glm/gtx/transform.hpp>
-#include <glm/gtx/string_cast.hpp>
+
 #include <vector>
 #include <iostream>
 #include <tuple>
@@ -79,39 +78,35 @@ enum class PaintTool{
 
 namespace MathTool{
 
-double distP2L(glm::f64vec3 la, glm::f64vec3 lb, glm::f64vec3& p, glm::f64vec3& q);//点と線分の距離, s:laからlbへの比率(垂線が内部にあれば0 ~ 1)
+double distP2L(const Eigen::Vector3d& la, const Eigen::Vector3d& lb, const Eigen::Vector3d& p, Eigen::Vector3d& q);//点と線分の距離, s:laからlbへの比率(垂線が内部にあれば0 ~ 1)
 
-bool IsIntersect(glm::f64vec3&p1, glm::f64vec3&p2, glm::f64vec3&p3, glm::f64vec3&p4, bool ConsiderEnd = false);
-glm::f64vec3 getIntersectionPoint(glm::f64vec3& p1, glm::f64vec3& p2, glm::f64vec3& p3, glm::f64vec3& p4);
-glm::f64vec3 calcCrossPoint_2Vector(glm::f64vec3 p1, glm::f64vec3 q1, glm::f64vec3 p2, glm::f64vec3 q2);
+bool IsIntersect(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, const Eigen::Vector3d& p3, const Eigen::Vector3d& p4, bool ConsiderEnd = false);
+Eigen::Vector3d getIntersectionPoint(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2,const Eigen::Vector3d p3, glm::f64vec3& p4);
+Eigen::Vector3d calcCrossPoint_2Vector(const Eigen::Vector3d& p1, const Eigen::Vector3d& q1, const Eigen::Vector3d& p2, const Eigen::Vector3d& q2);
 
-void Triangulation(std::vector<glm::f64vec3>&input, std::vector<std::array<glm::f64vec3, 3>>&output);
-bool hasPointInTriangle3D(glm::f64vec3 p, std::array<glm::f64vec3, 3>& V);
-bool IsAngleLessThan180(glm::f64vec3& o, glm::f64vec3& a, glm::f64vec3& b);
+void Triangulation(std::vector<Eigen::Vector3d>&input, std::vector<std::array<Eigen::Vector3d, 3>>&output);
+bool hasPointInTriangle3D(const Eigen::Vector3d& p, std::array<Eigen::Vector3d, 3>& V);
+bool IsAngleLessThan180(Eigen::Vector3d& o, Eigen::Vector3d& a, Eigen::Vector3d& b);
 
-std::vector<double> _bezierclipping(const std::vector<glm::f64vec3>&CtrlPts_base, std::vector<glm::f64vec3>&CtrlPts_cur, std::array<glm::f64vec3, 2>& line, int dim);//交点が一つのみの場合
-bool is_point_on_line(glm::f64vec3 p, glm::f64vec3 lp1, glm::f64vec3 lp2);
-std::pair<std::vector<glm::f64vec3>, std::vector<glm::f64vec3>> BezierSplit(const std::vector<glm::f64vec3>& CtrlPts, double t);
-std::vector<std::vector<glm::f64vec3>> de_casteljau_algorithm(const std::vector<glm::f64vec3>& CtrlPts, double t);
+std::vector<double> _bezierclipping(const std::vector<Eigen::Vector3d>&CtrlPts_base, std::vector<Eigen::Vector3d>&CtrlPts_cur, std::array<Eigen::Vector3d, 2>& line, int dim);//交点が一つのみの場合
+bool is_point_on_line(Eigen::Vector3d p, Eigen::Vector3d lp1, Eigen::Vector3d lp2);
+std::pair<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>> BezierSplit(const std::vector<Eigen::Vector3d>& CtrlPts, double t);
+std::vector<std::vector<Eigen::Vector3d>> de_casteljau_algorithm(const std::vector<Eigen::Vector3d>& CtrlPts, double t);
 
-std::vector<glm::f64vec3> GrahamScan(std::vector<glm::f64vec3>& Q);//凸包の計算
-double SignedArea(glm::f64vec3 a, glm::f64vec3 b, glm::f64vec3 p);
+std::vector<Eigen::Vector3d> GrahamScan(const std::vector<Eigen::Vector3d>& Q);//凸包の計算
+double SignedArea(const Eigen::Vector3d& a, const Eigen::Vector3d& b, const Eigen::Vector3d& p);
 
-glm::f64vec3 bspline(std::vector<glm::f64vec3>&CtrlPts, double t, int dim, std::vector<double>Knot);
+Eigen::Vector3d bspline(std::vector<Eigen::Vector3d>&CtrlPts, double t, int dim, std::vector<double>Knot);
 
 double factorial(int n);
 double cmb(int n, int i);
 double BernsteinBasisFunc(int n, int i, double t);
-glm::f64vec3 bezier(std::vector<glm::f64vec3>& CtrlPts, double t, int dim);
-void diffBezier(std::vector<glm::f64vec3>& dP, std::vector<glm::f64vec3>& CtrlPts, double t, int dim);
+Eigen::Vector3d bezier(std::vector<Eigen::Vector3d>& CtrlPts, double t, int dim);
 
 double basis(int n, int i, int p, double u, std::vector<double>& U);
 
 std::vector<double> LSM_apply(std::vector<double>&y, int dim = 1);
-
-std::vector<glm::f64vec3> getPlaneFromCurvePoints(std::vector<glm::f64vec3>& Points, std::vector<glm::f64vec3>& BasisVectors);
-glm::f64vec3 ProjectionVector(glm::f64vec3 v, glm::f64vec3 n, bool Isnormalize = false);
-
+Eigen::Vector3d ProjectionVector(const Eigen::Vector3d& v, Eigen::Vector3d n, bool Isnormalize = false);
 }
 
 template <typename T>
