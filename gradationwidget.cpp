@@ -84,18 +84,18 @@ void GradationWidget::DrawStdLine(int w, int h){
 void GradationWidget::DrawCtrlPt(){
     glColor3d(0.f,0.f,0.f);
     glBegin(GL_POINTS);
-    for(auto& cp: ControllPoints) glVertex2d(cp.x, cp.y);
+    for(auto& cp: ControllPoints) glVertex2d(cp.x(), cp.y());
     glEnd();
 
     glColor3d(1.f, 0.f, 0.f);
     glBegin(GL_LINE_STRIP);
-    for(auto&cp: ControllPoints) glVertex2d(cp.x, cp.y);
+    for(auto&cp: ControllPoints) glVertex2d(cp.x(), cp.y());
     glEnd();
 }
 void GradationWidget::DrawCrvPt(){
     glColor3d(0,0,1);
     glBegin(GL_LINE_STRIP);
-    for(auto& p: CurvePath) glVertex2d(p.x, p.y);
+    for(auto& p: CurvePath) glVertex2d(p.x(), p.y());
     glEnd();
 }
 
@@ -130,8 +130,8 @@ void GradationWidget::mouseMoveEvent(QMouseEvent *e){
     QSize s = this->size();
     if(paintMode == "linear"){
         p.setY((p.y() < 0)? 0: (p.y() > s.height()) ? s.height() : p.y());
-        if(IsClicked == 0)a.y = p.y();
-        if(IsClicked == 1)b.y = p.y();
+        if(IsClicked == 0)a.y() = p.y();
+        if(IsClicked == 1)b.y() = p.y();
 
         //cm.colorupdate((double)s.height()/2 - a.y, (double)s.height()/2 - b.y, gradPoints);
         Cval = QString::number(abs((double)s.height()/2 - p.y()));
@@ -140,7 +140,7 @@ void GradationWidget::mouseMoveEvent(QMouseEvent *e){
     }else if(paintMode == "SplineInterpolation"){
 
     }else if(paintMode == "FreeCurve"){
-        ControllPoints.push_back(glm::f64vec2{p.x(), p.y()});
+        ControllPoints.push_back(Eigen::Vector2d(p.x(), p.y()));
     }else if(paintMode == "B-spline"){
 
     }
@@ -173,7 +173,7 @@ void GradationWidget::mouseReleaseEvent(QMouseEvent *e){
         if(paintMode == "linear"){
 
         }else if(paintMode == "SplineInterpolation"){
-            ControllPoints.push_back(glm::f64vec2{p.x(), p.y()});
+            ControllPoints.push_back(Eigen::Vector2d(p.x(), p.y()));
             if(ControllPoints.size() > 1){
                 SplineInterpolation(ControllPoints, CurvePath);
                 emit ColorValueChanged();
@@ -182,7 +182,7 @@ void GradationWidget::mouseReleaseEvent(QMouseEvent *e){
             if(ControllPoints.size() != 0) emit ColorValueChanged();
 
         }else if(paintMode == "B-spline"){
-            ControllPoints.push_back(glm::f64vec2{p.x(), p.y()});
+            ControllPoints.push_back(Eigen::Vector2d(p.x(), p.y()));
             if((int)ControllPoints.size() > BsplineDim){          
                 Bspline(BsplineDim, ControllPoints, CurvePath, 100);
 
@@ -210,7 +210,7 @@ double GradationWidget::basis(int j, int k, double t, std::vector<double>& T){
     return b * basis(j,k-1,t,T) + b2 * basis(j+1,k-1,t,T);
 }
 
-void GradationWidget::Bspline(int n, std::vector<glm::f64vec2>& P, std::vector<glm::f64vec2>& curvePt, int ptSize){
+void GradationWidget::Bspline(int n, std::vector<Eigen::Vector2d>& P, std::vector<Eigen::Vector2d>& curvePt, int ptSize){
     if((int)P.size() < n) return;
     curvePt.clear();
     int knotSize = (int)P.size() + n + 1;
@@ -222,7 +222,7 @@ void GradationWidget::Bspline(int n, std::vector<glm::f64vec2>& P, std::vector<g
     double t, b;
 
     for(t = T[n]; t <= T[(int)P.size()]; t += 1.0/(double)(ptSize)){
-        glm::f64vec2 vec = glm::f64vec2{0,0};
+        Eigen::Vector2d vec(0,0);
 
         for(int j = 0; j < (int)P.size();j++){
             b = basis(j,n,t,T); if(std::isnan(b)) {qDebug()<<"stop"; break;}
@@ -234,7 +234,7 @@ void GradationWidget::Bspline(int n, std::vector<glm::f64vec2>& P, std::vector<g
 
 }
 
-void GradationWidget::SplineInterpolation(std::vector<glm::f64vec2>& cp, std::vector<glm::f64vec2>& CurvePath){
+void GradationWidget::SplineInterpolation(std::vector<Eigen::Vector2d>& cp, std::vector<Eigen::Vector2d>& CurvePath){
 
     if(cp.size() < 2)return;
     int curveNum = 300;
@@ -244,9 +244,9 @@ void GradationWidget::SplineInterpolation(std::vector<glm::f64vec2>& cp, std::ve
     int N =(int)cp.size() - 1;
     Eigen::VectorXd v(N - 1);
     std::vector<double>h(N);
-    for(int i = 1; i < (int)cp.size(); i++)h[i - 1] = cp[i].x - cp[i - 1].x;
+    for(int i = 1; i < (int)cp.size(); i++)h[i - 1] = cp[i].x() - cp[i - 1].x();
     for(int i = 1; i < N; i++){
-        double a = (h[i] != 0) ? (cp[i + 1].y - cp[i].y)/h[i] : 0, b = (h[i - 1] != 0) ? (cp[i].y - cp[i - 1].y)/h[i - 1]: 0;
+        double a = (h[i] != 0) ? (cp[i + 1].y() - cp[i].y())/h[i] : 0, b = (h[i - 1] != 0) ? (cp[i].y() - cp[i - 1].y())/h[i - 1]: 0;
         v(i - 1) = 6 * (a - b);
     }
     Eigen::VectorXd u;
@@ -255,11 +255,11 @@ void GradationWidget::SplineInterpolation(std::vector<glm::f64vec2>& cp, std::ve
     }else if(N == 2){
         u = Eigen::VectorXd::Zero(3);
         double dx1, dx2, dx3;
-        dx1 = cp[2].x - cp[0].x; dx2 = cp[2].x - cp[1].x; dx3 = cp[1].x - cp[0].x;
-        if(abs(dx1) < FLT_EPSILON) u(1) = 0;
+        dx1 = cp[2].x() - cp[0].x(); dx2 = cp[2].x() - cp[1].x(); dx3 = cp[1].x() - cp[0].x();
+        if(abs(dx1) < 1e-7) u(1) = 0;
         else{
-            double a = (dx2 == 0) ? 0: (cp[2].y - cp[1].y)/dx2;
-            double b = (dx3 == 0) ? 0: (cp[1].y - cp[0].y)/dx3;
+            double a = (dx2 == 0) ? 0: (cp[2].y() - cp[1].y())/dx2;
+            double b = (dx3 == 0) ? 0: (cp[1].y() - cp[0].y())/dx3;
             u(1) = 3 * (a - b)/dx1;
         }
     }
@@ -290,9 +290,9 @@ void GradationWidget::SplineInterpolation(std::vector<glm::f64vec2>& cp, std::ve
         d = cp[j].y;
         x = (i - j) * den;
         double y = a * std::pow(x, 3) + b * std::pow(x, 2) + c * x + d;
-        x += cp[j].x;
+        x += cp[j].x();
         //qDebug() << i << " " << j << " " << x << " " << y << " " <<  QString::fromStdString(glm::to_string(cp[j]));
-        CurvePath.push_back(glm::f64vec2{x,y});
+        CurvePath.push_back(Eigen::Vector2d(x,y));
     }
 
 }

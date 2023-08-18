@@ -8,18 +8,19 @@ GLWidget_3D::GLWidget_3D(QWidget *parent):QOpenGLWidget(parent)
     TriMeshs.clear();
     this->firstRotate = true;
     actionType = 0;
-    center = glm::f64vec3{0,0,0};
+    center = Eigen::Vector3d(0,0,0);
     eraseMesh = eraseCtrlPt = eraseCrossPt = eraseVec = eraseCurve = false;
     VisiblePlanarity = false;
     switchTNB = 0;
-    glm::f64vec3 up{0,1,0};
-    //arccam = ArcBallCam(glm::f64vec3{0,0,-100}, center, up);
+    //Eigen::Vector3d up(0,1,0);
+    //arccam = ArcBallCam(Eigen::Vector3d{0,0,-100}, center, up);
     drawdist = 0.0;
     drawEdgePlane = -1;
     IsEraseNonFoldEdge = false;
 
-    Mirror = glm::mat4(1.0f); Mirror[1][1] = -1;
-    Scale = glm::scale(glm::f64vec3{0.1, 0.1, 0.1});
+    Mirror = Eigen::Matrix3d::Identity();
+    Mirror(1,1) = -1;
+    Scale = 0.1;
 }
 GLWidget_3D::~GLWidget_3D(){
 
@@ -31,8 +32,8 @@ void GLWidget_3D::initializeGL(){
     QSize s = this->size();
     TransX = 50.f, TransY = 0.f, TransZ = -200.f;
     angleY = 90;
-    glm::f64vec3 up{0,1,0};
-    //arccam = ArcBallCam(glm::f64vec3{0,0,-100}, center, up);
+    //Eigen::Vector3d up(0,1,0);
+    //arccam = ArcBallCam(Eigen::Vector3d(0,0,-100), center, up);
     glViewport(s.width(),0,s.width(),s.height());
     glEnable(GL_POLYGON_OFFSET_FILL);
     glEnable(GL_DEPTH_TEST);
@@ -46,9 +47,9 @@ void GLWidget_3D::EraseNonFoldEdge(bool state){
 void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const FoldLine3d FldCrvs, const Ruling3d& _AllRulings){
 
     auto Planerity  = [](const std::vector<std::shared_ptr<Vertex>>& vertices, const Lines Poly_V)->double{
-        if(vertices.size() == 3)return 0.0;
+        if((int)vertices.size() == 3)return 0.0;
         else{
-            std::vector<glm::f64vec3> QuadPlane;
+            std::vector<Eigen::Vector3d> QuadPlane;
             for(auto&v: vertices){
                 bool IsOutlineVertices = false;
                 for(auto&p: Poly_V){
@@ -56,14 +57,14 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                 }
                 if(!IsOutlineVertices)QuadPlane.push_back(v->p3);
             }
-            double l_avg = (glm::distance(QuadPlane[0], QuadPlane[2]) + glm::distance(QuadPlane[1], QuadPlane[3]))/2.0;
+            double l_avg = ((QuadPlane[0] - QuadPlane[2]).norm() + (QuadPlane[1] - QuadPlane[3]).norm())/2.0;
             double d;
-            glm::f64vec3 u1 = glm::normalize(QuadPlane[0] - QuadPlane[2]), u2 = glm::normalize(QuadPlane[1]-  QuadPlane[3]);
-            if(glm::length(glm::cross(u1, u2)) < DBL_EPSILON){
-                glm::f64vec3 H = QuadPlane[3] + glm::dot(QuadPlane[1] - QuadPlane[3], u2)*u2;
-                d = glm::distance(H, QuadPlane[1]);
-            }else{
-                d = glm::length(glm::dot(glm::cross(u1,u2),  QuadPlane[2] - QuadPlane[3]))/glm::length(glm::cross(u1, u2));
+            Eigen::Vector3d u1 = (QuadPlane[0] - QuadPlane[2]).normalized(), u2 = (QuadPlane[1]-  QuadPlane[3]).normalized();
+            if((u1.cross(u2)).norm() < 1e-9){
+                Eigen::Vector3d H = QuadPlane[3] + u2.dot(QuadPlane[1] - QuadPlane[3])*u2;
+                d = (H - QuadPlane[1]).norm();
+            }else{            
+                d = ((u1.cross(u2)).dot(QuadPlane[2] - QuadPlane[3]))/(u1.cross(u2)).norm();
             }
             return d/l_avg;
         }
@@ -75,19 +76,18 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
     TriMeshs.clear();
     PlanarityColor.clear();
     C.clear();
-    glm::f64vec3 _center;
+    Eigen::Vector3d _center;
 
-    std::vector<std::array<glm::f64vec3, 3>> trimesh;
+    std::vector<std::array<Eigen::Vector3d, 3>> trimesh;
     FoldLineVertices.clear();
 
     AllRulings.clear();
     for(auto&v: _AllRulings){
-        std::array<glm::f64vec3, 2> tmpV{glm::f64vec3(Scale * Mirror * glm::f64vec4(v[0],1)), glm::f64vec3(Scale * Mirror * glm::f64vec4(v[1],1))};
+        std::array<Eigen::Vector3d, 2> tmpV{Scale * Mirror * v[0], Scale * Mirror * v[1]};
         AllRulings.push_back(tmpV);
     }
 
     TriMeshs.clear();
-    drawEdges.clear();
     std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons;
     std::vector<std::shared_ptr<Vertex>> polygon;
     for(auto& l: Surface) polygon.push_back(l->v);
@@ -118,7 +118,7 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
 
         for(auto&FC: FldCrvs){
             if(FC->FoldingCurve.empty())continue;
-            glm::f64vec3 CrvDir = glm::normalize(FC->FoldingCurve.back().first->p - FC->FoldingCurve.front().first->p);
+            Eigen::Vector3d CrvDir = (FC->FoldingCurve.back().first->p - FC->FoldingCurve.front().first->p).normalized();
             for(auto&P: Polygons){
                 int ind_fr = -1, ind_bc = -1;
                 for(int i = 0; i < (int)P.size(); i++){
@@ -130,10 +130,10 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                     for(auto&v: FC->FoldingCurve){InsertedV.push_back(v.first);InsertedV_inv.insert(InsertedV_inv.begin(), v.first);}
 
                     int i_min = std::min(ind_fr, ind_bc) + 1, i_max = std::max(ind_fr, ind_bc) + 1;
-                    glm::f64vec3 Dir_prev = glm::normalize(P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p);
+                    Eigen::Vector3d Dir_prev = (P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p).normalized();
                     std::vector<std::shared_ptr<Vertex>> poly2 = {P.begin() + i_min, P.begin() + i_max};
                     P.erase(P.begin() + i_min, P.begin() + i_max);
-                    if(glm::dot(glm::cross(CrvDir, Dir_prev), glm::f64vec3{0,0,1}) < 0){
+                    if(Eigen::Vector3d(0,0,1).dot(CrvDir.cross(Dir_prev)) < 0){
                         P.insert(P.begin() + i_min, InsertedV.begin(), InsertedV.end());
                         poly2.insert(poly2.end(), InsertedV_inv.begin(), InsertedV_inv.end());
                     }else{
@@ -169,7 +169,6 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                 P.push_back((*itr_r)->o); P.push_back((*itr_r)->v); P = SortPolygon(P);
                 poly2.push_back((*itr_r)->o); poly2.push_back((*itr_r)->v); poly2 = SortPolygon(poly2);
                 Polygons.push_back(poly2);
-                drawEdges.push_back({(*itr_r)->v->p3, (*itr_r)->o->p3});
             }
         }
     }
@@ -178,8 +177,8 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
         //std::vector<Vertex*> p_sort = SortPolygon(polygon);
         if(!Rulings.empty())PlanarityColor.push_back(Planerity(polygon, Surface));
         else PlanarityColor.push_back(0);
-        std::vector<glm::f64vec3> vertices;
-        for(auto& p: polygon)vertices.push_back(glm::f64vec3(Scale * Mirror * glm::f64vec4(p->p3,1)));
+        std::vector<Eigen::Vector3d> vertices;
+        for(auto& p: polygon)vertices.push_back(Scale * (Mirror * p->p3));
         Vertices.push_back(vertices);
     }
 
@@ -189,25 +188,20 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
     //}
     for(auto&tri : TriMeshs){
         _center = (tri[2] + tri[1] + tri[0])/3.0;
-        double area = glm::length(glm::cross(tri[2] - tri[0], tri[1] - tri[0]))/2.0;
+        double area = ((tri[2] - tri[0]).cross(tri[1] - tri[0])).norm()/2.0;
         center += _center * area;
     }
-    for(auto&e: drawEdges){
-        e[0] = glm::f64vec3(Scale * Mirror * glm::f64vec4(e[0],1)); e[1] = glm::f64vec3(Scale * Mirror * glm::f64vec4(e[1],1));
-    }
-
-    center = glm::f64vec3{0,0,0};
-
+    center = Eigen::Vector3d(0,0,0);
     update();
 }
 
-inline void GLWidget_3D::dispV(glm::f64vec3 p){
-    glVertex3d(p.x, p.y, p.z);
+inline void GLWidget_3D::dispV(Eigen::Vector3d p){
+    glVertex3d(p.x(), p.y(), p.z());
 }
-void GLWidget_3D::ReceiveParam(std::vector<std::vector<glm::f64vec3>>&_C){
+void GLWidget_3D::ReceiveParam(std::vector<std::vector<Eigen::Vector3d>>&_C){
     C = _C;
     for(auto&c: C){
-        for(auto&p: c) p = glm::f64vec3(Scale * Mirror * glm::f64vec4(p,1));
+        for(auto&p: c) p = Scale * Mirror * p;
     }
 }
 
@@ -219,13 +213,13 @@ void GLWidget_3D::paintGL(){
 
     glLoadIdentity();
     perspective(30.0f, (float)s.width() / (float)s.height(), 1.f, 100.f);
-    //glm::f64mat4 RotY = glm::rotate(angleY, glm::f64vec3{0,1,0}), RotX = glm::rotate(angleX, glm::f64vec3(1,0,0));
-    //glm::f64mat4 Trans = glm::translate(glm::f64vec3{- TransX, - TransY, - TransZ});
-    //glm::f64vec3 camPos = RotY * RotX * Trans * glm::f64vec4{center, 1};
+    //glm::f64mat4 RotY = glm::rotate(angleY, Eigen::Vector3d{0,1,0}), RotX = glm::rotate(angleX, Eigen::Vector3d(1,0,0));
+    //glm::f64mat4 Trans = glm::translate(Eigen::Vector3d{- TransX, - TransY, - TransZ});
+    //Eigen::Vector3d camPos = RotY * RotX * Trans * glm::f64vec4{center, 1};
 
 
     glScaled(0.1, 0.1, 0.1);
-    glTranslated(-center.x - TransX, -center.y - TransY, -center.z -drawdist + TransZ);
+    glTranslated(-center.x() - TransX, -center.y() - TransY, -center.z() -drawdist + TransZ);
     glRotated(0.2 * angleX, 0.0, 1.0, 0.0);
     glRotated(0.2 * angleY, 1.0, 0.0, 0.0);
 
@@ -242,36 +236,32 @@ void GLWidget_3D::paintGL(){
         //if(i % 2 == 0)glColor3d(1,0,0);
         //else glColor3d(0,1,0);
         glBegin(GL_LINES);
-        glVertex3d(AllRulings[i][0].x, AllRulings[i][0].y, AllRulings[i][0].z);
-        glVertex3d(AllRulings[i][1].x, AllRulings[i][1].y, AllRulings[i][1].z);
+        glVertex3d(AllRulings[i][0].x(), AllRulings[i][0].y(), AllRulings[i][0].z());
+        glVertex3d(AllRulings[i][1].x(), AllRulings[i][1].y(), AllRulings[i][1].z());
         glEnd();
 
         glPointSize(5);
         glBegin(GL_POINTS);
-        glVertex3d(AllRulings[i][0].x, AllRulings[i][0].y, AllRulings[i][0].z);
+        glVertex3d(AllRulings[i][0].x(), AllRulings[i][0].y(), AllRulings[i][0].z());
         glEnd();
     }
 
     glPolygonOffset(1.f,2.f);
-
-
-
     for(const auto&c: C){
         glPointSize(6);
         glColor3d(1,0,0);
         for(const auto&v: c){
             glBegin(GL_POINTS);
-            glVertex3d(v.x, v.y, v.z);
+            glVertex3d(v.x(), v.y(), v.z());
             glEnd();
         }
         glEnable(GL_LINE_STIPPLE);
         glLineStipple(1 , 0xF0F0);
         glBegin(GL_LINE_STRIP);
         glColor3d(0.4, 0.4, 0.4);
-        for (const auto& v: c)glVertex3d( v.x, v.y, v.z);
+        for (const auto& v: c)glVertex3d(v.x(), v.y(), v.z());
         glEnd();
         glDisable(GL_LINE_STIPPLE);
-
     }
 
     glPolygonOffset(0.f,0.f);
@@ -292,7 +282,7 @@ void GLWidget_3D::DrawMesh(bool isFront){
 
             glBegin(GL_POLYGON);
             for (auto& v : Vertices[i]) {
-                glVertex3d(v.x, v.y, v.z);
+                glVertex3d(v.x(), v.y(), v.z());
             }
             glEnd();
         }
@@ -311,7 +301,7 @@ void GLWidget_3D::DrawMesh(bool isFront){
             if(drawEdgePlane == i)continue;
             glBegin(GL_POLYGON);
             for (auto& v : Vertices[i]) {
-                glVertex3d(v.x, v.y, v.z);
+                glVertex3d(v.x(), v.y(), v.z());
             }
             glEnd();
         }
@@ -333,17 +323,12 @@ void GLWidget_3D::DrawMesh(bool isFront){
 }
 
 void GLWidget_3D::DrawMeshLines(){
-    //std::vector<std::vector<glm::f64vec3>> TriMeshs;
+    //std::vector<std::vector<Eigen::Vector3d>> TriMeshs;
     glColor3d(0.f, 0.f, 0.f);
     glLineWidth(1.0f);
-    /*for(const auto& e: drawEdges){
-        glBegin(GL_LINES);
-        glVertex3d(e[0].x, e[0].y, e[0].z); glVertex3d(e[1].x, e[1].y, e[1].z);
-        glEnd();
-    }*/
     for(auto&V: Vertices){
         glBegin(GL_LINE_LOOP);
-        for(auto&v: V)glVertex3d(v.x, v.y, v.z);
+        for(auto&v: V)glVertex3d(v.x(), v.y(), v.z());
         glEnd();
     }
 }
@@ -432,34 +417,34 @@ void GLWidget_3D::mouseMoveEvent(QMouseEvent *e){
     update();
 }
 
-glm::f64vec3 GLWidget_3D::getVec(float x, float y){
+Eigen::Vector3d GLWidget_3D::getVec(double x, double y){
     QSize s = this->size();
     double shortSide = std::min(s.width(), s.height());
-    glm::f64vec3 pt(2. * x / shortSide - 1.0, -2.0 * y / shortSide + 1.0, 0.0);
+    Eigen::Vector3d pt(2. * x / shortSide - 1.0, -2.0 * y / shortSide + 1.0, 0.0);
     // z座標の計算
-    const double xySquared = pt.x * pt.x + pt.y * pt.y;
-    if (xySquared <= 1.0) pt.z = std::sqrt(1.0 - xySquared);// 単位円の内側ならz座標を計算
-    else pt = glm::normalize(pt); // 外側なら球の外枠上にあると考える
+    const double xySquared = pt.x() * pt.x() + pt.y() * pt.y();
+    if (xySquared <= 1.0) pt.z() = std::sqrt(1.0 - xySquared);// 単位円の内側ならz座標を計算
+    else pt = pt.normalized(); // 外側なら球の外枠上にあると考える
     return pt;
 }
 
 void GLWidget_3D::updateRotate() {
     QPointF curPos = this->mapFromGlobal(QCursor::pos());
     // マウスクリック位置をアークボール球上の座標に変換
-    const glm::f64vec3 u = getVec(befPos.x(), befPos.y());
-    const glm::f64vec3 v = getVec(curPos.x(), curPos.y());
+    const Eigen::Vector3d u = getVec(befPos.x(), befPos.y());
+    const Eigen::Vector3d v = getVec(curPos.x(), curPos.y());
 
     // カメラ座標における回転量 (=世界座標における回転量)
-    const double angle = std::acos(std::max(-1.0, std::min(glm::dot(u, v), 1.0)));
+    const double angle = std::acos(std::max(-1.0, std::min(u.dot(v), 1.0)));
 
     // カメラ空間における回転軸
-    const glm::f64vec3 rotAxis = glm::cross(u, v);
+    const Eigen::Vector3d rotAxis = u.cross(v);
 
     // カメラ座標の情報を世界座標に変換する行列
     //const glm::f64mat4 c2wMat = glm::inverse(viewMat);
 
     // 世界座標における回転軸
-    //const glm::f64vec3 rotAxisWorldSpace = glm::vec3(c2wMat * glm::vec4(rotAxis, 0.0f));
+    //const Eigen::Vector3d rotAxisWorldSpace = glm::vec3(c2wMat * glm::vec4(rotAxis, 0.0f));
 
     // 回転行列の更新
     //acRotMat = glm::rotate(((4.0 * angle), rotAxisWorldSpace) * acRotMat;

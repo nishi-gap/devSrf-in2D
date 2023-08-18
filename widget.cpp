@@ -408,12 +408,13 @@ void MainWindow::exportobj(){
            }
            double l_avg = ((QuadPlane[0] - QuadPlane[2]).norm() + (QuadPlane[1] - QuadPlane[3]).norm())/2.0;
            double d;
-           Eigen::Vector3d u1 = (QuadPlane[0] - QuadPlane[2]).normalize(), u2 = (QuadPlane[1]-  QuadPlane[3]).normalize();
+           Eigen::Vector3d u1 = (QuadPlane[0] - QuadPlane[2]).normalized(), u2 = (QuadPlane[1]-  QuadPlane[3]).normalized();
            if((u1.cross(u2)).norm() < DBL_EPSILON){
                Eigen::Vector3d H = QuadPlane[3] + u2.dot(QuadPlane[1] - QuadPlane[3])*u2;
                d = (H - QuadPlane[1]).norm();
            }else{
-               d = ((u1.cross(u2)).dot(QuadPlane[2] - QuadPlane[3])).norm()/(u1.cross(u2)).norm();
+               auto u = u1.cross(u2);
+               d = (u.dot(QuadPlane[2] - QuadPlane[3]))/(u1.cross(u2)).norm();
            }
            return d/l_avg;
        }
@@ -425,7 +426,7 @@ void MainWindow::exportobj(){
    if(!ui->glWid2dim->model->FL.empty() ||!ui->glWid2dim->model->FL[0]->FoldingCurve.empty()){
        for(auto&FC: ui->glWid2dim->model->FL){
            std::vector<Vertex4d> FldCrv = FC->FoldingCurve;
-           Eigen::Vector3d CrvDir = (FldCrv.back().first->p - FldCrv.front().first->p).normalize();
+           Eigen::Vector3d CrvDir = (FldCrv.back().first->p - FldCrv.front().first->p).normalized();
            for(auto&P: Polygons){
                int ind_fr = -1, ind_bc = -1;
                for(int i = 0; i < (int)P.size(); i++){
@@ -437,7 +438,7 @@ void MainWindow::exportobj(){
                    for(auto&v: FldCrv){InsertedV.push_back(v.first);InsertedV_inv.insert(InsertedV_inv.begin(), v.first);}
 
                    int i_min = std::min(ind_fr, ind_bc) + 1, i_max = std::max(ind_fr, ind_bc) + 1;
-                   Eigen::Vector3d Dir_prev = (P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p).normalize();
+                   Eigen::Vector3d Dir_prev = (P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p).normalized();
                    std::vector<std::shared_ptr<Vertex>> poly2 = {P.begin() + i_min, P.begin() + i_max};
                    P.erase(P.begin() + i_min, P.begin() + i_max);
                    if((Eigen::Vector3d::UnitZ()).dot(CrvDir.cross(Dir_prev)) < 0){
@@ -510,7 +511,7 @@ void MainWindow::exportobj(){
 
     for(const auto& mesh: Vertices){
         for(const auto&v: mesh)WriteList.append("v " + QString::number(v.x()) + " " + QString::number(v.y()) + " " + QString::number(v.z()) + "\n");
-        N = ((mesh[1] - mesh[0]).cross(mesh[2] - mesh[0])).normalize();
+        N = ((mesh[1] - mesh[0]).cross(mesh[2] - mesh[0])).normalized();
         Normals.push_back(N);
         befN = N;
     }
@@ -560,7 +561,7 @@ void MainWindow::exportobj(){
     if(!(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())){
         for(auto itr = ui->glWid2dim->model->FL[0]->FoldingCurve.begin() + 1; itr != ui->glWid2dim->model->FL[0]->FoldingCurve.end() - 1; itr++){
             Eigen::Vector3d et = itr->second->p3 - itr->first->p3, er = (itr - 1)->first->p3 - itr->first->p3, eb = itr->third->p3 - itr->first->p3, el = (itr + 1)->first->p3 - itr->first->p3;
-            et = et.normalize(); er = er.normalize(); eb = eb.normalize(); el = el.normalize();
+            et = et.normalized(); er = er.normalized(); eb = eb.normalized(); el = el.normalized();
             double phi1 = std::acos(et.dot(er)), phi2 = std::acos(et.dot(el)), phi3 = std::acos(eb.dot(el)), phi4 = std::acos(eb.dot(er));
             double a = abs(2.0*std::numbers::pi - (phi1 + phi2 + phi3 + phi4));
             if(a != -1)QuantitativeResult << a << ", ";

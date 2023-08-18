@@ -30,7 +30,7 @@ Vertex4d::Vertex4d(const std::shared_ptr<CrvPt_FL>& v, const std::shared_ptr<Ver
 
 Vertex4d::Vertex4d(){first = nullptr; second = nullptr; third = nullptr; IsCalc = false;}
 
-bool Line::is_on_line(glm::f64vec3 p){ return MathTool::is_point_on_line(p, v->p, o->p);}
+bool Line::is_on_line(Eigen::Vector3d p){ return MathTool::is_point_on_line(p, v->p, o->p);}
 
 CRV::CRV(int _crvNum, int DivSize){
     curveNum = _crvNum;
@@ -99,9 +99,8 @@ bool CRV::drawBspline(int curveDimention,  int crvPtNum){
 bool CRV::drawBezier(int curveDimention, int crvPtNum){
     if((int)ControllPoints.size() < curveDimention){return false;}
     double t = 0.0;
-    Eigen::Vector3d v;
     for(int n = 0; n < crvPtNum; n++){
-        v = Vector3d(0.,0., 0.);
+        Eigen::Vector3d v = Eigen::Vector3d(0,0, 0);
         for (int i = 0; i < int(ControllPoints.size()); i++)v += MathTool::BernsteinBasisFunc(curveDimention, i, t) * ControllPoints[i];
         CurvePoints[n] = v;
         t += 1/(double)crvPtNum;
@@ -113,7 +112,7 @@ bool CRV::drawBezier(int curveDimention, int crvPtNum){
 bool CRV::setPoint(const std::vector<std::shared_ptr<Vertex>>&outline, Eigen::Vector3d N, Eigen::Vector3d& cp, std::vector<Eigen::Vector3d>& P){
     Eigen::Vector3d N0 = N + cp, N1 = -N + cp;
     Eigen::Vector3d v, v2;
-    std::vector<Eingen::Vector3d> crossPoint;
+    std::vector<Eigen::Vector3d> crossPoint;
     P.clear();
     bool IsIntersected = false;
     int onum = outline.size();
@@ -169,8 +168,8 @@ void CRV::BezierRulings(std::shared_ptr<OUTLINE>& outline, int& DivSize, int crv
     while(i < m){
         T = 3.0 * (-ControllPoints[0] + 3.0 * ControllPoints[1] - 3.0 * ControllPoints[2] + ControllPoints[3]) * t * t
                 + 6.0 * (ControllPoints[0] - 2.0 * ControllPoints[1] + ControllPoints[2]) * t + 3.0 * (-ControllPoints[0] + ControllPoints[1]);//一階微分(tについて)
-        N = l * glm::f64vec3{ -T.y, T.x, 0 };
-        //if (glm::dot(glm::normalize(N), glm::f64vec3{0,-1, 0}) < 0) N *= -1;
+        N = l * Eigen::Vector3d(-T.y(), T.x(), 0);
+        //if (glm::dot(glm::normalized(N), glm::f64vec3{0,-1, 0}) < 0) N *= -1;
         int n = std::min(int(((double)i/(double)(m - 1)) * crvPtNum), crvPtNum - 1);
         bool IsIntersected = setPoint(vertices, N, CurvePoints[n], crossPoint);
 
@@ -207,7 +206,7 @@ void CRV::BsplineRulings(std::shared_ptr<OUTLINE>& outline, int& DivSize, int cr
         vec2 = bspline(ControllPoints,t  - 1e-9, curveDimention, Knot);
         T = (vec - vec2);
         T /= 2 * 1e-9;
-        T = T.normalize();
+        T = T.normalized();
         N = l * Eigen::Vector3d(-T.y(), T.x(), 0);
         if (N.dot(Eigen::Vector3d(0,1,0)) < 0) N *= -1;
         bool IsIntersected = setPoint(vertices, N, CurvePoints[i], crossPoint);
@@ -251,7 +250,7 @@ void CRV::LineRulings(std::shared_ptr<OUTLINE>& outline, int DivSize){
 
     std::vector<Eigen::Vector3d> crossPoint;
     std::vector<std::vector<Eigen::Vector3d>> CrossPoints;
-    Eigen::Vector3d V = (ControllPoints[1] - ControllPoints[0]).normalize();
+    Eigen::Vector3d V = (ControllPoints[1] - ControllPoints[0]).normalized();
     Eigen::Vector3d N = l * Eigen::Vector3d(-V.y(), V.x(), 0);
     int i = 0;
     int sind = -1, eind = curveNum - 1;
@@ -279,12 +278,12 @@ void CRV::LineRulings(std::shared_ptr<OUTLINE>& outline, int DivSize){
 //制御点 0: 原点. 1,2 終点
 bool CRV::drawArc(int crvPtNum){
     if((int)ControllPoints.size() < 3)return false;
-    auto v1 = (ControllPoints[1] - ControllPoints[0]).normalzie(), v2 = (ControllPoints[2] - ControllPoints[0]).normalize();
+    auto v1 = (ControllPoints[1] - ControllPoints[0]).normalized(), v2 = (ControllPoints[2] - ControllPoints[0]).normalized();
     double phi = std::acos(v1.dot(v2));
     Eigen::Vector3d axis = v1.cross(v2);
     Eigen::Translation3d T(ControllPoints[0]), invT(-ControllPoints[0]);// 平行移動ベクトルを作成
     for(int i = 0; i < crvPtNum; i++){
-        Eigen::Matrix3d R = Eigen::AngleAxisd(phi * (double)i/(double)crvPtNum, axis); // 回転行列を作成
+        Eigen::AngleAxisd R = Eigen::AngleAxisd((phi * (double)i/(double)crvPtNum), axis); // 回転行列を作成
         Eigen::Transform<double, 3, Eigen::Affine> transform = T * R * invT;// Transform行列を作成
         CurvePoints[i] = transform * ControllPoints[1];
     }
@@ -301,8 +300,8 @@ void CRV::ArcRulings(std::shared_ptr<OUTLINE>& outline, int DivSize){
     std::vector<std::shared_ptr<Vertex>> vertices = outline->getVertices();
     Eigen::Vector3d V, N;
     for(int i = 0; i < curveNum; i++){
-        if(i == 0)V = (CurvePoints[1] - CurvePoints[0]).normalize();
-        else V = (CurvePoints[i] - CurvePoints[i - 1]).normalize();
+        if(i == 0)V = (CurvePoints[1] - CurvePoints[0]).normalized();
+        else V = (CurvePoints[i] - CurvePoints[i - 1]).normalized();
         N = l * Eigen::Vector3d(-V.y(), V.x(), 0);
         bool IsIntersected = setPoint(vertices, N, CurvePoints[i], crossPoint);
         CrossPoints.push_back(crossPoint);
@@ -478,12 +477,12 @@ void OUTLINE::drawPolygon(Eigen::Vector3d& p, bool IsClicked){
         double a = 2 * std::numbers::pi /VerticesNum;
 
         R(0,0) = R(1,1) = cos(a); R(0,1) = -sin(a); R(1,0) = sin(a);
-        T(0,2) = origin.x; T(1,2) = origin.y;
-        invT(0,2) = -origin.x; invT(1,2) = -origin.y;
+        T(0,2) = origin.x(); T(1,2) = origin.y();
+        invT(0,2) = -origin.x(); invT(1,2) = -origin.y();
 
         Eigen::Vector3d x;
         for(int n = 0; n < VerticesNum - 1; n++){
-            x = Eigen::Vector3d(vertices[n]->p.x, vertices[n]->p.y, 1);
+            x = Eigen::Vector3d(vertices[n]->p.x(), vertices[n]->p.y(), 1);
             x = T * R * invT * x;
             vertices.push_back(std::make_shared<Vertex>(x));
         }
@@ -508,7 +507,7 @@ void OUTLINE::MoveOutline(Eigen::Vector3d p){
                  v->p2_ori.x() = v->p.x() = x(0);  v->p2_ori.y() = v->p.y() = x(1);
             }
             x = T * Eigen::Vector3d(origin.x(), origin.y(), 1);
-            origin.x = x(0); origin.y = x(1);
+            origin(0) = x(0); origin(1) = x(1);
         }else if(d < dist){
             T(0,2) = p.x() - origin.x(); T(1,2) = p.y() - origin.y();
             for(auto& v: vertices){
@@ -516,7 +515,7 @@ void OUTLINE::MoveOutline(Eigen::Vector3d p){
                 v->p2_ori.x() = v->p.x() = x(0);  v->p2_ori.y() = v->p.y() = x(1);
             }
             x = T * Eigen::Vector3d(origin.x(), origin.y(), 1);
-            origin.x = x(0); origin.y = x(1);
+            origin.x() = x(0); origin.y() = x(1);
         }
     }else {
         ind = movePointIndex(p);
@@ -548,7 +547,7 @@ void OUTLINE::ConnectEdges(bool IsConnected){
     }
 }
 
-bool OUTLINE::IsPointInFace(Eingen::Vector3d p){
+bool OUTLINE::IsPointInFace(Eigen::Vector3d p){
     if(!IsClosed())return false;
     int cnt = 0;
     double vt;
@@ -581,7 +580,7 @@ void CrossDetection(std::shared_ptr<OUTLINE>& outline, std::shared_ptr<CRV>& crv
         for(int inn = in+1; inn < (int)crvs->Rulings.size(); inn++){
             bool rs = IsIntersect(crvs->Rulings[in]->v->p, crvs->Rulings[in]->o->p, crvs->Rulings[inn]->v->p,crvs->Rulings[inn]->o->p, false);
             if(rs){
-                glm::f64vec3 p = getIntersectionPoint(crvs->Rulings[in]->v->p, crvs->Rulings[in]->o->p, crvs->Rulings[inn]->v->p,crvs->Rulings[inn]->o->p);
+                auto p = getIntersectionPoint(crvs->Rulings[in]->v->p, crvs->Rulings[in]->o->p, crvs->Rulings[inn]->v->p,crvs->Rulings[inn]->o->p);
                 bool PointOnLines = false;
                 bool PointInFace = outline->IsPointInFace(p);
                 for(auto&l: outline->Lines){if(l->is_on_line(p))PointOnLines = true;}
@@ -591,13 +590,13 @@ void CrossDetection(std::shared_ptr<OUTLINE>& outline, std::shared_ptr<CRV>& crv
     }
 }
 
-glm::f64vec3 OUTLINE::getNormalVec(){
+Eigen::Vector3d OUTLINE::getNormalVec(){
     Eigen::Vector3d N(0,0,0);
     auto prev = Lines.end() - 1;
     for(auto cur = Lines.begin(); cur != Lines.end(); cur++){
-        auto v = ((*cur)->v->p - (*cur)->o->p).normalize(), v2 = ((*prev)->v->p - (*prev)->o->p).normalize();
+        auto v = ((*cur)->v->p - (*cur)->o->p).normalized(), v2 = ((*prev)->v->p - (*prev)->o->p).normalized();
         if(abs(v.dot(v2)) < 1.0 - 1e-5){
-            return (v.cross(v2)).normalize();
+            return (v.cross(v2)).normalized();
         }
         prev = cur;
     }
@@ -623,7 +622,7 @@ int OUTLINE::movePointIndex(Eigen::Vector3d p){
 std::vector<double> BezierClipping(std::vector<Eigen::Vector3d>&CtrlPts, const std::shared_ptr<Vertex>& p, const std::shared_ptr<Vertex>& q, int dim){
     double a, b, c;
     if(p->p.x() <= q->p.x()){
-        a = q->p.y() - p->p.y, b = p->p.x() - q->p.x(), c = q->p.x() * p->p.y() - p->p.x() * q->p.y();
+        a = q->p.y() - p->p.y(), b = p->p.x() - q->p.x(), c = q->p.x() * p->p.y() - p->p.x() * q->p.y();
     }
     else{a = p->p.y() - q->p.y(), b = q->p.x() - p->p.x(), c = p->p.x() * q->p.y() - q->p.x() * p->p.y();}
 
@@ -635,7 +634,7 @@ std::vector<double> BezierClipping(std::vector<Eigen::Vector3d>&CtrlPts, const s
     }
     std::vector<Eigen::Vector3d> current;
     std::copy(base.begin(), base.end(), std::back_inserter(current));
-    std::array<Eigen::Vector3d, 2> _line{Eigen::Vector3d::Zero(), Eigen::Vector3d.UnitX()};
+    std::array<Eigen::Vector3d, 2> _line{Eigen::Vector3d::Zero(), Eigen::Vector3d::UnitX()};
     auto res = _bezierclipping(base, current, _line, dim);
 
     return res;

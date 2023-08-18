@@ -5,12 +5,9 @@
 #include <iostream>
 #include <vector>
 #include <tuple>
-#include <glm/glm.hpp>
-#include <glm/gtx/string_cast.hpp>
 #include <QPointF>
 #include <QOpenGLFunctions_3_0>
 #include <QOpenGLWidget>
-#include <Eigen/Dense>
 #include "make3d.h"
 
 class GradationWidget : public QOpenGLWidget, protected QOpenGLFunctions_3_0
@@ -19,12 +16,12 @@ class GradationWidget : public QOpenGLWidget, protected QOpenGLFunctions_3_0
 public:
     explicit GradationWidget(QWidget *parent = 0);
     ~GradationWidget();
-    glm::f64vec2 a, b;
+    Eigen::Vector2d a, b;
     QPointF gradPoints[2];
     void changeDrawMode(QString s);
      QString Cval, Ctype;
-    std::vector<glm::f64vec2> CurvePath;
-    std::vector<glm::f64vec2> ControllPoints;
+    std::vector<Eigen::Vector2d> CurvePath;
+    std::vector<Eigen::Vector2d> ControllPoints;
     Model *model;
     void GetColorsFromNewGradationMode();
 
@@ -55,8 +52,8 @@ private:
 
     std::vector<double> setKnotVec(int m);;
     double basis(int j, int k, double t, std::vector<double>& T);
-    void Bspline(int n, std::vector<glm::f64vec2>& P, std::vector<glm::f64vec2>& curvePt, int ptSize);
-    void SplineInterpolation(std::vector<glm::f64vec2>& cp, std::vector<glm::f64vec2>& CurvePath);
+    void Bspline(int n, std::vector<Eigen::Vector2d>& P, std::vector<Eigen::Vector2d>& curvePt, int ptSize);
+    void SplineInterpolation(std::vector<Eigen::Vector2d>& cp, std::vector<Eigen::Vector2d>& CurvePath);
 };
 
 

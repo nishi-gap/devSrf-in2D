@@ -34,7 +34,7 @@ public:
 
     void receiveKeyEvent(QKeyEvent *e);
     bool eraseVec2d, visibleCurve;
-    std::vector<std::array<glm::f64vec3, 2>> SingleRuling, AllRulings, NewRuling2d;
+    std::vector<std::array<Eigen::Vector3d, 2>> SingleRuling, AllRulings, NewRuling2d;
     std::vector<bool> RulingColor;
     int DivSize;
 
@@ -109,7 +109,7 @@ public slots:
 
 private:
 
-    std::vector<glm::f64vec3> tmp_c;
+    std::vector<Eigen::Vector3d> tmp_c;
     void draw();
 
     bool IsEraseNonFoldEdge;
@@ -127,7 +127,7 @@ private:
     //int referencedRuling(QPointF p);
     void addPoints_intplation(QMouseEvent *e, QPointF& p);
     int assignment_refL();
-    std::vector<glm::f64vec2> CurvePath;
+    std::vector<Eigen::Vector2d> CurvePath;
 
     //std::vector<int> ControllPoints_gradation;//0~510 色の範囲, -1指定なし
     int DiffWheel;
@@ -147,7 +147,7 @@ private:
     double rulingWidth;
 
     int constType;
-    glm::f64vec3 SetOnGrid(QPointF& cursol, double gridsize);
+    Eigen::Vector3d SetOnGrid(QPointF& cursol, double gridsize);
 
 signals:
     void foldingSignals();
@@ -156,7 +156,7 @@ signals:
     void getDiviedNumber();
     int getEdgeNum();
     void SendNewActiveCheckBox(PaintTool _drawtype);
-    void CurvePathSet(std::vector<glm::f64vec2>CurvePath);
+    void CurvePathSet(std::vector<Eigen::Vector2d>CurvePath);
     void deleteCrvSignal(std::vector<int> n);
     void getAlphaBeta(double& _alpha, int& _beta, int& _beta2);
 

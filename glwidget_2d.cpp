@@ -306,13 +306,13 @@ void GLWidget_2D::paintGL(){
         if(visibleCurve){
             for(auto&fl: model->FL){
                 glBegin(GL_LINE_STRIP);
-                glColor3d(0,0,0); for(auto&v: fl->CurvePts)glVertex2d(v.x, v.y);
+                glColor3d(0,0,0); for(auto&v: fl->CurvePts)glVertex2d(v.x(), v.y());
                 glEnd();
                 glColor3d(0,0.3,0.3);
                 glPointSize(5);
                 for(auto&v: fl->CtrlPts){
                     glBegin(GL_POINTS);
-                    glVertex2d(v.x,v.y);
+                    glVertex2d(v.x(),v.y());
                     glEnd();
                 }
 
@@ -321,7 +321,7 @@ void GLWidget_2D::paintGL(){
                 for(auto&h: fl->FoldingCurve){
                     if(IsEraseNonFoldEdge && !h.IsCalc)continue;
                     glBegin(GL_POINTS);
-                    glVertex2d(h.first->p.x, h.first->p.y);
+                    glVertex2d(h.first->p.x(), h.first->p.y());
                     glEnd();
                 }
 
@@ -341,20 +341,20 @@ void GLWidget_2D::paintGL(){
                 glColor3d(0, 0, 0);
                 glPointSize(3.0f);
                 glBegin(GL_POINTS);
-                glVertex2d(fc.first->p.x, fc.first->p.y);
+                glVertex2d(fc.first->p.x(), fc.first->p.y());
                 glEnd();
             }
             //p0:描画するエッジの始点, p1: 描画するエッジの端点, p2: 片側の平面上の点, p3: もう片方の平面上の点
             auto DrawEdge = [&](const std::shared_ptr<Vertex>& p0, const std::shared_ptr<Vertex>& p1, const std::shared_ptr<Vertex>& p2, const std::shared_ptr<Vertex>& p3, double LineWidth, bool IsGradation, bool IsRuling){
                 glLineWidth(LineWidth);
-                glm::f64vec3 f_nv = glm::normalize(glm::cross(p1->p3 - p0->p3, p2->p3 - p0->p3)),fp_nv = glm::normalize(glm::cross(p3->p3 - p0->p3, p1->p3 - p0->p3));
-                glm::f64vec3 SpinAxis = glm::normalize(p1->p3 - p0->p3);
+                Eigen::Vector3d f_nv = ((p1->p3 - p0->p3).cross(p2->p3 - p0->p3)).normalized(),fp_nv = ((p3->p3 - p0->p3).cross(p1->p3 - p0->p3)).normalized();
+                Eigen::Vector3d SpinAxis = (p1->p3 - p0->p3).normalized();
                 if(IsGradation){
-                    double color = getcolor(model->ColorPt.color, model->ColorPt.angle, std::acos(glm::dot(f_nv, fp_nv)));
-                    if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) <-1e-5){//mount
-                       if(!IsMVcolor_binary)glColor3d(1,1.0 - color,1.0 - color);
+                    double color = getcolor(model->ColorPt.color, model->ColorPt.angle, std::acos(f_nv.dot(fp_nv)));
+                    if(SpinAxis.dot(f_nv.cross(fp_nv)) <-1e-5){//mount
+                       if(!IsMVcolor_binary)glColor3d(1, 1.0 - color, 1.0 - color);
                        else glColor3d(1,0,0);
-                    }else if(glm::dot(SpinAxis, glm::cross(f_nv, fp_nv)) > 1e-5){//valley
+                    }else if(SpinAxis.dot(f_nv.cross(fp_nv)) > 1e-5){//valley
                         if(!IsMVcolor_binary)glColor3d(1.0 - color,1.0 - color,1);
                         else glColor3d(0,0,1);
                     }else{
@@ -363,11 +363,11 @@ void GLWidget_2D::paintGL(){
                     }
                 }else{ glLineWidth(1.f); glColor3d(0,0,0); }
                 glBegin(GL_LINES);
-                glVertex2d(p1->p.x, p1->p.y);  glVertex2d(p0->p.x, p0->p.y);
+                glVertex2d(p1->p.x(), p1->p.y());  glVertex2d(p0->p.x(), p0->p.y());
                 glEnd();
 
                 glColor3d(0, 0, 0);
-                glPointSize(3.0f); glBegin(GL_POINTS); glVertex2d(p0->p.x, p0->p.y);
+                glPointSize(3.0f); glBegin(GL_POINTS); glVertex2d(p0->p.x(), p0->p.y());
                 glEnd();
 
             };
@@ -386,7 +386,7 @@ void GLWidget_2D::paintGL(){
             glBegin(GL_POINT);
             glPointSize(6.f);
             glColor3d(1,0,0);
-            glVertex2d(refV->p.x, refV->p.y);
+            glVertex2d(refV->p.x(), refV->p.y());
             glEnd();
         }
     }else{
@@ -409,17 +409,17 @@ void GLWidget_2D::paintGL(){
                     }
                 }else{ glLineWidth(1.f); glColor3d(0,0,0); }
                 glBegin(GL_LINES);
-                glVertex2d((*itr_r)->o->p.x, (*itr_r)->o->p.y);
-                glVertex2d((*itr_r)->v->p.x, (*itr_r)->v->p.y);
+                glVertex2d((*itr_r)->o->p.x(), (*itr_r)->o->p.y());
+                glVertex2d((*itr_r)->v->p.x(), (*itr_r)->v->p.y());
                 glEnd();
 
                 glColor3d(0, 0, 0);
                 glPointSize(3.0f);
                 glBegin(GL_POINTS);
-                glVertex2d((*itr_r)->o->p.x, (*itr_r)->o->p.y);
+                glVertex2d((*itr_r)->o->p.x(), (*itr_r)->o->p.y());
                 glEnd();
                 glBegin(GL_POINTS);
-                glVertex2d((*itr_r)->v->p.x, (*itr_r)->v->p.y);
+                glVertex2d((*itr_r)->v->p.x(), (*itr_r)->v->p.y());
                 glEnd();
                 glColor3d(0, 0, 0);
             }
@@ -435,17 +435,17 @@ void GLWidget_2D::paintGL(){
             auto  Vertices = model->outline->getVertices();
             for(auto& v: Vertices){
                 glBegin(GL_POINTS);
-                glVertex2d(v->p.x, v->p.y);
+                glVertex2d(v->p.x(), v->p.y());
                 glEnd();
             }
 
             if(model->outline->IsClosed()){
                 glBegin(GL_LINE_LOOP);
-                for(auto& r: Vertices)glVertex2d(r->p.x, r->p.y);
+                for(auto& r: Vertices)glVertex2d(r->p.x(), r->p.y());
                 glEnd();
             }else{
                 glBegin(GL_LINE_STRIP);
-                for(auto& v: Vertices) glVertex2d(v->p.x, v->p.y);
+                for(auto& v: Vertices) glVertex2d(v->p.x(), v->p.y());
                 glEnd();
             }
         }
@@ -454,19 +454,19 @@ void GLWidget_2D::paintGL(){
                 glColor3d(0, 0, 0);
                 glPointSize(5.0f);
                 glBegin(GL_POINTS);
-                glVertex2d(model->outline->origin.x, model->outline->origin.y);
+                glVertex2d(model->outline->origin.x(), model->outline->origin.y());
                 glEnd();
 
                 glColor3d(0, 0, 0);
                 glPointSize(4.0f);
                 for(auto& v: model->outline->getVertices()){
                     glBegin(GL_POINTS);
-                    glVertex2d(v->p.x, v->p.y);
+                    glVertex2d(v->p.x(), v->p.y());
                     glEnd();
                 }
 
                 glBegin(GL_LINE_LOOP);
-                for(auto& r: model->outline->getVertices())glVertex2d(r->p.x, r->p.y);
+                for(auto& r: model->outline->getVertices())glVertex2d(r->p.x(), r->p.y());
                 glEnd();
             }
 
@@ -475,7 +475,7 @@ void GLWidget_2D::paintGL(){
         for(auto& Vertices: model->ol_vertices){
             for(auto&v: Vertices){
                 glBegin(GL_POINTS);
-                glVertex2d(v->p.x, v->p.y);
+                glVertex2d(v->p.x(), v->p.y());
                 glEnd();
             }
         }
@@ -484,7 +484,7 @@ void GLWidget_2D::paintGL(){
         for(auto& Vertices: model->ol_vertices){
             glBegin(GL_LINE_STRIP);
             for(auto&v: Vertices){
-                glVertex2d(v->p.x, v->p.y);
+                glVertex2d(v->p.x(), v->p.y());
             }
             glEnd();
         }
@@ -504,7 +504,7 @@ void GLWidget_2D::paintGL(){
                     glColor3d(1, 0, 0);
                     glPointSize(5.0f);
                     glBegin(GL_POINTS);
-                    glVertex2d( c.x, c.y);
+                    glVertex2d( c.x(), c.y());
 
                     glEnd();
                 }
@@ -512,7 +512,7 @@ void GLWidget_2D::paintGL(){
                 glLineStipple(1 , 0xF0F0);
                 glBegin(GL_LINE_STRIP);
                 glColor3d(0.4, 0.4, 0.4);
-                for (auto& c: model->crvs[i]->ControllPoints)glVertex2d( c.x, c.y);
+                for (auto& c: model->crvs[i]->ControllPoints)glVertex2d( c.x(), c.y());
                 glEnd();
                 glDisable(GL_LINE_STIPPLE);
                 glPolygonOffset(0.f,0.f);
@@ -525,29 +525,12 @@ void GLWidget_2D::paintGL(){
             else glColor3d(0.4, 0.4, 0.4);
             glBegin(GL_LINE_STRIP);
             for(auto &c: model->crvs[i]->CurvePoints){
-                glVertex2s(c.x, c.y);
+                glVertex2s(c.x(), c.y());
             }
             glEnd();
         }
     }
-
-
-    if(model->FL.empty())return;
-
-    for(const auto&fl : model->FL){
-        for(int i = 0; i < fl->NewRuling2d.size(); i++){
-            auto r = fl->NewRuling2d[i];
-            if(i % 3 == 0)glColor3d(1,0,0);
-            else if(i % 3 == 1)glColor3d(0,1,0);
-            else glColor3d(0,0,1);
-            glBegin(GL_LINES);
-            glVertex2d(r[0].x, r[0].y);
-            glVertex2d(r[1].x, r[1].y);
-            glEnd();
-        }
-    }
     glColor3d(0,0,0);
-
 }
 
 void GLWidget_2D::DrawGrid(){
@@ -585,7 +568,6 @@ void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
         if(res) emit foldingSignals();
     }
     if(e->key() == Qt::Key_Q){
-        int type = 1;
         res = model->RevisionCrosPtsPosition();
         if(res) emit foldingSignals();
     }
@@ -595,7 +577,7 @@ void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
 
 void GLWidget_2D::mousePressEvent(QMouseEvent *e){
     QPointF p = this->mapFromGlobal(QCursor::pos());
-    glm::f64vec3 p_ongrid = SetOnGrid(p, gridsize);
+    Eigen::Vector3d p_ongrid = SetOnGrid(p, gridsize);
     if(drawtype == PaintTool::None) {return;}
     if(e->button() ==Qt::LeftButton){
         if(drawtype == PaintTool::Rectangle_ol)model->drawOutline(p, 0, gridsize);
@@ -610,7 +592,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
         else if(drawtype ==PaintTool::ConnectVertices_ol)model->ConnectOutline(p, gridsize);
         else if(drawtype == PaintTool::NewGradationMode || drawtype ==PaintTool::FoldlineColor)addPoints_intplation(e, p);
         else if(drawtype == PaintTool::FoldLine_bezier || drawtype == PaintTool::FoldLine_arc || drawtype == PaintTool::FoldLine_line ){
-            bool hasRulings = model->AddControlPoint_FL(p_ongrid, 0, curveDimention);
+            model->AddControlPoint_FL(p_ongrid, 0, curveDimention);
             update();
         }
         else if(drawtype == PaintTool::FoldLine_test){
@@ -661,19 +643,19 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
             if(model->FL.empty())return;
             for(auto&fl: model->FL){
                 for(auto itr = fl->FoldingCurve.begin() + 1; itr != fl->FoldingCurve.end() - 1; itr++){
-                    if(glm::length(glm::f64vec3{p.x(), p.y(), 0} - (*itr).first->p) < dist){
-                        ind = std::distance(fl->FoldingCurve.begin(), itr); dist = glm::length(glm::f64vec3{p.x(), p.y(), 0} - (*itr).first->p);
+                    if((Eigen::Vector3d(p.x(), p.y(), 0) - (*itr).first->p).norm() < dist){
+                        ind = std::distance(fl->FoldingCurve.begin(), itr); dist = (Eigen::Vector3d(p.x(), p.y(), 0) - (*itr).first->p).norm();
                         _fl = fl;
                     }
                 }
             }
             if(ind != -1){
                 auto v4d = _fl->FoldingCurve[ind];
-                glm::f64vec3 et = v4d.second->p3 -v4d.first->p3, er = _fl->FoldingCurve[ind-1].first->p3 -v4d.first->p3, eb = v4d.third->p3 -v4d.first->p3, el = _fl->FoldingCurve[ind+1].first->p3 -v4d.first->p3;
-                et /= glm::length(et); er /= glm::length(er); eb /= glm::length(eb); el /= glm::length(el);
-                double phi1 = std::acos(glm::dot(et, er)), phi2 = std::acos(glm::dot(et, el)), phi3 = std::acos(glm::dot(eb, el)), phi4 = std::acos(glm::dot(eb, er));
+                Eigen::Vector3d et = (v4d.second->p3 -v4d.first->p3).normalized(), er = (_fl->FoldingCurve[ind-1].first->p3 -v4d.first->p3).normalized(),
+                        eb = (v4d.third->p3 -v4d.first->p3).normalized(), el = (_fl->FoldingCurve[ind+1].first->p3 -v4d.first->p3).normalized();
+                double phi1 = std::acos(et.dot(er)), phi2 = std::acos(et.dot(el)), phi3 = std::acos(eb.dot(el)), phi4 = std::acos(eb.dot(er));
                 refV = _fl->FoldingCurve[ind].first;
-                std::cout << "developability  = " <<  abs(2.0*std::numbers::pi - phi1 - phi2 - phi3 - phi4) << ", phi1 = " << glm::degrees(phi1) << " , phi2 = " << glm::degrees(phi2) << ", phi3 = " << glm::degrees(phi3) << ", phi4 = " << glm::degrees(phi4) << std::endl;
+                std::cout << "developability  = " <<  abs(2.0*std::numbers::pi - phi1 - phi2 - phi3 - phi4) << ", phi1 = " << MathTool::rad2deg(phi1) << " , phi2 = " << MathTool::rad2deg(phi2) << ", phi3 = " << MathTool::rad2deg(phi3) << ", phi4 = " << MathTool::rad2deg(phi4) << std::endl;
             }
 
         }
@@ -684,7 +666,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
             if(SmoothCurveIndex != -1) model->crvs[SmoothCurveIndex]->eraseCtrlPt(curveDimention, crvPtNum);
         }
         else if(drawtype == PaintTool::FoldLine_line || drawtype == PaintTool::FoldLine_arc || drawtype == PaintTool::FoldLine_bezier){
-            bool hasRulings = model->AddControlPoint_FL(p_ongrid, 1, curveDimention);
+            model->AddControlPoint_FL(p_ongrid, 1, curveDimention);
         }
 
     }
@@ -697,7 +679,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
 void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
     if(drawtype == PaintTool::None) {return;}
     QPointF p = this->mapFromGlobal(QCursor::pos());
-    glm::f64vec3 p_ongrid = SetOnGrid(p, gridsize);
+    Eigen::Vector3d p_ongrid = SetOnGrid(p, gridsize);
     if(drawtype == PaintTool::Polygon_ol){
         if(model->outline->hasPtNum == 1){
             model->drawOutline(p, 2, gridsize, false);
@@ -822,14 +804,14 @@ void GLWidget_2D::wheelEvent(QWheelEvent *we){
 }
 
 void GLWidget_2D::addPoints_intplation(QMouseEvent *e, QPointF& p){
-    glm::f64vec3 curPos{p.x(), p.y(), 0};
+    Eigen::Vector3d curPos{p.x(), p.y(), 0};
     double dist = 10;
     if(drawtype == PaintTool::NewGradationMode){
         refL = nullptr;
         for(auto& r: model->Rulings){
 
             if(r->et == EdgeType::ol || r->et == EdgeType::cl)continue;
-            double d = glm::length(glm::cross((curPos - r->o->p), r->o->p - r->v->p))/glm::length(r->o->p - r->v->p);
+            double d = ((curPos - r->o->p).cross(r->o->p - r->v->p)).norm()/(r->o->p - r->v->p).norm();
             if(d < dist){
                 dist = d; refL = r;
             }
@@ -873,13 +855,13 @@ void GLWidget_2D::OpenDebugWindwow(){
 int GLWidget_2D::assignment_refL(){
 
     QPointF p = mapFromGlobal(QCursor::pos());
-    glm::f64vec3 curPos{p.x(), p.y(), 0};
+    Eigen::Vector3d curPos{p.x(), p.y(), 0};
     int ind = -1;
     double dist = 10;
     for(int i = 0; i < (int)model->Rulings.size(); i++){
         std::shared_ptr<Line> r = model->Rulings[i];
         if(r->et != EdgeType::r)continue;
-        double d = glm::length(glm::cross((curPos - r->o->p), r->o->p - r->v->p))/glm::length(r->o->p - r->v->p);
+        double d = ((curPos - r->o->p).cross(r->o->p - r->v->p)).norm()/(r->o->p - r->v->p).norm();
         if(d < dist){
             dist = d; ind = i;
         }
@@ -887,9 +869,9 @@ int GLWidget_2D::assignment_refL(){
     return ind;
 }
 
-glm::f64vec3 GLWidget_2D::SetOnGrid(QPointF& cursol, double gridsize){
+Eigen::Vector3d GLWidget_2D::SetOnGrid(QPointF& cursol, double gridsize){
     int x = (int)cursol.x() % (int)gridsize, y = (int)cursol.y() % (int)gridsize;
     x = (cursol.x() - x + gridsize/2);
     y = (cursol.y() - y + gridsize/2);
-    return glm::f64vec3{x,y,0};
+    return Eigen::Vector3d{x,y,0};
 }

@@ -46,7 +46,7 @@ Eigen::Vector3d Model::SetOnGrid(QPointF& cursol, double gridsize){
     int x = (int)cursol.x() % (int)gridsize, y = (int)cursol.y() % (int)gridsize;
     x = (cursol.x() - x + gridsize/2);
     y = (cursol.y() - y + gridsize/2);
-    return Eigen::Vector3d{x,y,0};
+    return Eigen::Vector3d(x,y,0);
 }
 
 void Model::deform(){
@@ -80,11 +80,11 @@ void Model::deform(){
             Polygons.push_back(poly2);
         }
     }
-    Eigen::Translation3d T =  T(Rulings[0]->o->p);
+    Eigen::Translation3d T(Rulings[0]->o->p);
     Eigen::Transform<double, 3, Eigen::Affine> M = Eigen::Transform<double, 3, Eigen::Affine>::Identity();
-    Eigen::Matrix3d R = Eigen::Matrix3d::Identity(); TMs.push_back(M * R * T);
+    R = Eigen::Matrix3d::Identity(); TMs.push_back(M * R * T);
     for(int i = 1; i < (int)Rulings.size(); i++){
-        Eigen::Vector3d axis = (Rulings[i-1]->v->p - Rulings[i-1]->o->p).normalize();
+        Eigen::Vector3d axis = (Rulings[i-1]->v->p - Rulings[i-1]->o->p).normalized();
         M = TMs.back();
         T = Eigen::Translation3d(Rulings[i]->o->p - Rulings[i-1]->o->p);
         R = Eigen::AngleAxisd(Color2Angle(Rulings[i-1]->color, ColorPt), axis);
@@ -101,7 +101,7 @@ void Model::deform(){
                 if(std::find(P.begin(), P.end(), Rulings[i]->v) != P.end()){
                     if(i == 0){
                     }else if(i == Rulings.size() - 1){
-                        Eigen::Vector3d axis = (Rulings.back()->v->p - Rulings.back()->o->p).normalize();
+                        Eigen::Vector3d axis = (Rulings.back()->v->p - Rulings.back()->o->p).normalized();
                         M = TMs.back();
                         T = Eigen::Translation3d(l->v->p - Rulings.back()->o->p);
                         R = Eigen::AngleAxisd(Color2Angle(Rulings.back()->color, ColorPt), axis);
@@ -153,7 +153,7 @@ void Model::UpdateFLOrder(int dim){
     std::shared_ptr<Line> btm = outline->Lines.front();//一番下の辺を探索
 
     for(auto&l: outline->Lines){
-        if(((l->v->p + l->o->p)/2.0).y > ((btm->v->p + btm->o->p)/2.0).y)btm = l;
+        if(((l->v->p + l->o->p)/2.0).y() > ((btm->v->p + btm->o->p)/2.0).y())btm = l;
     }
     int btm_i = std::distance(outline->Lines.begin(), std::find(outline->Lines.begin(), outline->Lines.end(),btm));
     int i = btm_i;
@@ -173,7 +173,7 @@ void Model::UpdateFLOrder(int dim){
             for(auto& l: outline->Lines){
                 std::shared_ptr<CrvPt_FL> P = getCrossPoint(fl->CtrlPts, l->v, l->o, dim);
                 if(P!= nullptr){
-                    if(UpVec.dot((l->v->p - l->o->p).normalize()) > 0)fl->FoldingCurve.push_back(Vertex4d(P, l->v, l->o));
+                    if(UpVec.dot((l->v->p - l->o->p).normalized()) > 0)fl->FoldingCurve.push_back(Vertex4d(P, l->v, l->o));
                     else fl->FoldingCurve.push_back(Vertex4d(P, l->o, l->v));
                 }
             }
@@ -267,14 +267,14 @@ bool Model::AssignRuling(int dim){
 }
 
 bool Model::SplitRulings(int dim){
-    Eigen::Vector3d UpVec{0,-1,0};
+    Eigen::Vector3d UpVec(0,-1,0);
     if(FL.empty() || FL[FoldCurveIndex]->CtrlPts.size() <= dim)return false;
     auto root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
     for(auto& r: Rulings){
         std::shared_ptr<CrvPt_FL> P = getCrossPoint(root->data->CtrlPts, r->v, r->o, dim);
         if(P!= nullptr){
-            if(UpVec.dot(UpVec, (r->v->p - r->o->p).normalize()) > 0)root->data->FoldingCurve.push_back(Vertex4d(P, r->v, r->o));
+            if(UpVec.dot((r->v->p - r->o->p).normalized()) > 0)root->data->FoldingCurve.push_back(Vertex4d(P, r->v, r->o));
             else root->data->FoldingCurve.push_back(Vertex4d(P, r->o, r->v));
         }
     }
@@ -309,8 +309,8 @@ void Model:: addConstraint(QPointF& cursol, int type, int gridsize, Eigen::Vecto
     Eigen::Vector3d p = SetOnGrid(cursol, gridsize);
     if(axis[0] == Eigen::Vector3d{-1,-1,0}){axis[0] = p; return;}
     else if(axis[1] == Eigen::Vector3d{-1,-1,0} && axis[0] != p)axis[1] = p;
-    Eigen::Vector3d V = (axis[1] - axis[0]).normalize();
-    Eigen::Vector3d N = Eigen::Vector3d{-V.y, V.x, 0};
+    Eigen::Vector3d V = (axis[1] - axis[0]).normalized();
+    Eigen::Vector3d N(-V.y(), V.x(), 0);
     std::vector<std::shared_ptr<Vertex>> SymPts;
     std::vector<std::shared_ptr<Vertex>> Vertices = outline->getVertices();
     if(type == 0){
@@ -435,7 +435,7 @@ void Model::SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, 
         dx1 = (getCenter(GradationPoints[2]) - getCenter(GradationPoints[0])).norm();
         dx2 = (getCenter(GradationPoints[2]) -  getCenter(GradationPoints[1])).norm();
         dx3 = (getCenter(GradationPoints[1]) - getCenter(GradationPoints[0])).norm();
-        if(abs(dx1) < DBL_EPSILON) u(1) = 0;
+        if(abs(dx1) < 1e-9) u(1) = 0;
         else{
             double a = (dx2 == 0) ? 0: (GradationPoints[2]->color - GradationPoints[1]->color)/dx2;
             double b = (dx3 == 0) ? 0: (GradationPoints[1]->color - GradationPoints[0]->color)/dx3;
@@ -559,9 +559,9 @@ int Model::searchPointIndex(QPointF pt, int& ptInd, int type){
     if(type == 0){
         for(int j = 0; j < (int)crvs.size(); j++){
             for(int i = 0; i < (int)crvs[j]->ControllPoints.size(); i++){
-                Eigen::Vector2d cp = crvs[j]->ControllPoints[i];
-                if(dist * dist > (cp.x - pt.x()) * (cp.x - pt.x()) + (cp.y - pt.y()) * (cp.y - pt.y())){
-                    dist = sqrt((cp.x - pt.x()) * (cp.x - pt.x()) + (cp.y - pt.y()) * (cp.y - pt.y()));
+                Eigen::Vector3d cp = crvs[j]->ControllPoints[i];
+                if(dist * dist > (cp.x() - pt.x()) * (cp.x() - pt.x()) + (cp.y() - pt.y()) * (cp.y() - pt.y())){
+                    dist = sqrt((cp.x() - pt.x()) * (cp.x() - pt.x()) + (cp.y() - pt.y()) * (cp.y() - pt.y()));
                     ptInd = i;
                     crvInd = j;
                 }
@@ -571,9 +571,9 @@ int Model::searchPointIndex(QPointF pt, int& ptInd, int type){
     }else{
         for(int j = 0; j < (int)crvs.size(); j++){
             for(int i = 0; i < (int)crvs[j]->CurvePoints.size(); i++){
-                Eigen::Vector2d cp = crvs[j]->CurvePoints[i];
-                if(dist * dist > (cp.x - pt.x()) * (cp.x - pt.x()) + (cp.y - pt.y()) * (cp.y - pt.y())){
-                    dist = sqrt((cp.x - pt.x()) * (cp.x - pt.x()) + (cp.y - pt.y()) * (cp.y - pt.y()));
+                Eigen::Vector3d cp = crvs[j]->CurvePoints[i];
+                if(dist * dist > (cp.x() - pt.x()) * (cp.x() - pt.x()) + (cp.y() - pt.y()) * (cp.y() - pt.y())){
+                    dist = sqrt((cp.x() - pt.x()) * (cp.x() - pt.x()) + (cp.y() - pt.y()) * (cp.y() - pt.y()));
                     ptInd = i;
                     crvInd = j;
                 }

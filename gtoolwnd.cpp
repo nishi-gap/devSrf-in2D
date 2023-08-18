@@ -16,16 +16,16 @@ GToolWnd::~GToolWnd()
     delete gtw;
 }
 
-void GToolWnd::set(std::vector<glm::f64vec2>CurvePath){
+void GToolWnd::set(std::vector<Eigen::Vector2d>CurvePath){
     if(CurvePath.size() == 0)return;
-    double left = CurvePath[0].x;
-    double right = CurvePath[(int)CurvePath.size() - 1].x;
+    double left = CurvePath[0].x();
+    double right = CurvePath[(int)CurvePath.size() - 1].x();
     double width = 500;
     double r = width/(right - left);
     for(auto& c: CurvePath){
-        c.y -= 255.f;
-        c.y *= -1;
-        c.x = (c.x - left + 5) * r;
+        c.y() -= 255.0;
+        c.y() *= -1;
+        c.x() = (c.x() - left + 5) * r;
     }
     gtw->Gview->CurvePath = CurvePath;
     emit updateCurvePath();

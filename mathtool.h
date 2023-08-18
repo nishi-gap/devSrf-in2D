@@ -1,7 +1,8 @@
 #ifndef MATHTOOL_H
 #define MATHTOOL_H
 
-
+#include <cmath>
+#include <iomanip>
 #include <vector>
 #include <iostream>
 #include <tuple>
@@ -81,7 +82,7 @@ double rad2deg(double a);
 double distP2L(const Eigen::Vector3d& la, const Eigen::Vector3d& lb, const Eigen::Vector3d& p, Eigen::Vector3d& q);//点と線分の距離, s:laからlbへの比率(垂線が内部にあれば0 ~ 1)
 
 bool IsIntersect(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, const Eigen::Vector3d& p3, const Eigen::Vector3d& p4, bool ConsiderEnd = false);
-Eigen::Vector3d getIntersectionPoint(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2,const Eigen::Vector3d p3, glm::f64vec3& p4);
+Eigen::Vector3d getIntersectionPoint(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2,const Eigen::Vector3d p3, const Eigen::Vector3d& p4);
 Eigen::Vector3d calcCrossPoint_2Vector(const Eigen::Vector3d& p1, const Eigen::Vector3d& q1, const Eigen::Vector3d& p2, const Eigen::Vector3d& q2);
 
 void Triangulation(std::vector<Eigen::Vector3d>&input, std::vector<std::array<Eigen::Vector3d, 3>>&output);

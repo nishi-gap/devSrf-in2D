@@ -27,7 +27,7 @@ inline Eigen::Vector3d calcCrossPoint_2Vertex(const std::shared_ptr<Vertex>& p1,
 }
 
 inline bool IsParallel(const std::shared_ptr<Vertex>& p1, const std::shared_ptr<Vertex>& q1, const std::shared_ptr<Vertex>& p2, const std::shared_ptr<Vertex>& q2){
-    auto v1 = (q1->p - p1->p).normalize(), v2 = (q2->p - p2->p).normalize();
+    auto v1 = (q1->p - p1->p).normalized(), v2 = (q2->p - p2->p).normalized();
     return (abs(v1.dot(v2)) >= 1.0 - 1e-9)? true: false;
 }
 
@@ -96,23 +96,23 @@ namespace RevisionVertices{
             std::vector<std::array<Eigen::Vector3d, 3>> X;
             Eigen::Vector3d rt, rb;
             for(const auto&sa: SA){
-                rt = (sa.stP.second->p3 - sa.stP.first->p3).normalize();
-                rb = (sa.stP.third->p3 - sa.stP.first->p3).normalize();
+                rt = (sa.stP.second->p3 - sa.stP.first->p3).normalized();
+                rb = (sa.stP.third->p3 - sa.stP.first->p3).normalized();
                 X.push_back(std::array{sa.stP.first->p3, rt, rb});
                 for(int i = 0; i < (int)sa.OriginalVertices.size(); i++){
-                    rt = (sa.qt != nullptr)? (sa.qt->p3 - P[j]).normalize(): (sa.stP.second->p3 - sa.stP.first->p3).normalize();
-                    rb = (sa.qb != nullptr)? (sa.qb->p3 - P[j]).normalize(): (sa.stP.third->p3 - sa.stP.first->p3).normalize();
+                    rt = (sa.qt != nullptr)? (sa.qt->p3 - P[j]).normalized(): (sa.stP.second->p3 - sa.stP.first->p3).normalized();
+                    rb = (sa.qb != nullptr)? (sa.qb->p3 - P[j]).normalized(): (sa.stP.third->p3 - sa.stP.first->p3).normalized();
                     X.push_back(std::array{P[j], rt, rb});
                     j++;
                 }
             }
-            rt = (SA.back().lastP.second->p3 - SA.back().lastP.first->p3).normalize();
-            rb = (SA.back().lastP.third->p3 - SA.back().lastP.first->p3).normalize();
+            rt = (SA.back().lastP.second->p3 - SA.back().lastP.first->p3).normalized();
+            rb = (SA.back().lastP.third->p3 - SA.back().lastP.first->p3).normalized();
             X.push_back(std::array{SA.back().lastP.first->p3, rt, rb});
 
             Eigen::Vector3d el, er;
             for(int i = 1; i < X.size() - 1; i++){
-                el = (X[i+1][0] - X[i][0]).normalize(); er = (X[i-1][0] - X[i][0]).normalize();
+                el = (X[i+1][0] - X[i][0]).normalized(); er = (X[i-1][0] - X[i][0]).normalized();
                 f += std::abs((2.0 * std::numbers::pi - (Angle(el, X[i][1]) + Angle(X[i][1], er) + Angle(er, X[i][2]) + Angle(X[i][2], el))) - th);
             }
             return f;
@@ -235,12 +235,12 @@ bool FoldLine::setCurve(int dim){
 
         double l = (CtrlPts[0] - CtrlPts[1]).norm(), l2 = (CtrlPts[0], CtrlPts[2]).norm();
         CtrlPts[2] = l/l2 * (CtrlPts[2] - CtrlPts[0]) + CtrlPts[0];
-        Eigen::Vector3d v = (CtrlPts[1] - CtrlPts[0]).normalize(), v2 = (CtrlPts[2] - CtrlPts[0]).normalize();
+        Eigen::Vector3d v = (CtrlPts[1] - CtrlPts[0]).normalized(), v2 = (CtrlPts[2] - CtrlPts[0]).normalized();
         double phi = acos(v.dot(v2));
         Eigen::Vector3d axis = v.cross(v2);
         Eigen::Translation3d T(CtrlPts[0]), invT(-CtrlPts[0]);// 平行移動ベクトルを作成
         for(int i = 0; i < crvPtNum; i++){
-            Eigen::Matrix3d R = Eigen::AngleAxisd(phi * (double)i/(double)crvPtNum, axis); // 回転行列を作成
+            Eigen::AngleAxisd R = Eigen::AngleAxisd(phi * (double)i/(double)crvPtNum, axis); // 回転行列を作成
             Eigen::Transform<double, 3, Eigen::Affine> transform = T * R * invT;// Transform行列を作成
             CurvePts[i] = transform * CtrlPts[1];
         }
@@ -252,7 +252,7 @@ bool FoldLine::setCurve(int dim){
         double t = 0.0;
         Eigen::Vector3d v;
         for(int n = 0; n < crvPtNum; n++){
-            v = Eigen::Vector3d::Zeros();
+            v = Eigen::Vector3d(0,0,0);
             for (int i = 0; i < int(CtrlPts.size()); i++)  v += MathTool::BernsteinBasisFunc(dim, i, t) * CtrlPts[i];  
             CurvePts[n] = v;
             t += 1/(double)crvPtNum;
@@ -267,13 +267,13 @@ bool IsRulingCrossed (Eigen::Vector3d N, Eigen::Vector3d& cp, Eigen::Vector3d& c
     bool IsIntersected = false;
     Eigen::Matrix2d A;
     Eigen::Vector2d b;
-    N = N.normalize();
+    N = N.normalized();
     int n = Poly_V.size();
     for(int i = 0; i < n; i++){
         Eigen::Vector3d v = Poly_V[(i+1) % n]->p - Poly_V[i]->p;
         A(0,0) = v.x(); A(0,1) = -l*N.x(); A(1,0) = v.y(); A(1,1) = -l * N.y();
         b(0) = cp.x() - Poly_V[i]->p.x(); b(1) = cp.y() - Poly_V[i]->p.y();
-        if(abs(N.dot(v.normalize())>= 1 - DBL_EPSILON)continue;
+        if(abs(N.dot(v.normalized()) >= 1 - 1e-9))continue;
         Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
         if (0 <= x(1) && x(1) <= 1) {
             Eigen::Vector3d p = x(1) * l * N + cp;
@@ -292,7 +292,7 @@ double Fparallel(std::vector<Vertex4d>& FoldingCurve){
     double f = 0.0;
     for(int i = 0; i < (int)FoldingCurve.size(); i++){if(FoldingCurve[i].IsCalc)Vertices_Ind.push_back(i);}
     for(int i = 1; i < (int)Vertices_Ind.size() - 2; i++){
-        Eigen::Vector3d v = (FoldingCurve[i].second->p - FoldingCurve[i].first->p).normalize(), v2 = (FoldingCurve[i+1].second->p - FoldingCurve[i+1].first->p).normalize();
+        Eigen::Vector3d v = (FoldingCurve[i].second->p - FoldingCurve[i].first->p).normalized(), v2 = (FoldingCurve[i+1].second->p - FoldingCurve[i+1].first->p).normalized();
         f += 1.0 - v.dot(v2);
     }
     return f;
@@ -302,10 +302,10 @@ double Fbend2(std::vector<Vertex4d>& FoldingCurve){
     std::vector<int> Vertices_Ind;
     double f = 0.0;
     for(int i = 0; i < (int)FoldingCurve.size(); i++){if(FoldingCurve[i].IsCalc)Vertices_Ind.push_back(i);}
-    auto v1 = (FoldingCurve[0].first->p3 - FoldingCurve[Vertices_Ind[1]].first->p3).normalize(), v2 = (FoldingCurve[Vertices_Ind[1]].second->p3 - FoldingCurve[Vertices_Ind[1]].first->p3).normalize();
-    Eigen::Vector3d Nt = (v1.cross(v2)).normalize();
+    auto v1 = (FoldingCurve[0].first->p3 - FoldingCurve[Vertices_Ind[1]].first->p3).normalized(), v2 = (FoldingCurve[Vertices_Ind[1]].second->p3 - FoldingCurve[Vertices_Ind[1]].first->p3).normalized();
+    Eigen::Vector3d Nt = (v1.cross(v2)).normalized();
     for(int i = 1; i < (int)Vertices_Ind.size() - 1; i++){
-        Eigen::Vector3d Ntp = ((FoldingCurve[Vertices_Ind[i]].first->p3 - FoldingCurve[Vertices_Ind[i+1]].first->p3).cross(FoldingCurve[Vertices_Ind[i+1]].second->p3 - FoldingCurve[Vertices_Ind[i+1]].first->p3)).normalize();
+        Eigen::Vector3d Ntp = ((FoldingCurve[Vertices_Ind[i]].first->p3 - FoldingCurve[Vertices_Ind[i+1]].first->p3).cross(FoldingCurve[Vertices_Ind[i+1]].second->p3 - FoldingCurve[Vertices_Ind[i+1]].first->p3)).normalized();
         double phi = ((Ntp.dot(Nt)) > 1)? std::numbers::pi: ((Ntp.dot(Nt)) < -1)? 0:  std::numbers::pi - std::acos(Ntp.dot(Nt));
         f += 1.0/(phi*phi);
         Nt = Ntp;
@@ -381,7 +381,7 @@ double Fruling(const std::vector<double> &a, std::vector<double> &grad, void* f_
        grad[0] = (fp - fm)/(2.0 * eps);
        //for(int j = 0; j < (int)FoldingCurve.size(); j++)FoldingCurve[j].second->p3 = tmp[j].p3;
     }
-    if(ofs_Eruling.is_open()) ofs_Eruling << a[0] <<", " << glm::degrees(a[0]) << ", " <<  f <<  " ,  " << grad[0] << std::endl;
+    if(ofs_Eruling.is_open()) ofs_Eruling << a[0] <<", " << MathTool::rad2deg(a[0]) << ", " <<  f <<  " ,  " << grad[0] << std::endl;
     return f;
  }
 
@@ -404,14 +404,14 @@ double ObjFunc_FlapAngle(const std::vector<double> &a, std::vector<double> &grad
        grad[0] = od->wb * (fp - fm)/(2.0 * eps) + od->wp * (fp2 - fm2)/(2.0 * eps) + 100.0*(fp3 - fm3)/(2.0*eps);
     }
     //std::cout <<"Fbend(" << glm::degrees(a[0]) << ")  =  " <<  fb <<  " ,  " << grad[0] << "  ,  Fparalell = " << fp << ", Fruling2 = "<< fr <<  std::endl;
-    if(ofs_Ebend.is_open())ofs_Ebend << a[0] <<", " << glm::degrees(a[0]) << ", " <<  fb << ", " << fp <<   ",  " << grad[0] << std::endl;
+    if(ofs_Ebend.is_open())ofs_Ebend << a[0] <<", " << MathTool::rad2deg(a[0]) << ", " <<  fb << ", " << fp <<   ",  " << grad[0] << std::endl;
     return od->wb * fb + od->wp * fp + 100.0 * fr;
 }
 
 Eigen::Vector3d RevisionVertices::decideRulingDirectionOn3d(Eigen::Vector3d e, Eigen::Vector3d N, double a, double phi){
-    e = e.normalize();
+    e = e.normalized();
     N = Eigen::AngleAxisd(a, -e) * N; // 回転行列を作成 
-    return (Eigen::AngleAxisd(phi, N) * e).normalize(); 
+    return (Eigen::AngleAxisd(phi, N) * e).normalized(); 
 }
 
 double RevisionVertices::Const_Edev(const std::vector<double>& X, std::vector<double> &grad, void *f_data){
@@ -434,7 +434,7 @@ double RevisionVertices::Const_Edev(const std::vector<double>& X, std::vector<do
     if(!grad.empty()){
         for(auto& p: P){
             p.x() += eps; double fp = od->Edev(P, ICE, th); p.x() -= 2.0*eps; double fm = od->Edev(P, ICE, th);
-            grad[ind] = (fp - fm)/(2.0*eps); p.x = X[ind++];
+            grad[ind] = (fp - fm)/(2.0*eps); p(0) = X[ind++];
             p.y() += eps; fp = od->Edev(P, ICE, th); p.y() -= 2.0*eps; fm = od->Edev(P, ICE, th);
             grad[ind] = (fp - fm)/(2.0*eps); p.y() = X[ind++];
             p.z() += eps; fp = od->Edev(P, ICE, th); p.z() -= 2.0*eps; fm = od->Edev(P, ICE, th);
@@ -452,20 +452,20 @@ double RevisionVertices::Const_Econv(const std::vector<double>& X, std::vector<d
     std::vector<Eigen::Vector3d> P, Pori;
 
     for(auto sm: SA){
-        Eigen::Vector3d vt = (sm.stP.second->p3 - sm.stP.first->p3).normalize(), vt2d = (sm.stP.second->p - sm.stP.first->p).normalize();
-        Eigen::Vector3d SpinAxis = (vt2d.y() < 0)? -Eigen::Vector3d::UnitZ(): Eigen::Vector3d::UnitZ();
+        Eigen::Vector3d vt = (sm.stP.second->p3 - sm.stP.first->p3).normalized(), vt2d = (sm.stP.second->p - sm.stP.first->p).normalized();
+        Eigen::Vector3d SpinAxis = (vt2d.y() < 0) ? Eigen::Vector3d(0,0,-1): Eigen::Vector3d(0,0,1);
         Eigen::Vector3d befP3 = sm.stP.first->p3, befP2 = sm.stP.first->p;
         for(int n = 0; n < (int)sm.OriginalVertices.size(); n++){
             Eigen::Vector3d p = Eigen::Vector3d(X[3 * ind], X[3 * ind + 1], X[3 * ind + 2]);
             Eigen::Vector3d e = p - befP3;
-            double l = e.norm(), phi = std::acos(v.dot(e.normalize()));
-            Eigen::Vector3d p2d = l * Eigen::AngleAxisd(phi, SpinAxis)* vt2d + befP2;
+            double l = e.norm(), phi = std::acos(vt.dot(e.normalized()));
+            Eigen::Vector3d p2d = l * (Eigen::AngleAxisd(phi, SpinAxis)* vt2d) + befP2;
             P.push_back(p2d); Pori.push_back(sm.OriginalVertices[n]->p);
             ind++;
             befP2 = p2d; befP3 = p;
             if(sm.qt != nullptr){
-                vt = (sm.qt->p3 - p).normalize(); vt2d = (sm.qt->p - p2d).normalize();
-                SpinAxis = (vt2d.y < 0)? -Eigen::Vector3d::UnitZ(): Eigen::Vector3d::UnitZ();
+                vt = (sm.qt->p3 - p).normalized(); vt2d = (sm.qt->p - p2d).normalized();
+                SpinAxis = (vt2d.y() < 0)? Eigen::Vector3d(0,0,-1): Eigen::Vector3d(0,0,1);
             }
         }
     }
@@ -494,9 +494,9 @@ double RevisionVertices::Const_Eplanarity(const std::vector<double>& X, std::vec
         for(auto itr = FC.begin(); itr != FC.end(); itr++){
             if(!itr->IsCalc){
                 auto _next = itr + 1;
-                Eigen::Vector3d e = (_next->first->p3 - itr->first->p3).normalize();
-                Eigen::Vector3d N = (R[ind].cross(e)).normalize();
-                Eigen::Vector3d N2 = ((-e).cross(R[ind+1])).normalize(); 
+                Eigen::Vector3d e = (_next->first->p3 - itr->first->p3).normalized();
+                Eigen::Vector3d N = (R[ind].cross(e)).normalized();
+                Eigen::Vector3d N2 = ((-e).cross(R[ind+1])).normalized(); 
                 f += 1.0 - N.dot(N2);
                 ind++;
             }
@@ -610,11 +610,11 @@ double RevisionVertices::E_normal(std::vector<Eigen::Vector3d>& R, const std::ve
     int j = 0;
     for(int k = 0; k < (int)Vertices_Indicator.size() - 1; k++){
         for(int i = Vertices_Indicator[k] + 1; i < Vertices_Indicator[k+1]; i++){
-            Eigen::Vector3d N = ((FC[i-1].first->p3 - FC[i].first->p3).cross(R[j])).normalize();
-            Eigen::Vector3d N_ori = ((FC[i-1].first->p3 - FC[i].first->p3).cross(FC[i].second->p3 - FC[i].first->p3)).normalize();
+            Eigen::Vector3d N = ((FC[i-1].first->p3 - FC[i].first->p3).cross(R[j])).normalized();
+            Eigen::Vector3d N_ori = ((FC[i-1].first->p3 - FC[i].first->p3).cross(FC[i].second->p3 - FC[i].first->p3)).normalized();
             f += 1.0 - N.dot(N_ori);
-            N = (R[j].cross(FC[i+1].first->p3 - FC[i].first->p3)).normalize();
-            N_ori = ((FC[i].second->p3 - FC[i].first->p3).cross(FC[i+1].first->p3 - FC[i].first->p3)).normalize();
+            N = (R[j].cross(FC[i+1].first->p3 - FC[i].first->p3)).normalized();
+            N_ori = ((FC[i].second->p3 - FC[i].first->p3).cross(FC[i+1].first->p3 - FC[i].first->p3)).normalized();
             f += 1.0 - N.dot(N_ori);
             j++;
         }
@@ -630,8 +630,8 @@ double RevisionVertices::Minimize_SmoothSrf(const std::vector<double>& X, std::v
     int i = 0;
     for(auto&sa: SA){
         std::vector<Eigen::Vector3d> tmp = {sa.stP.first->p3}, tmp_ori = {sa.stP.first->p3_ori};
-        Eigen::Vector3d vt = (sa.stP.second->p3 - sa.stP.first->p3).normalize(), vt2d = (sa.stP.second->p - sa.stP.first->p).normalize();
-        Eigen::Vector3d SpinAxis = (vt2d.y < 0)? -Eigen::Vector3d::UnitZ(): Eigen::Vector3d::UnitZ();
+        Eigen::Vector3d vt = (sa.stP.second->p3 - sa.stP.first->p3).normalized(), vt2d = (sa.stP.second->p - sa.stP.first->p).normalized();
+        Eigen::Vector3d SpinAxis = (vt2d.y() < 0)? -Eigen::Vector3d(0,0,-1): Eigen::Vector3d(0,0,1);
         std::vector<Eigen::Vector3d> _P2d;
         Eigen::Vector3d befP3 = sa.stP.first->p3, befP2 = sa.stP.first->p;
 
@@ -641,13 +641,13 @@ double RevisionVertices::Minimize_SmoothSrf(const std::vector<double>& X, std::v
             tmp.push_back(p3d);
             i += 3;
             Eigen::Vector3d e = p3d - befP3;
-            double l = e.norm(), phi = std::acos(vt.dot(e.normalize()));
-            Eigen::Vector3d p2d = l * Eigen::AngleAxisd(phi, SpinAxis)* vt2d + befP2;
+            double l = e.norm(), phi = std::acos(vt.dot(e.normalized()));
+            Eigen::Vector3d p2d = l * (Eigen::AngleAxisd(phi, SpinAxis) * vt2d) + befP2;
             _P2d.push_back(p2d);
             befP2 = p2d; befP3 = p3d;
             if(sa.qt != nullptr){
-                vt = (sa.qt->p3 - p3d).normalize(); vt2d = (sa.qt->p - p2d).normalize();
-                SpinAxis = (vt2d.y < 0)? -Eigen::Vector3d::UnitZ(): Eigen::Vector3d::UnitZ();
+                vt = (sa.qt->p3 - p3d).normalized(); vt2d = (sa.qt->p - p2d).normalized();
+                SpinAxis = (vt2d.y() < 0)? Eigen::Vector3d(0,0,-1): Eigen::Vector3d(0,0,1);
             }
         }tmp.push_back(sa.lastP.first->p3); tmp_ori.push_back(sa.lastP.first->p3_ori);
         P.push_back(tmp); Pori.push_back(tmp_ori); P2d.push_back(_P2d);
@@ -688,7 +688,7 @@ double RevisionVertices::Minimize_PlanaritySrf(const std::vector<double>& X, std
         for(int j = 1; j < (int)FC[0].size(); j++){
             if(!FC[0][j].IsCalc){
                 Eigen::Vector3d e = FC[0][j].first->p3 - FC[0][j-1].first->p3;
-                Eigen::Vector3d N = e.cross(e, FC[0][j+1].first->p3 - FC[0][j-1].first->p3);
+                Eigen::Vector3d N = e.cross(FC[0][j+1].first->p3 - FC[0][j-1].first->p3);
 
                 Rulings[x_ind] = RevisionVertices::decideRulingDirectionOn3d(e, N, X[2*x_ind] + eps, X[2 * x_ind + 1]);
                 fp = RevisionVertices::E_normal(Rulings, FC[0]);
@@ -728,20 +728,20 @@ bool FoldLine::SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly
         qt = nullptr;
         if(j != 0 && j != (int)Vertices_Ind.size() - 2){
             qt = getV(FoldingCurve[Vertices_Ind[j]].first, FoldingCurve[Vertices_Ind[j]].second, FoldingCurve[Vertices_Ind[j+1]].first, FoldingCurve[Vertices_Ind[j+1]].second);
-             _r3d = (FoldingCurve[Vertices_Ind[j]].second->p3 - FoldingCurve[Vertices_Ind[j]].first->p3).normalize(), _r2d = (FoldingCurve[Vertices_Ind[j]].second->p - FoldingCurve[Vertices_Ind[j]].first->p).normalize();
+             _r3d = (FoldingCurve[Vertices_Ind[j]].second->p3 - FoldingCurve[Vertices_Ind[j]].first->p3).normalized(), _r2d = (FoldingCurve[Vertices_Ind[j]].second->p - FoldingCurve[Vertices_Ind[j]].first->p).normalized();
         }
         for(int i = Vertices_Ind[j] + 1; i < Vertices_Ind[j+1]; i++){
             FoldingCurve[i].first->p3 = FoldingCurve[i].first->p3_ori; FoldingCurve[i].first->p = FoldingCurve[i].first->p2_ori;
             if(j == 0){
-                r2d = (FoldingCurve[Vertices_Ind[1]].second->p - FoldingCurve[Vertices_Ind[1]].first->p).normalize();
-                r3d = (FoldingCurve[Vertices_Ind[1]].second->p3 - FoldingCurve[Vertices_Ind[1]].first->p3).normalize();
+                r2d = (FoldingCurve[Vertices_Ind[1]].second->p - FoldingCurve[Vertices_Ind[1]].first->p).normalized();
+                r3d = (FoldingCurve[Vertices_Ind[1]].second->p3 - FoldingCurve[Vertices_Ind[1]].first->p3).normalized();
             }else if(j == (int)Vertices_Ind.size() - 2){
-                r2d = (FoldingCurve[Vertices_Ind[j]].second->p - FoldingCurve[Vertices_Ind[j]].first->p).normalize();
-                r3d = (FoldingCurve[Vertices_Ind[j]].second->p3 - FoldingCurve[Vertices_Ind[j]].first->p3).normalize();
+                r2d = (FoldingCurve[Vertices_Ind[j]].second->p - FoldingCurve[Vertices_Ind[j]].first->p).normalized();
+                r3d = (FoldingCurve[Vertices_Ind[j]].second->p3 - FoldingCurve[Vertices_Ind[j]].first->p3).normalized();
             }else{
                 if(qt != nullptr){
-                    auto e = (FoldingCurve[i-1].first->p - FoldingCurve[i].first->p).normalize(), e2 = (FoldingCurve[i+1].first->p - FoldingCurve[i].first->p).normalize();
-                    r2d = (qt->p - FoldingCurve[i].first->p).normalize(); r3d = (qt->p3 - FoldingCurve[i].first->p3).normalize();
+                    auto e = (FoldingCurve[i-1].first->p - FoldingCurve[i].first->p).normalized(), e2 = (FoldingCurve[i+1].first->p - FoldingCurve[i].first->p).normalized();
+                    r2d = (qt->p - FoldingCurve[i].first->p).normalized(); r3d = (qt->p3 - FoldingCurve[i].first->p3).normalized();
                     double k = e.dot(e2);
                     k = (k < -1)? std::numbers::pi: (k > 1)? 0: std::acos(k);
                     if((e.cross(e2)).z() > 0)k = 2.0*std::numbers::pi - k;
@@ -750,15 +750,15 @@ bool FoldLine::SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly
                     if(phi > k)r2d *= -1;
                     if(r3d.dot(_r3d) < 0)r3d *= -1;
                 }else{
-                    r2d = (FoldingCurve[Vertices_Ind[j]].second->p - FoldingCurve[Vertices_Ind[j]].first->p).normalize();
-                    r3d = (FoldingCurve[Vertices_Ind[j]].second->p3 - FoldingCurve[Vertices_Ind[j]].first->p3).normalize();
+                    r2d = (FoldingCurve[Vertices_Ind[j]].second->p - FoldingCurve[Vertices_Ind[j]].first->p).normalized();
+                    r3d = (FoldingCurve[Vertices_Ind[j]].second->p3 - FoldingCurve[Vertices_Ind[j]].first->p3).normalized();
                 }
             }
 
             Eigen::Vector3d p;
             for(int k = 0; k < (int)Poly_v.size(); k++){
                 p = MathTool::calcCrossPoint_2Vector(FoldingCurve[i].first->p, 1000.0 * r2d + FoldingCurve[i].first->p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p);
-                if(MathTool::is_point_on_line(p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p) && glm::dot(p - FoldingCurve[i].first->p, r2d) > 0)break;
+                if(MathTool::is_point_on_line(p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p) && r2d.dot(p - FoldingCurve[i].first->p) > 0)break;
             }
             FoldingCurve[i].second->p = p;
             FoldingCurve[i].second->p3 = (FoldingCurve[i].second->p - FoldingCurve[i].first->p).norm() * r3d + FoldingCurve[i].first->p3;
@@ -791,7 +791,7 @@ std::vector<std::vector<Eigen::Vector3d>> FoldLine::Optimization_SmooothSrf(cons
     int bef_ind;
     for(auto&FC : FoldingCurve){
         if(!FC.IsCalc){
-            X.push_back(FC.first->p3_ori.x); X.push_back(FC.first->p3_ori.y); X.push_back(FC.first->p3_ori.z);
+            X.push_back(FC.first->p3_ori.x()); X.push_back(FC.first->p3_ori.y()); X.push_back(FC.first->p3_ori.z());
             OriginalVertices.push_back(FC.first);
         }
         else{
@@ -827,51 +827,51 @@ std::vector<std::vector<Eigen::Vector3d>> FoldLine::Optimization_SmooothSrf(cons
         }
         Eigen::Vector3d p, r3d, r2d;
         for(auto sm: od.SA){
-            Eigen::Vector3d vt = (sm.stP.second->p3 - sm.stP.first->p3).normalize(), vt2d = (sm.stP.second->p - sm.stP.first->p).normalize();
-            Eigen::Vector3d SpinAxis = (vt2d.y < 0)? -Eigen::Vector3d::UnitZ(): Eigen::Vector3d::UnitZ();
+            Eigen::Vector3d vt = (sm.stP.second->p3 - sm.stP.first->p3).normalized(), vt2d = (sm.stP.second->p - sm.stP.first->p).normalized();
+            Eigen::Vector3d SpinAxis = (vt2d.y() < 0)? Eigen::Vector3d(0,0,-1): Eigen::Vector3d(0,0,1);
             for(int j = sm.st_ind + 1; j < sm.last_ind; j++){
                 Eigen::Vector3d e = FoldingCurve[j].first->p3 - FoldingCurve[j-1].first->p3;
-                double l = e.norm(), phi = std::acos(vt.dot(e.normalize()));
-                FoldingCurve[j].first->p = l * Eigen::AngleAxisd(phi, SpinAxis)vt2d + FoldingCurve[j-1].first->p;
+                double l = e.norm(), phi = std::acos(vt.dot(e.normalized()));
+                FoldingCurve[j].first->p = l * (Eigen::AngleAxisd(phi, SpinAxis) * vt2d) + FoldingCurve[j-1].first->p;
 
                 if(sm.qt == nullptr){
-                    if(sm.st_ind != 0){r2d = (sm.stP.second->p - sm.stP.first->p).normalize(); r3d = (sm.stP.second->p3 - sm.stP.first->p3).normalize();}
-                    else {r2d = (sm.lastP.second->p - sm.lastP.first->p).normalize(); r3d = (sm.lastP.second->p3 - sm.lastP.first->p3).normalize();}
+                    if(sm.st_ind != 0){r2d = (sm.stP.second->p - sm.stP.first->p).normalized(); r3d = (sm.stP.second->p3 - sm.stP.first->p3).normalized();}
+                    else {r2d = (sm.lastP.second->p - sm.lastP.first->p).normalized(); r3d = (sm.lastP.second->p3 - sm.lastP.first->p3).normalized();}
                 }else{
                     res_qt.push_back({sm.stP.first->p3, sm.qt->p3, sm.lastP.first->p3});
 
-                    r2d = (sm.qt->p - FoldingCurve[j].first->p).normalize();
+                    r2d = (sm.qt->p - FoldingCurve[j].first->p).normalized();
                     if(r2d.dot(FoldingCurve[sm.st_ind].second->p - FoldingCurve[sm.st_ind].first->p) < 0)r2d *= -1;
                     FoldingCurve[j].second->p = MathTool::calcCrossPoint_2Vector(FoldingCurve[j].first->p, 1000.0 * r2d + FoldingCurve[j].first->p, sm.stP.second->p, sm.lastP.second->p);
-                    r3d = (sm.qt->p3 - FoldingCurve[j].first->p3).normalize();
-                    if(r3d.dot((sm.stP.second->p3 - sm.stP.first->p3).normalize()) < 0)r3d *= -1;
-                    vt = (sm.qt->p3 - FoldingCurve[j].first->p3).normalize(); vt2d = (sm.qt->p - FoldingCurve[j].first->p).normalize();
-                    SpinAxis = (vt2d.y() < 0)? -Eigen::Vector3d::UnitZ(): Eigen::Vector3d::UnitZ();
+                    r3d = (sm.qt->p3 - FoldingCurve[j].first->p3).normalized();
+                    if(r3d.dot((sm.stP.second->p3 - sm.stP.first->p3).normalized()) < 0)r3d *= -1;
+                    vt = (sm.qt->p3 - FoldingCurve[j].first->p3).normalized(); vt2d = (sm.qt->p - FoldingCurve[j].first->p).normalized();
+                    SpinAxis = (vt2d.y() < 0)? Eigen::Vector3d(0,0,-1): Eigen::Vector3d(0,0,1);
                 }
                 for(int k = 0; k < (int)Poly_v.size(); k++){
                     p = MathTool::calcCrossPoint_2Vector(FoldingCurve[j].first->p, 1000.0 * r2d + FoldingCurve[j].first->p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p);
-                    if(MathTool::is_point_on_line(p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p) && glm::dot(r2d, p - FoldingCurve[j].first->p) > 0)break;
+                    if(MathTool::is_point_on_line(p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p) && r2d.dot(p - FoldingCurve[j].first->p) > 0)break;
                 }
                 FoldingCurve[j].second->p = p;
                 FoldingCurve[j].second->p3 = (FoldingCurve[j].second->p - FoldingCurve[j].first->p).norm() * r3d + FoldingCurve[j].first->p3;
 
                 if(sm.qb == nullptr){
-                    if(sm.st_ind != 0){r2d = (sm.stP.third->p - sm.stP.first->p).normalize(); r3d = (sm.stP.third->p3 - sm.stP.first->p3).normalize();}
-                    else {r2d = (sm.lastP.third->p - sm.lastP.first->p).normalize(); r3d = (sm.lastP.third->p3 - sm.lastP.first->p3).normalize();}
+                    if(sm.st_ind != 0){r2d = (sm.stP.third->p - sm.stP.first->p).normalized(); r3d = (sm.stP.third->p3 - sm.stP.first->p3).normalized();}
+                    else {r2d = (sm.lastP.third->p - sm.lastP.first->p).normalized(); r3d = (sm.lastP.third->p3 - sm.lastP.first->p3).normalized();}
                 }else{
-                    r2d = (sm.qb->p - FoldingCurve[j].first->p).normalize();r3d = (sm.qb->p3 - FoldingCurve[j].first->p3).normalize();
+                    r2d = (sm.qb->p - FoldingCurve[j].first->p).normalized();r3d = (sm.qb->p3 - FoldingCurve[j].first->p3).normalized();
                     if(r2d.dot(FoldingCurve[sm.st_ind].third->p - FoldingCurve[sm.st_ind].first->p) < 0)r2d *= -1;
                 }
                 for(int k = 0; k < (int)Poly_v.size(); k++){
                     p = MathTool::calcCrossPoint_2Vector(FoldingCurve[j].first->p, 1000.0 * r2d + FoldingCurve[j].first->p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p);
-                    if(MathTool::is_point_on_line(p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p) && glm::dot(r2d, p - FoldingCurve[j].first->p) > 0)break;
+                    if(MathTool::is_point_on_line(p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p) && r2d.dot(p - FoldingCurve[j].first->p) > 0)break;
                 }
                 FoldingCurve[j].third->p = p;
                 FoldingCurve[j].third->p3 = (p - FoldingCurve[j].first->p).norm() * r3d + FoldingCurve[j].first->p3;
 
                 auto v4d = FoldingCurve[j];
-                Eigen::Vector3d et = (v4d.second->p3 -v4d.first->p3).normalize(), er = (FoldingCurve[j-1].first->p3 -v4d.first->p3).normalize(), eb = (v4d.third->p3 -v4d.first->p3).normalize(), el = (FoldingCurve[j+1].first->p3 -v4d.first->p3).normalize();
-                double phi1 = std::acos(et.dot(er)), phi2 = std::acos(et.dot(et, el)), phi3 = std::acos(eb.dot(el)), phi4 = std::acos(eb.dot(er));
+                Eigen::Vector3d et = (v4d.second->p3 -v4d.first->p3).normalized(), er = (FoldingCurve[j-1].first->p3 -v4d.first->p3).normalized(), eb = (v4d.third->p3 -v4d.first->p3).normalized(), el = (FoldingCurve[j+1].first->p3 -v4d.first->p3).normalized();
+                double phi1 = std::acos(et.dot(er)), phi2 = std::acos(et.dot(el)), phi3 = std::acos(eb.dot(el)), phi4 = std::acos(eb.dot(er));
                 std::cout << j << " : " << abs(2.0*std::numbers::pi - phi1 - phi2 - phi3 - phi4)  << " , " << MathTool::rad2deg(phi1) << " , " << MathTool::rad2deg(phi2) << " , " << MathTool::rad2deg(phi3) << ", " << MathTool::rad2deg(phi4) << std::endl;
             }
         }
@@ -896,9 +896,9 @@ std::vector<std::vector<Eigen::Vector3d>> FoldLine::Optimization_PlanaritySrf(co
     std::vector<std::vector<Eigen::Vector3d>> res_qt;
     for(int i = 0; i < (int)FoldingCurve.size(); i++){
         if(!FoldingCurve[i].IsCalc){
-           Eigen::Vector3d e = (FoldingCurve[i-1].first->p3 - FoldingCurve[i].first->p3).normalize();
-           Eigen::Vector3d N = (e.cross(FoldingCurve[i+1].first->p3 - FoldingCurve[i].first->p3)).normalize();
-           Eigen::Vector3d r = (FoldingCurve[i].second->p3 - FoldingCurve[i].first->p3).normalize();
+           Eigen::Vector3d e = (FoldingCurve[i-1].first->p3 - FoldingCurve[i].first->p3).normalized();
+           Eigen::Vector3d N = (e.cross(FoldingCurve[i+1].first->p3 - FoldingCurve[i].first->p3)).normalized();
+           Eigen::Vector3d r = (FoldingCurve[i].second->p3 - FoldingCurve[i].first->p3).normalized();
            double phi = (e.dot(r) <= -1)? std::numbers::pi: (e.dot(r) >= 1)? 0: std::acos(e.dot(r));
            r = MathTool::ProjectionVector(r, e, true); N = MathTool::ProjectionVector(N, e, true);
            double a = (N.dot(r) <= -1)? std::numbers::pi: (N.dot(r) >= 1)? 0: std::acos(N.dot(r));
@@ -932,7 +932,7 @@ std::vector<std::vector<Eigen::Vector3d>> FoldLine::Optimization_PlanaritySrf(co
                 Eigen::Vector3d e = _prev->first->p3 - itr->first->p3;
                 Eigen::Vector3d N = e.cross(_next->first->p3 - itr->first->p3);
                 Eigen::Vector3d r3d = RevisionVertices::decideRulingDirectionOn3d(e, N, X[2 * x_ind], X[2 * x_ind + 1]);
-                Eigen::Vector3d r2d = (Eigen::AngleAxisd(X[2 * x_ind + 1], Eigen::Vector3d(0,0,-1)) * (_prev->first->p - itr->first->p)).normalize();
+                Eigen::Vector3d r2d = (Eigen::AngleAxisd(X[2 * x_ind + 1], Eigen::Vector3d(0,0,-1)) * (_prev->first->p - itr->first->p)).normalized();
                 for(int k = 0; k < (int)Poly_v.size(); k++){
                     p = MathTool::calcCrossPoint_2Vector(itr->first->p, 1000.0 * r2d + itr->first->p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p);
                     if(MathTool::is_point_on_line(p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p) && r2d.dot(p - itr->first->p) > 0)break;
@@ -953,12 +953,12 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     std::vector<int> Vertices_Ind;for(int i = 0; i < (int)FoldingCurve.size(); i++){if(FoldingCurve[i].IsCalc)Vertices_Ind.push_back(i);}
 
     double a = 0, a2 = 0.0;
-    Eigen::Vector3d e = (FoldingCurve[Vertices_Ind[0]].first->p3 - FoldingCurve[Vertices_Ind[1]].first->p3).normalize(),
-            e2 = (FoldingCurve[Vertices_Ind[2]].first->p3 - FoldingCurve[Vertices_Ind[1]].first->p3).normalize();
-    Eigen::Vector3d SpinAxis = (FoldingCurve[Vertices_Ind[1]].third->p3 - FoldingCurve[Vertices_Ind[1]].first->p3).normalize();
-    Eigen::Vector3d Nb = -(e.cross(e2)).normalize(), N4 = (e.cross(e, SpinAxis)).normalize();
+    Eigen::Vector3d e = (FoldingCurve[Vertices_Ind[0]].first->p3 - FoldingCurve[Vertices_Ind[1]].first->p3).normalized(),
+            e2 = (FoldingCurve[Vertices_Ind[2]].first->p3 - FoldingCurve[Vertices_Ind[1]].first->p3).normalized();
+    Eigen::Vector3d SpinAxis = (FoldingCurve[Vertices_Ind[1]].third->p3 - FoldingCurve[Vertices_Ind[1]].first->p3).normalized();
+    Eigen::Vector3d Nb = -(e.cross(e2)).normalized(), N4 = (e.cross(SpinAxis)).normalized();
 
-    double a_ll = std::atan2(e.dot(Nb.cross(Nb,N4)), N4.dot(-Nb));
+    double a_ll = std::atan2(e.dot(Nb.cross(N4)), N4.dot(-Nb));
     if(a_ll < 0)a_ll += 2.0*std::numbers::pi;
     double a_con = a_ll + std::numbers::pi;
     if(a_con > 2.0*std::numbers::pi)a_con -= 2.0*std::numbers::pi;
@@ -968,7 +968,7 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     double k = 2.0 * std::numbers::pi - phi3 - phi4;
     double a_min, a_max;
 
-    Eigen::Vector3d FaceNp = (SpinAixs.cross(e2)).normalize(), CrossV = (N4.cross(FaceNp)).normalize();
+    Eigen::Vector3d FaceNp = (SpinAxis.cross(e2)).normalized(), CrossV = (N4.cross(FaceNp)).normalized();
     double val = SpinAxis.dot(CrossV);
     bool IsMount = (SpinAxis.dot(CrossV) < 0)? true: false;
 
@@ -978,7 +978,7 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     if(k >= std::numbers::pi && !IsMount){a_min = a_con - std::numbers::pi; a_max = std::numbers::pi;}
     a = (a_min + a_max)/2.0;
 
-    std::cout <<glm::degrees(a_ll) << " , " << glm::degrees(a_con)<<std::endl;
+    std::cout <<MathTool::rad2deg(a_ll) << " , " << MathTool::rad2deg(a_con)<<std::endl;
     std::ofstream ofs2;
     std::filesystem::create_directory("./Optimization");
 
@@ -1045,7 +1045,7 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
         res_amax = _a[0];
 
     }
-    catch (std::exception& e)  std::cout << "nlopt failed: " << e.what() << std::endl;
+    catch (std::exception& e){std::cout << "nlopt failed: " << e.what() << std::endl;}
     
     double th_ruling = 1e-9;
     if(f_ruling_amin < th_ruling && f_ruling_amax < th_ruling){
@@ -1063,7 +1063,7 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
 }
 
 inline double RevisionVertices::getK(const Eigen::Vector3d o, const Eigen::Vector3d x, const Eigen::Vector3d x2){
-    auto v = (x - o).normalize(), v2 = (x2 - o).normalize()
+    auto v = (x - o).normalized(), v2 = (x2 - o).normalized();
     double k = std::acos(v.dot(v2));
     if(Eigen::Vector3d::UnitZ().dot(v.cross(v2)) > 0)k = 2.0*std::numbers::pi - k;
     return k;
@@ -1112,19 +1112,19 @@ bool FoldLine::RevisionCrosPtsPosition(){
     if(FoldingCurve.size() > 5){
         std::cout << "before revision" << std::endl;
         for(int i = 1; i < (int)FoldingCurve.size()-1; i++){
-            auto v = (FoldingCurve[i-1].first->p - FoldingCurve[i].first->p).normalize(), v2 = (FoldingCurve[i+1].first->p - FoldingCurve[i].first->p).normalize();
+            auto v = (FoldingCurve[i-1].first->p - FoldingCurve[i].first->p).normalized(), v2 = (FoldingCurve[i+1].first->p - FoldingCurve[i].first->p).normalized();
             double k = std::acos(v.dot(v2));
             if(Eigen::Vector3d::UnitZ().dot(v.cross(v2)) > 0)k = 2.0*std::numbers::pi - k;
         }
         auto ReviseEndPosition = [](Eigen::Vector3d e,  double k)->Eigen::Vector3d{
-             return (Eigen::AngleAxisd(k, -Eigen::Vector3d::UnitZ()) * e).normalize();
+             return (Eigen::AngleAxisd(k, -Eigen::Vector3d::UnitZ()) * e).normalized();
         };
         auto getCrossPosition = [](const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& p, const std::shared_ptr<Vertex>& q){
             Eigen::Matrix2d A;
             Eigen::Vector2d b;
             Eigen::Vector3d v2 = q->p - p->p;
-            A(0,0) = v->p.x; A(0,1) = -v2.x; A(1,0) = v->p.y; A(1,1) = -v2.y;
-            b(0) = p->p.x - o->p.x; b(1) = p->p.y - o->p.y;
+            A(0,0) = v->p.x(); A(0,1) = -v2.x(); A(1,0) = v->p.y(); A(1,1) = -v2.y();
+            b(0) = p->p.x() - o->p.x(); b(1) = p->p.y() - o->p.y();
             Eigen::Vector2d ts = A.colPivHouseholderQr().solve(b);
             return  o->p + ts(0) * v->p;
         };
@@ -1172,12 +1172,12 @@ void FoldLine::ReassignColor(std::vector<std::shared_ptr<Line>>& Rulings, ColorP
     std::vector<int> Vertices_Ind;for(int i = 0; i < (int)FoldingCurve.size();i++){if(FoldingCurve[i].IsCalc)Vertices_Ind.push_back(i);}
     std::vector<int>MV(5,0);
     for(int i = 1; i < (int)Vertices_Ind.size()-1; i++){
-        auto e = (FoldingCurve[Vertices_Ind[i-1]].first->p - FoldingCurve[Vertices_Ind[i]].first->p).normalize(), 
-        e2 = (FoldingCurve[Vertices_Ind[i+1]].first->p - FoldingCurve[Vertices_Ind[i]].first->p).normalize();
+        auto e = (FoldingCurve[Vertices_Ind[i-1]].first->p - FoldingCurve[Vertices_Ind[i]].first->p).normalized(), 
+        e2 = (FoldingCurve[Vertices_Ind[i+1]].first->p - FoldingCurve[Vertices_Ind[i]].first->p).normalized();
         double k = std::acos(e.dot(e2));
         if(Eigen::Vector3d::UnitZ().dot(e.cross(e2)) > 0)k = 2.0*std::numbers::pi - k;
-       Eigen::Vector3d N = ((FoldingCurve[Vertices_Ind[i]].third->p3 - FoldingCurve[Vertices_Ind[i]].first->p3).cross(e)).normalize();
-       Eigen::Vector3d Np = (e2.cross(FoldingCurve[Vertices_Ind[i]].third->p3 - FoldingCurve[Vertices_Ind[i]].first->p3)).normalize();
+       Eigen::Vector3d N = ((FoldingCurve[Vertices_Ind[i]].third->p3 - FoldingCurve[Vertices_Ind[i]].first->p3).cross(e)).normalized();
+       Eigen::Vector3d Np = (e2.cross(FoldingCurve[Vertices_Ind[i]].third->p3 - FoldingCurve[Vertices_Ind[i]].first->p3)).normalized();
        double phi = std::acos(N.dot(Np));
 
         double color;
@@ -1256,25 +1256,25 @@ void FoldLine::drawRulingInAllAngles(std::vector<std::array<Eigen::Vector3d, 2>>
         double tau, dir;
         for(int i = 1; i < flsize - 1; i++){
             x = FoldingCurve[i].first->p3;
-            e = (FoldingCurve[i-1].first->p3 - x).normalize();
-            e2 = (FoldingCurve[i+1].first->p3 - x).normalize();
+            e = (FoldingCurve[i-1].first->p3 - x).normalized();
+            e2 = (FoldingCurve[i+1].first->p3 - x).normalized();
 
             double beta = std::acos(e.dot(e2));
             if(i != 1){
                 Eigen::Vector3d srfN = MathTool::ProjectionVector(e.cross(e2), -e, true);
-                dir = (-e).dot(-e, befN.cross(srfN));
+                dir = (-e).dot(befN.cross(srfN));
                 tau = std::acos(srfN.dot(befN));
                 if(dir <= 0)tau = 2.0*std::numbers::pi - tau;
                 a = (a2 - tau < 0) ? a2 - tau + 2.0 * std::numbers::pi: a2 - tau;
             }
-            Eigen::Vector3d Axis = (FoldingCurve[i].third->p3 - FoldingCurve[i].first->p3).normalize();
-            double phi3 = std::acos(Axis.dot((FoldingCurve[i+1].first->p3 - FoldingCurve[i].first->p3).normalize()));
-            double phi4 = std::acos(Axis.dot((FoldingCurve[i-1].first->p3 - FoldingCurve[i].first->p3).normalize()));
+            Eigen::Vector3d Axis = (FoldingCurve[i].third->p3 - FoldingCurve[i].first->p3).normalized();
+            double phi3 = std::acos(Axis.dot((FoldingCurve[i+1].first->p3 - FoldingCurve[i].first->p3).normalized()));
+            double phi4 = std::acos(Axis.dot((FoldingCurve[i-1].first->p3 - FoldingCurve[i].first->p3).normalized()));
             double k = 2.0 * std::numbers::pi - phi3 - phi4;
             double _phi1 = atan((std::cos(k) - std::cos(beta))/(std::sin(beta)*std::cos(a)- std::sin(k)));
             double phi1 = (_phi1 < 0)? _phi1+std::numbers::pi: _phi1;
             double phi2 = k - phi1;
-            N = (Eigen::AngleAxisd(a, -e)  * e2.cross(e2, e)).normalize();
+            N = (Eigen::AngleAxisd(a, -e)  * e2.cross(e)).normalized();
             r = Eigen::AngleAxisd(phi1, -N) * e;//新しいruling方向
             newVec = std::array<Eigen::Vector3d, 2>{veclen * r + x, x};_Rulings.push_back(newVec);
 
@@ -1309,7 +1309,7 @@ inline double update_flapangle(double a, const Eigen::Vector3d& befN, const Eige
 }
 
 inline Eigen::Vector3d _calcruling3d(const double& a, Eigen::Vector3d e, Eigen::Vector3d e2, Eigen::Vector3d axis, double& beta, std::vector<double>& Phi){
-    e = e.normalize(); e2 = e2.normalize(); axis = axis.normalize();
+    e = e.normalized(); e2 = e2.normalized(); axis = axis.normalized();
     beta = std::acos(e.dot(e2));
     Phi.resize(4);
     Phi[2] = std::acos(e2.dot(axis)); Phi[3] = std::acos(e.dot(axis));
@@ -1323,12 +1323,12 @@ inline Eigen::Vector3d _calcruling3d(const double& a, Eigen::Vector3d e, Eigen::
 
 void CalcRuling(double a, Vertex4d& xbef, Vertex4d& x, Vertex4d& xnext, const std::vector<std::shared_ptr<Vertex>>& Poly_V,  double& a2, Eigen::Vector3d& SrfN, const Eigen::Vector3d &SpinAxis ){
 
-    Eigen::Vector3d e = (xbef.first->p3 - x.first->p3).normalize(), e2 = (xnext.first->p3 - x.first->p3).normalize();
+    Eigen::Vector3d e = (xbef.first->p3 - x.first->p3).normalized(), e2 = (xnext.first->p3 - x.first->p3).normalized();
     double beta;
     std::vector<double> Phi;
-    Eigen::Vector3d Axis = (x.third->p3 - x.first->p3).normalize();
+    Eigen::Vector3d Axis = (x.third->p3 - x.first->p3).normalized();
     Eigen::Vector3d r3d = _calcruling3d(a, e, e2, Axis, beta, Phi);
-    Eigen::Vector3d r2d = (Eigen::AngleAxisd(Phi[0], SpinAxis)* (xbef.first->p- x.first->p)).normalize();//展開図のruling方向
+    Eigen::Vector3d r2d = (Eigen::AngleAxisd(Phi[0], SpinAxis)* (xbef.first->p- x.first->p)).normalized();//展開図のruling方向
 
     Eigen::Vector3d crossPoint;
     for(int k = 0; k < (int)Poly_V.size(); k++){
@@ -1369,12 +1369,12 @@ void _FoldingAAAMethod_center(std::vector<Vertex4d>& FoldingCurve, const std::ve
     auto SetOnPlane = [&](Vertex4d& V, const std::vector<std::shared_ptr<Vertex>>& Poly_V, Vertex4d& p, Vertex4d& p2, const std::shared_ptr<Vertex>& q, const std::shared_ptr<Vertex>& q2, int IsEnd){
         //p, q: 左、p2, q2：右
         Eigen::Vector3d vec;
-        if(IsEnd == -1){vec = (q2->p - p2.first->p).normalize();}//左が端
-        else if(IsEnd == 1){vec = (q->p - p.first->p).normalize();}//右が端
+        if(IsEnd == -1){vec = (q2->p - p2.first->p).normalized();}//左が端
+        else if(IsEnd == 1){vec = (q->p - p.first->p).normalized();}//右が端
         else{
-            if(!IsParallel(p.first, q, p2.first, q2))vec = (calcCrossPoint_2Vertex(p.first, q, p2.first, q2) - V.first->p).normalize();
-            else vec = (q->p - p.first->p).normalize();
-            auto e = (p2.first->p - V.first->p).normalize(), e2 = (p.first->p - V.first->p).normalize();
+            if(!IsParallel(p.first, q, p2.first, q2))vec = (calcCrossPoint_2Vertex(p.first, q, p2.first, q2) - V.first->p).normalized();
+            else vec = (q->p - p.first->p).normalized();
+            auto e = (p2.first->p - V.first->p).normalized(), e2 = (p.first->p - V.first->p).normalized();
             double k = e.dot(e2); k = (k < -1)? std::numbers::pi: (k > 1)? 0: std::acos(k);
             Eigen::Vector3d N = e.cross(e2);
             if(N.z() > 0)k = 2.0*std::numbers::pi - k;
@@ -1402,18 +1402,18 @@ void _FoldingAAAMethod_center(std::vector<Vertex4d>& FoldingCurve, const std::ve
     std::vector<int> Vertices_Ind;
     for(int i = 0; i < (int)FoldingCurve.size(); i++){if(FoldingCurve[i].IsCalc)Vertices_Ind.push_back(i);}
 
-    double phi02 = std::acos(((FoldingCurve[Vertices_Ind[0]].second->p - FoldingCurve[Vertices_Ind[0]].first->p).normalize()).dot(
-        (FoldingCurve[Vertices_Ind[1]].first->p - FoldingCurve[Vertices_Ind[0]].first->p).normalize()));
-    double phim1 = std::acis(((FoldingCurve[Vertices_Ind.end()[-2]].first->p - FoldingCurve.back().first->p).normalize()).dot(
-        (FoldingCurve.back().second->p - FoldingCurve.back().first->p).normalize()));
+    double phi02 = std::acos(((FoldingCurve[Vertices_Ind[0]].second->p - FoldingCurve[Vertices_Ind[0]].first->p).normalized()).dot(
+        (FoldingCurve[Vertices_Ind[1]].first->p - FoldingCurve[Vertices_Ind[0]].first->p).normalized()));
+    double phim1 = std::acos(((FoldingCurve[Vertices_Ind.end()[-2]].first->p - FoldingCurve.back().first->p).normalized()).dot(
+        (FoldingCurve.back().second->p - FoldingCurve.back().first->p).normalized()));
 
     double a = (angle < 0.0)? angle + 2.0 * std::numbers::pi: (angle > 2.0*std::numbers::pi)? angle - 2.0*std::numbers::pi: angle;
     Vertex4d fc, fc_bef, fc_next;
     for(int ind = Vertices_Ind.size()/2; ind < (int)Vertices_Ind.size() - 1; ind++){
         fc = FoldingCurve[Vertices_Ind[ind]]; fc_bef = FoldingCurve[Vertices_Ind[ind - 1]]; fc_next = FoldingCurve[Vertices_Ind[ind + 1]];
         x = fc.first->p3;
-        e = (fc_bef.first->p3 - x).normalize();
-        e2 = (fc_next.first->p3 - x).normalize();
+        e = (fc_bef.first->p3 - x).normalized();
+        e2 = (fc_next.first->p3 - x).normalized();
         if(ind != (int)Vertices_Ind.size()/2){Eigen::Vector3d SrfN = MathTool::ProjectionVector(e.cross(e2), -e, true);a = update_flapangle(a2, befN, SrfN, e);}
         CalcRuling(a, fc_bef, fc, fc_next, Poly_V, a2, befN, -Eigen::Vector3d::UnitZ());
         if(ind == (int)FoldingCurve.size() -2)break;
@@ -1427,8 +1427,8 @@ void _FoldingAAAMethod_center(std::vector<Vertex4d>& FoldingCurve, const std::ve
     for(int ind = Vertices_Ind.size()/2 -1; ind > 0; ind--){
         fc = FoldingCurve[Vertices_Ind[ind]]; fc_bef = FoldingCurve[Vertices_Ind[ind + 1]]; fc_next = FoldingCurve[Vertices_Ind[ind - 1]];
         x = fc.first->p3;
-        e = (fc_bef.first->p3 - x).normalize();
-        e2 = (fc_next.first->p3 - x).normalize();
+        e = (fc_bef.first->p3 - x).normalized();
+        e2 = (fc_next.first->p3 - x).normalized();
         if(ind != (int)Vertices_Ind.size()/2 -1){Eigen::Vector3d SrfN = MathTool::ProjectionVector(e.cross(e2), -e, true);a = update_flapangle(a2, befN, SrfN, e);}
         CalcRuling(a, fc_bef, fc, fc_next, Poly_V, a2, befN, Eigen::Vector3d::UnitZ());
         if(ind == (int)FoldingCurve.size() -2)break;
@@ -1446,12 +1446,12 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, const std::vector<st
     auto SetOnPlane = [&](Vertex4d& V, const std::vector<std::shared_ptr<Vertex>>& Poly_V, Vertex4d& p, Vertex4d& p2, const std::shared_ptr<Vertex>& q, const std::shared_ptr<Vertex>& q2, int IsEnd){
         //p, q: 左、p2, q2：右
         Eigen::Vector3d vec;
-        if(IsEnd == -1){vec = (q2->p - p2.first->p).normalize();}//左が端
-        else if(IsEnd == 1){vec = (q->p - p.first->p).normalize();}//右が端
+        if(IsEnd == -1){vec = (q2->p - p2.first->p).normalized();}//左が端
+        else if(IsEnd == 1){vec = (q->p - p.first->p).normalized();}//右が端
         else{
-            if(!IsParallel(p.first, q, p2.first, q2))vec = (calcCrossPoint_2Vertex(p.first, q, p2.first, q2) - V.first->p).normalize();
-            else vec = (q->p - p.first->p).normalize();
-            auto e = (p2.first->p - V.first->p).normalize(), e2 = (p.first->p - V.first->p).normalize();
+            if(!IsParallel(p.first, q, p2.first, q2))vec = (calcCrossPoint_2Vertex(p.first, q, p2.first, q2) - V.first->p).normalized();
+            else vec = (q->p - p.first->p).normalized();
+            auto e = (p2.first->p - V.first->p).normalized(), e2 = (p.first->p - V.first->p).normalized();
             double k = e.dot(e2); k = (k < -1)? std::numbers::pi: (k > 1)? 0: std::acos(k);
             auto N = e.cross(e2);
             if(N.z() > 0)k = 2.0*std::numbers::pi - k;
@@ -1479,10 +1479,10 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, const std::vector<st
     std::vector<int> Vertices_Ind;
     for(int i = 0; i < (int)FoldingCurve.size(); i++){if(FoldingCurve[i].IsCalc)Vertices_Ind.push_back(i);}
 
-    double phi02 = std::acos(((FoldingCurve[Vertices_Ind[0]].second->p - FoldingCurve[Vertices_Ind[0]].first->p).normalize()).dot(
-        (FoldingCurve[Vertices_Ind[1]].first->p - FoldingCurve[Vertices_Ind[0]].first->p).normalize()));
-    double phim1 = std::acis(((FoldingCurve[Vertices_Ind.end()[-2]].first->p - FoldingCurve.back().first->p).normalize()).dot(
-        (FoldingCurve.back().second->p - FoldingCurve.back().first->p).normalize()));
+    double phi02 = std::acos(((FoldingCurve[Vertices_Ind[0]].second->p - FoldingCurve[Vertices_Ind[0]].first->p).normalized()).dot(
+        (FoldingCurve[Vertices_Ind[1]].first->p - FoldingCurve[Vertices_Ind[0]].first->p).normalized()));
+    double phim1 = std::acos(((FoldingCurve[Vertices_Ind.end()[-2]].first->p - FoldingCurve.back().first->p).normalized()).dot(
+        (FoldingCurve.back().second->p - FoldingCurve.back().first->p).normalized()));
 
     double a = (angle < 0.0)? angle + 2.0 * std::numbers::pi: (angle > 2.0*std::numbers::pi)? angle - 2.0*std::numbers::pi: angle;
     for(int ind = 1; ind < (int)Vertices_Ind.size() - 1; ind++){
@@ -1491,8 +1491,8 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, const std::vector<st
         Vertex4d fc_next = FoldingCurve[Vertices_Ind[ind + 1]];
 
         x = fc.first->p3;
-        e = (fc_bef.first->p3 - x).normalize();
-        e2 = (fc_next.first->p3 - x).normalize();
+        e = (fc_bef.first->p3 - x).normalized();
+        e2 = (fc_next.first->p3 - x).normalized();
         if(ind != 1){Eigen::Vector3d SrfN = MathTool::ProjectionVector(e.cross(e2), -e, true);a = update_flapangle(a2, befN, SrfN, e);}
         CalcRuling(a, fc_bef, fc, fc_next, Poly_V, a2, befN, -Eigen::Vector3d::UnitZ());
         if(ind == (int)FoldingCurve.size() -2)break;
@@ -1506,10 +1506,10 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, const std::vector<st
         std::shared_ptr<Vertex> v_clst = getClosestVertex(FoldingCurve[Vertices_Ind[0]].second , FoldingCurve[Vertices_Ind[0]].first, FoldingCurve);
         if(v_clst == nullptr){
             x = FoldingCurve[Vertices_Ind[0]].first->p3;
-            e = (FoldingCurve[Vertices_Ind[1]].first->p3 - x).normalize();
-            Eigen::Vector3d ee = (FoldingCurve[Vertices_Ind[1]].second->p3- FoldingCurve[Vertices_Ind[1]].first->p3).normalize();
-            N = (ee.cross(-e)).normalize();
-            r = (Eigen::AngleAxisd(phi02, N) * e).normalize();//新しいruling方向
+            e = (FoldingCurve[Vertices_Ind[1]].first->p3 - x).normalized();
+            Eigen::Vector3d ee = (FoldingCurve[Vertices_Ind[1]].second->p3- FoldingCurve[Vertices_Ind[1]].first->p3).normalized();
+            N = (ee.cross(-e)).normalized();
+            r = (Eigen::AngleAxisd(phi02, N) * e).normalized();//新しいruling方向
             l = (FoldingCurve[Vertices_Ind[0]].second->p - FoldingCurve[Vertices_Ind[0]].first->p).norm();
             FoldingCurve[Vertices_Ind[0]].second->p3 = l * r + FoldingCurve[Vertices_Ind[0]].first->p3;
             for(int i = Vertices_Ind[0] + 1; i < Vertices_Ind[1]; i++)
@@ -1534,10 +1534,10 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, const std::vector<st
         std::shared_ptr<Vertex> v_clst = getClosestVertex(FoldingCurve[Vertices_Ind.back()].second , FoldingCurve[Vertices_Ind.back()].first, FoldingCurve);
         if(v_clst == nullptr){
             x = FoldingCurve[Vertices_Ind.back()].first->p3;
-            e = (FoldingCurve[Vertices_Ind.end()[-2]].first->p3 - x).normalize();
-            Eigen::Vector3d ee = (FoldingCurve[Vertices_Ind.end()[-2]].second->p3 - FoldingCurve[Vertices_Ind.end()[-2]].first->p3).normalize();
-            N = (ee.cross(ee,e)).normalize();
-            r = (Eigen::AngleAxisd(-phim1, N) * e).normalize();//新しいruling方向
+            e = (FoldingCurve[Vertices_Ind.end()[-2]].first->p3 - x).normalized();
+            Eigen::Vector3d ee = (FoldingCurve[Vertices_Ind.end()[-2]].second->p3 - FoldingCurve[Vertices_Ind.end()[-2]].first->p3).normalized();
+            N = (ee.cross(e)).normalized();
+            r = (Eigen::AngleAxisd(-phim1, N) * e).normalized();//新しいruling方向
             l = (FoldingCurve[Vertices_Ind.back()].second->p - FoldingCurve[Vertices_Ind.back()].first->p).norm();
             FoldingCurve[Vertices_Ind.back()].second->p3 = l * r + x;
             for(int i = Vertices_Ind.end()[-2] + 1; i < Vertices_Ind.back(); i++)
@@ -1590,7 +1590,7 @@ void Douglas_Peucker_algorithm2(std::vector<Vertex4d>& FoldingCurve, std::vector
     };
 
     auto perpendicularDistance = [](Eigen::Vector3d& p, Eigen::Vector3d& l_start, Eigen::Vector3d& l_end)->double{
-        Eigen::Vector3d line = (l_end - l_start).normalize(), OP = (p - l_start).normalize();
+        Eigen::Vector3d line = (l_end - l_start).normalized(), OP = (p - l_start).normalized();
         Eigen::Vector3d H = l_start + line.dot(OP) * (p - l_start);
         return (H - p).norm();
     };
@@ -1633,7 +1633,7 @@ void Douglas_Peucker_algorithm2(std::vector<Vertex4d>& FoldingCurve, std::vector
 //https://issekinichou.wordpress.com/2022/12/28/douglas-peucker-algorithm/
 void Douglas_Peucker_algorithm(std::vector<Vertex4d>& FoldingCurve, std::vector<Vertex4d>& res, double tol){
     auto perpendicularDistance = [](Eigen::Vector3d& p, Eigen::Vector3d& l_start, Eigen::Vector3d& l_end)->double{
-        Eigen::Vector3d line = glm::normalize(l_end - l_start).normalize(), OP = (p - l_start).normalize();
+        Eigen::Vector3d line = (l_end - l_start).normalized(), OP = (p - l_start).normalized();
         Eigen::Vector3d H = l_start + line.dot(OP) * (p - l_start);
         return (H - p).norm();
     };

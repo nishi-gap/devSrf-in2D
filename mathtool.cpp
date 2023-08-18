@@ -23,11 +23,11 @@ namespace MathTool{
 
 
 
-    Eigen::Vector3d getIntersectionPoint(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2,const Eigen::Vector3d p3, glm::f64vec3& p4)
-        double det = (p1(0) - p2(0)) * (p4(1) - p3(1)) - (p4(0) - p3(0)) * (p1(1) - p2(1));
-        double t = ((p4(1) - p3(1)) * (p4(0) - p2(0)) + (p3(0) - p4(0)) * (p4(1) - p2(1))) / det;
+    Eigen::Vector3d getIntersectionPoint(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2,const Eigen::Vector3d p3, const Eigen::Vector3d& p4){
+        double det = (p1.x() - p2.x()) * (p4.y() - p3.y()) - (p4.x() - p3.x()) * (p1.y() - p2.y());
+        double t = ((p4.y() - p3.y()) * (p4.x() - p2.x()) + (p3.x() - p4.x()) * (p4.y() - p2.y())) / det;
 
-        return Eigen::Vector3d(t * p1(0) + (1.0 - t) * p2(0), t * p1(1) + (1.0 - t) * p2(1), 0);
+        return Eigen::Vector3d(t * p1.x() + (1.0 - t) * p2.x(), t * p1.y() + (1.0 - t) * p2.y(), 0);
     }
 
     bool IsIntersect(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, const Eigen::Vector3d& p3, const Eigen::Vector3d& p4, bool ConsiderEnd){
@@ -78,7 +78,7 @@ namespace MathTool{
 
     bool IsAngleLessThan180(Eigen::Vector3d& o, Eigen::Vector3d& a, Eigen::Vector3d& b){
         Eigen::Vector3d ao = (a - o), bo = (b - o);
-        ao = ao.normalize(); bo = bo.normalize();
+        ao = ao.normalized(); bo = bo.normalized();
         Eigen::Vector3d Normal = ao.cross(bo);
         Eigen::Vector3d BiNormal = ao.cross(Normal);
         return (BiNormal.dot(bo) < 0)? true: false;
@@ -89,12 +89,12 @@ namespace MathTool{
         Eigen::Vector3d v1, v2;
         int n = V.size();
         for(int i = 0; i < n; i++){
-            v1 = V[i] - p; v1 = v1.normalize();
-            v2 = V[(i + 1) % n] - p; v2 = v2.normalize();
+            v1 = V[i] - p; v1 = v1.normalized();
+            v2 = V[(i + 1) % n] - p; v2 = v2.normalized();
             angle += std::acos(v1.dot(v2));
         }
 
-        return (angle >= 2 * std::numbers::pi - DBL_EPSILON)? true: false;
+        return (angle >= 2 * std::numbers::pi - 1e-9)? true: false;
     }
 
 
@@ -111,7 +111,7 @@ namespace MathTool{
             if(is_point_on_line(pt_new, p, q) && is_point_on_line(pt_new, D[i], D[i+1])){ T.push_back(xp); }
         }
         if(T.size() == 0)return {};
-        if(T.size() == 1)return{(p.x + q.x)/2}; 
+        if(T.size() == 1)return{(p.x() + q.x())/2};
         t_min = *std::min_element(T.begin(), T.end()); t_min = (t_min < 0) ? 0.0: (t_min > 1)? 1.0: t_min;
         t_max = *std::max_element(T.begin(), T.end()); t_max = (t_max < 0) ? 0.0: (t_max > 1) ? 1.0:  t_max;
         std::array<Eigen::Vector3d, 2> next_line = std::array{Eigen::Vector3d(t_min, 0.0,0.0), Eigen::Vector3d(t_max, 0.0,0.0)};
@@ -121,7 +121,7 @@ namespace MathTool{
         std::pair<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>> _bez = BezierSplit(CtrlPts_base, t_max);
         double bez_t = t_min / (t_max);
         _bez = BezierSplit(_bez.first, bez_t);
-        if(abs(glm::distance(p,q) - abs(t_max - t_min)) < 1e-9){
+        if(abs((p - q).norm() - abs(t_max - t_min)) < 1e-9){
             std::pair<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>> bez_spl = BezierSplit(_bez.second, 0.5);
             std::vector<Eigen::Vector3d> b1 = bez_spl.first, b2 = bez_spl.second;
             std::array<Eigen::Vector3d, 2> next_line2; std::copy(next_line.begin(), next_line.end(), next_line2.begin());
@@ -136,7 +136,7 @@ namespace MathTool{
     //http://www-ikn.ist.hokudai.ac.jp/~k-sekine/slides/convexhull.pdf
     //https://kajindowsxp.com/graham-algo/
     std::vector<Eigen::Vector3d> GrahamScan(const std::vector<Eigen::Vector3d>& Q){
-        std::vector<glm::f64vec3> S;
+        std::vector<Eigen::Vector3d> S;
         if((int)Q.size() < 3)return Q;
         Eigen::Vector3d p_ml = Q[0];
         for(auto&p: Q){
@@ -150,7 +150,7 @@ namespace MathTool{
             bool hasSameAngle = false;
             for(auto& X: Args){
                 if(X.first == phi){
-                    if(X.second.norm(p_ml) < p.norm(p_ml))X.second = p;
+                    if((X.second - p_ml).norm() < (p - p_ml).norm())X.second = p;
                     hasSameAngle = true;
                 }
             }
@@ -189,7 +189,7 @@ namespace MathTool{
     }
 
     bool is_point_on_line(Eigen::Vector3d p, Eigen::Vector3d lp1, Eigen::Vector3d lp2){
-        double ac = p.norm(lp1), bc = p.norm(lp2), lp = lp1.norm(lp2);
+        double ac = (p - lp1).norm(), bc = (p - lp2).norm(), lp = (lp1 - lp2).norm();
         return ((ac < 1e-7 || bc < 1e-7) || abs(lp - ac - bc) < 1e-7)? true: false;
     }
 
@@ -270,10 +270,10 @@ namespace MathTool{
         return Y;
     }
 
-    Eigen::Vector3d ProjectionVector(const Eigen::Vector3d& v, Eigen::Vector3d n, bool Isnormalize){
-        n = n.normalzie();
+    Eigen::Vector3d ProjectionVector(const Eigen::Vector3d& v, Eigen::Vector3d n, bool Isnormalized){
+        n = n.normalized();
         Eigen::Vector3d V = v - v.dot(n)* n;
-        return (Isnormalize)? V/V.norm(): V;
+        return (Isnormalized)? V/V.norm(): V;
     }
 
 }

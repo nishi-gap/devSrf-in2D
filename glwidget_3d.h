@@ -10,10 +10,10 @@
 #include <QPointF>
 #include<GL/glu.h>
 
-typedef std::vector<std::array<glm::f64vec3, 2>> Ruling3d;
+typedef std::vector<std::array<Eigen::Vector3d, 2>> Ruling3d;
 typedef std::vector<std::shared_ptr<Vertex>> Polygon_V;
 typedef std::vector<std::shared_ptr<Line>> Lines;
-typedef std::vector<glm::f64vec3> Curve3d;
+typedef std::vector<Eigen::Vector3d> Curve3d;
 //typedef std::vector<CrvPt_FL> CrvFL3d;
 typedef std::vector<std::shared_ptr<FoldLine>> FoldLine3d;
 
@@ -22,17 +22,17 @@ class GLWidget_3D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
     Q_OBJECT
 public:
     void setVertices(const Lines Surface = Lines(),  const Lines Rulings = Lines(),  const FoldLine3d FldCrvs = FoldLine3d(), const Ruling3d& _AllRulings = Ruling3d());
-    void ReceiveParam(std::vector<std::vector<glm::f64vec3>>&_C);
+    void ReceiveParam(std::vector<std::vector<Eigen::Vector3d>>&_C);
     void receiveKeyEvent(QKeyEvent *e);
     void PlanarityDispay(bool state);
     void EraseNonFoldEdge(bool state);
 
-    std::vector<std::vector<glm::f64vec3>>C;
+    std::vector<std::vector<Eigen::Vector3d>>C;
     std::vector<double> PlanarityColor;
     explicit GLWidget_3D(QWidget *parent = 0);
     ~GLWidget_3D();
 
-    std::vector<glm::f64vec3> FoldLineVertices;
+    std::vector<Eigen::Vector3d> FoldLineVertices;
     Ruling3d AllRulings;
 protected:
     void initializeGL();
@@ -49,21 +49,21 @@ private:
     void draw();
     void perspective(GLdouble fovy, GLdouble aspect, GLdouble zNear, GLdouble zFar);
 
-    std::vector<std::vector<glm::f64vec3>> Vertices;
-    std::vector<std::array<glm::f64vec3, 3>> TriMeshs;
+    std::vector<std::vector<Eigen::Vector3d>> Vertices;
+    std::vector<std::array<Eigen::Vector3d, 3>> TriMeshs;
 
-    glm::f64mat4x4 Mirror;
-    glm::f64mat4x4 Scale;
+    Eigen::Matrix3d Mirror;
+    double Scale;
 
     double TransX, TransY, TransZ;
     double angleX, angleY;
     bool firstRotate;
-    glm::f64vec3 center;
+    Eigen::Vector3d center;
     void DrawMeshLines();
     void DrawMesh(bool isFront);
     int actionType;//0: None, 1: Left Click, 2: Right click, 3: other
 
-    glm::f64vec3 getVec(float x, float y);
+    Eigen::Vector3d getVec(double x, double y);
 
     QPointF befPos;
     bool eraseMesh, eraseCtrlPt, eraseCrossPt, eraseVec, eraseCurve;
@@ -72,11 +72,10 @@ private:
     double th_planarity = 1e-3;
     int switchTNB;
     double drawdist;
-    std::vector<std::array<glm::f64vec3, 2>> drawEdges;
     int drawEdgePlane;
     bool IsEraseNonFoldEdge;
 
-    inline void dispV(glm::f64vec3 p);
+    inline void dispV(Eigen::Vector3d p);
     void updateRotate();
 
     //ArcBallCam arccam;
