@@ -4,7 +4,7 @@ GradationWidget::GradationWidget(QWidget *parent):QOpenGLWidget(parent)
 {
     IsClicked = -1;
     rad = 5.0;
-    glm::f64vec2 v = {0,0};
+    Eigen::Vector2d v(0,0);
     a = v;
     b = v;
     Ctype = Cval = "";
@@ -105,8 +105,8 @@ void GradationWidget::mousePressEvent(QMouseEvent *e){
     if(paintMode == "linear"){
     }
     if(e->button() ==Qt::LeftButton){
-        if((p.x() - a.x) * (p.x() - a.x) + (p.y() - a.y) * (p.y() - a.y) < rad * rad) IsClicked = 0;
-        if((p.x() - b.x) * (p.x() - b.x) + (p.y() - b.y) * (p.y() - b.y) < rad * rad) IsClicked = 1;
+        if((p.x() - a.x()) * (p.x() - a.x()) + (p.y() - a.y()) * (p.y() - a.y()) < rad * rad) IsClicked = 0;
+        if((p.x() - b.x()) * (p.x() - b.x()) + (p.y() - b.y()) * (p.y() - b.y()) < rad * rad) IsClicked = 1;
     }
 
     else if(paintMode == "SplineInterpolation"){
@@ -282,12 +282,12 @@ void GradationWidget::SplineInterpolation(std::vector<Eigen::Vector2d>& cp, std:
     for(double i = 0; i <= N; i += 1/(double)curveNum){
 
         int j = floor(i);
-        double den = cp[j + 1].x - cp[j].x;
+        double den = cp[j + 1].x() - cp[j].x();
         a = (den != 0)? (u(j + 1) - u(j))/(6 * den) : 0;
         b = u(j)/2;
         c = - den * (2 * u(j) + u(j + 1))/6.0;
-        c += (den != 0)? (cp[j + 1].y - cp[j].y)/den : 0;
-        d = cp[j].y;
+        c += (den != 0)? (cp[j + 1].y() - cp[j].y())/den : 0;
+        d = cp[j].y();
         x = (i - j) * den;
         double y = a * std::pow(x, 3) + b * std::pow(x, 2) + c * x + d;
         x += cp[j].x();

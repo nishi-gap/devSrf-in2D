@@ -409,7 +409,7 @@ void MainWindow::exportobj(){
            double l_avg = ((QuadPlane[0] - QuadPlane[2]).norm() + (QuadPlane[1] - QuadPlane[3]).norm())/2.0;
            double d;
            Eigen::Vector3d u1 = (QuadPlane[0] - QuadPlane[2]).normalized(), u2 = (QuadPlane[1]-  QuadPlane[3]).normalized();
-           if((u1.cross(u2)).norm() < DBL_EPSILON){
+           if((u1.cross(u2)).norm() < 1e-9){
                Eigen::Vector3d H = QuadPlane[3] + u2.dot(QuadPlane[1] - QuadPlane[3])*u2;
                d = (H - QuadPlane[1]).norm();
            }else{
