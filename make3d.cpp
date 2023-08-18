@@ -18,9 +18,7 @@ Model::Model(int _crvPtNum){
 }
 
 void Model::clear(){
-    //vertices.clear();
     Rulings.clear();
-    //Faces.clear();
     ol_vertices.clear();
     ColorPt = ColorPoint(200, std::numbers::pi/2.0);
 }
@@ -44,11 +42,11 @@ void Model::SetMaxFold(double val){
 }
 
 
-glm::f64vec3 Model::SetOnGrid(QPointF& cursol, double gridsize){
+Eigen::Vector3d Model::SetOnGrid(QPointF& cursol, double gridsize){
     int x = (int)cursol.x() % (int)gridsize, y = (int)cursol.y() % (int)gridsize;
     x = (cursol.x() - x + gridsize/2);
     y = (cursol.y() - y + gridsize/2);
-    return glm::f64vec3{x,y,0};
+    return Eigen::Vector3d{x,y,0};
 }
 
 void Model::deform(){
@@ -59,8 +57,8 @@ void Model::deform(){
     };
 
     if(Rulings.empty() || !outline->IsClosed())return;
-    glm::f64mat4x4 T, R, M;
-    std::vector<glm::f64mat4x4> TMs;
+    Eigen::Matrix3d R;
+    std::vector<Eigen::Transform<double, 3, Eigen::Affine>> TMs;
     std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons;
     std::vector<std::shared_ptr<Vertex>> polygon;
 
@@ -82,17 +80,18 @@ void Model::deform(){
             Polygons.push_back(poly2);
         }
     }
-    T = glm::translate(Rulings[0]->o->p);
-    R = M = glm::f64mat4(1.0); TMs.push_back(M * R * T);
+    Eigen::Translation3d T =  T(Rulings[0]->o->p);
+    Eigen::Transform<double, 3, Eigen::Affine> M = Eigen::Transform<double, 3, Eigen::Affine>::Identity();
+    Eigen::Matrix3d R = Eigen::Matrix3d::Identity(); TMs.push_back(M * R * T);
     for(int i = 1; i < (int)Rulings.size(); i++){
-        glm::f64vec3 axis = glm::normalize(Rulings[i-1]->v->p - Rulings[i-1]->o->p);
+        Eigen::Vector3d axis = (Rulings[i-1]->v->p - Rulings[i-1]->o->p).normalize();
         M = TMs.back();
-        T = glm::translate(Rulings[i]->o->p - Rulings[i-1]->o->p);
-        R = glm::rotate(Color2Angle(Rulings[i-1]->color, ColorPt), axis);
-        Rulings[i]->o->p3_ori = Rulings[i]->o->p3 = M * R * T * glm::f64vec4{0,0,0, 1};
+        T = Eigen::Translation3d(Rulings[i]->o->p - Rulings[i-1]->o->p);
+        R = Eigen::AngleAxisd(Color2Angle(Rulings[i-1]->color, ColorPt), axis);
+        Rulings[i]->o->p3_ori = Rulings[i]->o->p3 = M * R * T * Eigen::Vector3d(0,0,0);
         TMs.push_back(M * R * T);
-        T = glm::translate(Rulings[i]->v->p - Rulings[i-1]->o->p);
-        Rulings[i]->v->p3_ori = Rulings[i]->v->p3 = M * R * T * glm::f64vec4{0,0,0, 1};
+        T = Eigen::Translation3d(Rulings[i]->v->p - Rulings[i-1]->o->p);
+        Rulings[i]->v->p3_ori = Rulings[i]->v->p3 = M * R * T * Eigen::Vector3d(0,0,0);
     }
 
     for(auto&l: outline->Lines){
@@ -102,15 +101,15 @@ void Model::deform(){
                 if(std::find(P.begin(), P.end(), Rulings[i]->v) != P.end()){
                     if(i == 0){
                     }else if(i == Rulings.size() - 1){
-                        glm::f64vec3 axis = glm::normalize(Rulings.back()->v->p - Rulings.back()->o->p);
+                        Eigen::Vector3d axis = (Rulings.back()->v->p - Rulings.back()->o->p).normalize();
                         M = TMs.back();
-                        T = glm::translate(l->v->p - Rulings.back()->o->p);
-                        R = glm::rotate(Color2Angle(Rulings.back()->color, ColorPt), axis);
-                        l->v->p3_ori = l->v->p3 = M * R * T * glm::f64vec4{0,0,0, 1};
+                        T = Eigen::Translation3d(l->v->p - Rulings.back()->o->p);
+                        R = Eigen::AngleAxisd(Color2Angle(Rulings.back()->color, ColorPt), axis);
+                        l->v->p3_ori = l->v->p3 = M * R * T * Eigen::Vector3d(0,0,0);
                         break;
                     }else{
-                        T = glm::translate(l->v->p - Rulings[i]->o->p);
-                        l->v->p3_ori = l->v->p3 = TMs[i] * T * glm::f64vec4{0,0,0, 1};
+                        T = Eigen::Translation3d(l->v->p - Rulings[i]->o->p);
+                        l->v->p3_ori = l->v->p3 = TMs[i] * T * Eigen::Vector3d(0,0,0);
                         break;
                     }
                 }
@@ -132,15 +131,15 @@ void Model::ChangeFoldLineState(){
     FoldCurveIndex = FL.size() - 1;
 }
 
-std::shared_ptr<CrvPt_FL> getCrossPoint(std::vector<glm::f64vec3>& CtrlPts,  const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o, int dim){
+std::shared_ptr<CrvPt_FL> getCrossPoint(std::vector<Eigen::Vector3d>& CtrlPts,  const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o, int dim){
     std::vector<double>arcT = BezierClipping(CtrlPts, v, o, dim);
     for(auto&t: arcT){
         if(t < 0 || 1 < t){std::cout<<"t is not correct value " << t << std::endl; continue;}
-        glm::f64vec3 v2{0,0,0};
+        Eigen::Vector3d v2{0,0,0};
         for (int i = 0; i < int(CtrlPts.size()); i++) v2 += MathTool::BernsteinBasisFunc(dim, i, t) * CtrlPts[i];
         if(!MathTool::is_point_on_line(v2, v->p, o->p))continue;
-        double sa = glm::distance(v2, o->p), sc = glm::distance(o->p, v->p);
-        glm::f64vec3 v3 = sa/sc * (v->p3 - o->p3) + o->p3;
+        double sa = (v2 - o->p).norm(), sc = (o->p - v->p).norm();
+        Eigen::Vector3d v3 = sa/sc * (v->p3 - o->p3) + o->p3;
         std::shared_ptr<CrvPt_FL> P = std::make_shared<CrvPt_FL>(CrvPt_FL(v2, v3, t));
         P->set(v2, o, v);
         return P;
@@ -149,7 +148,7 @@ std::shared_ptr<CrvPt_FL> getCrossPoint(std::vector<glm::f64vec3>& CtrlPts,  con
 }
 
 void Model::UpdateFLOrder(int dim){
-    glm::f64vec3 UpVec{0,-1,0};
+    Eigen::Vector3d UpVec{0,-1,0};
     std::vector<std::shared_ptr<FoldLine>> hasFoldingCurve;
     std::shared_ptr<Line> btm = outline->Lines.front();//一番下の辺を探索
 
@@ -174,7 +173,7 @@ void Model::UpdateFLOrder(int dim){
             for(auto& l: outline->Lines){
                 std::shared_ptr<CrvPt_FL> P = getCrossPoint(fl->CtrlPts, l->v, l->o, dim);
                 if(P!= nullptr){
-                    if(glm::dot(UpVec, glm::normalize(l->v->p - l->o->p)) > 0)fl->FoldingCurve.push_back(Vertex4d(P, l->v, l->o));
+                    if(UpVec.dot((l->v->p - l->o->p).normalize()) > 0)fl->FoldingCurve.push_back(Vertex4d(P, l->v, l->o));
                     else fl->FoldingCurve.push_back(Vertex4d(P, l->o, l->v));
                 }
             }
@@ -187,9 +186,9 @@ void Model::UpdateFLOrder(int dim){
        std::vector<LineOnFL> LoF;
         for(auto&fl: hasFoldingCurve){
             if(outline->Lines[i]->is_on_line(fl->FoldingCurve.front().first->p))
-                LoF.push_back(LineOnFL(fl, glm::length(fl->FoldingCurve.front().first->p - outline->Lines[i]->o->p)/glm::length(outline->Lines[i]->v->p - outline->Lines[i]->o->p)));
+                LoF.push_back(LineOnFL(fl, (fl->FoldingCurve.front().first->p - outline->Lines[i]->o->p).norm()/(outline->Lines[i]->v->p - outline->Lines[i]->o->p).norm()));
             if(outline->Lines[i]->is_on_line(fl->FoldingCurve.back().first->p))
-                LoF.push_back(LineOnFL(fl, glm::length(fl->FoldingCurve.back().first->p - outline->Lines[i]->o->p)/glm::length(outline->Lines[i]->v->p - outline->Lines[i]->o->p)));
+                LoF.push_back(LineOnFL(fl, (fl->FoldingCurve.back().first->p - outline->Lines[i]->o->p).norm()/(outline->Lines[i]->v->p - outline->Lines[i]->o->p).norm()));
         }
         if(!LoF.empty()){
             std::sort(LoF.begin(), LoF.end(), [](const LineOnFL& a, const LineOnFL& b){return a.t < b.t;});
@@ -268,14 +267,14 @@ bool Model::AssignRuling(int dim){
 }
 
 bool Model::SplitRulings(int dim){
-    glm::f64vec3 UpVec{0,-1,0};
+    Eigen::Vector3d UpVec{0,-1,0};
     if(FL.empty() || FL[FoldCurveIndex]->CtrlPts.size() <= dim)return false;
     auto root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
     for(auto& r: Rulings){
         std::shared_ptr<CrvPt_FL> P = getCrossPoint(root->data->CtrlPts, r->v, r->o, dim);
         if(P!= nullptr){
-            if(glm::dot(UpVec, glm::normalize(r->v->p - r->o->p)) > 0)root->data->FoldingCurve.push_back(Vertex4d(P, r->v, r->o));
+            if(UpVec.dot(UpVec, (r->v->p - r->o->p).normalize()) > 0)root->data->FoldingCurve.push_back(Vertex4d(P, r->v, r->o));
             else root->data->FoldingCurve.push_back(Vertex4d(P, r->o, r->v));
         }
     }
@@ -288,13 +287,13 @@ void Model::modifyFoldingCurvePositionOn3d(){
         for(auto&fldCrv: FC->FoldingCurve){
             for(auto&r: Rulings){
                 if(!MathTool::is_point_on_line(fldCrv.first->p, r->o->p, r->v->p))continue;
-                double t = glm::length(fldCrv.first->p - r->o->p)/glm::length(r->o->p - r->v->p);
+                double t = (fldCrv.first->p - r->o->p).norm()/(r->o->p - r->v->p).norm();
                 fldCrv.first->p3_ori = fldCrv.first->p3 = t * (r->v->p3 - r->o->p3) + r->o->p3;
                 break;
             }
             for(auto&l: outline->Lines){
                 if(!MathTool::is_point_on_line(fldCrv.first->p, l->o->p, l->v->p))continue;
-                double t = glm::length(fldCrv.first->p - l->o->p)/glm::length(l->o->p - l->v->p);
+                double t = (fldCrv.first->p - l->o->p).norm()/(l->o->p - l->v->p).norm();
                 fldCrv.first->p3_ori = fldCrv.first->p3 = t * (l->v->p3 - l->o->p3) + l->o->p3;
                 break;
             }
@@ -302,22 +301,22 @@ void Model::modifyFoldingCurvePositionOn3d(){
     }
 }
 
-void Model:: addConstraint(QPointF& cursol, int type, int gridsize, glm::f64vec3 (&axis)[2]){
+void Model:: addConstraint(QPointF& cursol, int type, int gridsize, Eigen::Vector3d (&axis)[2]){
     if(outline->IsClosed()){
         std::cout<<"constraint can be applied only not closed outline"<<std::endl;
         return;
     }
-    glm::f64vec3 p = SetOnGrid(cursol, gridsize);
-    if(axis[0] == glm::f64vec3{-1,-1,0}){axis[0] = p; return;}
-    else if(axis[1] == glm::f64vec3{-1,-1,0} && axis[0] != p)axis[1] = p;
-    glm::f64vec3 V = glm::normalize(axis[1] - axis[0]);
-    glm::f64vec3 N = glm::f64vec3{-V.y, V.x, 0};
+    Eigen::Vector3d p = SetOnGrid(cursol, gridsize);
+    if(axis[0] == Eigen::Vector3d{-1,-1,0}){axis[0] = p; return;}
+    else if(axis[1] == Eigen::Vector3d{-1,-1,0} && axis[0] != p)axis[1] = p;
+    Eigen::Vector3d V = (axis[1] - axis[0]).normalize();
+    Eigen::Vector3d N = Eigen::Vector3d{-V.y, V.x, 0};
     std::vector<std::shared_ptr<Vertex>> SymPts;
     std::vector<std::shared_ptr<Vertex>> Vertices = outline->getVertices();
     if(type == 0){
         for(auto&v: Vertices){
-            double t = glm::length(glm::cross((v->p - axis[0]), (axis[0] - axis[1])))/glm::length(axis[0] - axis[1]);
-            if(glm::dot(axis[0] - v->p, N) < 0) N *= -1;
+            double t = ((v->p - axis[0]).cross(axis[0] - axis[1])).norm()/(axis[0] - axis[1]).norm();
+            if(N.dot(axis[0] - v->p) < 0) N *= -1;
             SymPts.push_back(std::make_shared<Vertex>(v->p + 2 * t * N));
         }
     }
@@ -327,15 +326,15 @@ void Model:: addConstraint(QPointF& cursol, int type, int gridsize, glm::f64vec3
     int n = Vertices.size();
     int IsConnected = 0;
     double dist = gridsize/2;
-    if(glm::distance(SymPts[0]->p, Vertices[0]->p) < dist && glm::distance(SymPts[n-1]->p, Vertices[n-1]->p) < dist){
+    if((SymPts[0]->p - Vertices[0]->p).norm() < dist && (SymPts[n-1]->p - Vertices[n-1]->p).norm() < dist){
         for(int i = 1; i < (int)SymPts.size(); i++) outline->addVertex(SymPts[i], 0);
         IsConnected = 2;
     }
-    else if(glm::distance(SymPts[0]->p, Vertices[0]->p) < dist && glm::distance(SymPts[n-1]->p, Vertices[n-1]->p) > dist){
+    else if((SymPts[0]->p - Vertices[0]->p).norm() < dist && (SymPts[n-1]->p - Vertices[n-1]->p).norm() > dist){
         for(int i = 1; i <(int)SymPts.size(); i++) outline->addVertex(SymPts[i], 0);
         IsConnected = 1;
     }
-    else if(glm::distance(SymPts[0]->p, Vertices[0]->p) > dist && glm::distance(SymPts[n-1]->p, Vertices[n-1]->p) < dist){
+    else if((SymPts[0]->p - Vertices[0]->p).norm() > dist && (SymPts[n-1]->p - Vertices[n-1]->p).norm() < dist){
         for(int i = (int)SymPts.size() - 2; i >= 0; i--) outline->addVertex(SymPts[i], outline->getVertices().size());
         IsConnected = 1;
     }
@@ -348,7 +347,7 @@ void Model:: addConstraint(QPointF& cursol, int type, int gridsize, glm::f64vec3
 }
 
 void Model::drawOutline(QPointF& cursol, int drawtype, double gridsize, bool IsClicked){
-    glm::f64vec3 p = SetOnGrid(cursol, gridsize);
+    Eigen::Vector3d p = SetOnGrid(cursol, gridsize);
     if(drawtype == 0 || drawtype == 1){
         if(outline->hasPtNum != 2)outline->addVertex(p);
     }else if(drawtype == 2) outline->drawPolygon(p, IsClicked);
@@ -356,15 +355,15 @@ void Model::drawOutline(QPointF& cursol, int drawtype, double gridsize, bool IsC
 }
 
 void Model::editOutlineVertex(QPointF& cursol, double gridsize, int event){
-    glm::f64vec3 p = SetOnGrid(cursol, gridsize);
+    Eigen::Vector3d p = SetOnGrid(cursol, gridsize);
     static int grabedOutlineVertex = -1;
     if(event == 0){
         float dist = 5;
         grabedOutlineVertex = -1;//0~: vertex
         std::vector<std::shared_ptr<Vertex>> _vertices = outline->getVertices();
         for(int i = 0; i < (int)_vertices.size(); i++){
-            if(glm::distance(_vertices[i]->p, p) < dist){
-                grabedOutlineVertex = i; dist = glm::distance(_vertices[i]->p, p);
+            if((_vertices[i]->p - p).norm() < dist){
+                grabedOutlineVertex = i; dist = (_vertices[i]->p - p).norm();
             }
         }
     }else if(event == 1){
@@ -374,7 +373,7 @@ void Model::editOutlineVertex(QPointF& cursol, double gridsize, int event){
 }
 
 void Model::ConnectOutline(QPointF& cursol, double gridsize){
-    glm::f64vec3 p = SetOnGrid(cursol, gridsize);
+    Eigen::Vector3d p = SetOnGrid(cursol, gridsize);
     std::vector<std::shared_ptr<Vertex>> V = outline->getVertices();
     for(auto&v: V){
         if(p == v->p){
@@ -387,19 +386,19 @@ void Model::ConnectOutline(QPointF& cursol, double gridsize){
 void Model::LinearInterPolation(const std::vector<std::shared_ptr<Line>>& path){
     if(path.size() < 2)return;
 
-    glm::f64vec3 befcenter = glm::f64vec3{-1,-1,-1}, center;
+    Eigen::Vector3d befcenter = Eigen::Vector3d{-1,-1,-1}, center;
     double len = 0.0;
     for(auto& l: path){
-        if(befcenter == glm::f64vec3{-1,-1,-1}){         
+        if(befcenter == Eigen::Vector3d{-1,-1,-1}){         
             befcenter = (l->v->p + l->o->p)/2.0;
             continue;
         }     
         center = (l->v->p + l->o->p)/2.0;
-        len += glm::distance(center, befcenter);
+        len += (center - befcenter).norm();
         befcenter = center;
     }
     double r = (GradationPoints[1]->color - GradationPoints[0]->color)/len;
-    befcenter = glm::f64vec3{-1,-1,-1};
+    befcenter = Eigen::Vector3d{-1,-1,-1};
     std::shared_ptr<Line> bef = std::shared_ptr<Line>(nullptr);
     for(auto&l : path){
         if(bef == nullptr){
@@ -408,20 +407,20 @@ void Model::LinearInterPolation(const std::vector<std::shared_ptr<Line>>& path){
             continue;
         }
         center = (l->v->p + l->o->p)/2.0;
-        l->color = r * glm::distance(center, befcenter) + bef->color;
+        l->color = r * (center -  befcenter).norm() + bef->color;
         bef = l;
         befcenter = center;
     }
 }
 
-void Model::SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, std::vector<glm::f64vec2>& CurvePath){//凹型に関してはとりあえず虫
+void Model::SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, std::vector<Eigen::Vector2d>& CurvePath){//凹型に関してはとりあえず虫
     if((int)GradationPoints.size() < 2)return;
     CurvePath.clear();
     int N =(int)GradationPoints.size() - 1;
-    auto getCenter = [](const std::shared_ptr<Line>& L) { return glm::f64vec3(L->o->p + L->v->p)/2.0;};
+    auto getCenter = [](const std::shared_ptr<Line>& L) { return Eigen::Vector3d(L->o->p + L->v->p)/2.0;};
     Eigen::VectorXd v(N - 1);
     std::vector<double>h(N);
-    for(int i = 1; i < N + 1; i++)h[i - 1] = glm::distance(getCenter(GradationPoints[i]),getCenter(GradationPoints[i - 1]));
+    for(int i = 1; i < N + 1; i++)h[i - 1] = (getCenter(GradationPoints[i]) - getCenter(GradationPoints[i - 1])).norm();
     for(int i = 1; i < N; i++){
         double a = (h[i] != 0) ? (GradationPoints[i + 1]->color - GradationPoints[i]->color)/h[i] : 0, b = (h[i - 1] != 0) ? (GradationPoints[i]->color - GradationPoints[i - 1]->color)/h[i - 1]: 0;
         v(i - 1) = 6 * (a - b);
@@ -433,9 +432,9 @@ void Model::SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, 
     if(N == 2){
         u = Eigen::VectorXd::Zero(3);
         double dx1, dx2, dx3;
-        dx1 = glm::distance(getCenter(GradationPoints[2]), getCenter(GradationPoints[0]));
-        dx2 = glm::distance(getCenter(GradationPoints[2]), getCenter(GradationPoints[1]));
-        dx3 = glm::distance(getCenter(GradationPoints[1]), getCenter(GradationPoints[0]));
+        dx1 = (getCenter(GradationPoints[2]) - getCenter(GradationPoints[0])).norm();
+        dx2 = (getCenter(GradationPoints[2]) -  getCenter(GradationPoints[1])).norm();
+        dx3 = (getCenter(GradationPoints[1]) - getCenter(GradationPoints[0])).norm();
         if(abs(dx1) < DBL_EPSILON) u(1) = 0;
         else{
             double a = (dx2 == 0) ? 0: (GradationPoints[2]->color - GradationPoints[1]->color)/dx2;
@@ -473,24 +472,24 @@ void Model::SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, 
             std::cout<< i << "  next"<<std::endl;
             return;
         }
-        glm::f64vec3 befcenter = getCenter(GradationPoints[i]);
-        glm::f64vec3 center = getCenter(GradationPoints[i + 1]);
-        double den = glm::distance(befcenter, center);
+        Eigen::Vector3d befcenter = getCenter(GradationPoints[i]);
+        Eigen::Vector3d center = getCenter(GradationPoints[i + 1]);
+        double den = (befcenter - center).norm();
         a = (den != 0)? (u(i + 1) - u(i))/(6 * den) : 0;
         b = u(i)/2;
         c = - den * (2 * u(i) + u(i + 1))/6.0;
         c += (den != 0)? (GradationPoints[i + 1]->color - GradationPoints[i]->color)/den : 0;
         d = GradationPoints[i]->color;
         for(int k = cur + 1; k < next; k++){
-            x =  glm::distance(getCenter(path[k]), befcenter);
+            x =  (getCenter(path[k]) - befcenter).norm();
             y = a * std::pow(x, 3) + b * std::pow(x, 2) + c * x + d;
             path[k]->color = y;
-            CurvePath.push_back(glm::f64vec2{cnt++,y});
+            CurvePath.push_back(Eigen::Vector2d(cnt++,y));
         }
     }
 }
 
-void Model::setGradationValue(int val, const std::shared_ptr<Line>& refL, int InterpolationType, std::vector<glm::f64vec2>& CurvePath){
+void Model::setGradationValue(int val, const std::shared_ptr<Line>& refL, int InterpolationType, std::vector<Eigen::Vector2d>& CurvePath){
     //if(Faces.size() == 0 || std::find(Edges.begin(), Edges.end(), refHE) == Edges.end()){std::cout<<"no selected" << std::endl; return;
     if(Rulings.empty() || std::find(Rulings.begin(), Rulings.end(), refL) == Rulings.end()){std::cout<<"no selected" << std::endl; return;}
     if(refL->et != EdgeType::r)return;
@@ -560,7 +559,7 @@ int Model::searchPointIndex(QPointF pt, int& ptInd, int type){
     if(type == 0){
         for(int j = 0; j < (int)crvs.size(); j++){
             for(int i = 0; i < (int)crvs[j]->ControllPoints.size(); i++){
-                glm::f64vec2 cp = crvs[j]->ControllPoints[i];
+                Eigen::Vector2d cp = crvs[j]->ControllPoints[i];
                 if(dist * dist > (cp.x - pt.x()) * (cp.x - pt.x()) + (cp.y - pt.y()) * (cp.y - pt.y())){
                     dist = sqrt((cp.x - pt.x()) * (cp.x - pt.x()) + (cp.y - pt.y()) * (cp.y - pt.y()));
                     ptInd = i;
@@ -572,7 +571,7 @@ int Model::searchPointIndex(QPointF pt, int& ptInd, int type){
     }else{
         for(int j = 0; j < (int)crvs.size(); j++){
             for(int i = 0; i < (int)crvs[j]->CurvePoints.size(); i++){
-                glm::f64vec2 cp = crvs[j]->CurvePoints[i];
+                Eigen::Vector2d cp = crvs[j]->CurvePoints[i];
                 if(dist * dist > (cp.x - pt.x()) * (cp.x - pt.x()) + (cp.y - pt.y()) * (cp.y - pt.y())){
                     dist = sqrt((cp.x - pt.x()) * (cp.x - pt.x()) + (cp.y - pt.y()) * (cp.y - pt.y()));
                     ptInd = i;
@@ -633,8 +632,8 @@ void Model::Check4Param(int curveDimention, std::vector<int>& deleteIndex){
     crvs.shrink_to_fit();
     refCrv.shrink_to_fit();
     GradationPoints.clear();
-    Axis4Const[0] = glm::f64vec3{-1,-1,0};
-    Axis4Const[1] = glm::f64vec3{-1,-1,0};
+    Axis4Const[0] = Eigen::Vector3d{-1,-1,0};
+    Axis4Const[1] = Eigen::Vector3d{-1,-1,0};
     Connect2Vertices[0] = std::shared_ptr<Vertex>(nullptr);
     Connect2Vertices[1] = std::shared_ptr<Vertex>(nullptr);
 }
@@ -649,7 +648,7 @@ int Model::AddNewCurve(CurveType curveType, int DivSize){
     return 0;
 }
 
-bool Model::AddControlPoint(glm::f64vec3& p, int curveDimention, int DivSize){
+bool Model::AddControlPoint(Eigen::Vector3d& p, int curveDimention, int DivSize){
     int AddPtIndex = IsSelectedCurve();
     if(AddPtIndex == -1)return false;
     bool res = false;
@@ -677,9 +676,9 @@ bool Model::AddControlPoint(glm::f64vec3& p, int curveDimention, int DivSize){
         }
         else if(crvs[AddPtIndex]->ControllPoints.size() == 1)crvs[AddPtIndex]->ControllPoints.push_back(p);
         else if(crvs[AddPtIndex]->ControllPoints.size() == 2){
-            double l = glm::distance(crvs[AddPtIndex]->ControllPoints[0], crvs[AddPtIndex]->ControllPoints[1]);
-            double l2 = glm::distance(crvs[AddPtIndex]->ControllPoints[0], p);
-            glm::f64vec3 point = l/l2 * (p - crvs[AddPtIndex]->ControllPoints[0]) + crvs[AddPtIndex]->ControllPoints[0];
+            double l = (crvs[AddPtIndex]->ControllPoints[0] - crvs[AddPtIndex]->ControllPoints[1]).norm();
+            double l2 = (crvs[AddPtIndex]->ControllPoints[0] - p).norm();
+            Eigen::Vector3d point = l/l2 * (p - crvs[AddPtIndex]->ControllPoints[0]) + crvs[AddPtIndex]->ControllPoints[0];
             crvs[AddPtIndex]->ControllPoints.push_back(point);
         }
         if(crvs[AddPtIndex]->ControllPoints.size() == 3)res = crvs[AddPtIndex]->drawArc(crvPtNum);
@@ -696,7 +695,7 @@ bool Model::AddControlPoint(glm::f64vec3& p, int curveDimention, int DivSize){
     return false;
 }
 
-void Model::MoveCurvePoint(glm::f64vec3& p, int MoveIndex, int ptInd, int curveDimention, int DivSize){
+void Model::MoveCurvePoint(Eigen::Vector3d& p, int MoveIndex, int ptInd, int curveDimention, int DivSize){
     if(MoveIndex == -1 || ptInd == -1)return;
     bool res = false;
     if(crvs[MoveIndex]->getCurveType() == CurveType::arc && ptInd == 0){
@@ -718,7 +717,7 @@ void Model::MoveCurvePoint(glm::f64vec3& p, int MoveIndex, int ptInd, int curveD
     }
 }
 
-bool Model::AddControlPoint_FL(glm::f64vec3& p, int event, int curveDimention){
+bool Model::AddControlPoint_FL(Eigen::Vector3d& p, int event, int curveDimention){
     bool res = false;
     if(event == 0){
         res = FL[FoldCurveIndex]->addCtrlPt(p, curveDimention);
@@ -756,14 +755,14 @@ std::vector<Line*> Model::makePath(){
        for(int i = 0; i < (int)GradationPoints.size() - 1; i++){
            Face *f = GradationPoints[i]->face;
            HalfEdge *he, *nextHE;
-           glm::f64vec3 nextPos = (std::get<0>(GradationPoints[i+1]->r->r)->p + std::get<1>(GradationPoints[i+1]->r->r)->p)/2.0;
+           Eigen::Vector3d nextPos = (std::get<0>(GradationPoints[i+1]->r->r)->p + std::get<1>(GradationPoints[i+1]->r->r)->p)/2.0;
            do{
                he = f->halfedge;
                double dist = 1000;
                nextHE = nullptr;
                do{
                    if(he->pair != nullptr){
-                       double d = glm::length(glm::cross((nextPos - he->vertex->p), (he->vertex->p - he->pair->vertex->p)))/glm::length(he->vertex->p - he->pair->vertex->p);
+                       double d = ((nextPos - he->vertex->p).cross((he->vertex->p - he->pair->vertex->p))).norm()/(he->vertex->p - he->pair->vertex->p).norm();
                        if(d < dist){
                            dist = d;
                            nextHE = he;

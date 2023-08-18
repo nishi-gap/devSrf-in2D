@@ -218,7 +218,6 @@ void MainWindow::changeAngleFromSpinBox(double val){
     ui->angleSlider->setValue(val*100);
     double a = (double)val*std::numbers::pi/180.0;
     emit sendAngle(a, begin_center);
-
 }
 
 void MainWindow::changeLineWidthFromSlider(int n){
@@ -388,18 +387,18 @@ void MainWindow::exportobj(){
         return;
     }
     QStringList WriteList;
-    std::vector<glm::f64vec3> Normals;
-    glm::f64vec3 befN = {0,0,0}, N;
-    glm::f64mat4x4 Mirror = glm::mat4(1.0f); Mirror[1][1] = -1;
-   std::vector<std::vector<glm::f64vec3>> Vertices;
-   std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons;
-   std::vector<std::shared_ptr<Vertex>> polygon;
-   std::vector<double> planerity_value;
+    std::vector<Eigen::Vector3d> Normals;
+    Eigen::Vector3d befN = {0,0,0}, N;
+    Eigen::Matrix3d Mirror = Eigen::Matrix3d::Identity(); Mirror(1, 1) = -1;
+    std::vector<std::vector<Eigen::Vector3d>> Vertices;
+    std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons;
+    std::vector<std::shared_ptr<Vertex>> polygon;
+    std::vector<double> planerity_value;
 
-   auto Planerity  = [](const std::vector<glm::f64vec3>& vertices, const std::vector<std::shared_ptr<Line>>& lines)->double{
+   auto Planerity  = [](const std::vector<Eigen::Vector3d>& vertices, const std::vector<std::shared_ptr<Line>>& lines)->double{
        if(vertices.size() == 3)return 0.0;
        else{
-           std::vector<glm::f64vec3> QuadPlane;
+           std::vector<Eigen::Vector3d> QuadPlane;
            for(auto&v: vertices){
                bool IsOutlineVertices = false;
                for(auto&l: lines){
@@ -407,14 +406,14 @@ void MainWindow::exportobj(){
                }
                if(!IsOutlineVertices)QuadPlane.push_back(v);
            }
-           double l_avg = (glm::distance(QuadPlane[0], QuadPlane[2]) + glm::distance(QuadPlane[1], QuadPlane[3]))/2.0;
+           double l_avg = ((QuadPlane[0] - QuadPlane[2]).norm() + (QuadPlane[1] - QuadPlane[3]).norm())/2.0;
            double d;
-           glm::f64vec3 u1 = glm::normalize(QuadPlane[0] - QuadPlane[2]), u2 = glm::normalize(QuadPlane[1]-  QuadPlane[3]);
-           if(glm::length(glm::cross(u1, u2)) < DBL_EPSILON){
-               glm::f64vec3 H = QuadPlane[3] + glm::dot(QuadPlane[1] - QuadPlane[3], u2)*u2;
-               d = glm::distance(H, QuadPlane[1]);
+           Eigen::Vector3d u1 = (QuadPlane[0] - QuadPlane[2]).normalize(), u2 = (QuadPlane[1]-  QuadPlane[3]).normalize();
+           if((u1.cross(u2)).norm() < DBL_EPSILON){
+               Eigen::Vector3d H = QuadPlane[3] + u2.dot(QuadPlane[1] - QuadPlane[3])*u2;
+               d = (H - QuadPlane[1]).norm();
            }else{
-               d = glm::length(glm::dot(glm::cross(u1,u2),  QuadPlane[2] - QuadPlane[3]))/glm::length(glm::cross(u1, u2));
+               d = ((u1.cross(u2)).dot(QuadPlane[2] - QuadPlane[3])).norm()/(u1.cross(u2)).norm();
            }
            return d/l_avg;
        }
@@ -426,7 +425,7 @@ void MainWindow::exportobj(){
    if(!ui->glWid2dim->model->FL.empty() ||!ui->glWid2dim->model->FL[0]->FoldingCurve.empty()){
        for(auto&FC: ui->glWid2dim->model->FL){
            std::vector<Vertex4d> FldCrv = FC->FoldingCurve;
-           glm::f64vec3 CrvDir = glm::normalize(FldCrv.back().first->p - FldCrv.front().first->p);
+           Eigen::Vector3d CrvDir = (FldCrv.back().first->p - FldCrv.front().first->p).normalize();
            for(auto&P: Polygons){
                int ind_fr = -1, ind_bc = -1;
                for(int i = 0; i < (int)P.size(); i++){
@@ -438,10 +437,10 @@ void MainWindow::exportobj(){
                    for(auto&v: FldCrv){InsertedV.push_back(v.first);InsertedV_inv.insert(InsertedV_inv.begin(), v.first);}
 
                    int i_min = std::min(ind_fr, ind_bc) + 1, i_max = std::max(ind_fr, ind_bc) + 1;
-                   glm::f64vec3 Dir_prev = glm::normalize(P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p);
+                   Eigen::Vector3d Dir_prev = (P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p).normalize();
                    std::vector<std::shared_ptr<Vertex>> poly2 = {P.begin() + i_min, P.begin() + i_max};
                    P.erase(P.begin() + i_min, P.begin() + i_max);
-                   if(glm::dot(glm::cross(CrvDir, Dir_prev), glm::f64vec3{0,0,1}) < 0){
+                   if((Eigen::Vector3d::UnitZ()).dot(CrvDir.cross(Dir_prev)) < 0){
                        P.insert(P.begin() + i_min, InsertedV.begin(), InsertedV.end());
                        poly2.insert(poly2.end(), InsertedV_inv.begin(), InsertedV_inv.end());
                    }else{
@@ -487,7 +486,6 @@ void MainWindow::exportobj(){
            for(auto&P: Polygons){
                int vind = -1, oind = -1;
                for(int i = 0; i < (int)P.size(); i++){
-                   //std::cout << glm::to_string((*itr_r)->o->p) << "  ,  "<< glm::to_string((*itr_r)->v->p) << std::endl;
                    if(MathTool::is_point_on_line((*itr_r)->o->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))oind = i;
                    if(MathTool::is_point_on_line((*itr_r)->v->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))vind = i;
                }
@@ -503,24 +501,20 @@ void MainWindow::exportobj(){
    }
 
     for(auto&poly: Polygons){
-        std::vector<glm::f64vec3> V;
+        std::vector<Eigen::Vector3d> V;
         poly = SortPolygon(poly);
-
-        for(auto&p: poly)V.push_back(Mirror * glm::f64vec4{p->p3, 1});
+        for(auto&p: poly)V.push_back(Mirror * p->p3);
         Vertices.push_back(V);
         planerity_value.push_back(Planerity(V,ui->glWid2dim->model->outline->Lines));
     }
 
     for(const auto& mesh: Vertices){
-        for(const auto&v: mesh)WriteList.append("v " + QString::number(v.x) + " " + QString::number(v.y) + " " + QString::number(v.z) + "\n");
-        glm::f64vec3 v =  glm::f64vec4{mesh[0], 1};
-        glm::f64vec3 v2 =  glm::f64vec4{mesh[1], 1};
-        glm::f64vec3 v3 =   glm::f64vec4{mesh[2], 1};
-        N = -glm::normalize(glm::cross(v3 - v, v2 - v));
+        for(const auto&v: mesh)WriteList.append("v " + QString::number(v.x()) + " " + QString::number(v.y()) + " " + QString::number(v.z()) + "\n");
+        N = ((mesh[1] - mesh[0]).cross(mesh[2] - mesh[0])).normalize();
         Normals.push_back(N);
         befN = N;
     }
-    for(const auto&n : Normals) WriteList.append("vn " + QString::number(n.x) + " " + QString::number(n.y) + " " + QString::number(n.z) + "\n");
+    for(const auto&n : Normals) WriteList.append("vn " + QString::number(n.x()) + " " + QString::number(n.y()) + " " + QString::number(n.z()) + "\n");
 
     int cnt = 1;
     for(int i = 0; i < (int)Vertices.size(); i++){
@@ -565,9 +559,9 @@ void MainWindow::exportobj(){
     QuantitativeResult << "\nDevelopability\n" ;
     if(!(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())){
         for(auto itr = ui->glWid2dim->model->FL[0]->FoldingCurve.begin() + 1; itr != ui->glWid2dim->model->FL[0]->FoldingCurve.end() - 1; itr++){
-            glm::f64vec3 et = itr->second->p3 - itr->first->p3, er = (itr - 1)->first->p3 - itr->first->p3, eb = itr->third->p3 - itr->first->p3, el = (itr + 1)->first->p3 - itr->first->p3;
-            et /= glm::length(et); er /= glm::length(er); eb /= glm::length(eb); el /= glm::length(el);
-            double phi1 = std::acos(glm::dot(et, er)), phi2 = std::acos(glm::dot(et, el)), phi3 = std::acos(glm::dot(eb, el)), phi4 = std::acos(glm::dot(eb, er));
+            Eigen::Vector3d et = itr->second->p3 - itr->first->p3, er = (itr - 1)->first->p3 - itr->first->p3, eb = itr->third->p3 - itr->first->p3, el = (itr + 1)->first->p3 - itr->first->p3;
+            et = et.normalize(); er = er.normalize(); eb = eb.normalize(); el = el.normalize();
+            double phi1 = std::acos(et.dot(er)), phi2 = std::acos(et.dot(el)), phi3 = std::acos(eb.dot(el)), phi4 = std::acos(eb.dot(er));
             double a = abs(2.0*std::numbers::pi - (phi1 + phi2 + phi3 + phi4));
             if(a != -1)QuantitativeResult << a << ", ";
         }

@@ -14,27 +14,27 @@ public:
     std::vector<std::vector<std::shared_ptr<Vertex>>> ol_vertices;
     std::vector<std::shared_ptr<CRV>> crvs;
     std::vector<std::shared_ptr<FoldLine>> FL;
-    glm::f64vec3 Axis4Const[2];
+    Eigen::Vector3d Axis4Const[2];
     std::shared_ptr<Vertex> Connect2Vertices[2];
     ColorPoint ColorPt;
 
     Model();
     Model(int _crvPtNum);
-    //void deform(std::vector<std::vector<glm::f64vec3>>& output, std::vector<ruling*>& Rulings, glm::f64vec3& center);
+    //void deform(std::vector<std::vector<Eigen::Vector3d>>& output, std::vector<ruling*>& Rulings, Eigen::Vector3d& center);
     void deform();
     void Initialize();
 
-    void setGradationValue(int val, const std::shared_ptr<Line>& refL, int InterpolationType, std::vector<glm::f64vec2>& CurvePath);
+    void setGradationValue(int val, const std::shared_ptr<Line>& refL, int InterpolationType, std::vector<Eigen::Vector2d>& CurvePath);
     void SetMaxFold(double val);
     void drawOutline(QPointF& cursol, int drawtype, double gridsize, bool IsClicked = true);
     void editOutlineVertex(QPointF& cursol, double gridsize, int event);
-    void addConstraint(QPointF& cursol, int type, int gridsize, glm::f64vec3 (&axis)[2]);
+    void addConstraint(QPointF& cursol, int type, int gridsize, Eigen::Vector3d (&axis)[2]);
     void deleteOutline(QPointF& cursol);
     void ConnectOutline(QPointF& cursol, double gridsize);
     void addRulings(); //0:move curve point, 1: add(erase, insert) curve point
 
     //FoldLine
-    bool AddControlPoint_FL(glm::f64vec3& p, int event, int curveDimention);
+    bool AddControlPoint_FL(Eigen::Vector3d& p, int event, int curveDimention);
 
     void UpdateFLOrder(int dim);
     void modify2Druling();
@@ -46,16 +46,16 @@ public:
     void SortFoldingCurve(int dim);
     bool BendingModel(double wb, double wp, int dim, bool ConstFunc = true);
     bool AssignRuling(int dim);
-    std::vector<glm::f64vec3> resPts;
+    std::vector<Eigen::Vector3d> resPts;
 
     //Smooth Surface
     void SelectCurve(QPointF pt);
-    bool AddControlPoint(glm::f64vec3& p, int curveDimention, int DivSize);
+    bool AddControlPoint(Eigen::Vector3d& p, int curveDimention, int DivSize);
     int AddNewCurve(CurveType curveType, int DivSize);
     void DeleteControlPoint(QPointF pt, int curveDimention, int DivSize);
     int DeleteCurve();
     void Check4Param(int curveDimention, std::vector<int>&deleteIndex);
-    void MoveCurvePoint(glm::f64vec3& p, int MoveIndex, int ptInd, int curveDimention, int DivSize);
+    void MoveCurvePoint(Eigen::Vector3d& p, int MoveIndex, int ptInd, int curveDimention, int DivSize);
     bool CrossDection4AllCurve();
     int IsSelectedCurve();
     int getSelectedCurveIndex(QPointF pt);
@@ -65,11 +65,11 @@ private:
 
     bool SplitRulings(int dim);
     void LinearInterPolation(const std::vector<std::shared_ptr<Line>>& path);
-    void SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, std::vector<glm::f64vec2>& CurvePath);
+    void SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, std::vector<Eigen::Vector2d>& CurvePath);
 
     inline void clear();
 
-    glm::f64vec3 SetOnGrid(QPointF& cursol, double gridsize);
+    Eigen::Vector3d SetOnGrid(QPointF& cursol, double gridsize);
 
     std::vector<int> refCrv;//0:未参照　1:参照
     std::vector<int> refFL;
