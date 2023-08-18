@@ -9,7 +9,7 @@ std::string File_Eruling = "./Optimization/Eruling.csv";
 std::ofstream ofs_Ebend, ofs_Eruling;
 
 inline glm::f64vec3 _calcruling3d(const double& a, glm::f64vec3 e, glm::f64vec3 e2, glm::f64vec3 axis, double& beta, std::vector<double>& Phi);
-void CalcRuling(double a, Vertex4d& xbef, Vertex4d& x, Vertex4d& xnext, const std::vector<std::shared_ptr<Vertex>>& Poly_V, double& a2, glm::f64vec3& SrfN);
+void CalcRuling(double a, Vertex4d& xbef, Vertex4d& x, Vertex4d& xnext, const std::vector<std::shared_ptr<Vertex>>& Poly_V, double& a2, glm::f64vec3& SrfN, const glm::f64vec3& SpinAixs);
 inline double update_flapangle(double a, const glm::f64vec3& befN, const glm::f64vec3& SrfN, const glm::f64vec3& e);
 void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, const std::vector<std::shared_ptr<Vertex>>& Poly_V,const double angle);
 void _FoldingAAAMethod_center(std::vector<Vertex4d>& FoldingCurve, const std::vector<std::shared_ptr<Vertex>>& Poly_V, const double angle);
@@ -1366,14 +1366,14 @@ inline glm::f64vec3 _calcruling3d(const double& a, glm::f64vec3 e, glm::f64vec3 
     return RevisionVertices::decideRulingDirectionOn3d(e, glm::cross(e,e2), a, Phi[0]);//新しいruling方向
 }
 
-void CalcRuling(double a, Vertex4d& xbef, Vertex4d& x, Vertex4d& xnext, const std::vector<std::shared_ptr<Vertex>>& Poly_V,  double& a2, glm::f64vec3& SrfN){
+void CalcRuling(double a, Vertex4d& xbef, Vertex4d& x, Vertex4d& xnext, const std::vector<std::shared_ptr<Vertex>>& Poly_V,  double& a2, glm::f64vec3& SrfN, const glm::f64vec3 &SpinAxis ){
 
     glm::f64vec3 e = glm::normalize(xbef.first->p3 - x.first->p3), e2 = glm::normalize(xnext.first->p3 - x.first->p3);
     double beta;
     std::vector<double> Phi;
     glm::f64vec3 Axis = glm::normalize(x.third->p3 - x.first->p3);
     glm::f64vec3 r3d = _calcruling3d(a, e, e2, Axis, beta, Phi);
-    glm::f64vec3 r2d = glm::rotate(Phi[0], glm::f64vec3{0,0,-1.0})* glm::f64vec4{(glm::normalize(xbef.first->p- x.first->p)), 1.0};r2d = glm::normalize(r2d);//展開図のruling方向
+    glm::f64vec3 r2d = glm::rotate(Phi[0], SpinAxis)* glm::f64vec4{(glm::normalize(xbef.first->p- x.first->p)), 1.0};r2d = glm::normalize(r2d);//展開図のruling方向
 
     glm::f64vec3 crossPoint;
     for(int k = 0; k < (int)Poly_V.size(); k++){
@@ -1461,8 +1461,8 @@ void _FoldingAAAMethod_center(std::vector<Vertex4d>& FoldingCurve, const std::ve
         x = fc.first->p3;
         e = (fc_bef.first->p3 - x)/glm::length((fc_bef.first->p3 - x));
         e2 = (fc_next.first->p3 - x)/glm::length((fc_next.first->p3 - x));
-        if(ind != 1){glm::f64vec3 SrfN = MathTool::ProjectionVector(glm::cross(e, e2), -e, true);a = update_flapangle(a2, befN, SrfN, e);}
-        CalcRuling(a, fc_bef, fc, fc_next, Poly_V, a2, befN);
+        if(ind != (int)Vertices_Ind.size()/2){glm::f64vec3 SrfN = MathTool::ProjectionVector(glm::cross(e, e2), -e, true);a = update_flapangle(a2, befN, SrfN, e);}
+        CalcRuling(a, fc_bef, fc, fc_next, Poly_V, a2, befN, glm::f64vec3{0,0,-1});
         if(ind == (int)FoldingCurve.size() -2)break;
         befN = MathTool::ProjectionVector(glm::cross(e, e2), e2, true);
         if(ind != 1){
@@ -1470,13 +1470,14 @@ void _FoldingAAAMethod_center(std::vector<Vertex4d>& FoldingCurve, const std::ve
                 SetOnPlane(FoldingCurve[i], Poly_V, FoldingCurve[Vertices_Ind[ind]],FoldingCurve[Vertices_Ind[ind-1]], FoldingCurve[Vertices_Ind[ind]].second,  FoldingCurve[Vertices_Ind[ind-1]].second, 0);
         }
     }
+    a = (angle < 0.0)? angle + 2.0 * std::numbers::pi: (angle > 2.0*std::numbers::pi)? angle - 2.0*std::numbers::pi: angle;
     for(int ind = Vertices_Ind.size()/2 -1; ind > 0; ind--){
         fc = FoldingCurve[Vertices_Ind[ind]]; fc_bef = FoldingCurve[Vertices_Ind[ind + 1]]; fc_next = FoldingCurve[Vertices_Ind[ind - 1]];
         x = fc.first->p3;
         e = (fc_bef.first->p3 - x)/glm::length((fc_bef.first->p3 - x));
         e2 = (fc_next.first->p3 - x)/glm::length((fc_next.first->p3 - x));
-        if(ind != 1){glm::f64vec3 SrfN = MathTool::ProjectionVector(glm::cross(e, e2), -e, true);a = update_flapangle(a2, befN, SrfN, e);}
-        CalcRuling(a, fc_bef, fc, fc_next, Poly_V, a2, befN);
+        if(ind != (int)Vertices_Ind.size()/2 -1){glm::f64vec3 SrfN = MathTool::ProjectionVector(glm::cross(e, e2), -e, true);a = update_flapangle(a2, befN, SrfN, e);}
+        CalcRuling(a, fc_bef, fc, fc_next, Poly_V, a2, befN, glm::f64vec3{0,0,1});
         if(ind == (int)FoldingCurve.size() -2)break;
         befN = MathTool::ProjectionVector(glm::cross(e, e2), e2, true);
         if(ind != 1){
@@ -1542,7 +1543,7 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, const std::vector<st
         e = (fc_bef.first->p3 - x)/glm::length((fc_bef.first->p3 - x));
         e2 = (fc_next.first->p3 - x)/glm::length((fc_next.first->p3 - x));
         if(ind != 1){glm::f64vec3 SrfN = MathTool::ProjectionVector(glm::cross(e, e2), -e, true);a = update_flapangle(a2, befN, SrfN, e);}
-        CalcRuling(a, fc_bef, fc, fc_next, Poly_V, a2, befN);
+        CalcRuling(a, fc_bef, fc, fc_next, Poly_V, a2, befN, glm::f64vec3{0,0,-1});
         if(ind == (int)FoldingCurve.size() -2)break;
         befN = MathTool::ProjectionVector(glm::cross(e, e2), e2, true);
         if(ind != 1){

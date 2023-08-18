@@ -108,7 +108,7 @@ MainWindow::MainWindow(QWidget *parent)
     SelectedBtn = nullptr;
 }
 
-static bool begin_center = true;
+static bool begin_center = false;
 
 MainWindow::~MainWindow()
 {
