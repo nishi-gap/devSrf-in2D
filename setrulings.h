@@ -23,6 +23,9 @@ public:
     //~Vertex();
     bool operator != (const Vertex &V)const{return p != V.p || p2_ori != V.p2_ori|| p3 != V.p3 || p3_ori != V.p3_ori || deformed != V.deformed;}
     bool operator == (const Vertex &V)const{return p == V.p && p2_ori == V.p2_ori && p3 == V.p3 && p3_ori == V.p3_ori && deformed == V.deformed;}
+    Vertex operator-(const Vertex& V)const{return Vertex(p - V.p, p3 - V.p3)}
+    Vertex operator+(const Vertex& V)const{return Vertex(p + V.p, p3 + V.p3)}
+    friend Vertex operator*(double a, const Vertex& V){return Vertex(a*p, a*p3);}
 };
 
 class CrvPt_FL : public Vertex{

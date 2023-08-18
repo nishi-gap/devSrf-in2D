@@ -433,12 +433,12 @@ double RevisionVertices::Const_Edev(const std::vector<double>& X, std::vector<do
     for(int i = 0; i < (int)SA.size(); i++)f += od->Edev(P, ICE, th);
     if(!grad.empty()){
         for(auto& p: P){
-            p.x += eps; double fp = od->Edev(P, ICE, th); p.x -= 2.0*eps; double fm = od->Edev(P, ICE, th);
+            p.x() += eps; double fp = od->Edev(P, ICE, th); p.x() -= 2.0*eps; double fm = od->Edev(P, ICE, th);
             grad[ind] = (fp - fm)/(2.0*eps); p.x = X[ind++];
-            p.y += eps; fp = od->Edev(P, ICE, th); p.y -= 2.0*eps; fm = od->Edev(P, ICE, th);
-            grad[ind] = (fp - fm)/(2.0*eps); p.y = X[ind++];
-            p.z += eps; fp = od->Edev(P, ICE, th); p.z -= 2.0*eps; fm = od->Edev(P, ICE, th);
-            grad[ind] = (fp - fm)/(2.0*eps); p.z = X[ind++];
+            p.y() += eps; fp = od->Edev(P, ICE, th); p.y() -= 2.0*eps; fm = od->Edev(P, ICE, th);
+            grad[ind] = (fp - fm)/(2.0*eps); p.y() = X[ind++];
+            p.z() += eps; fp = od->Edev(P, ICE, th); p.z() -= 2.0*eps; fm = od->Edev(P, ICE, th);
+            grad[ind] = (fp - fm)/(2.0*eps); p.z() = X[ind++];
         }
     }
     std::cout<<"developability  = " << f << std::endl;
@@ -474,12 +474,12 @@ double RevisionVertices::Const_Econv(const std::vector<double>& X, std::vector<d
     if(!grad.empty()){
         for(int i = 0; i < (int)P.size(); i++){
             double fp, fm;
-            P[i].x += eps; fp = od->Econv(P, Pori); P[i].x -= 2.0*eps; fm = od->Econv(P, Pori);
-            grad[i] = (fp - fm)/(2.0*eps); P[i].x = X[i];
-            P[i].y += eps; fp = od->Econv(P, Pori); P[i].y -= 2.0*eps; fm = od->Econv(P, Pori);
-            grad[i] = (fp - fm)/(2.0*eps); P[i].y = X[i];
-            P[i].z += eps; fp = od->Econv(P, Pori); P[i].z -= 2.0*eps; fm = od->Econv(P, Pori);
-            grad[i] = (fp - fm)/(2.0*eps); P[i].z = X[i];
+            P[i].x() += eps; fp = od->Econv(P, Pori); P[i].x() -= 2.0*eps; fm = od->Econv(P, Pori);
+            grad[i] = (fp - fm)/(2.0*eps); P[i].x() = X[i];
+            P[i].y() += eps; fp = od->Econv(P, Pori); P[i].y() -= 2.0*eps; fm = od->Econv(P, Pori);
+            grad[i] = (fp - fm)/(2.0*eps); P[i].y() = X[i];
+            P[i].z() += eps; fp = od->Econv(P, Pori); P[i].z() -= 2.0*eps; fm = od->Econv(P, Pori);
+            grad[i] = (fp - fm)/(2.0*eps); P[i].z() = X[i];
         }
     }
     std::cout<<"convexity  = " << f << std::endl;
@@ -520,8 +520,8 @@ double RevisionVertices::Const_Eplanarity(const std::vector<double>& X, std::vec
         x_ind = 0;
         for(int j = 1; j < (int)FC[0].size(); j++){
             if(!FC[0][j].IsCalc){
-                Eigen::Vector3d e = (FC[0][j].first->p3 - FC[0][j-1].first->p3);
-                glm::f64vec3 N = (glm::cross(e, FC[0][j+1].first->p3 - FC[0][j-1].first->p3));
+                Eigen::Vector3d e = FC[0][j].first->p3 - FC[0][j-1].first->p3;
+                Eigen::Vector3d N = e.cross(FC[0][j+1].first->p3 - FC[0][j-1].first->p3);
 
                 Rulings[x_ind] = RevisionVertices::decideRulingDirectionOn3d(e, N, X[2*x_ind] + eps, X[2 * x_ind + 1]);
                 fp = Normal_Sim(FC[0], Rulings);
@@ -543,11 +543,11 @@ double RevisionVertices::Const_Eplanarity(const std::vector<double>& X, std::vec
     return f;
 }
 
-double RevisionVertices::E_iso(std::vector<std::vector<glm::f64vec3>>& P, std::vector<std::vector<glm::f64vec3>>& Pori, std::vector<double>& grad){
+double RevisionVertices::E_iso(std::vector<std::vector<Eigen::Vector3d>>& P, std::vector<std::vector<Eigen::Vector3d>>& Pori, std::vector<double>& grad){
     double e = 0.0;
-    auto f = [](std::vector<glm::f64vec3>& P, std::vector<glm::f64vec3>& Pori)->double{
+    auto f = [](const std::vector<Eigen::Vector3d>& P, const std::vector<Eigen::Vector3d>& Pori)->double{
         double val;
-         for(int i = 1; i < (int)P.size(); i++)val += std::abs(glm::length(P[i] - P[i-1]) - glm::length(Pori[i] - Pori[i-1]));
+         for(int i = 1; i < (int)P.size(); i++)val += std::abs((P[i] - P[i-1]).norm() - (Pori[i] - Pori[i-1]).norm());
         return val;
     };
     for(int i = 0; i < (int)P.size(); i++)e += f(P[i], Pori[i]);
@@ -555,19 +555,19 @@ double RevisionVertices::E_iso(std::vector<std::vector<glm::f64vec3>>& P, std::v
     double fp, fm;
     for(int n = 0; n < (int)P.size(); n++){
         for(int j = 1; j < (int)P[n].size() - 1; j++){
-            P[n][j].x += eps; fp = f(P[n], Pori[n]); P[n][j].x -= 2.0 * eps; fm = f(P[n], Pori[n]);  P[n][j].x += eps; grad[i++] = (fp - fm)/(2.0*eps);
-            P[n][j].y += eps; fp = f(P[n], Pori[n]); P[n][j].y -= 2.0 * eps; fm = f(P[n], Pori[n]);  P[n][j].y += eps; grad[i++] = (fp - fm)/(2.0*eps);
-            P[n][j].z += eps; fp = f(P[n], Pori[n]); P[n][j].z -= 2.0 * eps; fm = f(P[n], Pori[n]);  P[n][j].z += eps; grad[i++] = (fp - fm)/(2.0*eps);
+            P[n][j].x() += eps; fp = f(P[n], Pori[n]); P[n][j].x() -= 2.0 * eps; fm = f(P[n], Pori[n]);  P[n][j].x() += eps; grad[i++] = (fp - fm)/(2.0*eps);
+            P[n][j].y() += eps; fp = f(P[n], Pori[n]); P[n][j].y() -= 2.0 * eps; fm = f(P[n], Pori[n]);  P[n][j].y() += eps; grad[i++] = (fp - fm)/(2.0*eps);
+            P[n][j].z() += eps; fp = f(P[n], Pori[n]); P[n][j].z() -= 2.0 * eps; fm = f(P[n], Pori[n]);  P[n][j].z() += eps; grad[i++] = (fp - fm)/(2.0*eps);
         }
     }
     return e;
 }
 
-double RevisionVertices::E_fair(std::vector<std::vector<glm::f64vec3>>& P, std::vector<double>& grad){
+double RevisionVertices::E_fair(std::vector<std::vector<Eigen::Vector3d>>& P, std::vector<double>& grad){
 
-    auto f = [](std::vector<glm::f64vec3>& P)->double{
+    auto f = [](std::vector<Eigen::Vector3d>& P)->double{
         double val;
-        for(int i = 1; i < (int)P.size() - 1; i++)val += std::pow(glm::length(P[i-1] - 2.0 * P[i] + P[i+1]), 2);
+        for(int i = 1; i < (int)P.size() - 1; i++)val += std::pow((P[i-1] - 2.0 * P[i] + P[i+1]).norm(), 2);
         return val;
     };
     double val = 0.0; for(auto& p: P)val += f(p);
@@ -575,19 +575,19 @@ double RevisionVertices::E_fair(std::vector<std::vector<glm::f64vec3>>& P, std::
     double fp, fm;
     for(auto&p : P){
         for(int j = 1; j < (int)p.size() - 1; j++){
-            p[j].x += eps; fp = f(p); p[j].x -= 2.0 * eps; fm = f(p);  p[j].x += eps; grad[i++] = (fp - fm)/(2.0*eps);
-            p[j].y += eps; fp = f(p); p[j].y -= 2.0 * eps; fm = f(p);  p[j].y += eps; grad[i++] = (fp - fm)/(2.0*eps);
-            p[j].z += eps; fp = f(p); p[j].z -= 2.0 * eps; fm = f(p);  p[j].z += eps; grad[i++] = (fp - fm)/(2.0*eps);
+            p[j].x() += eps; fp = f(p); p[j].x() -= 2.0 * eps; fm = f(p);  p[j].x() += eps; grad[i++] = (fp - fm)/(2.0*eps);
+            p[j].y() += eps; fp = f(p); p[j].y() -= 2.0 * eps; fm = f(p);  p[j].y() += eps; grad[i++] = (fp - fm)/(2.0*eps);
+            p[j].z() += eps; fp = f(p); p[j].z() -= 2.0 * eps; fm = f(p);  p[j].z() += eps; grad[i++] = (fp - fm)/(2.0*eps);
         }
     }
     return val;
 }
 
-double RevisionVertices::E_sim(std::vector<std::vector<glm::f64vec3>>& P, std::vector<std::vector<glm::f64vec3>>& Pori, std::vector<double>& grad){
+double RevisionVertices::E_sim(std::vector<std::vector<Eigen::Vector3d>>& P, std::vector<std::vector<Eigen::Vector3d>>& Pori, std::vector<double>& grad){
     double e = 0.0;
-    auto f = [](std::vector<glm::f64vec3>& P, std::vector<glm::f64vec3>& Pori)->double{
+    auto f = [](std::vector<Eigen::Vector3d>& P, std::vector<Eigen::Vector3d>& Pori)->double{
         double val;
-         for(int i = 0; i < (int)P.size(); i++)val += glm::length(P[i] - Pori[i]);
+         for(int i = 0; i < (int)P.size(); i++)val += (P[i] - Pori[i]).norm();
         return val;
     };
     for(int i = 0; i < (int)P.size(); i++)e += f(P[i], Pori[i]);
@@ -595,27 +595,27 @@ double RevisionVertices::E_sim(std::vector<std::vector<glm::f64vec3>>& P, std::v
     double fp, fm;
     for(int n = 0; n < (int)P.size(); n++){
         for(int j = 1; j < (int)P[n].size() - 1; j++){
-            P[n][j].x += eps; fp = f(P[n], Pori[n]); P[n][j].x -= 2.0 * eps; fm = f(P[n], Pori[n]);  P[n][j].x += eps; grad[i++] = (fp - fm)/(2.0*eps);
-            P[n][j].y += eps; fp = f(P[n], Pori[n]); P[n][j].y -= 2.0 * eps; fm = f(P[n], Pori[n]);  P[n][j].y += eps; grad[i++] = (fp - fm)/(2.0*eps);
-            P[n][j].z += eps; fp = f(P[n], Pori[n]); P[n][j].z -= 2.0 * eps; fm = f(P[n], Pori[n]);  P[n][j].z += eps; grad[i++] = (fp - fm)/(2.0*eps);
+            P[n][j].x() += eps; fp = f(P[n], Pori[n]); P[n][j].x() -= 2.0 * eps; fm = f(P[n], Pori[n]);  P[n][j].x() += eps; grad[i++] = (fp - fm)/(2.0*eps);
+            P[n][j].y() += eps; fp = f(P[n], Pori[n]); P[n][j].y() -= 2.0 * eps; fm = f(P[n], Pori[n]);  P[n][j].y() += eps; grad[i++] = (fp - fm)/(2.0*eps);
+            P[n][j].z() += eps; fp = f(P[n], Pori[n]); P[n][j].z() -= 2.0 * eps; fm = f(P[n], Pori[n]);  P[n][j].z() += eps; grad[i++] = (fp - fm)/(2.0*eps);
         }
     }
     return e;
 }
 
-double RevisionVertices::E_normal(std::vector<glm::f64vec3>& R, const std::vector<Vertex4d>& FC){
+double RevisionVertices::E_normal(std::vector<Eigen::Vector3d>& R, const std::vector<Vertex4d>& FC){
     std::vector<int> Vertices_Indicator;
     for(int i = 0; i < (int)FC.size(); i++){if(FC[i].IsCalc)Vertices_Indicator.push_back(i);}
     double f = .0;
     int j = 0;
     for(int k = 0; k < (int)Vertices_Indicator.size() - 1; k++){
         for(int i = Vertices_Indicator[k] + 1; i < Vertices_Indicator[k+1]; i++){
-            glm::f64vec3 N = glm::normalize(glm::cross(glm::normalize(FC[i-1].first->p3 - FC[i].first->p3), R[j]));
-            glm::f64vec3 N_ori = glm::normalize(glm::cross(glm::normalize(FC[i-1].first->p3 - FC[i].first->p3), glm::normalize(FC[i].second->p3 - FC[i].first->p3)));
-            f += 1.0 - glm::dot(N, N_ori);
-            N = glm::normalize(glm::cross(R[j], glm::normalize(FC[i+1].first->p3 - FC[i].first->p3)));
-            N_ori = glm::normalize(glm::cross(glm::normalize(FC[i].second->p3 - FC[i].first->p3), glm::normalize(FC[i+1].first->p3 - FC[i].first->p3)));
-            f += 1.0 - glm::dot(N, N_ori);
+            Eigen::Vector3d N = ((FC[i-1].first->p3 - FC[i].first->p3).cross(R[j])).normalize();
+            Eigen::Vector3d N_ori = ((FC[i-1].first->p3 - FC[i].first->p3).cross(FC[i].second->p3 - FC[i].first->p3)).normalize();
+            f += 1.0 - N.dot(N_ori);
+            N = (R[j].cross(FC[i+1].first->p3 - FC[i].first->p3)).normalize();
+            N_ori = ((FC[i].second->p3 - FC[i].first->p3).cross(FC[i+1].first->p3 - FC[i].first->p3)).normalize();
+            f += 1.0 - N.dot(N_ori);
             j++;
         }
     }
@@ -626,28 +626,28 @@ double RevisionVertices::E_normal(std::vector<glm::f64vec3>& R, const std::vecto
 double RevisionVertices::Minimize_SmoothSrf(const std::vector<double>& X, std::vector<double> &grad, void *f_data){
     SmoothSurface *od = (SmoothSurface*)f_data;
     std::vector<SmoothingArea> SA = od->SA;
-    std::vector<std::vector<glm::f64vec3>> P,Pori, P2d;
+    std::vector<std::vector<Eigen::Vector3d>> P,Pori, P2d;
     int i = 0;
     for(auto&sa: SA){
-        std::vector<glm::f64vec3> tmp = {sa.stP.first->p3}, tmp_ori = {sa.stP.first->p3_ori};
-        glm::f64vec3 vt = glm::normalize(sa.stP.second->p3 - sa.stP.first->p3), vt2d = glm::normalize(sa.stP.second->p - sa.stP.first->p);
-        glm::f64vec3 SpinAxis = (vt2d.y < 0)? glm::f64vec3{0,0,-1}: glm::f64vec3{0,0,1};
-        std::vector<glm::f64vec3> _P2d;
-        glm::f64vec3 befP3 = sa.stP.first->p3, befP2 = sa.stP.first->p;
+        std::vector<Eigen::Vector3d> tmp = {sa.stP.first->p3}, tmp_ori = {sa.stP.first->p3_ori};
+        Eigen::Vector3d vt = (sa.stP.second->p3 - sa.stP.first->p3).normalize(), vt2d = (sa.stP.second->p - sa.stP.first->p).normalize();
+        Eigen::Vector3d SpinAxis = (vt2d.y < 0)? -Eigen::Vector3d::UnitZ(): Eigen::Vector3d::UnitZ();
+        std::vector<Eigen::Vector3d> _P2d;
+        Eigen::Vector3d befP3 = sa.stP.first->p3, befP2 = sa.stP.first->p;
 
         for(auto&p: sa.OriginalVertices){
-            glm::f64vec3 p3d = glm::f64vec3{X[i], X[i+1], X[i+2]};
+            Eigen::Vector3d p3d(X[i], X[i+1], X[i+2]);
             tmp_ori.push_back(p->p3_ori);
             tmp.push_back(p3d);
             i += 3;
-            glm::f64vec3 e = p3d - befP3;
-            double l = glm::length(e), phi = std::acos(glm::dot(vt, glm::normalize(e)));
-            glm::f64vec3 p2d = l * glm::f64vec3{glm::rotate(phi, SpinAxis)* glm::f64vec4{ vt2d, 1.0}} + befP2;
+            Eigen::Vector3d e = p3d - befP3;
+            double l = e.norm(), phi = std::acos(vt.dot(e.normalize()));
+            Eigen::Vector3d p2d = l * Eigen::AngleAxisd(phi, SpinAxis)* vt2d + befP2;
             _P2d.push_back(p2d);
             befP2 = p2d; befP3 = p3d;
             if(sa.qt != nullptr){
-                vt =glm::normalize(sa.qt->p3 - p3d); vt2d =glm::normalize(sa.qt->p - p2d);
-                SpinAxis = (vt2d.y < 0)? glm::f64vec3{0,0,-1}: glm::f64vec3{0,0,1};
+                vt = (sa.qt->p3 - p3d).normalize(); vt2d = (sa.qt->p - p2d).normalize();
+                SpinAxis = (vt2d.y < 0)? -Eigen::Vector3d::UnitZ(): Eigen::Vector3d::UnitZ();
             }
         }tmp.push_back(sa.lastP.first->p3); tmp_ori.push_back(sa.lastP.first->p3_ori);
         P.push_back(tmp); Pori.push_back(tmp_ori); P2d.push_back(_P2d);
@@ -668,16 +668,15 @@ double RevisionVertices::Minimize_SmoothSrf(const std::vector<double>& X, std::v
 double RevisionVertices::Minimize_PlanaritySrf(const std::vector<double>& X, std::vector<double> &grad, void *f_data){
 
     std::vector<Vertex4d> *FC = (std::vector<Vertex4d>*)f_data;
-    std::vector<glm::f64vec3> Rulings;
+    std::vector<Eigen::Vector3d> Rulings;
 
     int x_ind = 0;
     for(int j = 1; j < (int)FC[0].size(); j++){
 
         if(!FC[0][j].IsCalc){
-            glm::f64vec3 e = (FC[0][j].first->p3 - FC[0][j-1].first->p3);
-            glm::f64vec3 N = (glm::cross(e, FC[0][j+1].first->p3 - FC[0][j-1].first->p3));
-            glm::f64vec3 r = RevisionVertices::decideRulingDirectionOn3d(e, N, X[2*x_ind], X[2*x_ind + 1]);
-            Rulings.push_back(r);
+            Eigen::Vector3d e = (FC[0][j].first->p3 - FC[0][j-1].first->p3);
+            Eigen::Vector3d N = e.cross(FC[0][j+1].first->p3 - FC[0][j-1].first->p3);
+            Rulings.push_back(RevisionVertices::decideRulingDirectionOn3d(e, N, X[2*x_ind], X[2*x_ind + 1]));
             x_ind++;
         }
     }
@@ -688,8 +687,8 @@ double RevisionVertices::Minimize_PlanaritySrf(const std::vector<double>& X, std
         x_ind = 0;
         for(int j = 1; j < (int)FC[0].size(); j++){
             if(!FC[0][j].IsCalc){
-                glm::f64vec3 e = (FC[0][j].first->p3 - FC[0][j-1].first->p3);
-                glm::f64vec3 N = (glm::cross(e, FC[0][j+1].first->p3 - FC[0][j-1].first->p3));
+                glm::f64vec3 e = FC[0][j].first->p3 - FC[0][j-1].first->p3;
+                glm::f64vec3 N = e.cross(e, FC[0][j+1].first->p3 - FC[0][j-1].first->p3);
 
                 Rulings[x_ind] = RevisionVertices::decideRulingDirectionOn3d(e, N, X[2*x_ind] + eps, X[2 * x_ind + 1]);
                 fp = RevisionVertices::E_normal(Rulings, FC[0]);
