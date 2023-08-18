@@ -282,12 +282,11 @@ bool CRV::drawArc(int crvPtNum){
     auto v1 = (ControllPoints[1] - ControllPoints[0]).normalzie(), v2 = (ControllPoints[2] - ControllPoints[0]).normalize();
     double phi = std::acos(v1.dot(v2));
     Eigen::Vector3d axis = v1.cross(v2);
-    glm::f64mat4x4  T = glm::translate(ControllPoints[0]);
-    glm::f64mat4x4 invT = glm::translate(-ControllPoints[0]);
-    glm::f64mat4x4  R;
+    Eigen::Translation3d T(ControllPoints[0]), invT(-ControllPoints[0]);// 平行移動ベクトルを作成
     for(int i = 0; i < crvPtNum; i++){
-        R = glm::rotate(phi * (double)i/(double)crvPtNum, axis);
-        CurvePoints[i] = T * R * invT * glm::f64vec4{ControllPoints[1],1};
+        Eigen::Matrix3d R = Eigen::AngleAxisd(phi * (double)i/(double)crvPtNum, axis); // 回転行列を作成
+        Eigen::Transform<double, 3, Eigen::Affine> transform = T * R * invT;// Transform行列を作成
+        CurvePoints[i] = transform * ControllPoints[1];
     }
     isempty = false;
     return true;
@@ -296,15 +295,15 @@ bool CRV::drawArc(int crvPtNum){
 void CRV::ArcRulings(std::shared_ptr<OUTLINE>& outline, int DivSize){
     if(ControllPoints.size() != 3)return;
     double l = 1000;//適当に大きな値
-    std::vector<glm::f64vec3> crossPoint;
-    std::vector<std::vector<glm::f64vec3>> CrossPoints;
+    std::vector<Eigen::Vector3d> crossPoint;
+    std::vector<std::vector<Eigen::Vector3d>> CrossPoints;
     int sind = -1, eind = curveNum - 1;
     std::vector<std::shared_ptr<Vertex>> vertices = outline->getVertices();
-    glm::f64vec3 V, N;
+    Eigen::Vector3d V, N;
     for(int i = 0; i < curveNum; i++){
-        if(i == 0)V = glm::normalize(CurvePoints[1] - CurvePoints[0]);
-        else V = glm::normalize(CurvePoints[i] - CurvePoints[i - 1]);
-        N = l * glm::f64vec3{-V.y, V.x, 0};
+        if(i == 0)V = (CurvePoints[1] - CurvePoints[0]).normalize();
+        else V = (CurvePoints[i] - CurvePoints[i - 1]).normalize();
+        N = l * Eigen::Vector3d(-V.y(), V.x(), 0);
         bool IsIntersected = setPoint(vertices, N, CurvePoints[i], crossPoint);
         CrossPoints.push_back(crossPoint);
         if(sind == -1 && IsIntersected)sind = i;
@@ -322,18 +321,18 @@ void CRV::ArcRulings(std::shared_ptr<OUTLINE>& outline, int DivSize){
     return;
 }
 
-void CRV::InsertControlPoint2(glm::f64vec3& p){
+void CRV::InsertControlPoint2(Eigen::Vector3d& p){
     int ind, d;
 
     //d = -1：どこにものっかっていない　d = 0：曲線上　d = 1：制御点を結んだ線上
     if(isempty)d = -1;
     double lc = 5, lp = 5;
     for(int i = 0; i < curveNum; i++){
-        if(glm::distance(p,CurvePoints[i]) < lc){
-            lc = glm::distance(p,CurvePoints[i]); ind = i;
+        if((p - CurvePoints[i]).norm() < lc){
+            lc = (p - CurvePoints[i]).norm(); ind = i;
         }
     }
-    glm::f64vec3 q;
+    Eigen::Vector3d q;
     for(int i = 0; i < (int)ControllPoints.size() - 1; i++) {
         double l = distP2L(ControllPoints[i], ControllPoints[i + 1], p, q);
         if(l != -1 && l < lp){
@@ -349,15 +348,15 @@ void CRV::InsertControlPoint2(glm::f64vec3& p){
     for(int j = 0; j < (int)ControllPoints.size(); j++){
         dist = 100;
         for(int i = 0; i < curveNum; i++){
-            if(dist > glm::distance(CurvePoints[i], ControllPoints[j])){
-                dist = glm::distance(CurvePoints[i], ControllPoints[j]); CurveIndexs[j] = i;
+            if(dist > (CurvePoints[i] - ControllPoints[j]).norm()){
+                dist = (CurvePoints[i] - ControllPoints[j]).norm(); CurveIndexs[j] = i;
             }
         }
     }
     if(d == -1){
         double minDist = 200.0;
         double l;
-        glm::f64vec3 q;
+        Eigen::Vector3d q;
         for(int i = 0; i < (int)ControllPoints.size() - 1; i++){
             l = distP2L(ControllPoints[i], ControllPoints[i + 1], p, q);
             if(l != -1 && l < minDist){ minDist = l; InsertPoint = p; InsertPointSegment = i;}
@@ -374,7 +373,7 @@ void CRV::InsertControlPoint2(glm::f64vec3& p){
             }
         }
     }else if(d == 1){//直線上
-        glm::f64vec3 q;
+        Eigen::Vector3d q;
         double l = distP2L(ControllPoints[ind], ControllPoints[ind + 1], p, q);
         if(l != -1){
             InsertPoint = q;
@@ -395,11 +394,9 @@ void CRV::SetNewPoint(){
 OUTLINE::OUTLINE(){
     type = "Rectangle";
     vertices.clear();
-    //edges.clear();
     Lines.clear();
-    //face = nullptr;
     VerticesNum = 3;
-    origin = glm::f64vec2{-1,-1};
+    origin = Eigen::Vector2d(-1,-1);
     hasPtNum = 0;
 }
 
@@ -408,15 +405,15 @@ void OUTLINE::addVertex(const std::shared_ptr<Vertex>& v, int n){
     else vertices.insert(vertices.begin() + n, v);
 }
 
-void OUTLINE::addVertex(glm::f64vec3& p){
+void OUTLINE::addVertex(Eigen::Vector3d& p){
     if(IsClosed()) return;
     if(type == "Rectangle"){
         vertices.push_back(std::make_shared<Vertex>(p));
         if((int)vertices.size() == 2){
-            vertices.insert(vertices.begin() + 1, std::make_shared<Vertex>(glm::f64vec3{p.x, vertices[0]->p.y, 0}));
-            vertices.push_back(std::make_shared<Vertex>(glm::f64vec3{vertices[0]->p.x, p.y, 0}));
+            vertices.insert(vertices.begin() + 1, std::make_shared<Vertex>(Eigen::Vector3d(p.x(), vertices[0]->p.y(), 0)));
+            vertices.push_back(std::make_shared<Vertex>(Eigen::Vector3d(vertices[0]->p.x(), p.y(), 0)));
             ConnectEdges();
-            if(glm::dot(getNormalVec(), glm::f64vec3{0,0,1}) > 0){
+            if(Eigen::Vector3d::UnitX().dot(getNormalVec()) > 0){
                 //vertices[1]->p = vertices[1]->p3 = glm::f64vec3{p.x, vertices[0]->p.y, 0}; vertices[3]->p = vertices[3]->p3 = glm::f64vec3{vertices[0]->p.x, p.y, 0};
             }
         }
@@ -424,7 +421,7 @@ void OUTLINE::addVertex(glm::f64vec3& p){
         double d = 5;
         int ind = -1;
         for(int i = 0; i < (int)vertices.size(); i++){
-            double dist = glm::distance(p, vertices[i]->p);
+            double dist = (p - vertices[i]->p).norm();
             if(dist < d){
                 ind = i; d = dist;
             }
@@ -456,7 +453,7 @@ void OUTLINE::eraseVertex(){
             hasPtNum = 1;
         }
         else if(hasPtNum == 1){
-            origin = glm::f64vec2{-1,-1};
+            origin = Eigen::Vector2d(-1,-1);
             hasPtNum = 0;
         }
     }
@@ -464,14 +461,14 @@ void OUTLINE::eraseVertex(){
     ConnectEdges(false);
 }
 
-void OUTLINE::drawPolygon(glm::f64vec3& p, bool IsClicked){
+void OUTLINE::drawPolygon(Eigen::Vector3d& p, bool IsClicked){
     if(hasPtNum == 0 && IsClicked){
-        origin = glm::f64vec2{p.x, p.y};
+        origin = Eigen::Vector2d(p.x(), p.y());
         hasPtNum = 1;
         return;
     }
     if(hasPtNum == 1){
-        if((p.x - origin.x) * (p.x - origin.x) + (p.y - origin.y) * (p.y - origin.y) < 16) return;
+        if((p.x() - origin.x()) * (p.x() - origin.x()) + (p.y() - origin.y()) * (p.y() - origin.y()) < 16) return;
         vertices.clear();
         Eigen::Matrix3d T = Eigen::Matrix3d::Identity();
         Eigen::Matrix3d invT = Eigen::Matrix3d::Identity();
@@ -488,7 +485,7 @@ void OUTLINE::drawPolygon(glm::f64vec3& p, bool IsClicked){
         for(int n = 0; n < VerticesNum - 1; n++){
             x = Eigen::Vector3d(vertices[n]->p.x, vertices[n]->p.y, 1);
             x = T * R * invT * x;
-            vertices.push_back(std::make_shared<Vertex>(glm::f64vec3{x(0), x(1), 0}));
+            vertices.push_back(std::make_shared<Vertex>(x));
         }
         ConnectEdges();
         hasPtNum = 2;
@@ -496,43 +493,43 @@ void OUTLINE::drawPolygon(glm::f64vec3& p, bool IsClicked){
 
 }
 
-void OUTLINE::MoveOutline(glm::f64vec3 p){
+void OUTLINE::MoveOutline(Eigen::Vector3d p){
     double dist = 5;
     int ind = -1;
     Eigen::Matrix3d T = Eigen::Matrix3d::Identity();
     Eigen::Vector3d x;
     if(type == "Polygon"){
-        double d = glm::distance(p, glm::f64vec3{origin, 0});
+        double d = (p - Eigen::Vector3d(origin.x(), origin.y(), 0)).norm();
         ind = movePointIndex(p);
         if(ind != -1){
-            T(0,2) = p.x - vertices[ind]->p.x; T(1,2) = p.y - vertices[ind]->p.y;
+            T(0,2) = p.x() - vertices[ind]->p.x(); T(1,2) = p.y() - vertices[ind]->p.y();
             for(auto& v: vertices){
-                x = T * Eigen::Vector3d(v->p.x, v->p.y, 1);
-                 v->p2_ori.x = v->p.x = x(0);  v->p2_ori.y = v->p.y = x(1);
+                x = T * Eigen::Vector3d(v->p.x(), v->p.y(), 1);
+                 v->p2_ori.x() = v->p.x() = x(0);  v->p2_ori.y() = v->p.y() = x(1);
             }
-            x = T * Eigen::Vector3d(origin.x, origin.y, 1);
+            x = T * Eigen::Vector3d(origin.x(), origin.y(), 1);
             origin.x = x(0); origin.y = x(1);
         }else if(d < dist){
-            T(0,2) = p.x - origin.x; T(1,2) = p.y - origin.y;
+            T(0,2) = p.x() - origin.x(); T(1,2) = p.y() - origin.y();
             for(auto& v: vertices){
-                x = T * Eigen::Vector3d(v->p.x, v->p.y, 1);
-                v->p2_ori.x = v->p.x = x(0);  v->p2_ori.y = v->p.y = x(1);
+                x = T * Eigen::Vector3d(v->p.x(), v->p.y(), 1);
+                v->p2_ori.x() = v->p.x() = x(0);  v->p2_ori.y() = v->p.y() = x(1);
             }
-            x = T * Eigen::Vector3d(origin.x, origin.y, 1);
+            x = T * Eigen::Vector3d(origin.x(), origin.y(), 1);
             origin.x = x(0); origin.y = x(1);
         }
     }else {
         ind = movePointIndex(p);
         if(ind == -1)return;
-        T(0,2) = p.x - vertices[ind]->p.x; T(1,2) = p.y - vertices[ind]->p.y;
+        T(0,2) = p.x() - vertices[ind]->p.x(); T(1,2) = p.y() - vertices[ind]->p.y();
         for(auto& v: vertices){
-            x = T * Eigen::Vector3d(v->p.x, v->p.y, 1);
-            v->p2_ori.x = v->p.x = x(0);  v->p2_ori.y = v->p.y = x(1);
+            x = T * Eigen::Vector3d(v->p.x(), v->p.y(), 1);
+            v->p2_ori.x() = v->p.x() = x(0);  v->p2_ori.y() = v->p.y() = x(1);
         }
     }
 }
 
-void OUTLINE::MoveVertex(glm::f64vec3 p, int ind){
+void OUTLINE::MoveVertex(Eigen::Vector3d p, int ind){
     if(ind < 0 || (int)vertices.size() < ind)return;
     vertices[ind]->p2_ori = vertices[ind]->p = p;
 }
@@ -549,41 +546,19 @@ void OUTLINE::ConnectEdges(bool IsConnected){
     }else{
 
     }
-    /*
-    for(auto&v: vertices){
-        HalfEdge *he = new HalfEdge(v, EdgeType::ol);
-        edges.push_back(he);
-    }
-    if(IsConnected){
-        face = new Face(edges[0]);
-        for(int i = 0; i < (int)edges.size(); i++){
-            edges[i]->prev = edges[(i + 1) % edges.size()];
-            edges[i]->next = edges[(i - 1) % edges.size()];
-            edges[i]->face = face;
-        }
-        //isClosed = true;
-    }else{
-        edges[0]->next = edges[1];
-        for(int i = 1; i < (int)edges.size() - 1; i++){
-            edges[i]->next = edges[(i + 1) % edges.size()];
-            edges[i]->prev = edges[(i - 1) % edges.size()];
-        }
-        edges[edges.size() - 1]->prev = edges[edges.size() - 2];
-    }*/
-
 }
 
-bool OUTLINE::IsPointInFace(glm::f64vec3 p){
+bool OUTLINE::IsPointInFace(Eingen::Vector3d p){
     if(!IsClosed())return false;
     int cnt = 0;
     double vt;
     for(auto&l: Lines){
-        if(l->o->p.y <= p.y && l->v->p.y > p.y){
-            vt = (p.y - l->o->p.y) / (l->v->p.y - l->o->p.y);
-            if(p.x < (l->o->p.x + vt * (l->v->p.x - l->o->p.x)))cnt++;
-        }else if(l->o->p.y > p.y && l->v->p.y <= p.y){
-            vt = (p.y - l->o->p.y)/(l->v->p.y - l->o->p.y);
-            if(p.x < (l->o->p.x + vt * (l->v->p.x - l->o->p.x)))cnt--;
+        if(l->o->p.y() <= p.y() && l->v->p.y() > p.y()){
+            vt = (p.y() - l->o->p.y()) / (l->v->p.y() - l->o->p.y());
+            if(p.x() < (l->o->p.x() + vt * (l->v->p.x() - l->o->p.x())))cnt++;
+        }else if(l->o->p.y() > p.y() && l->v->p.y() <= p.y()){
+            vt = (p.y() - l->o->p.y())/(l->v->p.y() - l->o->p.y());
+            if(p.x() < (l->o->p.x() + vt * (l->v->p.x() - l->o->p.x())))cnt--;
         }
     }
     if (cnt == 0) return false;
@@ -593,13 +568,6 @@ bool OUTLINE::IsPointInFace(glm::f64vec3 p){
 
 bool OUTLINE::IsClosed(){
     if(Lines.empty())return false;
-    /*
-    HalfEdge *h = edges[0];
-    do{
-        if(h->next == nullptr)return false;
-        h = h->next;
-    }while(h != edges[0]);
-    */
     for(auto& l: Lines)if(l == nullptr)return false;
     return true;
 }
@@ -624,25 +592,25 @@ void CrossDetection(std::shared_ptr<OUTLINE>& outline, std::shared_ptr<CRV>& crv
 }
 
 glm::f64vec3 OUTLINE::getNormalVec(){
-    glm::f64vec3 N{0,0,0};
+    Eigen::Vector3d N(0,0,0);
     auto prev = Lines.end() - 1;
     for(auto cur = Lines.begin(); cur != Lines.end(); cur++){
-        if(abs(glm::dot(glm::normalize((*cur)->v->p - (*cur)->o->p), glm::normalize((*prev)->v->p - (*prev)->o->p))) < 0.9){
-            return glm::normalize(glm::cross((*cur)->v->p - (*cur)->o->p, (*prev)->o->p - (*prev)->v->p));
+        auto v = ((*cur)->v->p - (*cur)->o->p).normalize(), v2 = ((*prev)->v->p - (*prev)->o->p).normalize();
+        if(abs(v.dot(v2)) < 1.0 - 1e-5){
+            return (v.cross(v2)).normalize();
         }
         prev = cur;
-
     }
     return N;
 }
 
 
-int OUTLINE::movePointIndex(glm::f64vec3 p){
+int OUTLINE::movePointIndex(Eigen::Vector3d p){
     int n = vertices.size();
     double dist = 5.0;
     int ind = -1;
     for(int i = 0; i < n; i++){
-        double d = glm::distance(p,vertices[i]->p);
+        double d = (p - vertices[i]->p).norm();
         if(d < dist){
             dist = d;
             ind = i;
@@ -652,22 +620,22 @@ int OUTLINE::movePointIndex(glm::f64vec3 p){
 }
 
 
-std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, const std::shared_ptr<Vertex>& p, const std::shared_ptr<Vertex>& q, int dim){
+std::vector<double> BezierClipping(std::vector<Eigen::Vector3d>&CtrlPts, const std::shared_ptr<Vertex>& p, const std::shared_ptr<Vertex>& q, int dim){
     double a, b, c;
-    if(p->p.x <= q->p.x){
-        a = q->p.y - p->p.y, b = p->p.x - q->p.x, c = q->p.x * p->p.y - p->p.x * q->p.y;
+    if(p->p.x() <= q->p.x()){
+        a = q->p.y() - p->p.y, b = p->p.x() - q->p.x(), c = q->p.x() * p->p.y() - p->p.x() * q->p.y();
     }
-    else{a = p->p.y - q->p.y, b = q->p.x - p->p.x, c = p->p.x * q->p.y - q->p.x * p->p.y;}
+    else{a = p->p.y() - q->p.y(), b = q->p.x() - p->p.x(), c = p->p.x() * q->p.y() - q->p.x() * p->p.y();}
 
     int n = CtrlPts.size();
-    std::vector<glm::f64vec3> base(n);
+    std::vector<Eigen::Vector3d> base(n);
     for(int i = 0; i < n; i++){
-        double d = -(a * CtrlPts[i].x + b * CtrlPts[i].y + c)/sqrt(a*a + b*b);
-        base[i] = glm::f64vec3{(double)i/(double)(n - 1), d, 0};
+        double d = -(a * CtrlPts[i].x() + b * CtrlPts[i].y() + c)/sqrt(a*a + b*b);
+        base[i] = Eigen::Vector3d((double)i/(double)(n - 1), d, 0);
     }
-    std::vector<glm::f64vec3> current;
+    std::vector<Eigen::Vector3d> current;
     std::copy(base.begin(), base.end(), std::back_inserter(current));
-    std::array<glm::f64vec3, 2> _line{glm::f64vec3{0.,0.0,0.0}, glm::f64vec3{1.,0.0,0.0}};
+    std::array<Eigen::Vector3d, 2> _line{Eigen::Vector3d::Zero(), Eigen::Vector3d.UnitX()};
     auto res = _bezierclipping(base, current, _line, dim);
 
     return res;
@@ -678,17 +646,17 @@ std::vector<std::shared_ptr<Vertex>> ConvexHull_polygon(const std::vector<std::s
     if((int)Q.size() < 3)return Q;
     std::shared_ptr<Vertex> p_ml = Q[0];
     for(auto&p: Q){
-        if(p_ml->p.y > p->p.y)p_ml = p;
-        else if(p_ml->p.y == p->p.y && p_ml->p.x > p->p.x) p_ml = p;
+        if(p_ml->p.y() > p->p.y())p_ml = p;
+        else if(p_ml->p.y() == p->p.y() && p_ml->p.x() > p->p.x()) p_ml = p;
     }
     std::vector<std::pair<double, std::shared_ptr<Vertex>>>Args;
     for(auto&p: Q){
         if(p->p == p_ml->p)continue;
-        double phi = atan2(p->p.y - p_ml->p.y, p->p.x - p_ml->p.x);
+        double phi = atan2(p->p.y() - p_ml->p.y(), p->p.x() - p_ml->p.x());
         bool hasSameAngle = false;
         for(auto& X: Args){
             if(X.first == phi){
-                if(glm::distance(X.second->p, p_ml->p) < glm::distance(p->p, p_ml->p))X.second = p;
+                if((X.second->p - p_ml->p).norm() < (p->p - p_ml->p).norm())X.second = p;
                 hasSameAngle = true;
             }
         }
@@ -696,7 +664,7 @@ std::vector<std::shared_ptr<Vertex>> ConvexHull_polygon(const std::vector<std::s
     }
     // compare only the first value
     std::sort(Args.begin(), Args.end(),[](auto const& x, auto const& y) {return x.first < y.first; });
-    if(Args.size() >= 1)P.push_back(Args[Args.size() - 1].second);
+    if((int)Args.size() >= 1)P.push_back(Args[Args.size() - 1].second);
     P.push_back(p_ml);
     std::shared_ptr<Vertex> top, next;
     for(int i = 0; i < (int)Args.size(); i++){
@@ -715,11 +683,10 @@ std::vector<std::shared_ptr<Vertex>> ConvexHull_polygon(const std::vector<std::s
     return P;
 }
 std::vector<std::shared_ptr<Vertex>> SortPolygon(std::vector<std::shared_ptr<Vertex>>& polygon){
-    glm::f64vec3 Zaxis{0,0,1};//面の表裏の基準
     auto poly_sort = ConvexHull_polygon(polygon);
     if((int)poly_sort.size()< 3){std::cout<<"not enought vertices size"<<std::endl; return{};}
-    if(glm::dot(glm::cross(poly_sort[0]->p - poly_sort[1]->p, poly_sort[2]->p - poly_sort[1]->p), Zaxis) < 0)
-        std::reverse(poly_sort.begin(), poly_sort.end());
+    auto N = (poly_sort[0]->p - poly_sort[1]->p).cross(poly_sort[2]->p - poly_sort[1]->p);
+    if(N.dot(Eigen::Vector3d::UnitZ()) < 0) std::reverse(poly_sort.begin(), poly_sort.end());
     return poly_sort;
 }
 

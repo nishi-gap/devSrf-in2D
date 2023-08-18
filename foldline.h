@@ -3,28 +3,20 @@
 
 #include <cmath>
 #include <numbers>
-#include <mathtool.h>
 #include <setrulings.h>
-#include<glm/gtx/vector_angle.hpp>
-
 #include <utility>
 #include <Eigen/Dense>
 #include <fstream>
 #include <sstream>
 #include <iomanip>
 #include <filesystem>
-
-
-
 #include <nlopt.hpp>
-
-
 
 class FoldLine
 {
 public:
     FoldLine(PaintTool _type);
-    std::vector<glm::f64vec3>CtrlPts;
+    std::vector<Eigen::Vector3d>CtrlPts;
     bool addCtrlPt(glm::f64vec3& p, int dim);
     bool delCtrlPt(glm::f64vec3& p, int dim, std::shared_ptr<OUTLINE>& outline);
     bool moveCtrlPt(glm::f64vec3& p, int movePtIndex);
