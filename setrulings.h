@@ -1,6 +1,7 @@
 #ifndef SETRULINGS_H
 #define SETRULINGS_H
 
+#include <Eigen/Geometry> //EigenのGeometry関連の関数を使う場合，これが必要
 #include "mathtool.h"
 #include <QPointF>
 #include <QString>
@@ -12,12 +13,12 @@ class Line;
 
 class Vertex{
 public:
-    glm::f64vec3 p;
-    glm::f64vec3 p3;
-    glm::f64vec3 p3_ori, p2_ori;
+    Eigen::Vector3d p;
+    Eigen::Vector3d p3;
+    Eigen::Vector3d p3_ori, p2_ori;
     bool deformed;
-    Vertex(glm::f64vec3 _p, bool _deformed = false);
-    Vertex(glm::f64vec3 _p2, glm::f64vec3 _p3, bool _deformed = false);
+    Vertex(Eigen::Vector3d _p, bool _deformed = false);
+    Vertex(Eigen::Vector3d _p2, Eigen::Vector3d _p3, bool _deformed = false);
     std::shared_ptr<Vertex> deepCopy();
     //~Vertex();
     bool operator != (const Vertex &V)const{return p != V.p || p2_ori != V.p2_ori|| p3 != V.p3 || p3_ori != V.p3_ori || deformed != V.deformed;}
@@ -30,11 +31,11 @@ public:
     std::shared_ptr<Vertex> ve;
     std::shared_ptr<Vertex> vo;
     bool IsValid;
-    CrvPt_FL(glm::f64vec3 _p2, glm::f64vec3 _p3,  double _s) : Vertex(_p2, _p3), s(_s), IsValid(true){}
-    CrvPt_FL(glm::f64vec3 _p2, double _s) : Vertex(_p2), s(_s), IsValid(true){}
+    CrvPt_FL(Eigen::Vector3d _p2, Eigen::Vector3d _p3,  double _s) : Vertex(_p2, _p3), s(_s), IsValid(true){}
+    CrvPt_FL(Eigen::Vector3d _p2, double _s) : Vertex(_p2), s(_s), IsValid(true){}
     bool operator == (const CrvPt_FL &p)const{return s == p.s && rt == p.rt && ve == p.ve && vo == p.vo && IsValid == p.IsValid;}
     bool operator != (const CrvPt_FL &p)const{return !(s == p.s && rt == p.rt && ve == p.ve && vo == p.vo && IsValid == p.IsValid);}
-    void set(glm::f64vec3 _p,const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& e);
+    void set(Eigen::Vector3d _p,const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& e);
 
 };
 
@@ -82,22 +83,20 @@ public:
     bool drawArc(int crvPtNum);//制御点 0,3,...: 原点. 1,4,...: 始点. 2,5,...: 終点
     void ArcRulings(std::shared_ptr<OUTLINE>& outline, int DivSize);
 
-    //void addCtrlPt(QPointF p);
     bool eraseCtrlPt(int curveDimention, int crvPtNum);
-    //void movePt(glm::f64vec3 p, int ind);
-    int movePtIndex(glm::f64vec3& p, double& dist);
+    int movePtIndex(Eigen::Vector3d& p, double& dist);
     void ClearPt();
-    void InsertControlPoint2(glm::f64vec3& p);
+    void InsertControlPoint2(Eigen::Vector3d& p);
     void SetNewPoint();
 
     int InsertPointSegment;
     CurveType getCurveType();
     void setCurveType(CurveType n);
-    std::vector<glm::f64vec3> ControllPoints;
-    std::vector<glm::f64vec3> CurvePoints;
+    std::vector<Eigen::Vector3d> ControllPoints;
+    std::vector<Eigen::Vector3d> CurvePoints;
     std::vector<std::shared_ptr<Line>> Rulings;//偶数番目 ruling　奇数番目 グラデーションの多角形に使用
     //std::vector<meshline*> meshLines;
-    glm::f64vec3 InsertPoint;
+    Eigen::Vector3d InsertPoint;
     bool isempty;
 
     //グラデーション
@@ -105,10 +104,9 @@ public:
 private:
 
     bool IsInsertNewPoint;
-    int OnCurvesORLines(glm::f64vec3& p, int& ind);//-1：どこにものっかっていない　0：曲線上　1：制御点を結んだ線上
+    int OnCurvesORLines(Eigen::Vector3d& p, int& ind);//-1：どこにものっかっていない　0：曲線上　1：制御点を結んだ線上
     CurveType curveType;
-    bool setPoint(const std::vector<std::shared_ptr<Vertex>>&outline, glm::f64vec3 N, glm::f64vec3& cp, std::vector<glm::f64vec3>& P);
-    inline void swap(glm::f64vec3&a, glm::f64vec3& b);
+    bool setPoint(const std::vector<std::shared_ptr<Vertex>>&outline, Eigen::Vector3d N, Eigen::Vector3d& cp, std::vector<Eigen::Vector3d>& P);
 
     double crvStep;
     int curveNum;
@@ -124,30 +122,27 @@ public:
     bool IsClosed();
     int VerticesNum;
     void addVertex(const std::shared_ptr<Vertex>&v, int n);
-    void addVertex(glm::f64vec3& p);
+    void addVertex(Eigen::Vector3d& p);
     void eraseVertex();
     std::vector<std::shared_ptr<Vertex>> getVertices();
     std::vector<std::shared_ptr<Line>> Lines;
     void ConnectEdges(bool IsConnected = true);
-    void drawPolygon(glm::f64vec3& p, bool IsClicked);
-    void MoveOutline(glm::f64vec3 p);//polygonの移動
-    void MoveVertex(glm::f64vec3 p, int ind);
-    glm::f64vec2 origin;//polygonの始点
+    void drawPolygon(Eigen::Vector3d& p, bool IsClicked);
+    void MoveOutline(Eigen::Vector3d p);//polygonの移動
+    void MoveVertex(Eigen::Vector3d p, int ind);
+    Eigen::Vector2d origin;//polygonの始点
     int hasPtNum; //0 ~ 2 (polygonの点の数)
-    bool IsPointInFace(glm::f64vec3 p);
-    glm::f64vec3 getNormalVec();
+    bool IsPointInFace(Eigen::Vector3d p);
+    Eigen::Vector3d getNormalVec();
 private:
     std::vector<std::shared_ptr<Vertex>> vertices;
-    //std::vector<HalfEdge*> edges;
-
-    int movePointIndex(glm::f64vec3 p);
-    //Face *face;
+    int movePointIndex(Eigen::Vector3d p);
 };
 
 void CrossDetection(std::shared_ptr<OUTLINE>& outline, std::shared_ptr<CRV>& crvs);
 
 
-std::vector<double> BezierClipping(std::vector<glm::f64vec3>&CtrlPts, const std::shared_ptr<Vertex>& p, const std::shared_ptr<Vertex>& q, int dim);
+std::vector<double> BezierClipping(std::vector<Eigen::Vector3d>&CtrlPts, const std::shared_ptr<Vertex>& p, const std::shared_ptr<Vertex>& q, int dim);
 std::vector<std::shared_ptr<Vertex>> SortPolygon(std::vector<std::shared_ptr<Vertex>>& polygon);
 //std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot, double& CurveLen, bool is3d = true, int dim = 3, int t_type = 2);
 

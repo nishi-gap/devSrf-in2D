@@ -107,6 +107,9 @@ double basis(int n, int i, int p, double u, std::vector<double>& U);
 
 std::vector<double> LSM_apply(std::vector<double>&y, int dim = 1);
 Eigen::Vector3d ProjectionVector(const Eigen::Vector3d& v, Eigen::Vector3d n, bool Isnormalize = false);
+
+template<typename T>
+void swap(T &a, T& b){ T c = a; a = b; b = c;}
 }
 
 template <typename T>

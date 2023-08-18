@@ -1,10 +1,10 @@
 #include "mathtool.h"
 
 namespace MathTool{
-    glm::f64vec3 bspline(std::vector<glm::f64vec3>&CtrlPts, double t, int dim, std::vector<double>Knot){
-        glm::f64vec3 vec{0,0,0};
+    Eigen::Vector3d bspline(std::vector<Eigen::Vector3d>&CtrlPts, double t, int dim, std::vector<double>Knot){
+        Eigen::Vector3d vec(0,0,0);
         for(int j = 0; j < (int)CtrlPts.size(); j++){
-            double b = basis((int)CtrlPts.size(), j,dim, t + FLT_EPSILON,Knot);
+            double b = basis((int)CtrlPts.size(), j,dim, t + 1e-9,Knot);
             vec += CtrlPts[j] *  b;
         }
         return vec;
