@@ -1,4 +1,4 @@
-#include "gtoolwnd.h"
+#include "gtoolwnd.hpp"
 
 GToolWnd::GToolWnd(QWidget *parent) :
     QMainWindow(parent),

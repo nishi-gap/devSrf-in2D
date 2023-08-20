@@ -1,4 +1,4 @@
-#include "gradationwidget.h"
+#include "gradationwidget.hpp"
 
 GradationWidget::GradationWidget(QWidget *parent):QOpenGLWidget(parent)
 {

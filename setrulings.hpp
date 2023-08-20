@@ -2,7 +2,7 @@
 #define SETRULINGS_H
 
 #include <Eigen/Geometry> //EigenのGeometry関連の関数を使う場合，これが必要
-#include "mathtool.h"
+#include "mathtool.hpp"
 #include <QPointF>
 #include <QString>
 

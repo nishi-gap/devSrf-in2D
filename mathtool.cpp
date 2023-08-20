@@ -1,4 +1,4 @@
-#include "mathtool.h"
+#include "mathtool.hpp"
 
 namespace MathTool{
     double rad2deg(double a){return a * 180.0/std::numbers::pi;}

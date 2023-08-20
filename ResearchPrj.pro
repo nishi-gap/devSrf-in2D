@@ -30,17 +30,17 @@ SOURCES += \
 
 HEADERS += \
     #arcball.h \
-    cbox.h \
-    foldline.h \
-    glwidget_2d.h \
-    glwidget_3d.h \
-    gradationwidget.h \
-    gtoolwnd.h \
-    make3d.h \
-    mathtool.h \
-    originalbutton.h \
+    cbox.hpp \
+    foldline.hpp \
+    glwidget_2d.hpp \
+    glwidget_3d.hpp \
+    gradationwidget.hpp \
+    gtoolwnd.hpp \
+    make3d.hpp \
+    mathtool.hpp \
+    originalbutton.hpp \
     setrulings.hpp \
-    widget.h
+    widget.hpp
 
 FORMS += \
     gtoolwnd.ui \
