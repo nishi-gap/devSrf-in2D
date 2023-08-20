@@ -87,7 +87,7 @@ void Model::deform(){
        M = TMs.back();
        T = Eigen::Translation3d(Rulings[i]->o->p - Rulings[i-1]->o->p);
        R = Eigen::AngleAxisd(Color2Angle(Rulings[i-1]->color, ColorPt), axis);
-       Rulings[i]->o->p3_ori = Rulings[i]->o->p3 = T * R * TM * Eigen::Vector3d(0,0,0);
+       Rulings[i]->o->p3_ori = Rulings[i]->o->p3 = T * R * M * Eigen::Vector3d(0,0,0);
        TMs.push_back(T * R * M);
        T = Eigen::Translation3d(Rulings[i]->v->p - Rulings[i-1]->o->p);
        Rulings[i]->v->p3_ori = Rulings[i]->v->p3 = T * R * M * Eigen::Vector3d(0,0,0);
