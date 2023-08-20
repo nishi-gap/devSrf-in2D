@@ -57,7 +57,6 @@ void Model::deform(){
     };
 
     if(Rulings.empty() || !outline->IsClosed())return;
-    Eigen::Matrix3d R;
     std::vector<Eigen::Transform<double, 3, Eigen::Affine>> TMs;
     std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons;
     std::vector<std::shared_ptr<Vertex>> polygon;
@@ -81,31 +80,36 @@ void Model::deform(){
         }
     }
     Eigen::Translation3d T(Rulings[0]->o->p);
-    Eigen::Transform<double, 3, Eigen::Affine> M = Eigen::Transform<double, 3, Eigen::Affine>::Identity();
-    R = Eigen::Matrix3d::Identity(); TMs.push_back(M * R * T);
-    for(int i = 1; i < (int)Rulings.size(); i++){
-        Eigen::Vector3d axis = (Rulings[i-1]->v->p - Rulings[i-1]->o->p).normalized();
-        M = TMs.back();
-        T = Eigen::Translation3d(Rulings[i]->o->p - Rulings[i-1]->o->p);
-        R = Eigen::AngleAxisd(Color2Angle(Rulings[i-1]->color, ColorPt), axis);
-        Rulings[i]->o->p3_ori = Rulings[i]->o->p3 = M * R * T * Eigen::Vector3d(0,0,0);
-        TMs.push_back(M * R * T);
-        T = Eigen::Translation3d(Rulings[i]->v->p - Rulings[i-1]->o->p);
-        Rulings[i]->v->p3_ori = Rulings[i]->v->p3 = M * R * T * Eigen::Vector3d(0,0,0);
-    }
+   Eigen::Transform<double, 3, Eigen::Affine> M = Eigen::Transform<double, 3, Eigen::Affine>::Identity();
+   Eigen::Matrix3d R = Eigen::Matrix3d::Identity(); TMs.push_back(T * R * M);
+   for(int i = 1; i < (int)Rulings.size(); i++){
+       Eigen::Vector3d axis = (Rulings[i-1]->v->p - Rulings[i-1]->o->p).normalized();
+       M = TMs.back();
+       T = Eigen::Translation3d(Rulings[i]->o->p - Rulings[i-1]->o->p);
+       R = Eigen::AngleAxisd(Color2Angle(Rulings[i-1]->color, ColorPt), axis);
+       Rulings[i]->o->p3_ori = Rulings[i]->o->p3 = T * R * TM * Eigen::Vector3d(0,0,0);
+       TMs.push_back(T * R * M);
+       T = Eigen::Translation3d(Rulings[i]->v->p - Rulings[i-1]->o->p);
+       Rulings[i]->v->p3_ori = Rulings[i]->v->p3 = T * R * M * Eigen::Vector3d(0,0,0);
+   }
+
 
     for(auto&l: outline->Lines){
         for(auto& P: Polygons){
             if(std::find(P.begin(), P.end(), l->v) == P.end())continue;
             for(int i = 0; i < (int)Rulings.size(); i++){
                 if(std::find(P.begin(), P.end(), Rulings[i]->v) != P.end()){
-                    if(i == 0){
-                    }else if(i == Rulings.size() - 1){
+                    if(i == (int)Rulings.size() - 1){
                         Eigen::Vector3d axis = (Rulings.back()->v->p - Rulings.back()->o->p).normalized();
                         M = TMs.back();
                         T = Eigen::Translation3d(l->v->p - Rulings.back()->o->p);
                         R = Eigen::AngleAxisd(Color2Angle(Rulings.back()->color, ColorPt), axis);
-                        l->v->p3_ori = l->v->p3 = M * R * T * Eigen::Vector3d(0,0,0);
+                        //std::cout << (l->v->p3).transpose() << " , " << (l->v->p3_ori).transpose() << std::endl;
+                        //std::cout << "T = " << (T * Eigen::Vector3d(0,0,0)).transpose() << std::endl;
+                        //std::cout << "R * T = " << (R * T * Eigen::Vector3d(0,0,0)).transpose() << std::endl;
+                        //std::cout << "M * T = " << (M * T * Eigen::Vector3d(0,0,0)).transpose() << std::endl;
+                        //std::cout << "T * R * M = " << (T * R * M * Eigen::Vector3d(0,0,0)).transpose() << std::endl;
+                        l->v->p3_ori = l->v->p3 = T * R * M * Eigen::Vector3d(0,0,0);
                         break;
                     }else{
                         T = Eigen::Translation3d(l->v->p - Rulings[i]->o->p);
