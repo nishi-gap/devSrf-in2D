@@ -221,7 +221,7 @@ void Model::UpdateFLOrder(int dim){
 }
 
 
-bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
+bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFunc){
     UpdateFLOrder(dim);
     SplitRulings(dim);
     std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>> root = NTree_fl.GetRoot();
@@ -229,6 +229,7 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
     std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>> q;
     std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
     //root->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
+    root->data->SimplifyModel(tol);
     q.push(root);
     while(!q.empty()){
         auto cur = q.front(); q.pop();

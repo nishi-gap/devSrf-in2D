@@ -44,7 +44,7 @@ public:
     void applyAAAMethod(double a, bool begincenter);
     bool RevisionCrosPtsPosition();
     void SortFoldingCurve(int dim);
-    bool BendingModel(double wb, double wp, int dim, bool ConstFunc = true);
+    bool BendingModel(double wb, double wp, int dim, double tol, bool ConstFunc = true);
     bool AssignRuling(int dim);
     std::vector<Eigen::Vector3d> resPts;
 

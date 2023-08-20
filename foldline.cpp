@@ -1079,7 +1079,7 @@ void FoldLine::SimplifyModel(double tol){
     }
     auto tmp = TrimPoints2(FoldingCurve, tol);
     for(auto&V4d: FoldingCurve){
-        if(std::find(tmp.begin(), tmp.end(), V4d) != tmp.end()){
+        if(std::find_if(tmp.begin(), tmp.end(), [&V4d](const Vertex4d& V){return V4d.first == V.first;}) != tmp.end()){
         }else V4d.IsCalc = false;
     }
     std::vector<int>Vertices_Ind;
@@ -1568,8 +1568,7 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, const std::vector<st
 
 //kokoga genninn
 std::vector<Vertex4d> TrimPoints2(std::vector<Vertex4d>& FoldingCurve, double tol){
-    std::vector<Vertex4d> res = FoldingCurve;
-    res.clear();
+    std::vector<Vertex4d> res;
     size_t st = FoldingCurve.size();
 
     while(1){
