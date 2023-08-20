@@ -51,32 +51,33 @@ namespace RevisionVertices{
         OptimizeParam(FoldLine3d& _FC,  const std::vector<std::shared_ptr<Vertex>>& _Poly_V):FC{_FC}, Poly_V{_Poly_V}{}
         ~OptimizeParam(){}
     private:
+    };
 
-    };
-    struct OptimizeParam_v: public OptimizeParam{
-        double a;
-        OptimizeParam_v(double _a, FoldLine3d& _FC, const std::vector<std::shared_ptr<Vertex>>& Poly_V):
-            a{_a}, OptimizeParam::OptimizeParam( _FC,  Poly_V){}
-        ~OptimizeParam_v(){}
-    };
-    struct SmoothingArea{
+    class OptimizeParam_v: public OptimizeParam{
     public:
-        Vertex4d stP, lastP;
-        std::vector<std::shared_ptr<Vertex>> OriginalVertices;
-        int st_ind, last_ind;
-        std::shared_ptr<Vertex> qt,qb;
+        OptimizeParam_v() = delete;
+        OptimizeParam_v(double _a, FoldLine3d& _FC, const std::vector<std::shared_ptr<Vertex>>& Poly_V): a(_a), OptimizeParam::OptimizeParam( _FC,  Poly_V){}
+        ~OptimizeParam_v(){}
+        double a;
+    private:
+    };
 
+    class SmoothingArea{
+    public:
+        SmoothingArea() = delete;
         SmoothingArea(Vertex4d& a, Vertex4d& _end, int si, int li, std::vector<std::shared_ptr<Vertex>>& OV): stP{a}, lastP{_end}, st_ind{si}, last_ind{li}, OriginalVertices{OV}{
             qt = getV(stP.first, stP.second, lastP.first, lastP.second);
             qb = getV(stP.first, stP.third, lastP.first, lastP.third);
         }
-
         SmoothingArea(Vertex4d& a, Vertex4d& _end, int si, int li): stP{a}, lastP{_end}, st_ind{si}, last_ind{li}{
             qt = getV(stP.first, stP.second, lastP.first, lastP.second);
             qb = getV(stP.first, stP.third, lastP.first, lastP.third);
         }
-
         ~SmoothingArea(){}
+        Vertex4d stP, lastP;
+        std::vector<std::shared_ptr<Vertex>> OriginalVertices;
+        int st_ind, last_ind;
+        std::shared_ptr<Vertex> qt,qb;
     private:
         std::shared_ptr<Vertex> getV(const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& x, const std::shared_ptr<Vertex>& o2, const std::shared_ptr<Vertex>& x2){
             if(IsParallel(o, x, o2, x2))return nullptr;
@@ -111,7 +112,7 @@ namespace RevisionVertices{
             X.push_back(std::array{SA.back().lastP.first->p3, rt, rb});
 
             Eigen::Vector3d el, er;
-            for(int i = 1; i < X.size() - 1; i++){
+            for(int i = 1; i < (int)X.size() - 1; i++){
                 el = (X[i+1][0] - X[i][0]).normalized(); er = (X[i-1][0] - X[i][0]).normalized();
                 f += std::abs((2.0 * std::numbers::pi - (Angle(el, X[i][1]) + Angle(X[i][1], er) + Angle(er, X[i][2]) + Angle(X[i][2], el))) - th);
             }
@@ -1413,7 +1414,10 @@ void _FoldingAAAMethod_center(std::vector<Vertex4d>& FoldingCurve, const std::ve
         x = fc.first->p3;
         e = (fc_bef.first->p3 - x).normalized();
         e2 = (fc_next.first->p3 - x).normalized();
-        if(ind != (int)Vertices_Ind.size()/2){Eigen::Vector3d SrfN = MathTool::ProjectionVector(e.cross(e2), -e, true);a = update_flapangle(a2, befN, SrfN, e);}
+        if(ind != (int)Vertices_Ind.size()/2){
+            Eigen::Vector3d SrfN = MathTool::ProjectionVector(e.cross(e2), -e, true);
+            a = update_flapangle(a2, befN, SrfN, e);
+        }
         CalcRuling(a, fc_bef, fc, fc_next, Poly_V, a2, befN, -Eigen::Vector3d::UnitZ());
         if(ind == (int)FoldingCurve.size() -2)break;
         befN = MathTool::ProjectionVector(e.cross(e2), e2, true);
@@ -1492,7 +1496,10 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, const std::vector<st
         x = fc.first->p3;
         e = (fc_bef.first->p3 - x).normalized();
         e2 = (fc_next.first->p3 - x).normalized();
-        if(ind != 1){Eigen::Vector3d SrfN = MathTool::ProjectionVector(e.cross(e2), -e, true);a = update_flapangle(a2, befN, SrfN, e);}
+        if(ind != 1){
+            Eigen::Vector3d SrfN = MathTool::ProjectionVector(e.cross(e2), -e, true);
+            a = update_flapangle(a2, befN, SrfN, e);
+        }
         CalcRuling(a, fc_bef, fc, fc_next, Poly_V, a2, befN, -Eigen::Vector3d::UnitZ());
         if(ind == (int)FoldingCurve.size() -2)break;
         befN = MathTool::ProjectionVector(e.cross(e2), e2, true);

@@ -3,7 +3,7 @@
 
 #include <cmath>
 #include <numbers>
-#include <setrulings.h>
+#include <setrulings.hpp>
 #include <utility>
 #include <fstream>
 #include <sstream>

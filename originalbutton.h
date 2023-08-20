@@ -3,7 +3,7 @@
 
 #include <QPushButton>
 #include <QMouseEvent>
-#include "setrulings.h"
+#include "setrulings.hpp"
 
 class OriginalButton : public QPushButton
 {

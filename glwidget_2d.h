@@ -12,7 +12,7 @@
 #include <gtoolwnd.h>
 #include <QString>
 #include <QPushButton>
-#include "setrulings.h"
+#include "setrulings.hpp"
 #include "mathtool.h"
 
 class GLWidget_2D : public QOpenGLWidget, protected QOpenGLFunctions_3_0

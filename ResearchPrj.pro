@@ -39,7 +39,7 @@ HEADERS += \
     make3d.h \
     mathtool.h \
     originalbutton.h \
-    setrulings.h \
+    setrulings.hpp \
     widget.h
 
 FORMS += \

@@ -1,4 +1,3 @@
-//#define PI 3.14159265359
 #include "make3d.h"
 using namespace MathTool;
 
@@ -147,7 +146,6 @@ std::shared_ptr<CrvPt_FL> getCrossPoint(std::vector<Eigen::Vector3d>& CtrlPts,  
         double sa = (v2 - o->p).norm(), sc = (v->p - o->p).norm();
         Eigen::Vector3d v3 = sa/sc * (v->p3 - o->p3) + o->p3;    
         std::shared_ptr<CrvPt_FL> P = std::make_shared<CrvPt_FL>(CrvPt_FL(v2, v3, t));
-        std::cout <<"diff 2d, 3d  : " << (P->p - o->p).norm() << " , " << (P->p3 - o->p3).norm() << ", " << P->p.transpose() << " ,  " << P->p3.transpose() <<  std::endl;
         return P;
     }
     return std::shared_ptr<CrvPt_FL>(nullptr);
