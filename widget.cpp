@@ -389,14 +389,16 @@ void MainWindow::exportobj(){
     QStringList WriteList;
     std::vector<Eigen::Vector3d> Normals;
     Eigen::Vector3d befN = {0,0,0}, N;
-    Eigen::Matrix3d Mirror = Eigen::Matrix3d::Identity(); Mirror(1, 1) = -1;
+    Eigen::Transform<double, 3, Eigen::Affine> Mirror;
+    Mirror = Eigen::Matrix3d::Identity(); Mirror(1, 1) = -1;
+    Eigen::Matrix3d m = Eigen::Matrix3d::Identity(); m(1,1) = -1;  Mirror = m;
     std::vector<std::vector<Eigen::Vector3d>> Vertices;
     std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons;
     std::vector<std::shared_ptr<Vertex>> polygon;
     std::vector<double> planerity_value;
 
    auto Planerity  = [](const std::vector<Eigen::Vector3d>& vertices, const std::vector<std::shared_ptr<Line>>& lines)->double{
-       if(vertices.size() == 3)return 0.0;
+       if((int)vertices.size() == 3)return 0.0;
        else{
            std::vector<Eigen::Vector3d> QuadPlane;
            for(auto&v: vertices){
@@ -423,8 +425,9 @@ void MainWindow::exportobj(){
    for(auto& l: ui->glWid2dim->model->outline->Lines) polygon.push_back(l->v);
    Polygons.push_back(polygon);
 
-   if(!ui->glWid2dim->model->FL.empty() ||!ui->glWid2dim->model->FL[0]->FoldingCurve.empty()){
+   if(!ui->glWid2dim->model->FL.empty() && !ui->glWid2dim->model->FL[0]->FoldingCurve.empty()){
        for(auto&FC: ui->glWid2dim->model->FL){
+            if(FC->FoldingCurve.empty())continue;
            std::vector<Vertex4d> FldCrv = FC->FoldingCurve;
            Eigen::Vector3d CrvDir = (FldCrv.back().first->p - FldCrv.front().first->p).normalized();
            for(auto&P: Polygons){

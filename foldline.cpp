@@ -306,7 +306,8 @@ double Fbend2(std::vector<Vertex4d>& FoldingCurve){
     auto v1 = (FoldingCurve[0].first->p3 - FoldingCurve[Vertices_Ind[1]].first->p3).normalized(), v2 = (FoldingCurve[Vertices_Ind[1]].second->p3 - FoldingCurve[Vertices_Ind[1]].first->p3).normalized();
     Eigen::Vector3d Nt = (v1.cross(v2)).normalized();
     for(int i = 1; i < (int)Vertices_Ind.size() - 1; i++){
-        Eigen::Vector3d Ntp = ((FoldingCurve[Vertices_Ind[i]].first->p3 - FoldingCurve[Vertices_Ind[i+1]].first->p3).cross(FoldingCurve[Vertices_Ind[i+1]].second->p3 - FoldingCurve[Vertices_Ind[i+1]].first->p3)).normalized();
+        auto n = (FoldingCurve[Vertices_Ind[i]].first->p3 - FoldingCurve[Vertices_Ind[i+1]].first->p3);
+        Eigen::Vector3d Ntp = (n.cross(FoldingCurve[Vertices_Ind[i+1]].second->p3 - FoldingCurve[Vertices_Ind[i+1]].first->p3)).normalized();
         double phi = ((Ntp.dot(Nt)) > 1)? std::numbers::pi: ((Ntp.dot(Nt)) < -1)? 0:  std::numbers::pi - std::acos(Ntp.dot(Nt));
         f += 1.0/(phi*phi);
         Nt = Ntp;
@@ -411,7 +412,7 @@ double ObjFunc_FlapAngle(const std::vector<double> &a, std::vector<double> &grad
 
 Eigen::Vector3d RevisionVertices::decideRulingDirectionOn3d(Eigen::Vector3d e, Eigen::Vector3d N, double a, double phi){
     e = e.normalized();
-    N = Eigen::AngleAxisd(a, -e) * N; // 回転行列を作成 
+    N = (Eigen::AngleAxisd(a, -e) * N).normalized(); // 回転行列を作成
     return (Eigen::AngleAxisd(phi, N) * e).normalized(); 
 }
 
