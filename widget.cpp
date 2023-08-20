@@ -444,7 +444,7 @@ void MainWindow::exportobj(){
                    Eigen::Vector3d Dir_prev = (P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p).normalized();
                    std::vector<std::shared_ptr<Vertex>> poly2 = {P.begin() + i_min, P.begin() + i_max};
                    P.erase(P.begin() + i_min, P.begin() + i_max);
-                   if((Eigen::Vector3d::UnitZ()).dot(CrvDir.cross(Dir_prev)) < 0){
+                   if(Eigen::Vector3d(0,0,1).dot(CrvDir.cross(Dir_prev)) < 0){
                        P.insert(P.begin() + i_min, InsertedV.begin(), InsertedV.end());
                        poly2.insert(poly2.end(), InsertedV_inv.begin(), InsertedV_inv.end());
                    }else{

@@ -232,7 +232,7 @@ bool Model::BendingModel(double wb, double wp, int dim, bool ConstFunc){
     q.push(root);
     while(!q.empty()){
         auto cur = q.front(); q.pop();
-        cur->data->RevisionCrosPtsPosition();//端点の修正
+        //cur->data->RevisionCrosPtsPosition();//端点の修正
         cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
         for (const auto& child : cur->children){
             if(child != nullptr){

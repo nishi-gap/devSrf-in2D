@@ -971,7 +971,6 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     double a_min, a_max;
 
     Eigen::Vector3d FaceNp = (SpinAxis.cross(e2)).normalized(), CrossV = (N4.cross(FaceNp)).normalized();
-    double val = SpinAxis.dot(CrossV);
     bool IsMount = (SpinAxis.dot(CrossV) < 0)? true: false;
 
     if(k < std::numbers::pi && IsMount){a_min = a_con + std::numbers::pi; a_max = 2.0 * std::numbers::pi;}
