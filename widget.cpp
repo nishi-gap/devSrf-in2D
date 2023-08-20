@@ -457,7 +457,7 @@ void MainWindow::exportobj(){
            }
        }
 
-       auto SplitPolygon = [](std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons, std::shared_ptr<Vertex> o, std::shared_ptr<Vertex> v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
+       auto SplitPolygon = [](std::vector<std::vector<std::shared_ptr<Vertex>>>& Polygons, std::shared_ptr<Vertex> o, std::shared_ptr<Vertex> v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
            for(auto& Poly :Polygons){
                for(int i = 0; i < (int)Poly.size(); i++){
                    if(std::find(Poly.begin(), Poly.end(), v) != Poly.end())break;
