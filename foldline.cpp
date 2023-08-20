@@ -1136,10 +1136,10 @@ bool FoldLine::RevisionCrosPtsPosition(){
         if(abs(k0 - k1) > abs(k1 - k2)){
             std::cout <<"front"<<std::endl;
             FoldingCurve[0].first->p = ReviseEndPosition(FoldingCurve[2].first->p - FoldingCurve[1].first->p,  -(2.*k1 - k2));
-            Eigen::Vector3d newPos = getCrossPosition(FoldingCurve[0].first, FoldingCurve[1].first, FoldingCurve[0].first->vo, FoldingCurve[0].first->ve);
+            Eigen::Vector3d newPos = getCrossPosition(FoldingCurve[0].first, FoldingCurve[1].first, FoldingCurve[0].third, FoldingCurve[0].second);
             FoldingCurve[0].first->p = newPos;
-            FoldingCurve[0].first->p3 = FoldingCurve[0].first->vo->p3 + (newPos - FoldingCurve[0].first->vo->p).norm()/(FoldingCurve[0].first->vo->p - FoldingCurve[0].first->ve->p).norm()
-                    * (FoldingCurve[0].first->ve->p3 - FoldingCurve[0].first->vo->p3);
+            FoldingCurve[0].first->p3 = (newPos - FoldingCurve[0].third->p).norm()/(FoldingCurve[0].third->p - FoldingCurve[0].second->p).norm()
+                    * (FoldingCurve[0].second->p3 - FoldingCurve[0].third->p3) + FoldingCurve[0].third->p3;
         }
         k0 = RevisionVertices::getK(FoldingCurve.end()[-2].first->p, FoldingCurve.end()[-3].first->p, FoldingCurve.back().first->p);
         k1 = RevisionVertices::getK(FoldingCurve.end()[-3].first->p, FoldingCurve.end()[-4].first->p, FoldingCurve.end()[-2].first->p);
@@ -1148,10 +1148,10 @@ bool FoldLine::RevisionCrosPtsPosition(){
         if(abs(k0 - k1) > abs(k1 - k2)){
             std::cout << "back"<<std::endl;
             FoldingCurve.back().first->p = ReviseEndPosition(FoldingCurve.end()[-3].first->p - FoldingCurve.end()[-2].first->p, 2.*k1 - k2);
-            Eigen::Vector3d newPos2 = getCrossPosition(FoldingCurve.back().first, FoldingCurve.end()[-2].first, FoldingCurve.back().first->vo, FoldingCurve.back().first->ve);
+            Eigen::Vector3d newPos2 = getCrossPosition(FoldingCurve.back().first, FoldingCurve.end()[-2].first, FoldingCurve.back().third, FoldingCurve.back().second);
             FoldingCurve.back().first->p = newPos2;
-            FoldingCurve.back().first->p3 = FoldingCurve.back().first->vo->p3 + (newPos2 - FoldingCurve.back().first->vo->p).norm()/
-                    (FoldingCurve.back().first->vo->p - FoldingCurve.back().first->ve->p).norm() * (FoldingCurve.back().first->ve->p3 - FoldingCurve.back().first->vo->p3);
+            FoldingCurve.back().first->p3 = (newPos2 - FoldingCurve.back().third->p).norm()/
+                    (FoldingCurve.back().third->p - FoldingCurve.back().second->p).norm() * (FoldingCurve.back().second->p3 - FoldingCurve.back().third->p3) + FoldingCurve.back().third->p3;
         }
 
     }
@@ -1223,7 +1223,6 @@ void FoldLine::reassinruling(std::shared_ptr<FoldLine>& parent){
             double sa = (v2 - o->p).norm(), sc = (o->p - v->p).norm();
             Eigen::Vector3d v3 = sa/sc * (v->p3 - o->p3) + o->p3;
             std::shared_ptr<CrvPt_FL> P = std::make_shared<CrvPt_FL>(CrvPt_FL(v2, v3, t));
-            P->set(v2, o, v);
             return P;
         }
         return std::shared_ptr<CrvPt_FL>(nullptr);

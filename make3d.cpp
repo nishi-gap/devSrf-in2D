@@ -78,19 +78,20 @@ void Model::deform(){
             poly2.push_back((*itr_r)->o); poly2.push_back((*itr_r)->v); poly2 = SortPolygon(poly2);
             Polygons.push_back(poly2);
         }
-    }
-    Eigen::Translation3d T(Rulings[0]->o->p);
-   Eigen::Transform<double, 3, Eigen::Affine> M = Eigen::Transform<double, 3, Eigen::Affine>::Identity();
-   Eigen::Matrix3d R = Eigen::Matrix3d::Identity(); TMs.push_back(T * R * M);
+    } 
+   Eigen::Transform<double, 3, Eigen::Affine> M = Eigen::Transform<double, 3, Eigen::Affine>::Identity(), R, T;
+   R = Eigen::Matrix3d::Identity();
+   T = Eigen::Translation3d(Rulings[0]->o->p);
+   TMs.push_back(M * R * T);
    for(int i = 1; i < (int)Rulings.size(); i++){
        Eigen::Vector3d axis = (Rulings[i-1]->v->p - Rulings[i-1]->o->p).normalized();
        M = TMs.back();
        T = Eigen::Translation3d(Rulings[i]->o->p - Rulings[i-1]->o->p);
        R = Eigen::AngleAxisd(Color2Angle(Rulings[i-1]->color, ColorPt), axis);
-       Rulings[i]->o->p3_ori = Rulings[i]->o->p3 = T * R * M * Eigen::Vector3d(0,0,0);
-       TMs.push_back(T * R * M);
+       Rulings[i]->o->p3_ori = Rulings[i]->o->p3 = M * R * T * Eigen::Vector3d(0,0,0);
+       TMs.push_back(M * R * T);
        T = Eigen::Translation3d(Rulings[i]->v->p - Rulings[i-1]->o->p);
-       Rulings[i]->v->p3_ori = Rulings[i]->v->p3 = T * R * M * Eigen::Vector3d(0,0,0);
+       Rulings[i]->v->p3_ori = Rulings[i]->v->p3 = M * R * T * Eigen::Vector3d(0,0,0);
    }
 
 
@@ -107,9 +108,10 @@ void Model::deform(){
                         //std::cout << (l->v->p3).transpose() << " , " << (l->v->p3_ori).transpose() << std::endl;
                         //std::cout << "T = " << (T * Eigen::Vector3d(0,0,0)).transpose() << std::endl;
                         //std::cout << "R * T = " << (R * T * Eigen::Vector3d(0,0,0)).transpose() << std::endl;
-                        //std::cout << "M * T = " << (M * T * Eigen::Vector3d(0,0,0)).transpose() << std::endl;
-                        //std::cout << "T * R * M = " << (T * R * M * Eigen::Vector3d(0,0,0)).transpose() << std::endl;
-                        l->v->p3_ori = l->v->p3 = T * R * M * Eigen::Vector3d(0,0,0);
+                        //std::cout << "M * T = " << (M * R * T) << std::endl;
+                        //std::cout << "T * R * M = " << ((M * (R * T)) * Eigen::Vector3d(0,0,0)).transpose() << std::endl;
+                        l->v->p3_ori = l->v->p3 = (M * R * T) * Eigen::Vector3d(0,0,0);
+                        //std::cout << "res  " << (l->v->p3).transpose() << " , " << (l->v->p3_ori).transpose() << std::endl;
                         break;
                     }else{
                         T = Eigen::Translation3d(l->v->p - Rulings[i]->o->p);
@@ -139,20 +141,20 @@ std::shared_ptr<CrvPt_FL> getCrossPoint(std::vector<Eigen::Vector3d>& CtrlPts,  
     std::vector<double>arcT = BezierClipping(CtrlPts, v, o, dim);
     for(auto&t: arcT){
         if(t < 0 || 1 < t){std::cout<<"t is not correct value " << t << std::endl; continue;}
-        Eigen::Vector3d v2{0,0,0};
+        Eigen::Vector3d v2(0,0,0);
         for (int i = 0; i < int(CtrlPts.size()); i++) v2 += MathTool::BernsteinBasisFunc(dim, i, t) * CtrlPts[i];
         if(!MathTool::is_point_on_line(v2, v->p, o->p))continue;
-        double sa = (v2 - o->p).norm(), sc = (o->p - v->p).norm();
-        Eigen::Vector3d v3 = sa/sc * (v->p3 - o->p3) + o->p3;
+        double sa = (v2 - o->p).norm(), sc = (v->p - o->p).norm();
+        Eigen::Vector3d v3 = sa/sc * (v->p3 - o->p3) + o->p3;    
         std::shared_ptr<CrvPt_FL> P = std::make_shared<CrvPt_FL>(CrvPt_FL(v2, v3, t));
-        P->set(v2, o, v);
+        std::cout <<"diff 2d, 3d  : " << (P->p - o->p).norm() << " , " << (P->p3 - o->p3).norm() << ", " << P->p.transpose() << " ,  " << P->p3.transpose() <<  std::endl;
         return P;
     }
     return std::shared_ptr<CrvPt_FL>(nullptr);
 }
 
 void Model::UpdateFLOrder(int dim){
-    Eigen::Vector3d UpVec{0,-1,0};
+    Eigen::Vector3d UpVec(0,-1,0);
     std::vector<std::shared_ptr<FoldLine>> hasFoldingCurve;
     std::shared_ptr<Line> btm = outline->Lines.front();//一番下の辺を探索
 
@@ -311,8 +313,8 @@ void Model:: addConstraint(QPointF& cursol, int type, int gridsize, Eigen::Vecto
         return;
     }
     Eigen::Vector3d p = SetOnGrid(cursol, gridsize);
-    if(axis[0] == Eigen::Vector3d{-1,-1,0}){axis[0] = p; return;}
-    else if(axis[1] == Eigen::Vector3d{-1,-1,0} && axis[0] != p)axis[1] = p;
+    if(axis[0] == Eigen::Vector3d(-1,-1,0)){axis[0] = p; return;}
+    else if(axis[1] == Eigen::Vector3d(-1,-1,0) && axis[0] != p)axis[1] = p;
     Eigen::Vector3d V = (axis[1] - axis[0]).normalized();
     Eigen::Vector3d N(-V.y(), V.x(), 0);
     std::vector<std::shared_ptr<Vertex>> SymPts;
@@ -390,10 +392,10 @@ void Model::ConnectOutline(QPointF& cursol, double gridsize){
 void Model::LinearInterPolation(const std::vector<std::shared_ptr<Line>>& path){
     if(path.size() < 2)return;
 
-    Eigen::Vector3d befcenter = Eigen::Vector3d{-1,-1,-1}, center;
+    Eigen::Vector3d befcenter = Eigen::Vector3d(-1,-1,-1), center;
     double len = 0.0;
     for(auto& l: path){
-        if(befcenter == Eigen::Vector3d{-1,-1,-1}){         
+        if(befcenter == Eigen::Vector3d(-1,-1,-1)){
             befcenter = (l->v->p + l->o->p)/2.0;
             continue;
         }     
@@ -402,7 +404,7 @@ void Model::LinearInterPolation(const std::vector<std::shared_ptr<Line>>& path){
         befcenter = center;
     }
     double r = (GradationPoints[1]->color - GradationPoints[0]->color)/len;
-    befcenter = Eigen::Vector3d{-1,-1,-1};
+    befcenter = Eigen::Vector3d(-1,-1,-1);
     std::shared_ptr<Line> bef = std::shared_ptr<Line>(nullptr);
     for(auto&l : path){
         if(bef == nullptr){
@@ -636,8 +638,8 @@ void Model::Check4Param(int curveDimention, std::vector<int>& deleteIndex){
     crvs.shrink_to_fit();
     refCrv.shrink_to_fit();
     GradationPoints.clear();
-    Axis4Const[0] = Eigen::Vector3d{-1,-1,0};
-    Axis4Const[1] = Eigen::Vector3d{-1,-1,0};
+    Axis4Const[0] = Eigen::Vector3d(-1,-1,0);
+    Axis4Const[1] = Eigen::Vector3d(-1,-1,0);
     Connect2Vertices[0] = std::shared_ptr<Vertex>(nullptr);
     Connect2Vertices[1] = std::shared_ptr<Vertex>(nullptr);
 }

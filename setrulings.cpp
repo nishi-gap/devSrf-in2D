@@ -16,13 +16,14 @@ std::shared_ptr<Vertex> Vertex::deepCopy(){
     return std::make_shared<Vertex>(p, p3, deformed);
 }
 
+/*
 void CrvPt_FL::set(Eigen::Vector3d _p, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& e){
     double sa = (_p - o->p).norm(), sc = (o->p, e->p).norm();
     ve = e; vo = o;
-    p3 = sa/sc * (e->p3 - o->p3) + o->p3;
+    //p3 = sa/sc * (e->p3 - o->p3) + o->p3;
     IsValid = true;
     this->p = _p;
-}
+}*/
 
 Vertex4d::Vertex4d(const std::shared_ptr<CrvPt_FL>& v, const std::shared_ptr<Vertex>& v2, const std::shared_ptr<Vertex>& v3){
     first = v; second = v2; third = v3; IsCalc = true;
