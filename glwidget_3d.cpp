@@ -97,7 +97,16 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
         auto SplitPolygon = [](std::vector<std::vector<std::shared_ptr<Vertex>>>& Polygons, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
             for(auto& Poly :Polygons){
                 for(int i = 0; i < (int)Poly.size(); i++){
-                    if(std::find(Poly.begin(), Poly.end(), v) != Poly.end())break;
+                    auto it_v = std::find(Poly.begin(), Poly.end(), v), it_o = std::find(Poly.begin(), Poly.end(), o);
+                    if(it_v != Poly.end() && it_o != Poly.end()){
+                        int i_min = std::min(std::distance(Poly.begin(), it_v), std::distance(Poly.begin(), it_o)), i_max = std::max(std::distance(Poly.begin(), it_v), std::distance(Poly.begin(), it_o));
+                        std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
+                        if(abs((int)poly2.size() - (int)Poly.size()) == 2)return;
+                        Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
+                        Polygons.push_back(poly2);
+                        return;
+                    }
+                    if(it_v != Poly.end())break;
                     if(!MathTool::is_point_on_line(v->p, Poly[i]->p, Poly[(i + 1) % (int)Poly.size()]->p))continue;
                     Poly.insert(Poly.begin() + i + 1, v);
                     break;
