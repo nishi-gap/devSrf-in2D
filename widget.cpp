@@ -171,9 +171,7 @@ void MainWindow::changeToleranceValue_Spin(double val){
 
 void MainWindow::StartOptimization(){
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
-    auto fl = ui->glWid2dim->model->FL[0];
-    double maxSpin = ui->TolValue->maximum(), maxSlider = ui->ToleranceValue->maximum();
-    double tol = ui->TolValue->value() * maxSpin / maxSlider;
+    double tol = ui->TolValue->value();
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
     bool res = ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, false);
     fold_Sm();

@@ -1100,7 +1100,9 @@ void FoldLine::SimplifyModel(double tol){
     }
         for(int j = Vertices_Ind[i] + 1; j < Vertices_Ind[i+1]; j++){
             FoldingCurve[j].first->p = calcCrossPoint_2Vertex(FoldingCurve[j].second, FoldingCurve[j].third, FoldingCurve[Vertices_Ind[i]].first, FoldingCurve[Vertices_Ind[i+1]].first);
-            FoldingCurve[j].first->p3 = calcTargetDistanceOnPlane(FoldingCurve[j].first->p, FoldingCurve[ind_root].first, FoldingCurve[ind_branch].third, FoldingCurve[ind_branch].second);
+            //FoldingCurve[j].first->p3 = calcTargetDistanceOnPlane(FoldingCurve[j].first->p, FoldingCurve[ind_root].first, FoldingCurve[ind_branch].third, FoldingCurve[ind_branch].second);
+            double s = (FoldingCurve[j].first->p - FoldingCurve[Vertices_Ind[i]].first->p).norm()/(FoldingCurve[Vertices_Ind[i+1]].first->p - FoldingCurve[Vertices_Ind[i]].first->p).norm();
+            FoldingCurve[j].first->p3 = s * (FoldingCurve[Vertices_Ind[i+1]].first->p3 - FoldingCurve[Vertices_Ind[i]].first->p3)  + FoldingCurve[Vertices_Ind[i]].first->p3;
             FoldingCurve[j].third->p3 = calcTargetDistanceOnPlane(FoldingCurve[j].third->p, FoldingCurve[ind_root].first, FoldingCurve[ind_branch].first, FoldingCurve[ind_branch].second);
             FoldingCurve[j].second->p3 = calcTargetDistanceOnPlane(FoldingCurve[j].second->p, FoldingCurve[ind_root].first, FoldingCurve[ind_branch].first, FoldingCurve[ind_branch].second);
 
