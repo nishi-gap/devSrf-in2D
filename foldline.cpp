@@ -167,8 +167,7 @@ namespace RevisionVertices{
 FoldLine::FoldLine(PaintTool _type)
 {
     CtrlPts.clear();
-    int crvNum = 300;
-    CurvePts.resize(crvNum);
+    curveNum = 300;
     color = 0;
     type = _type;
     a_flap = -1;
@@ -220,7 +219,6 @@ bool FoldLine::addCtrlPt(Eigen::Vector3d& p, int dim){
 //type == 1 b-spline
 bool FoldLine::setCurve(int dim){
     using namespace MathTool;
-    int crvPtNum = CurvePts.size();
     if(type == PaintTool::FoldLine_line){
         if((int)CtrlPts.size() < 2)return false;
         while((int)CtrlPts.size() != 2){
@@ -228,8 +226,8 @@ bool FoldLine::setCurve(int dim){
             CtrlPts.shrink_to_fit();
         }
         Eigen::Vector3d V = CtrlPts[1] - CtrlPts[0];
-        for(int i = 0; i < crvPtNum; i++){
-            CurvePts[i] = (double)i/(double)(crvPtNum - 1) * V + CtrlPts[0];
+        for(int i = 0; i < curveNum; i++){
+            CurvePts.push_back((double)i/(double)(curveNum - 1) * V + CtrlPts[0]);
         }
     }
     else if(type == PaintTool::FoldLine_arc){
@@ -241,10 +239,10 @@ bool FoldLine::setCurve(int dim){
         double phi = acos(v.dot(v2));
         Eigen::Vector3d axis = v.cross(v2);
         Eigen::Translation3d T(CtrlPts[0]), invT(-CtrlPts[0]);// 平行移動ベクトルを作成
-        for(int i = 0; i < crvPtNum; i++){
-            Eigen::AngleAxisd R = Eigen::AngleAxisd(phi * (double)i/(double)crvPtNum, axis); // 回転行列を作成
+        for(int i = 0; i < curveNum; i++){
+            Eigen::AngleAxisd R = Eigen::AngleAxisd(phi * (double)i/(double)curveNum, axis); // 回転行列を作成
             Eigen::Transform<double, 3, Eigen::Affine> transform = T * R * invT;// Transform行列を作成
-            CurvePts[i] = transform * CtrlPts[1];
+            CurvePts.push_back(transform * CtrlPts[1]);
         }
 
     }
@@ -253,11 +251,11 @@ bool FoldLine::setCurve(int dim){
         if((int)CtrlPts.size() > dim + 1)CtrlPts.pop_back();
         double t = 0.0;
         Eigen::Vector3d v;
-        for(int n = 0; n < crvPtNum; n++){
+        for(int n = 0; n < curveNum; n++){
             v = Eigen::Vector3d(0,0,0);
             for (int i = 0; i < int(CtrlPts.size()); i++)  v += MathTool::BernsteinBasisFunc(dim, i, t) * CtrlPts[i];  
-            CurvePts[n] = v;
-            t += 1/(double)crvPtNum;
+            CurvePts.push_back(v);
+            t += 1/(double)curveNum;
         }
     }
 
@@ -1241,7 +1239,8 @@ void FoldLine::reassinruling(std::shared_ptr<FoldLine>& parent){
     int dim = CtrlPts.size() - 1;
     for(auto& c : parent->FoldingCurve){
         if(c == parent->FoldingCurve.front() || c == parent->FoldingCurve.back())continue;
-        auto p = getCrossPoint(CtrlPts, c.first, c.second, dim), p2 = getCrossPoint(CtrlPts, c.first, c.third, dim);
+        std::cout << c.first->p.transpose() << "  ,  " << c.second->p.transpose() << "  ,  " << c.third->p.transpose() << std::endl;
+        auto p = getCrossPoint(CtrlPts, c.first, c.second, dim);
         if(p != nullptr){
             FoldingCurve.push_back(Vertex4d(p, c.second, c.first));
             c.second = p;
@@ -1303,7 +1302,6 @@ void FoldLine::drawRulingInAllAngles(std::vector<std::array<Eigen::Vector3d, 2>>
 }
 
 void FoldLine::applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincener, double a){
-    a = (a == -1)? a_flap: a;
     if(FoldingCurve.empty() && a_flap == -1)return;
     if(!begincener)_FoldingAAAMethod(FoldingCurve, Poly_V, a);
     else _FoldingAAAMethod_center(FoldingCurve, Poly_V, a);

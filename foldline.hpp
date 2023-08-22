@@ -16,6 +16,7 @@ class FoldLine
 public:
     FoldLine(PaintTool _type);
     std::vector<Eigen::Vector3d>CtrlPts;
+    double a_flap;
     bool isbend();
     bool addCtrlPt(Eigen::Vector3d& p, int dim);
     bool delCtrlPt(Eigen::Vector3d& p, int dim, std::shared_ptr<OUTLINE>& outline);
@@ -40,9 +41,10 @@ public:
 private:
     double color;
     bool setCurve(int dim);
+    int curveNum;
     PaintTool type;
     std::vector<std::shared_ptr<CrvPt_FL>> Points_On_Curve;
-    double a_flap;
+
 };
 
 #endif // FOLDLINE_H

@@ -262,7 +262,7 @@ bool Model::AssignRuling(int dim, bool begincenter){
     q.push(root);
     while (!q.empty()) {
         auto cur = q.front(); q.pop();
-        if(cur->data->isbend())cur->data->applyAAAMethod(Poly_V, begincenter);
+        if(cur->data->isbend())cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap);
         for (const auto& child : cur->children){
             if(child != nullptr){
                 child->data->reassinruling(cur->data);
