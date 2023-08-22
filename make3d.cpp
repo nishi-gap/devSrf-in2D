@@ -262,9 +262,17 @@ bool Model::AssignRuling(int dim, bool begincenter){
     q.push(root);
     while (!q.empty()) {
         auto cur = q.front(); q.pop();
+        std::cout << "before " << MathTool::rad2deg(cur->data->a_flap) << std::endl;
+        for(auto&c: cur->data->FoldingCurve)
+         std::cout << c.first->p.transpose() << "  ,  " << c.second->p.transpose() << "  ,  " << c.third->p.transpose() << std::endl;
         if(cur->data->isbend())cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap);
+        std::cout << "after " << MathTool::rad2deg(cur->data->a_flap) << std::endl;
+        for(auto&c: cur->data->FoldingCurve)
+         std::cout << c.first->p.transpose() << "  ,  " << c.second->p.transpose() << "  ,  " << c.third->p.transpose() << std::endl;
+        std::cout <<"/////////////////////////////"<<std::endl;
         for (const auto& child : cur->children){
             if(child != nullptr){
+
                 child->data->reassinruling(cur->data);
                 q.push(child);
             }
@@ -281,8 +289,8 @@ bool Model::SplitRulings(int dim){
     for(auto& r: Rulings){
         std::shared_ptr<CrvPt_FL> P = getCrossPoint(root->data->CtrlPts, r->v, r->o, dim);
         if(P!= nullptr){
-            if(UpVec.dot((r->v->p - r->o->p).normalized()) > 0)root->data->FoldingCurve.push_back(Vertex4d(P, r->v, r->o));
-            else root->data->FoldingCurve.push_back(Vertex4d(P, r->o, r->v));
+            if(UpVec.dot((r->v->p - r->o->p).normalized()) > 0)root->data->FoldingCurve.push_back(Vertex4d(P, r->v->deepCopy(), r->o->deepCopy()));
+            else root->data->FoldingCurve.push_back(Vertex4d(P, r->o->deepCopy(), r->v->deepCopy()));
         }
     }
     root->data->SortCurve();

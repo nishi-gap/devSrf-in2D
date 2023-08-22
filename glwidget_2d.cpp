@@ -305,9 +305,6 @@ void GLWidget_2D::paintGL(){
     {
         if(visibleCurve){
             for(auto&fl: model->FL){
-                glBegin(GL_LINE_STRIP);
-                glColor3d(0,0,0); for(auto&v: fl->CurvePts)glVertex2d(v.x(), v.y());
-                glEnd();
                 glColor3d(0,0.3,0.3);
                 glPointSize(5);
                 for(auto&v: fl->CtrlPts){
@@ -315,6 +312,12 @@ void GLWidget_2D::paintGL(){
                     glVertex2d(v.x(),v.y());
                     glEnd();
                 }
+
+                if(fl->CurvePts.empty())continue;
+                glBegin(GL_LINE_STRIP);
+                glColor3d(0,0,0);
+                for(auto&v: fl->CurvePts)glVertex2d(v.x(), v.y());
+                glEnd();
 
                 glColor3d(0,1,0);
                 glPointSize(5);
@@ -564,7 +567,7 @@ void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
     if(e->key() == Qt::Key_A) visibleCurve = !visibleCurve;
     if(e->key() == Qt::Key_2){
         if(model->FL.empty())return;
-        res = model->AssignRuling(curveDimention, true);
+        res = model->AssignRuling(curveDimention, false);
         if(res) emit foldingSignals();
     }
     if(e->key() == Qt::Key_Q){

@@ -170,6 +170,7 @@ FoldLine::FoldLine(PaintTool _type)
     curveNum = 300;
     color = 0;
     type = _type;
+    CurvePts.clear();
     a_flap = -1;
 }
 
@@ -219,6 +220,7 @@ bool FoldLine::addCtrlPt(Eigen::Vector3d& p, int dim){
 //type == 1 b-spline
 bool FoldLine::setCurve(int dim){
     using namespace MathTool;
+    CurvePts.clear();
     if(type == PaintTool::FoldLine_line){
         if((int)CtrlPts.size() < 2)return false;
         while((int)CtrlPts.size() != 2){
@@ -1239,7 +1241,6 @@ void FoldLine::reassinruling(std::shared_ptr<FoldLine>& parent){
     int dim = CtrlPts.size() - 1;
     for(auto& c : parent->FoldingCurve){
         if(c == parent->FoldingCurve.front() || c == parent->FoldingCurve.back())continue;
-        std::cout << c.first->p.transpose() << "  ,  " << c.second->p.transpose() << "  ,  " << c.third->p.transpose() << std::endl;
         auto p = getCrossPoint(CtrlPts, c.first, c.second, dim);
         if(p != nullptr){
             FoldingCurve.push_back(Vertex4d(p, c.second, c.first));
@@ -1305,7 +1306,10 @@ void FoldLine::applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V
     if(FoldingCurve.empty() && a_flap == -1)return;
     if(!begincener)_FoldingAAAMethod(FoldingCurve, Poly_V, a);
     else _FoldingAAAMethod_center(FoldingCurve, Poly_V, a);
-    if(RulingsCrossed2(FoldingCurve) < 1e-9)a_flap = a;
+    _FoldingAAAMethod(FoldingCurve, Poly_V, a);
+    if(RulingsCrossed2(FoldingCurve) < 1e-9){
+        a_flap = a;
+    }
     return;
 }
 
