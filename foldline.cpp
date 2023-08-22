@@ -171,6 +171,7 @@ FoldLine::FoldLine(PaintTool _type)
     CurvePts.resize(crvNum);
     color = 0;
     type = _type;
+    a_flap = -1;
 }
 
 void FoldLine::SortCurve(bool ascending){
@@ -367,6 +368,11 @@ double RulingsCrossed2(std::vector<Vertex4d>& FoldingCurve){
         }
     }
     return f;
+}
+
+bool FoldLine::isbend(){
+    double fr = RulingsCrossed2(FoldingCurve);
+    return (fr < 1e-9 && a_flap != -1)? true: false;
 }
 
 double Fruling(const std::vector<double> &a, std::vector<double> &grad, void* f_data)
@@ -1058,6 +1064,7 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
         return false;
     }
    _FoldingAAAMethod(FoldingCurve, Poly_V, a2);
+   a_flap = a2;
     std::cout << "result : smaller = " << MathTool::rad2deg(a2) << ",  f_bend = " << Fbend2(FoldingCurve) << "  ,  f_paralell = " << Fparallel(FoldingCurve) << std::endl;
     std::cout << "finish"<<std::endl;
     return true;
@@ -1223,8 +1230,8 @@ void FoldLine::reassinruling(std::shared_ptr<FoldLine>& parent){
             Eigen::Vector3d v2(0,0,0);
             for (int i = 0; i < int(CtrlPts.size()); i++) v2 += MathTool::BernsteinBasisFunc(dim, i, t) * CtrlPts[i];
             if(!MathTool::is_point_on_line(v2, v->p, o->p))continue;
-            double sa = (v2 - o->p).norm(), sc = (o->p - v->p).norm();
-            Eigen::Vector3d v3 = sa/sc * (v->p3 - o->p3) + o->p3;
+            double s = (v2 - o->p).norm()/(o->p - v->p).norm();
+            Eigen::Vector3d v3 = s * (v->p3 - o->p3) + o->p3;
             std::shared_ptr<CrvPt_FL> P = std::make_shared<CrvPt_FL>(CrvPt_FL(v2, v3, t));
             return P;
         }
@@ -1234,7 +1241,7 @@ void FoldLine::reassinruling(std::shared_ptr<FoldLine>& parent){
     int dim = CtrlPts.size() - 1;
     for(auto& c : parent->FoldingCurve){
         if(c == parent->FoldingCurve.front() || c == parent->FoldingCurve.back())continue;
-        auto p = getCrossPoint(CtrlPts, c.first, c.second, dim);
+        auto p = getCrossPoint(CtrlPts, c.first, c.second, dim), p2 = getCrossPoint(CtrlPts, c.first, c.third, dim);
         if(p != nullptr){
             FoldingCurve.push_back(Vertex4d(p, c.second, c.first));
             c.second = p;
@@ -1295,11 +1302,13 @@ void FoldLine::drawRulingInAllAngles(std::vector<std::array<Eigen::Vector3d, 2>>
 
 }
 
-void FoldLine::applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double a, bool begincener){
-    if(FoldingCurve.empty())return;
-     if(!begincener)_FoldingAAAMethod(FoldingCurve, Poly_V, a);
-     else _FoldingAAAMethod_center(FoldingCurve, Poly_V, a);
-     return;
+void FoldLine::applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincener, double a){
+    a = (a == -1)? a_flap: a;
+    if(FoldingCurve.empty() && a_flap == -1)return;
+    if(!begincener)_FoldingAAAMethod(FoldingCurve, Poly_V, a);
+    else _FoldingAAAMethod_center(FoldingCurve, Poly_V, a);
+    if(RulingsCrossed2(FoldingCurve) < 1e-9)a_flap = a;
+    return;
 }
 
 inline double update_flapangle(double a, const Eigen::Vector3d& befN, const Eigen::Vector3d& SrfN, const Eigen::Vector3d& e){

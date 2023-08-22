@@ -184,10 +184,6 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
 
     for(auto& polygon: Polygons){
         auto p_sort = SortPolygon(polygon);
-        std::cout <<"\\\\\\\\\\\\\\\\\\\\\\\\\\"<<std::endl;
-        for(auto&v: polygon){
-            std::cout <<"2d = " << v->p.transpose() << " , 3d = " << v->p3.transpose() << std::endl;
-        }std::cout << "==============="<<std::endl;
         if(!Rulings.empty())PlanarityColor.push_back(Planerity(polygon, Surface));
         else PlanarityColor.push_back(0);
         std::vector<Eigen::Vector3d> vertices;

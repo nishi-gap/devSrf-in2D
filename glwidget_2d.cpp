@@ -564,7 +564,7 @@ void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
     if(e->key() == Qt::Key_A) visibleCurve = !visibleCurve;
     if(e->key() == Qt::Key_2){
         if(model->FL.empty())return;
-        res = model->AssignRuling(curveDimention);
+        res = model->AssignRuling(curveDimention, true);
         if(res) emit foldingSignals();
     }
     if(e->key() == Qt::Key_Q){

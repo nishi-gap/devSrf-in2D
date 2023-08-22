@@ -247,20 +247,22 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
 
 void Model::applyAAAMethod(double a, bool begincenter){
     auto Poly_V = outline->getVertices();
-    FL[FoldCurveIndex]->applyAAAMethod(Poly_V, a, begincenter);
+    FL[FoldCurveIndex]->applyAAAMethod(Poly_V, begincenter, a);
 }
 
 bool Model::RevisionCrosPtsPosition(){return FL[FoldCurveIndex]->RevisionCrosPtsPosition();}
 
-bool Model::AssignRuling(int dim){
+bool Model::AssignRuling(int dim, bool begincenter){
     UpdateFLOrder(dim);
     SplitRulings(dim);
+    auto Poly_V = outline->getVertices();
     auto root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
     std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>>q;
     q.push(root);
     while (!q.empty()) {
         auto cur = q.front(); q.pop();
+        if(cur->data->isbend())cur->data->applyAAAMethod(Poly_V, begincenter);
         for (const auto& child : cur->children){
             if(child != nullptr){
                 child->data->reassinruling(cur->data);

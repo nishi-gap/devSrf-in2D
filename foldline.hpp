@@ -16,6 +16,7 @@ class FoldLine
 public:
     FoldLine(PaintTool _type);
     std::vector<Eigen::Vector3d>CtrlPts;
+    bool isbend();
     bool addCtrlPt(Eigen::Vector3d& p, int dim);
     bool delCtrlPt(Eigen::Vector3d& p, int dim, std::shared_ptr<OUTLINE>& outline);
     bool moveCtrlPt(Eigen::Vector3d& p, int movePtIndex);
@@ -32,7 +33,7 @@ public:
     void reassinruling(std::shared_ptr<FoldLine>& parent);
     std::vector<Eigen::Vector3d> point;
     std::vector<Vertex4d> FoldingCurve;
-    void applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double a, bool begincenter);
+    void applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincenter, double a = -1);
     std::vector<std::array<Eigen::Vector3d, 2>>  AllRulings;
     void drawRulingInAllAngles(std::vector<std::array<Eigen::Vector3d, 2>>& _Rulings);
 
@@ -41,6 +42,7 @@ private:
     bool setCurve(int dim);
     PaintTool type;
     std::vector<std::shared_ptr<CrvPt_FL>> Points_On_Curve;
+    double a_flap;
 };
 
 #endif // FOLDLINE_H
