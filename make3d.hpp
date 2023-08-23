@@ -42,10 +42,11 @@ public:
     void modifyFoldingCurvePositionOn3d();
     void ChangeFoldLineState();
     void applyAAAMethod(double a, bool begincenter);
+    void SimplifyModel(double tol);
     bool RevisionCrosPtsPosition();
     void SortFoldingCurve(int dim);
     bool BendingModel(double wb, double wp, int dim, double tol, bool ConstFunc = true);
-    bool AssignRuling(int dim, bool begincenter);
+    bool AssignRuling(int dim, double tol, bool begincenter);
     std::vector<Eigen::Vector3d> resPts;
 
     //Smooth Surface

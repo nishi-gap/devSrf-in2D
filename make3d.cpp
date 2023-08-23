@@ -156,6 +156,7 @@ void Model::UpdateFLOrder(int dim){
     std::vector<std::shared_ptr<FoldLine>> hasFoldingCurve;
     std::shared_ptr<Line> btm = outline->Lines.front();//一番下の辺を探索
 
+    for(auto&l: outline->Lines)l->v->p3 = l->v->p3_ori;
     for(auto&l: outline->Lines){
         if(((l->v->p + l->o->p)/2.0).y() > ((btm->v->p + btm->o->p)/2.0).y())btm = l;
     }
@@ -211,7 +212,6 @@ void Model::UpdateFLOrder(int dim){
                     }
                 }
             }
-
         }
         i = (i + 1) % (int)outline->Lines.size();
     }while(i != btm_i);
@@ -252,9 +252,10 @@ void Model::applyAAAMethod(double a, bool begincenter){
 
 bool Model::RevisionCrosPtsPosition(){return FL[FoldCurveIndex]->RevisionCrosPtsPosition();}
 
-bool Model::AssignRuling(int dim, bool begincenter){
+bool Model::AssignRuling(int dim, double tol, bool begincenter){
     UpdateFLOrder(dim);
     SplitRulings(dim);
+
     auto Poly_V = outline->getVertices();
     auto root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
@@ -262,17 +263,13 @@ bool Model::AssignRuling(int dim, bool begincenter){
     q.push(root);
     while (!q.empty()) {
         auto cur = q.front(); q.pop();
-        std::cout << "before " << MathTool::rad2deg(cur->data->a_flap) << std::endl;
-        for(auto&c: cur->data->FoldingCurve)
-         std::cout << c.first->p.transpose() << "  ,  " << c.second->p.transpose() << "  ,  " << c.third->p.transpose() << std::endl;
-        if(cur->data->isbend())cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap);
-        std::cout << "after " << MathTool::rad2deg(cur->data->a_flap) << std::endl;
-        for(auto&c: cur->data->FoldingCurve)
-         std::cout << c.first->p.transpose() << "  ,  " << c.second->p.transpose() << "  ,  " << c.third->p.transpose() << std::endl;
-        std::cout <<"/////////////////////////////"<<std::endl;
+        if(cur->data->isbend()){
+            cur->data->SimplifyModel(tol);
+            cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap);
+            cur->data->SimpleSmooothSrf(Poly_V);
+        }
         for (const auto& child : cur->children){
             if(child != nullptr){
-
                 child->data->reassinruling(cur->data);
                 q.push(child);
             }
@@ -295,6 +292,11 @@ bool Model::SplitRulings(int dim){
     }
     root->data->SortCurve();
     return true;
+}
+
+void Model::SimplifyModel(double tol){
+    if(!(0 <= FoldCurveIndex < (int)FL.size()) || FL[FoldCurveIndex]->FoldingCurve.empty())return;
+    FL[FoldCurveIndex]->SimplifyModel(tol);
 }
 
 void Model::modifyFoldingCurvePositionOn3d(){

@@ -150,7 +150,7 @@ void MainWindow::changeToleranceValue_Slider(int val){
     ui->glWid2dim->VisualizeMVColor(true);
     double tol = maxSpin * (double)val/(double)maxSlider;
     ui->TolValue->setValue(tol);
-    ui->glWid2dim->model->FL[0]->SimplifyModel(tol);
+    ui->glWid2dim->model->SimplifyModel(tol);
     auto fl = ui->glWid2dim->model->FL[0];
     ui->glWid2dim->update();
      ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
@@ -304,9 +304,15 @@ void MainWindow::ReassinColor(){
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *e){
-    static bool switchDraw = false;
     ui->glWid3dim->receiveKeyEvent(e);
     ui->glWid2dim->receiveKeyEvent(e);
+    if(e->key() == Qt::Key_2){
+        if(ui->glWid2dim->model->FL.empty())return;
+        double tol = ui->TolValue->value();
+        ui->glWid2dim->model->AssignRuling(3, tol, false);
+        ui->glWid2dim->update();
+        fold_Sm();
+    }
     if(e->key() == Qt::Key_W){
         if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
         auto Poly_V = ui->glWid2dim->model->outline->getVertices();

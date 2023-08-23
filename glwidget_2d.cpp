@@ -565,11 +565,7 @@ void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
     bool res;
     if(e->key() == Qt::Key_V)eraseVec2d = !eraseVec2d;
     if(e->key() == Qt::Key_A) visibleCurve = !visibleCurve;
-    if(e->key() == Qt::Key_2){
-        if(model->FL.empty())return;
-        res = model->AssignRuling(curveDimention, false);
-        if(res) emit foldingSignals();
-    }
+
     if(e->key() == Qt::Key_Q){
         res = model->RevisionCrosPtsPosition();
         if(res) emit foldingSignals();

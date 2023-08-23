@@ -1240,10 +1240,15 @@ void FoldLine::reassinruling(std::shared_ptr<FoldLine>& parent){
     if(parent->FoldingCurve.empty() || FoldingCurve.empty())return;
     int dim = CtrlPts.size() - 1;
     for(auto& c : parent->FoldingCurve){
-        if(c == parent->FoldingCurve.front() || c == parent->FoldingCurve.back())continue;
-        auto p = getCrossPoint(CtrlPts, c.first, c.second, dim);
+        std::shared_ptr<CrvPt_FL> p = getCrossPoint(CtrlPts, c.first, c.second, dim);
         if(p != nullptr){
-            FoldingCurve.push_back(Vertex4d(p, c.second, c.first));
+            if(c == parent->FoldingCurve.front() || c == parent->FoldingCurve.back()){
+                for(auto&fc: FoldingCurve){
+                    if(MathTool::is_point_on_line(p->p, fc.first->p, fc.second->p)){
+                        fc.third = fc.first; fc.first = p; fc.second = c.second;
+                    }
+                }
+            }else FoldingCurve.push_back(Vertex4d(p, c.second, c.first));
             c.second = p;
         }
     }
@@ -1536,7 +1541,7 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, const std::vector<st
         }else{
             int j;
             for(j = 0; j < (int)Vertices_Ind.size(); j++){
-                if(FoldingCurve[Vertices_Ind[j]].second == v_clst)break;
+                if(FoldingCurve[Vertices_Ind[j]].second->p == v_clst->p)break;
             }
             if(j == (int)Vertices_Ind.size())std::cout <<"can't find correct edge right" << std::endl;
             else{
@@ -1564,7 +1569,7 @@ void _FoldingAAAMethod(std::vector<Vertex4d>& FoldingCurve, const std::vector<st
         }else{
             int j;
             for(j = 0; j < (int)Vertices_Ind.size(); j++){
-                if(FoldingCurve[Vertices_Ind[j]].second == v_clst)break;
+                if(FoldingCurve[Vertices_Ind[j]].second->p == v_clst->p)break;
             }
             if(j == (int)Vertices_Ind.size())std::cout <<"can't find correct edge right" << std::endl;
             else{
