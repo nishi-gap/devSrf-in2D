@@ -79,6 +79,7 @@ public slots:
 
     void changeToleranceValue_Slider(int val);
     void changeToleranceValue_Spin(double val);
+    void sendFoldingParam(double &tol, bool &begincenter);
 
     void ReassinColor();
 

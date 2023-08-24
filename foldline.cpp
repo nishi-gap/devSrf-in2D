@@ -201,9 +201,10 @@ bool FoldLine::delCtrlPt(Eigen::Vector3d& p, int dim, std::shared_ptr<OUTLINE>& 
     }
 }
 
-bool FoldLine::moveCtrlPt(Eigen::Vector3d& p, int movePtIndex){
+bool FoldLine::moveCtrlPt(Eigen::Vector3d& p, int movePtIndex, int dim){
     if((int)CtrlPts.size() < movePtIndex || movePtIndex < 0)return false;
     CtrlPts[movePtIndex] = p;
+    setCurve(dim);
     if(FoldingCurve.empty())return false;
     return true;
 
@@ -718,7 +719,7 @@ double RevisionVertices::Minimize_PlanaritySrf(const std::vector<double>& X, std
     return f;
 }
 
-bool FoldLine::SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v){
+bool FoldLine::SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v, const std::vector<std::shared_ptr<FoldLine>>& FL){
 
     auto getV = [](const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& x, const std::shared_ptr<Vertex>& o2, const std::shared_ptr<Vertex>& x2)->std::shared_ptr<Vertex>{
         if(IsParallel(o, x, o2, x2))return std::shared_ptr<Vertex>(nullptr);
@@ -762,14 +763,26 @@ bool FoldLine::SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly
                     r3d = (FoldingCurve[Vertices_Ind[j]].second->p3 - FoldingCurve[Vertices_Ind[j]].first->p3).normalized();
                 }
             }
-
-            Eigen::Vector3d p;
+            
+            Eigen::Vector3d v2, p_clst;
             for(int k = 0; k < (int)Poly_v.size(); k++){
-                p = MathTool::calcCrossPoint_2Vector(FoldingCurve[i].first->p, 1000.0 * r2d + FoldingCurve[i].first->p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p);
-                if(MathTool::is_point_on_line(p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p) && r2d.dot(p - FoldingCurve[i].first->p) > 0)break;
+                v2 = MathTool::calcCrossPoint_2Vector(FoldingCurve[i].first->p, 1000.0 * r2d + FoldingCurve[i].first->p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p);
+                if(MathTool::is_point_on_line(v2, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p) && r2d.dot(v2 - FoldingCurve[i].first->p) > 0) p_clst = v2;
             }
-            FoldingCurve[i].second->p = p;
-            FoldingCurve[i].second->p3 = (FoldingCurve[i].second->p - FoldingCurve[i].first->p).norm() * r3d + FoldingCurve[i].first->p3;
+            std::shared_ptr<Vertex> r2d_ptr = std::make_shared<Vertex>(1000.0 * r2d + FoldingCurve[i].first->p), p_ptr = std::make_shared<Vertex>(FoldingCurve[i].first->p);
+            for(auto&fc: FL){
+                if(fc == shared_from_this())continue;
+                std::vector<double>arcT = BezierClipping(fc->CtrlPts, r2d_ptr, p_ptr, 3);
+                for(auto&t: arcT){
+                    if(t < 0 || 1 < t){std::cout<<"t is not correct value " << t << std::endl; continue;}
+                    v2 = Eigen::Vector3d(0,0,0);
+                    for (int i = 0; i < int(fc->CtrlPts.size()); i++) v2 += MathTool::BernsteinBasisFunc(3, i, t) * fc->CtrlPts[i];
+                    if(!MathTool::is_point_on_line(v2, 1000.0 * r2d + FoldingCurve[i].first->p, FoldingCurve[i].first->p))continue;
+                    if((FoldingCurve[i].first->p - p_clst).norm() > (v2 - FoldingCurve[i].first->p).norm())p_clst = v2;
+                }
+            }
+            FoldingCurve[i].second->p = p_clst;
+            FoldingCurve[i].second->p3 = (p_clst - FoldingCurve[i].first->p).norm() * r3d + FoldingCurve[i].first->p3;
             FoldingCurve[i].third->p = FoldingCurve[i].third->p2_ori;
             FoldingCurve[i].third->p3 = FoldingCurve[i].third->p3_ori;
         }
@@ -1021,7 +1034,7 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     opt.set_min_objective(ObjFunc_FlapAngle, &od);
     opt.set_lower_bounds(a_min);
     opt.set_upper_bounds(a_max);
-    if(ConstFunc)opt.add_inequality_constraint(Fruling, &od);
+    opt.add_inequality_constraint(Fruling, &od);
     //opt.set_param("inner_maxeval", 100);
     opt.set_maxtime(2.0);//stop over this time
     opt.set_xtol_rel(1e-13);

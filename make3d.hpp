@@ -43,6 +43,7 @@ public:
     void ChangeFoldLineState();
     void applyAAAMethod(double a, bool begincenter);
     void SimplifyModel(double tol);
+    bool Smoothing();
     bool RevisionCrosPtsPosition();
     void SortFoldingCurve(int dim);
     bool BendingModel(double wb, double wp, int dim, double tol, bool ConstFunc = true);
@@ -56,11 +57,11 @@ public:
     void DeleteControlPoint(QPointF pt, int curveDimention, int DivSize);
     int DeleteCurve();
     void Check4Param(int curveDimention, std::vector<int>&deleteIndex);
-    void MoveCurvePoint(Eigen::Vector3d& p, int MoveIndex, int ptInd, int curveDimention, int DivSize);
+    bool MoveCurvePoint(Eigen::Vector3d& p, int MoveIndex, int ptInd, int curveDimention, int DivSize);
     bool CrossDection4AllCurve();
     int IsSelectedCurve();
-    int getSelectedCurveIndex(QPointF pt);
-    int searchPointIndex(QPointF pt, int& ptInd, int type);//type = 0 -> Control Point, 1: Curve Point
+    std::array<int, 2> getSelectedCurveIndex(QPointF pt);
+    std::array<int, 2> searchPointIndex(QPointF pt, int& ptInd, int type);//type = 0 -> Control Point, 1: Curve Point
 
 private:
 

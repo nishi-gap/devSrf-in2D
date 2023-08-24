@@ -8,7 +8,7 @@
 
 
 class OUTLINE;
-class Vertex{
+class Vertex :public std::enable_shared_from_this<Vertex>{
 public:
     Eigen::Vector3d p;
     Eigen::Vector3d p3;
@@ -56,7 +56,7 @@ public:
 };
 
 
-class Line{
+class Line : public std::enable_shared_from_this<Line>{
 public:
     int IsCrossed; //-1:交差なし, 0:同じruling上で交差, 1:上にあるレイヤー上のrulingと交差
     double color;

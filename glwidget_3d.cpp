@@ -87,56 +87,57 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
         AllRulings.push_back(tmpV);
     }
 
+    auto SplitPolygon = [](std::vector<std::vector<std::shared_ptr<Vertex>>>& Polygons, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
+        for(auto& Poly :Polygons){
+            for(int i = 0; i < (int)Poly.size(); i++){
+                auto it_v = std::find(Poly.begin(), Poly.end(), v), it_o = std::find(Poly.begin(), Poly.end(), o);
+                if(it_v != Poly.end() && it_o != Poly.end()){
+                    int i_min = std::min(std::distance(Poly.begin(), it_v), std::distance(Poly.begin(), it_o)), i_max = std::max(std::distance(Poly.begin(), it_v), std::distance(Poly.begin(), it_o));
+                    std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
+                    if((i_max + 1 - i_min) < 3 || ((int)Poly.size() - (i_max - i_min - 1)) < 3)return;
+                    Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
+                    Polygons.push_back(poly2);
+                    return;
+                }
+                if(it_v != Poly.end())break;
+                if(!MathTool::is_point_on_line(v->p, Poly[i]->p, Poly[(i + 1) % (int)Poly.size()]->p))continue;
+                Poly.insert(Poly.begin() + i + 1, v);
+                break;
+            }
+            int f_ind = -1, s_ind = -1;
+            for(int i = 0; i < (int)Poly.size(); i++){
+                if(Poly[i] == o)f_ind = i;
+                if(Poly[i] == v)s_ind = i;
+            }
+            if(f_ind == -1 || s_ind == -1)continue;
+            int i_min = std::min(f_ind, s_ind), i_max = std::max(f_ind, s_ind);
+            std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
+            Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
+            Polygons.push_back(poly2);
+            return;
+        }
+    };
     TriMeshs.clear();
     std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons;
     std::vector<std::shared_ptr<Vertex>> polygon;
     for(auto& l: Surface) polygon.push_back(l->v);
     Polygons.push_back(polygon);
     if(!FldCrvs.empty() && !FldCrvs.front()->FoldingCurve.empty()){
-        //splitPolygonで正しく挿入されているか確認が必要
-        auto SplitPolygon = [](std::vector<std::vector<std::shared_ptr<Vertex>>>& Polygons, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
-            for(auto& Poly :Polygons){
-                for(int i = 0; i < (int)Poly.size(); i++){
-                    auto it_v = std::find(Poly.begin(), Poly.end(), v), it_o = std::find(Poly.begin(), Poly.end(), o);
-                    if(it_v != Poly.end() && it_o != Poly.end()){
-                        int i_min = std::min(std::distance(Poly.begin(), it_v), std::distance(Poly.begin(), it_o)), i_max = std::max(std::distance(Poly.begin(), it_v), std::distance(Poly.begin(), it_o));
-                        std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
-                        if((i_max + 1 - i_min) < 3 || ((int)Poly.size() - (i_max - i_min - 1)) < 3)return;
-                        Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
-                        Polygons.push_back(poly2);
-                        return;
-                    }
-                    if(it_v != Poly.end())break;
-                    if(!MathTool::is_point_on_line(v->p, Poly[i]->p, Poly[(i + 1) % (int)Poly.size()]->p))continue;
-                    Poly.insert(Poly.begin() + i + 1, v);
-                    break;
-                }
-                int f_ind = -1, s_ind = -1;
-                for(int i = 0; i < (int)Poly.size(); i++){
-                    if(Poly[i] == o)f_ind = i;
-                    if(Poly[i] == v)s_ind = i;
-                }
-                if(f_ind == -1 || s_ind == -1)continue;
-                int i_min = std::min(f_ind, s_ind), i_max = std::max(f_ind, s_ind);
-                std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
-                Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
-                Polygons.push_back(poly2);
-                return;
-            }
-        };
-
+        std::vector<Vertex4d> DrawCrv;
         for(auto&FC: FldCrvs){
             if(FC->FoldingCurve.empty())continue;
-            Eigen::Vector3d CrvDir = (FC->FoldingCurve.back().first->p - FC->FoldingCurve.front().first->p).normalized();
+            DrawCrv.clear();
+            for(const auto&v: FC->FoldingCurve){if(v.IsCalc)DrawCrv.push_back(v);}
+            Eigen::Vector3d CrvDir = (DrawCrv.back().first->p - DrawCrv.front().first->p).normalized();
             for(auto&P: Polygons){
                 int ind_fr = -1, ind_bc = -1;
                 for(int i = 0; i < (int)P.size(); i++){
-                    if(MathTool::is_point_on_line(FC->FoldingCurve.front().first->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))ind_fr = i;
-                    if(MathTool::is_point_on_line(FC->FoldingCurve.back().first->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))ind_bc = i;
+                    if(MathTool::is_point_on_line(DrawCrv.front().first->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))ind_fr = i;
+                    if(MathTool::is_point_on_line(DrawCrv.back().first->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))ind_bc = i;
                 }
                 if(ind_fr != -1 && ind_bc != -1){
                     std::vector<std::shared_ptr<Vertex>> InsertedV, InsertedV_inv;
-                    for(auto&v: FC->FoldingCurve){InsertedV.push_back(v.first);InsertedV_inv.insert(InsertedV_inv.begin(), v.first);}
+                    for(auto&v: DrawCrv){InsertedV.push_back(v.first);InsertedV_inv.insert(InsertedV_inv.begin(), v.first);}
 
                     int i_min = std::min(ind_fr, ind_bc) + 1, i_max = std::max(ind_fr, ind_bc) + 1;
                     Eigen::Vector3d Dir_prev = (P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p).normalized();
@@ -154,14 +155,11 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                 }
             }
         }
+        for(auto itr = DrawCrv.begin() + 1; itr != DrawCrv.end() - 1; itr++){
+            SplitPolygon(Polygons, itr->first, itr->second);
+            SplitPolygon(Polygons, itr->first, itr->third);
+        }
 
-        for(auto&FC: FldCrvs){         
-            if(FC->FoldingCurve.empty())continue;
-            for(auto itr = FC->FoldingCurve.begin() + 1; itr != FC->FoldingCurve.end() - 1; itr++){
-                SplitPolygon(Polygons, itr->first, itr->second);
-                SplitPolygon(Polygons, itr->first, itr->third);
-            }
-       }
     }else{
         for(auto itr_r = Rulings.begin(); itr_r != Rulings.end(); itr_r++){
             for(auto&P: Polygons){

@@ -299,6 +299,10 @@ void Model::SimplifyModel(double tol){
     FL[FoldCurveIndex]->SimplifyModel(tol);
 }
 
+bool Model::Smoothing(){
+    
+}
+
 void Model::modifyFoldingCurvePositionOn3d(){
     for(auto&FC: FL){
         for(auto&fldCrv: FC->FoldingCurve){
@@ -552,9 +556,9 @@ void Model::addRulings(){
 
 void Model::SelectCurve(QPointF pt){
     int ptInd;
-    int crvInd = searchPointIndex(pt, ptInd, 1);
+    auto crvInd = searchPointIndex(pt, ptInd, 1);
     std::fill(refCrv.begin(), refCrv.end(), 0);
-    if(crvInd != -1)refCrv[crvInd] = 1;
+    if(crvInd[0] != -1)refCrv[crvInd[0]] = 1;
 }
 
 int Model::IsSelectedCurve(){
@@ -563,24 +567,25 @@ int Model::IsSelectedCurve(){
     return std::distance(refCrv.begin(), itr);
 }
 
-int Model::getSelectedCurveIndex(QPointF pt){
+std::array<int, 2> Model::getSelectedCurveIndex(QPointF pt){
     int ptInd;
     return searchPointIndex(pt, ptInd, 1);
 }
 
 //type = 0 -> Control Point, 1: Curve Point
-int Model::searchPointIndex(QPointF pt, int& ptInd, int type){
+std::array<int, 2> Model::searchPointIndex(QPointF pt, int& ptInd, int type){
     double dist = 5.0;
     ptInd = -1;
-    int crvInd = -1;
+    std::array<int, 2> CrvInds{-1,-1};
+    Eigen::Vector3d p(pt.x(), pt.y(), 0);
     if(type == 0){
         for(int j = 0; j < (int)crvs.size(); j++){
             for(int i = 0; i < (int)crvs[j]->ControllPoints.size(); i++){
                 Eigen::Vector3d cp = crvs[j]->ControllPoints[i];
-                if(dist * dist > (cp.x() - pt.x()) * (cp.x() - pt.x()) + (cp.y() - pt.y()) * (cp.y() - pt.y())){
-                    dist = sqrt((cp.x() - pt.x()) * (cp.x() - pt.x()) + (cp.y() - pt.y()) * (cp.y() - pt.y()));
+                if(dist  > (cp - p).norm()){
+                    dist = (cp - p).norm();
                     ptInd = i;
-                    crvInd = j;
+                    CrvInds[0] = j;
                 }
             }
         }
@@ -589,15 +594,23 @@ int Model::searchPointIndex(QPointF pt, int& ptInd, int type){
         for(int j = 0; j < (int)crvs.size(); j++){
             for(int i = 0; i < (int)crvs[j]->CurvePoints.size(); i++){
                 Eigen::Vector3d cp = crvs[j]->CurvePoints[i];
-                if(dist * dist > (cp.x() - pt.x()) * (cp.x() - pt.x()) + (cp.y() - pt.y()) * (cp.y() - pt.y())){
-                    dist = sqrt((cp.x() - pt.x()) * (cp.x() - pt.x()) + (cp.y() - pt.y()) * (cp.y() - pt.y()));
+                if(dist > (cp - p).norm()){
+                    dist = (cp - p).norm();
                     ptInd = i;
-                    crvInd = j;
+                    CrvInds[0] = j;
                 }
             }
         }
     }
-    return crvInd;
+    for(int i = 0; i < (int)FL.size(); i++){
+        for(int j = 0; j < (int)FL[i]->CtrlPts.size(); j++){
+            if(dist > (FL[i]->CtrlPts[j] - p).norm()){
+                dist = (FL[i]->CtrlPts[j] - p).norm();
+                ptInd = j; FoldCurveIndex = i;
+            }
+        }
+    }
+    return CrvInds;
 }
 
 int Model::DeleteCurve(){
@@ -612,25 +625,30 @@ int Model::DeleteCurve(){
 
 void Model::DeleteControlPoint(QPointF pt, int curveDimention, int DivSize){
     int ptInd;
-    int DelIndex = searchPointIndex(pt, ptInd, 0);
-    if(DelIndex == -1)return;
+    auto DelIndex = searchPointIndex(pt, ptInd, 0);
+    if(DelIndex[0] == -1 && DelIndex[1])return;
     bool res = false;
-    crvs[DelIndex]->ControllPoints.erase(crvs[DelIndex]->ControllPoints.begin() + ptInd);
-    //if(crvs[DelIndex]->getCurveType() == CurveType::bezier3)crvs[DelIndex]->drawBezier(3, crvPtNum);
-    if(crvs[DelIndex]->getCurveType() == CurveType::bsp3)res = crvs[DelIndex]->drawBspline(3, crvPtNum);
-    if(crvs[DelIndex]->ControllPoints.size() == 0){
-        crvs.erase(crvs.begin() + DelIndex);
-        refCrv.erase(refCrv.begin() + DelIndex);
-        res = false;
+    if(DelIndex[0] != -1){
+        crvs[DelIndex[0]]->ControllPoints.erase(crvs[DelIndex[0]]->ControllPoints.begin() + ptInd);
+        //if(crvs[DelIndex]->getCurveType() == CurveType::bezier3)crvs[DelIndex]->drawBezier(3, crvPtNum);
+        if(crvs[DelIndex[0]]->getCurveType() == CurveType::bsp3)res = crvs[DelIndex[0]]->drawBspline(3, crvPtNum);
+        if(crvs[DelIndex[0]]->ControllPoints.size() == 0){
+            crvs.erase(crvs.begin() + DelIndex[0]);
+            refCrv.erase(refCrv.begin() + DelIndex[0]);
+            res = false;
+        }
+        crvs[DelIndex[0]]->ControllPoints.shrink_to_fit();
+        crvs.shrink_to_fit();
+        refCrv.shrink_to_fit();
+        if(outline->IsClosed() && res){
+            if(crvs[DelIndex[0]]->getCurveType() == CurveType::bezier3)crvs[DelIndex[0]]->BezierRulings(outline, DivSize, crvPtNum);
+            if(crvs[DelIndex[0]]->getCurveType() == CurveType::bsp3)crvs[DelIndex[0]]->BsplineRulings(outline, DivSize, crvPtNum, curveDimention);
+            addRulings();
+        }
+    }else{
+
     }
-    crvs[DelIndex]->ControllPoints.shrink_to_fit();
-    crvs.shrink_to_fit();
-    refCrv.shrink_to_fit();
-    if(outline->IsClosed() && res){
-        if(crvs[DelIndex]->getCurveType() == CurveType::bezier3)crvs[DelIndex]->BezierRulings(outline, DivSize, crvPtNum);
-        if(crvs[DelIndex]->getCurveType() == CurveType::bsp3)crvs[DelIndex]->BsplineRulings(outline, DivSize, crvPtNum, curveDimention);
-        addRulings();
-    }
+
 }
 
 void Model::Check4Param(int curveDimention, std::vector<int>& deleteIndex){
@@ -712,26 +730,31 @@ bool Model::AddControlPoint(Eigen::Vector3d& p, int curveDimention, int DivSize)
     return false;
 }
 
-void Model::MoveCurvePoint(Eigen::Vector3d& p, int MoveIndex, int ptInd, int curveDimention, int DivSize){
-    if(MoveIndex == -1 || ptInd == -1)return;
+bool Model::MoveCurvePoint(Eigen::Vector3d& p, int MoveIndex, int ptInd, int curveDimention, int DivSize){
+    if((MoveIndex == -1 && FoldCurveIndex == -1) || ptInd == -1)return false;
     bool res = false;
-    if(crvs[MoveIndex]->getCurveType() == CurveType::arc && ptInd == 0){
-        bool PointOnLines = false;
-        bool PointInFace = outline->IsPointInFace(p);
-        for(auto&l : outline->Lines){if(is_point_on_line(p, l->o->p, l->v->p))PointOnLines = true;}
-        if(!PointInFace || PointOnLines) crvs[MoveIndex]->ControllPoints[ptInd] = p;
-    }
-    else crvs[MoveIndex]->ControllPoints[ptInd] = p;
-    if(crvs[MoveIndex]->getCurveType() == CurveType::bsp3)res = crvs[MoveIndex]->drawBspline(curveDimention, crvPtNum);
-    else if(crvs[MoveIndex]->getCurveType() == CurveType::line)res = crvs[MoveIndex]->drawLine();
-    else if(crvs[MoveIndex]->getCurveType() == CurveType::arc)res = crvs[MoveIndex]->drawArc(crvPtNum);
+    if(MoveIndex != -1){
+        if(crvs[MoveIndex]->getCurveType() == CurveType::arc && ptInd == 0){
+            bool PointOnLines = false;
+            bool PointInFace = outline->IsPointInFace(p);
+            for(auto&l : outline->Lines){if(is_point_on_line(p, l->o->p, l->v->p))PointOnLines = true;}
+            if(!PointInFace || PointOnLines) crvs[MoveIndex]->ControllPoints[ptInd] = p;
+        }
+        else crvs[MoveIndex]->ControllPoints[ptInd] = p;
+        if(crvs[MoveIndex]->getCurveType() == CurveType::bsp3)res = crvs[MoveIndex]->drawBspline(curveDimention, crvPtNum);
+        else if(crvs[MoveIndex]->getCurveType() == CurveType::line)res = crvs[MoveIndex]->drawLine();
+        else if(crvs[MoveIndex]->getCurveType() == CurveType::arc)res = crvs[MoveIndex]->drawArc(crvPtNum);
 
-    if(outline->IsClosed() && res){
-        //if(crvs[MoveIndex]->getCurveType() == 0)crvs[MoveIndex]->BezierRulings(outline->vertices, DivSize, crvPtNum);
-        //if(crvs[MoveIndex]->getCurveType() == 1)crvs[MoveIndex]->BsplineRulings(outline->vertices, DivSize, crvPtNum, curveDimention);
-        if(crvs[MoveIndex]->getCurveType() == CurveType::line)crvs[MoveIndex]->LineRulings(outline, DivSize);
-        if(crvs[MoveIndex]->getCurveType() == CurveType::arc)crvs[MoveIndex]->ArcRulings(outline, DivSize);
+        if(outline->IsClosed() && res){
+            //if(crvs[MoveIndex]->getCurveType() == 0)crvs[MoveIndex]->BezierRulings(outline->vertices, DivSize, crvPtNum);
+            //if(crvs[MoveIndex]->getCurveType() == 1)crvs[MoveIndex]->BsplineRulings(outline->vertices, DivSize, crvPtNum, curveDimention);
+            if(crvs[MoveIndex]->getCurveType() == CurveType::line)crvs[MoveIndex]->LineRulings(outline, DivSize);
+            if(crvs[MoveIndex]->getCurveType() == CurveType::arc)crvs[MoveIndex]->ArcRulings(outline, DivSize);
+        }
+    }else{
+        return FL[FoldCurveIndex]->moveCtrlPt(p, ptInd, curveDimention);
     }
+    return true;
 }
 
 bool Model::AddControlPoint_FL(Eigen::Vector3d& p, int event, int curveDimention){

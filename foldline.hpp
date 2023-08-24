@@ -11,7 +11,7 @@
 #include <filesystem>
 #include <nlopt.hpp>
 
-class FoldLine
+class FoldLine : public std::enable_shared_from_this<FoldLine>
 {
 public:
     FoldLine(PaintTool _type);
@@ -20,7 +20,7 @@ public:
     bool isbend();
     bool addCtrlPt(Eigen::Vector3d& p, int dim);
     bool delCtrlPt(Eigen::Vector3d& p, int dim, std::shared_ptr<OUTLINE>& outline);
-    bool moveCtrlPt(Eigen::Vector3d& p, int movePtIndex);
+    bool moveCtrlPt(Eigen::Vector3d& p, int movePtIndex, int dim);
     std::vector<Eigen::Vector3d> CurvePts;
     double getColor();
     bool RevisionCrosPtsPosition();
@@ -29,7 +29,7 @@ public:
     std::vector<std::vector<Eigen::Vector3d>> Optimization_PlanaritySrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void ReassignColor(std::vector<std::shared_ptr<Line>>& Rulings, ColorPoint& CP);
     void SimplifyModel(double tol);
-    bool SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
+    bool SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v, const std::vector<std::shared_ptr<FoldLine>>& FL);
     void SortCurve(bool ascending = false);
     void reassinruling(std::shared_ptr<FoldLine>& parent);
     std::vector<Eigen::Vector3d> point;

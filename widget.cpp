@@ -74,6 +74,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->ToleranceValue, &QSlider::valueChanged, this, &MainWindow::changeToleranceValue_Slider);
     connect(ui->TolValue, &QDoubleSpinBox::valueChanged, this, &MainWindow::changeToleranceValue_Spin);
     connect(ui->ReassinColorButton, &QPushButton::clicked, this, &MainWindow::ReassinColor);
+    connect(ui->glWid2dim, &GLWidget_2D::getFoldParam, this, sendFoldingParam);
 
     //fold line debug
     connect(ui->startButton, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::Start4Debug_CF);
@@ -142,6 +143,11 @@ void MainWindow::EraseNonFoldEdge(bool state){
     ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
 }
 
+void MainWindow::sendFoldingParam(double &tol, bool &begincenter){
+    tol = ui->TolValue->value();
+    begincenter = false;
+}
+
 void MainWindow::changeToleranceValue_Slider(int val){
     double maxSpin = ui->TolValue->maximum(), maxSlider = ui->ToleranceValue->maximum();
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
@@ -173,7 +179,7 @@ void MainWindow::StartOptimization(){
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
     double tol = ui->TolValue->value();
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-    bool res = ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, false);
+    bool res = ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, true);
     fold_Sm();
     if(res)fold_Sm();
 
@@ -203,7 +209,7 @@ void MainWindow::StartSmoothingSurface(){
 void MainWindow::SimpleSmoothing(){
     auto Poly_V = ui->glWid2dim->model->outline->getVertices();
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
-    bool res = ui->glWid2dim->model->FL[0]->SimpleSmooothSrf(Poly_V);
+    bool res = ui->glWid2dim->model->Smoothing();
     if(res){
         ui->glWid2dim->update();
          ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
@@ -317,7 +323,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
         auto Poly_V = ui->glWid2dim->model->outline->getVertices();
         double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-        bool res = ui->glWid2dim->model->BendingModel(wb, wp, 3, false);
+        bool res = ui->glWid2dim->model->BendingModel(wb, wp, 3, true);
         fold_Sm();
     }
     else if(e->key() == Qt::Key_Return){emit PressedEnter();}

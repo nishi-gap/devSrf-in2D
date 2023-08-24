@@ -113,7 +113,7 @@ private:
     void draw();
 
     bool IsEraseNonFoldEdge;
-    int SmoothCurveIndex; //-1: 未参照
+    std::array<int,2> MoveCrvIndex; //-1: 未参照
 
     int KeyEvent; //-1:None  0:Enter  1: Back-Space  2:Other
     //OutlineRectangle, RulingBezier, RulingBspline, RulingLine, RulingArc,  OutlinePolygon, OutlinePolyline, MoveControlPoint, SetColor, NewGradationMode, InsertControlPoint,
@@ -159,6 +159,7 @@ signals:
     void CurvePathSet(std::vector<Eigen::Vector2d>CurvePath);
     void deleteCrvSignal(std::vector<int> n);
     void getAlphaBeta(double& _alpha, int& _beta, int& _beta2);
+    void getFoldParam(double&tol, bool& begincenter);
 
 };
 
