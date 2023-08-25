@@ -146,5 +146,4 @@ std::vector<double> BezierClipping(std::vector<Eigen::Vector3d>&CtrlPts, const s
 std::vector<std::shared_ptr<Vertex>> SortPolygon(std::vector<std::shared_ptr<Vertex>>& polygon);
 //std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot, double& CurveLen, bool is3d = true, int dim = 3, int t_type = 2);
 
-
 #endif // SETRULINGS_H

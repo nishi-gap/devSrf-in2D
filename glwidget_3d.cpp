@@ -76,8 +76,6 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
     PlanarityColor.clear();
     C.clear();
     Eigen::Vector3d _center;
-
-    std::vector<std::array<Eigen::Vector3d, 3>> trimesh;
     FoldLineVertices.clear();
 
     AllRulings.clear();
@@ -122,11 +120,13 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
     for(auto& l: Surface) polygon.push_back(l->v);
     Polygons.push_back(polygon);
     if(!FldCrvs.empty() && !FldCrvs.front()->FoldingCurve.empty()){
-        std::vector<Vertex4d> DrawCrv;
+        std::vector<std::vector<Vertex4d>> DrawCrvs;
+        
         for(auto&FC: FldCrvs){
             if(FC->FoldingCurve.empty())continue;
-            DrawCrv.clear();
+            std::vector<Vertex4d> DrawCrv;
             for(const auto&v: FC->FoldingCurve){if(v.IsCalc)DrawCrv.push_back(v);}
+            DrawCrvs.push_back(DrawCrv);
             Eigen::Vector3d CrvDir = (DrawCrv.back().first->p - DrawCrv.front().first->p).normalized();
             for(auto&P: Polygons){
                 int ind_fr = -1, ind_bc = -1;
@@ -154,11 +154,12 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                 }
             }
         }
-        for(auto itr = DrawCrv.begin() + 1; itr != DrawCrv.end() - 1; itr++){
-            SplitPolygon(Polygons, itr->first, itr->second);
-            SplitPolygon(Polygons, itr->first, itr->third);
+        for(auto&DC: DrawCrvs){
+            for(auto itr = DC.begin() + 1; itr != DC.end() - 1; itr++){
+                SplitPolygon(Polygons, itr->first, itr->second);
+                SplitPolygon(Polygons, itr->first, itr->third);
+            }
         }
-
     }else{
         for(auto itr_r = Rulings.begin(); itr_r != Rulings.end(); itr_r++){
             for(auto&P: Polygons){

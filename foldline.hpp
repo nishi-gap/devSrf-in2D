@@ -31,7 +31,7 @@ public:
     void SimplifyModel(double tol);
     bool SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v, const std::vector<std::shared_ptr<FoldLine>>& FL);
     void SortCurve(bool ascending = false);
-    void reassinruling(std::shared_ptr<FoldLine>& parent);
+    void reassignruling(std::shared_ptr<FoldLine>& parent);
     std::vector<Eigen::Vector3d> point;
     std::vector<Vertex4d> FoldingCurve;
     void applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincenter, double a = -1);
@@ -46,5 +46,6 @@ private:
     std::vector<std::shared_ptr<CrvPt_FL>> Points_On_Curve;
 
 };
+
 
 #endif // FOLDLINE_H

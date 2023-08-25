@@ -170,7 +170,7 @@ void MainWindow::changeToleranceValue_Spin(double val){
     ui->glWid2dim->VisualizeMVColor(true);
 
     ui->ToleranceValue->setValue(int(val/maxSpin * maxSlider));
-    ui->glWid2dim->model->FL[0]->SimplifyModel(val);
+    ui->glWid2dim->model->SimplifyModel(val);
     fold_Sm();
 }
 
@@ -444,9 +444,12 @@ void MainWindow::exportobj(){
    Polygons.push_back(polygon);
 
    if(!ui->glWid2dim->model->FL.empty() && !ui->glWid2dim->model->FL[0]->FoldingCurve.empty()){
+    std::vector<std::vector<Vertex4d>> FldCrvs;
        for(auto&FC: ui->glWid2dim->model->FL){
             if(FC->FoldingCurve.empty())continue;
-           std::vector<Vertex4d> FldCrv = FC->FoldingCurve;
+           std::vector<Vertex4d> FldCrv;
+           for(auto&fc: FC->FoldingCurve){if(fc.IsCalc)FldCrv.push_back(fc);}
+           FldCrvs.push_back(FldCrv);
            Eigen::Vector3d CrvDir = (FldCrv.back().first->p - FldCrv.front().first->p).normalized();
            for(auto&P: Polygons){
                int ind_fr = -1, ind_bc = -1;
@@ -506,10 +509,10 @@ void MainWindow::exportobj(){
             }
         };
 
-       for(auto&FC: ui->glWid2dim->model->FL){
-           for(int i = 1; i < FC->FoldingCurve.size() - 1; i++){
-               SplitPolygon(Polygons, FC->FoldingCurve[i].first, FC->FoldingCurve[i].second);
-               SplitPolygon(Polygons, FC->FoldingCurve[i].first, FC->FoldingCurve[i].third);
+       for(auto&FC: FldCrvs){
+           for(auto it = FC.begin() + 1; it != FC.end() - 1; it++ ){
+               SplitPolygon(Polygons, it->first, it->second);
+               SplitPolygon(Polygons, it->first, it->third);
            }
       }
    }else{

@@ -228,7 +228,6 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
     if(root == nullptr)return false;
     std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>> q;
     std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
-    //root->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
     root->data->SimplifyModel(tol);
     q.push(root);
     while(!q.empty()){
@@ -237,7 +236,7 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
         cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
         for (const auto& child : cur->children){
             if(child != nullptr){
-                child->data->reassinruling(cur->data);
+                child->data->reassignruling(cur->data);
                 q.push(child);
             }
         }
@@ -255,7 +254,6 @@ bool Model::RevisionCrosPtsPosition(){return FL[FoldCurveIndex]->RevisionCrosPts
 bool Model::AssignRuling(int dim, double tol, bool begincenter){
     UpdateFLOrder(dim);
     SplitRulings(dim);
-
     auto Poly_V = outline->getVertices();
     auto root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
@@ -270,7 +268,7 @@ bool Model::AssignRuling(int dim, double tol, bool begincenter){
         }
         for (const auto& child : cur->children){
             if(child != nullptr){
-                child->data->reassinruling(cur->data);
+                child->data->reassignruling(cur->data);
                 q.push(child);
             }
         }
@@ -295,12 +293,27 @@ bool Model::SplitRulings(int dim){
 }
 
 void Model::SimplifyModel(double tol){
-    if(!(0 <= FoldCurveIndex < (int)FL.size()) || FL[FoldCurveIndex]->FoldingCurve.empty())return;
+    if(!(0 <= FoldCurveIndex && FoldCurveIndex < (int)FL.size()) || FL[FoldCurveIndex]->FoldingCurve.empty())return;
     FL[FoldCurveIndex]->SimplifyModel(tol);
 }
 
 bool Model::Smoothing(){
-    
+    auto root = NTree_fl.GetRoot();
+    if(root == nullptr)return false;
+    std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>>q;
+    q.push(root);
+    auto Poly_V = outline->getVertices();
+    while (!q.empty()) {
+        auto cur = q.front(); q.pop();
+        cur->data->SimpleSmooothSrf(Poly_V, FL);
+        for (const auto& child : cur->children){
+            if(child != nullptr){
+                child->data->reassignruling(cur->data);
+                q.push(child);
+            }
+        }
+    }
+    return true;
 }
 
 void Model::modifyFoldingCurvePositionOn3d(){

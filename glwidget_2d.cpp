@@ -308,7 +308,7 @@ void GLWidget_2D::paintGL(){
 
     //折曲線の描画
     {
-        if(visibleCurve){
+        if(visibleCurve || drawtype == PaintTool::DeleteCtrlPt || drawtype == PaintTool::MoveCtrlPt){
             for(auto&fl: model->FL){
                 glColor3d(0,0.3,0.3);
                 glPointSize(5);
