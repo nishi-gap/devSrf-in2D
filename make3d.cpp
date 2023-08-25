@@ -215,7 +215,7 @@ void Model::UpdateFLOrder(int dim){
         }
         i = (i + 1) % (int)outline->Lines.size();
     }while(i != btm_i);
-    std::cout <<"order of FoldLines"<<std::endl;
+    if(DebugMode::Singleton::getInstance().isdebug())std::cout <<"order of FoldLines"<<std::endl;
     NTree_fl.print();
     return;
 }
@@ -266,7 +266,7 @@ bool Model::AssignRuling(int dim, double tol, bool begincenter){
         if(cur->data->isbend()){
             cur->data->SimplifyModel(tol);
             cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap);
-            cur->data->SimpleSmooothSrf(Poly_V);
+            cur->data->SimpleSmooothSrf(Poly_V, FL);
         }
         for (const auto& child : cur->children){
             if(child != nullptr){
@@ -280,7 +280,7 @@ bool Model::AssignRuling(int dim, double tol, bool begincenter){
 
 bool Model::SplitRulings(int dim){
     Eigen::Vector3d UpVec(0,-1,0);
-    if(FL.empty() || FL[FoldCurveIndex]->CtrlPts.size() <= dim)return false;
+    if(FL.empty() || (int)FL[FoldCurveIndex]->CtrlPts.size() <= dim)return false;
     auto root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
     for(auto& r: Rulings){
@@ -646,7 +646,13 @@ void Model::DeleteControlPoint(QPointF pt, int curveDimention, int DivSize){
             addRulings();
         }
     }else{
-
+        if(FoldCurveIndex != -1){
+            FL[FoldCurveIndex]->CtrlPts.erase(FL[FoldCurveIndex]->CtrlPts.begin() + ptInd);
+            if((int)FL[FoldCurveIndex]->CtrlPts.size() <= curveDimention){
+                FL.erase(FL.begin() + FoldCurveIndex);
+                FoldCurveIndex = FL.size() - 1;
+            }
+        }
     }
 
 }

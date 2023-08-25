@@ -51,18 +51,20 @@ public:
     std::vector<Eigen::Vector3d> resPts;
 
     //Smooth Surface
-    void SelectCurve(QPointF pt);
+
     bool AddControlPoint(Eigen::Vector3d& p, int curveDimention, int DivSize);
     int AddNewCurve(CurveType curveType, int DivSize);
     void DeleteControlPoint(QPointF pt, int curveDimention, int DivSize);
-    int DeleteCurve();
+
     void Check4Param(int curveDimention, std::vector<int>&deleteIndex);
-    bool MoveCurvePoint(Eigen::Vector3d& p, int MoveIndex, int ptInd, int curveDimention, int DivSize);
     bool CrossDection4AllCurve();
     int IsSelectedCurve();
     std::array<int, 2> getSelectedCurveIndex(QPointF pt);
     std::array<int, 2> searchPointIndex(QPointF pt, int& ptInd, int type);//type = 0 -> Control Point, 1: Curve Point
 
+    bool MoveCurvePoint(Eigen::Vector3d& p, int MoveIndex, int ptInd, int curveDimention, int DivSize);
+    void SelectCurve(QPointF pt);
+    int DeleteCurve();
 private:
 
     bool SplitRulings(int dim);

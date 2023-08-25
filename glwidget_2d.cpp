@@ -652,6 +652,10 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
         else if(drawtype == PaintTool::DeleteCtrlPt){
             model->SelectCurve(p);
             model->DeleteControlPoint(p, curveDimention, DivSize);
+            double tol; bool begincenter;
+            emit getFoldParam(tol, begincenter);
+            model->AssignRuling(3,tol, begincenter);
+
         }else if(drawtype == PaintTool::MoveCtrlPt){
             MoveCrvIndex = model->searchPointIndex(p, movePt, 0);
 
@@ -675,6 +679,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
                         eb = (v4d.third->p3 -v4d.first->p3).normalized(), el = (_fl->FoldingCurve[ind+1].first->p3 -v4d.first->p3).normalized();
                 double phi1 = std::acos(et.dot(er)), phi2 = std::acos(et.dot(el)), phi3 = std::acos(eb.dot(el)), phi4 = std::acos(eb.dot(er));
                 refV = _fl->FoldingCurve[ind].first;
+                if(DebugMode::Singleton::getInstance().isdebug())
                 std::cout << "developability  = " <<  abs(2.0*std::numbers::pi - phi1 - phi2 - phi3 - phi4) << ", phi1 = " << MathTool::rad2deg(phi1) << " , phi2 = " << MathTool::rad2deg(phi2) << ", phi3 = " << MathTool::rad2deg(phi3) << ", phi4 = " << MathTool::rad2deg(phi4) << std::endl;
             }
 

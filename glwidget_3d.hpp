@@ -70,7 +70,6 @@ private:
     bool VisiblePlanarity;
 
     double th_planarity = 1e-3;
-    int switchTNB;
     double drawdist;
     int drawEdgePlane;
     bool IsEraseNonFoldEdge;

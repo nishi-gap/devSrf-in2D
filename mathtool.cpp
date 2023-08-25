@@ -1,5 +1,14 @@
 #include "mathtool.hpp"
 
+namespace DebugMode{
+    Singleton& Singleton::getInstance(){
+        static Singleton instance;
+        return instance;
+    }
+    void Singleton::switchval(){ val = !val;}
+    bool Singleton::isdebug() const{return val;}
+}
+
 namespace MathTool{
     double rad2deg(double a){return a * 180.0/std::numbers::pi;}
     

@@ -11,7 +11,6 @@ GLWidget_3D::GLWidget_3D(QWidget *parent):QOpenGLWidget(parent)
     center = Eigen::Vector3d(0,0,0);
     eraseMesh = eraseCtrlPt = eraseCrossPt = eraseVec = eraseCurve = false;
     VisiblePlanarity = false;
-    switchTNB = 0;
     //Eigen::Vector3d up(0,1,0);
     //arccam = ArcBallCam(Eigen::Vector3d{0,0,-100}, center, up);
     drawdist = 0.0;
@@ -165,7 +164,6 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
             for(auto&P: Polygons){
                 int vind = -1, oind = -1;
                 for(int i = 0; i < (int)P.size(); i++){
-                    //std::cout << glm::to_string((*itr_r)->o->p) << "  ,  "<< glm::to_string((*itr_r)->v->p) << std::endl;
                     if(MathTool::is_point_on_line((*itr_r)->o->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))oind = i;
                     if(MathTool::is_point_on_line((*itr_r)->v->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))vind = i;
                 }
@@ -344,8 +342,8 @@ void GLWidget_3D::DrawMeshLines(){
 
 void GLWidget_3D::PlanarityDispay(bool state){
     VisiblePlanarity = !VisiblePlanarity;
-    //for(auto&c: PlanarityColor)
-    //if(c > th_planarity)std::cout << "planarity : " << c << std::endl;
+    for(auto&c: PlanarityColor)
+    if(c > th_planarity && DebugMode::Singleton::getInstance().isdebug())std::cout << "planarity : " << c << std::endl;
     update();
 }
 
@@ -397,11 +395,6 @@ void GLWidget_3D::receiveKeyEvent(QKeyEvent *e){
     if(e->key() == Qt::Key_C)eraseCtrlPt = !eraseCtrlPt;
     if(e->key() == Qt::Key_X)eraseCrossPt = !eraseCrossPt;
     if(e->key() == Qt::Key_D)eraseCurve = !eraseCurve;
-    if(e->key() == Qt::Key_S){
-        switchTNB = (switchTNB + 1) % 3;
-       if(switchTNB == 1) std::cout<<"Now analysis "<<std::endl;
-       if(switchTNB == 2) std::cout<<"Now diff "<<std::endl;
-    }
     if(e->key() == Qt::Key_O)drawEdgePlane = -1;
 
 

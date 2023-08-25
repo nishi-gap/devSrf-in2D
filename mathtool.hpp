@@ -77,6 +77,20 @@ enum class PaintTool{
 
 };
 
+namespace DebugMode{
+    class Singleton{
+    public:
+        static Singleton& getInstance();
+        bool isdebug() const;
+        void switchval();
+    private:
+        Singleton(){}
+        Singleton(const Singleton&) = delete;
+        void operator=(const Singleton&) = delete;
+        bool val;
+    };
+}
+
 namespace MathTool{
 double rad2deg(double a);
 double distP2L(const Eigen::Vector3d& la, const Eigen::Vector3d& lb, const Eigen::Vector3d& p, Eigen::Vector3d& q);//点と線分の距離, s:laからlbへの比率(垂線が内部にあれば0 ~ 1)

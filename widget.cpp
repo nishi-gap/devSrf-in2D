@@ -179,9 +179,8 @@ void MainWindow::StartOptimization(){
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
     double tol = ui->TolValue->value();
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-    bool res = ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, true);
+    ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, true);
     fold_Sm();
-    if(res)fold_Sm();
 
 }
 
@@ -321,10 +320,15 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     }
     if(e->key() == Qt::Key_W){
         if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
-        auto Poly_V = ui->glWid2dim->model->outline->getVertices();
+        double tol = ui->TolValue->value();
         double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-        bool res = ui->glWid2dim->model->BendingModel(wb, wp, 3, true);
+        ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, true);
         fold_Sm();
+    }
+    if(e->key() == Qt::Key_D){
+        DebugMode::Singleton::getInstance().switchval();
+        if(DebugMode::Singleton::getInstance().isdebug())std::cout << "DebugMode On" << std::endl;
+        else std::cout << "DebugMode off" << std::endl;
     }
     else if(e->key() == Qt::Key_Return){emit PressedEnter();}
     else if(e->key() == Qt::Key_C){
