@@ -781,6 +781,7 @@ bool FoldLine::SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly
                     if((FoldingCurve[i].first->p - p_clst).norm() > (v2 - FoldingCurve[i].first->p).norm())p_clst = v2;
                 }
             }
+            FoldingCurve[i].IsCalc = true;
             FoldingCurve[i].second->p = p_clst;
             FoldingCurve[i].second->p3 = (p_clst - FoldingCurve[i].first->p).norm() * r3d + FoldingCurve[i].first->p3;
             FoldingCurve[i].third->p = FoldingCurve[i].third->p2_ori;
@@ -1243,7 +1244,15 @@ void FoldLine::ReassignColor(std::vector<std::shared_ptr<Line>>& Rulings, ColorP
     std::cout <<"color changed"<<std::endl;
 }
 
-void FoldLine::reassinruling(std::shared_ptr<FoldLine>& parent){
+template <typename T>
+class PointOnEndEdge{
+    public:
+    std::shared_ptr<T> v;
+    double t;
+    PointOnEndEdge(std::shared_ptr<T>&_v, double _t): v(_v), t(_t){}
+};
+
+void FoldLine::reassignruling(std::shared_ptr<FoldLine>& parent){
     auto getCrossPoint = [](std::vector<Eigen::Vector3d>& CtrlPts, std::shared_ptr<Vertex> v, std::shared_ptr<Vertex> o, int dim){
         std::vector<double>arcT = BezierClipping(CtrlPts, v, o, dim);
         for(auto&t: arcT){
@@ -1260,17 +1269,33 @@ void FoldLine::reassinruling(std::shared_ptr<FoldLine>& parent){
     };
     if(parent->FoldingCurve.empty() || FoldingCurve.empty())return;
     int dim = CtrlPts.size() - 1;
-    for(auto& c : parent->FoldingCurve){
-        std::shared_ptr<CrvPt_FL> p = getCrossPoint(CtrlPts, c.first, c.second, dim);
+
+    std::vector<PointOnEndEdge<Vertex>> PointOnEndEdges;
+    std::shared_ptr<Vertex> dowscastV = std::dynamic_pointer_cast<Vertex>(parent->FoldingCurve.front().first);
+    PointOnEndEdges.push_back(PointOnEndEdge(dowscastV, 0.0));
+    PointOnEndEdges.push_back(PointOnEndEdge(parent->FoldingCurve.front().second, (parent->FoldingCurve.front().second->p - parent->FoldingCurve.front().first->p).norm()));
+    for(auto it = parent->FoldingCurve.begin() + 1; it != parent->FoldingCurve.end() - 1; it++){
+        if(MathTool::is_point_on_line(it->second->p, parent->FoldingCurve.front().first->p, parent->FoldingCurve.front().second->p)){
+            PointOnEndEdges.push_back(PointOnEndEdge(it->second, (it->second->p - parent->FoldingCurve.front().first->p).norm()));
+        }
+    }
+    std::sort(PointOnEndEdges.begin(), PointOnEndEdges.end(), [](const PointOnEndEdge<Vertex>& V1, const PointOnEndEdge<Vertex>& V2){return V1.t < V2.t;});
+
+    for(auto it = parent->FoldingCurve.begin(); it != parent->FoldingCurve.end(); it++){
+        if(!it->IsCalc)continue;
+        std::shared_ptr<CrvPt_FL> p = getCrossPoint(CtrlPts, it->first, it->second, dim);
         if(p != nullptr){
-            if(c == parent->FoldingCurve.front() || c == parent->FoldingCurve.back()){
+
+            if(it == parent->FoldingCurve.begin() || it == parent->FoldingCurve.end() - 1){
                 for(auto&fc: FoldingCurve){
                     if(MathTool::is_point_on_line(p->p, fc.first->p, fc.second->p)){
-                        fc.third = fc.first; fc.first = p; fc.second = c.second;
+                        fc.third = fc.first; fc.first = p; fc.second = it->second;
                     }
                 }
-            }else FoldingCurve.push_back(Vertex4d(p, c.second, c.first));
-            c.second = p;
+            }else FoldingCurve.push_back(Vertex4d(p, it->second, it->first));
+            it->second = p;
+        }else{
+            std::cout << "null " << it->first->p.transpose() << "   ,  " << it->second->p.transpose() << std::endl;
         }
     }
     SortCurve();
