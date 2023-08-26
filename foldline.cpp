@@ -1269,33 +1269,36 @@ void FoldLine::reassignruling(std::shared_ptr<FoldLine>& parent){
     };
     if(parent->FoldingCurve.empty() || FoldingCurve.empty())return;
     int dim = CtrlPts.size() - 1;
-
-    std::vector<PointOnEndEdge<Vertex>> PointOnEndEdges;
-    std::shared_ptr<Vertex> dowscastV = std::dynamic_pointer_cast<Vertex>(parent->FoldingCurve.front().first);
-    PointOnEndEdges.push_back(PointOnEndEdge(dowscastV, 0.0));
-    PointOnEndEdges.push_back(PointOnEndEdge(parent->FoldingCurve.front().second, (parent->FoldingCurve.front().second->p - parent->FoldingCurve.front().first->p).norm()));
-    for(auto it = parent->FoldingCurve.begin() + 1; it != parent->FoldingCurve.end() - 1; it++){
-        if(MathTool::is_point_on_line(it->second->p, parent->FoldingCurve.front().first->p, parent->FoldingCurve.front().second->p)){
-            PointOnEndEdges.push_back(PointOnEndEdge(it->second, (it->second->p - parent->FoldingCurve.front().first->p).norm()));
+    auto SplitOnEndLine = [&](Vertex4d& V, Vertex4d& line_v, std::vector<Vertex4d>& FC, int dim){
+        std::shared_ptr<CrvPt_FL> p = getCrossPoint(CtrlPts, line_v.first, line_v.second, dim);
+        if(p == nullptr)return;
+        std::vector<PointOnEndEdge<Vertex>> PointOnEndEdges;
+        std::shared_ptr<Vertex> dowscastV = std::dynamic_pointer_cast<Vertex>(line_v.first);
+        PointOnEndEdges.push_back(PointOnEndEdge(dowscastV, 0.0));
+        PointOnEndEdges.push_back(PointOnEndEdge(line_v.second, (line_v.second->p - line_v.first->p).norm()));
+        for(auto it = FC.begin() + 1; it != FC.end() - 1; it++){
+            if(MathTool::is_point_on_line(it->second->p, line_v.first->p, line_v.second->p)){
+                PointOnEndEdges.push_back(PointOnEndEdge(it->second, (it->second->p - line_v.first->p).norm()));
+            }
         }
-    }
-    std::sort(PointOnEndEdges.begin(), PointOnEndEdges.end(), [](const PointOnEndEdge<Vertex>& V1, const PointOnEndEdge<Vertex>& V2){return V1.t < V2.t;});
+        std::sort(PointOnEndEdges.begin(), PointOnEndEdges.end(), [](const PointOnEndEdge<Vertex>& V1, const PointOnEndEdge<Vertex>& V2){return V1.t < V2.t;});
+        for(auto it = PointOnEndEdges.begin() + 1; it != PointOnEndEdges.end(); it++){
+            if(MathTool::is_point_on_line(p->p, (it - 1)->v->p, it->v->p)){
+                V.first = p; V.second = it->v;V.third = (it - 1)->v;
+                //std::cout << "p = "<< p->p.transpose() << " , second =  " << it->v->p.transpose() << "  , third =  " << (it- 1)->v->p.transpose() << std::endl;
+                return;
+            }
+        }
+    };
 
-    for(auto it = parent->FoldingCurve.begin(); it != parent->FoldingCurve.end(); it++){
+    SplitOnEndLine(FoldingCurve.front(), parent->FoldingCurve.front(), parent->FoldingCurve, dim);
+    SplitOnEndLine(FoldingCurve.back(),  parent->FoldingCurve.back(), parent->FoldingCurve, dim);
+    for(auto it = parent->FoldingCurve.begin() + 1; it != parent->FoldingCurve.end() - 1; it++){
         if(!it->IsCalc)continue;
         std::shared_ptr<CrvPt_FL> p = getCrossPoint(CtrlPts, it->first, it->second, dim);
-        if(p != nullptr){
-
-            if(it == parent->FoldingCurve.begin() || it == parent->FoldingCurve.end() - 1){
-                for(auto&fc: FoldingCurve){
-                    if(MathTool::is_point_on_line(p->p, fc.first->p, fc.second->p)){
-                        fc.third = fc.first; fc.first = p; fc.second = it->second;
-                    }
-                }
-            }else FoldingCurve.push_back(Vertex4d(p, it->second, it->first));
+        if(p != nullptr){        
+            FoldingCurve.push_back(Vertex4d(p, it->second, it->first));
             it->second = p;
-        }else{
-            std::cout << "null " << it->first->p.transpose() << "   ,  " << it->second->p.transpose() << std::endl;
         }
     }
     SortCurve();

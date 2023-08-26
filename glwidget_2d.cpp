@@ -352,6 +352,7 @@ void GLWidget_2D::paintGL(){
     };
     if(!model->FL.empty() && !model->FL[0]->FoldingCurve.empty()){
         for(auto& FL: model->FL){
+            if(FL->FoldingCurve.empty())continue;
             std::vector<int> Vertices_Ind;
             for(int i = 0; i < (int)FL->FoldingCurve.size(); i++){if(FL->FoldingCurve[i].IsCalc)Vertices_Ind.push_back(i);}
             for(const auto& fc: FL->FoldingCurve){

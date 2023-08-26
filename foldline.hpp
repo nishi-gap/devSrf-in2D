@@ -16,12 +16,17 @@ class FoldLine : public std::enable_shared_from_this<FoldLine>
 public:
     FoldLine(PaintTool _type);
     std::vector<Eigen::Vector3d>CtrlPts;
+    std::vector<Eigen::Vector3d> point;
+    std::vector<Vertex4d> FoldingCurve;
+    std::vector<Eigen::Vector3d> CurvePts;
+    std::vector<std::array<Eigen::Vector3d, 2>>  AllRulings;
     double a_flap;
+
     bool isbend();
     bool addCtrlPt(Eigen::Vector3d& p, int dim);
     bool delCtrlPt(Eigen::Vector3d& p, int dim, std::shared_ptr<OUTLINE>& outline);
     bool moveCtrlPt(Eigen::Vector3d& p, int movePtIndex, int dim);
-    std::vector<Eigen::Vector3d> CurvePts;
+
     double getColor();
     bool RevisionCrosPtsPosition();
     bool Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double wb, double wp, bool ConstFunc = true);
@@ -32,10 +37,8 @@ public:
     bool SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v, const std::vector<std::shared_ptr<FoldLine>>& FL);
     void SortCurve(bool ascending = false);
     void reassignruling(std::shared_ptr<FoldLine>& parent);
-    std::vector<Eigen::Vector3d> point;
-    std::vector<Vertex4d> FoldingCurve;
-    void applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincenter, double a = -1);
-    std::vector<std::array<Eigen::Vector3d, 2>>  AllRulings;
+
+    void applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincenter, double a = -1); 
     void drawRulingInAllAngles(std::vector<std::array<Eigen::Vector3d, 2>>& _Rulings);
 
 private:
