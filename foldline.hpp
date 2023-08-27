@@ -21,6 +21,7 @@ public:
     std::vector<Eigen::Vector3d> CurvePts;
     std::vector<std::array<Eigen::Vector3d, 2>>  AllRulings;
     double a_flap;
+    double tol;
 
     bool isbend();
     bool addCtrlPt(Eigen::Vector3d& p, int dim);
@@ -39,7 +40,7 @@ public:
     void SortCurve(bool ascending = false);
     void reassignruling(std::shared_ptr<FoldLine>& parent);
 
-    void applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincenter, double a = -1); 
+    void applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincenter, double a, double _tol);
     void drawRulingInAllAngles(std::vector<std::array<Eigen::Vector3d, 2>>& _Rulings);
 
 private:

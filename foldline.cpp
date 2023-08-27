@@ -171,6 +171,7 @@ FoldLine::FoldLine(PaintTool _type)
     type = _type;
     CurvePts.clear();
     a_flap = -1;
+    tol = 0;
 }
 
 void FoldLine::SortCurve(bool ascending){
@@ -1350,7 +1351,9 @@ void FoldLine::reassignruling(std::shared_ptr<FoldLine>& parent){
             (*it)->second = p;
         }
     }
+
     SortCurve();
+    parent->SortCurve();
 }
 
 void FoldLine::drawRulingInAllAngles(std::vector<std::array<Eigen::Vector3d, 2>>& _Rulings){
@@ -1405,13 +1408,14 @@ void FoldLine::drawRulingInAllAngles(std::vector<std::array<Eigen::Vector3d, 2>>
 
 }
 
-void FoldLine::applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincener, double a){
+void FoldLine::applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincener, double a, double _tol){
     if(FoldingCurve.empty() && a_flap == -1)return;
+    SimplifyModel(_tol);
     if(!begincener)_FoldingAAAMethod(FoldingCurve, Poly_V, a);
     else _FoldingAAAMethod_center(FoldingCurve, Poly_V, a);
     _FoldingAAAMethod(FoldingCurve, Poly_V, a);
     if(RulingsCrossed2(FoldingCurve) < 1e-9){
-        a_flap = a;
+        a_flap = a; tol = _tol;
     }
     return;
 }
@@ -1627,13 +1631,7 @@ void _FoldingAAAMethod(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, con
     {//i = 0(端の面)
         std::shared_ptr<Vertex> v_clst = getClosestVertex(FoldingCurve[Vertices_Ind[0]]->second , FoldingCurve[Vertices_Ind[0]]->first, FoldingCurve);
         if(v_clst == nullptr){
-            x = FoldingCurve[Vertices_Ind[0]]->first->p3;
-            e = (FoldingCurve[Vertices_Ind[1]]->first->p3 - x).normalized();
-            Eigen::Vector3d ee = (FoldingCurve[Vertices_Ind[1]]->second->p3- FoldingCurve[Vertices_Ind[1]]->first->p3).normalized();
-            N = (ee.cross(-e)).normalized();
-            r = (Eigen::AngleAxisd(phi02, N) * e).normalized();//新しいruling方向
-            l = (FoldingCurve[Vertices_Ind[0]]->second->p - FoldingCurve[Vertices_Ind[0]]->first->p).norm();
-            FoldingCurve[Vertices_Ind[0]]->second->p3 = l * r + FoldingCurve[Vertices_Ind[0]]->first->p3;
+            FoldingCurve[Vertices_Ind[0]]->second->p3 = calcTargetDistanceOnPlane(FoldingCurve[Vertices_Ind[0]]->second->p, FoldingCurve[Vertices_Ind[1]]->first, FoldingCurve[Vertices_Ind[0]]->first, FoldingCurve[Vertices_Ind[1]]->second);
             for(int i = Vertices_Ind[0] + 1; i < Vertices_Ind[1]; i++)
                 SetOnPlane(FoldingCurve[i], Poly_V, FoldingCurve[Vertices_Ind[1]], FoldingCurve[Vertices_Ind[0]], FoldingCurve[Vertices_Ind[1]]->second, FoldingCurve[Vertices_Ind[0]]->second, 1);
         }else{
@@ -1655,13 +1653,7 @@ void _FoldingAAAMethod(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, con
     {
         std::shared_ptr<Vertex> v_clst = getClosestVertex(FoldingCurve[Vertices_Ind.back()]->second , FoldingCurve[Vertices_Ind.back()]->first, FoldingCurve);
         if(v_clst == nullptr){
-            x = FoldingCurve[Vertices_Ind.back()]->first->p3;
-            e = (FoldingCurve[Vertices_Ind.end()[-2]]->first->p3 - x).normalized();
-            Eigen::Vector3d ee = (FoldingCurve[Vertices_Ind.end()[-2]]->second->p3 - FoldingCurve[Vertices_Ind.end()[-2]]->first->p3).normalized();
-            N = (ee.cross(e)).normalized();
-            r = (Eigen::AngleAxisd(-phim1, N) * e).normalized();//新しいruling方向
-            l = (FoldingCurve[Vertices_Ind.back()]->second->p - FoldingCurve[Vertices_Ind.back()]->first->p).norm();
-            FoldingCurve[Vertices_Ind.back()]->second->p3 = l * r + x;
+            FoldingCurve[Vertices_Ind.back()]->second->p3 = calcTargetDistanceOnPlane(FoldingCurve[Vertices_Ind.back()]->second->p, FoldingCurve[Vertices_Ind.end()[-2]]->first, FoldingCurve[Vertices_Ind.back()]->first, FoldingCurve[Vertices_Ind.end()[-2]]->second);
             for(int i = Vertices_Ind.end()[-2] + 1; i < Vertices_Ind.back(); i++)
                 SetOnPlane(FoldingCurve[i], Poly_V, FoldingCurve[Vertices_Ind.back()], FoldingCurve[Vertices_Ind.end()[-2]], FoldingCurve[Vertices_Ind.back()]->second, FoldingCurve[Vertices_Ind.end()[-2]]->second, -1);
         }else{
@@ -1671,7 +1663,6 @@ void _FoldingAAAMethod(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, con
             }
             if(j == (int)Vertices_Ind.size())std::cout <<"can't find correct edge right" << std::endl;
             else{
-
                 auto p = calcTargetDistanceOnPlane(FoldingCurve[Vertices_Ind.back()]->second->p, v_clst,  FoldingCurve[Vertices_Ind[j]]->first, FoldingCurve[Vertices_Ind[j-1]]->first);
                 FoldingCurve[Vertices_Ind.back()]->second->p3 = p;
             }

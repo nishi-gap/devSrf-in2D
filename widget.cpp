@@ -218,13 +218,15 @@ void MainWindow::SimpleSmoothing(){
 void MainWindow::changeAngleFromSlider(int val){
     ui->angleA->setValue((double)val/100);
     double a = (double)val/18000.0 * std::numbers::pi;
-    emit sendAngle(a, begin_center);
+    double tol =  ui->TolValue->value();
+    emit sendAngle(a, tol, begin_center);
 }
 
 void MainWindow::changeAngleFromSpinBox(double val){
     ui->angleSlider->setValue(val*100);
     double a = (double)val*std::numbers::pi/180.0;
-    emit sendAngle(a, begin_center);
+    double tol =  ui->TolValue->value();
+    emit sendAngle(a, tol, begin_center);
 }
 
 void MainWindow::changeLineWidthFromSlider(int n){

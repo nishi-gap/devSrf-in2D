@@ -97,7 +97,7 @@ public slots:
     void changeFoldType(PaintTool state);
     void checkDevelopability(bool state);
 
-    void changeflapgnle(double val, bool begin_center);
+    void changeflapgnle(double val, double tol, bool begin_center);
     void changeStopAtFF(bool state);
     void changeStopAtCon(bool state);
     void changeStopAtEq(bool state);

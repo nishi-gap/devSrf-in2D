@@ -124,7 +124,7 @@ void Model::deform(){
 }
 
 void Model::ChangeFoldLineState(){
-    if((int)FL.size() == 1)return;
+    if((int)FL.size() == 1){FoldCurveIndex = 0; return;}
     FoldCurveIndex++;
     for(auto itr = FL.begin(); itr != FL.end();){
         if((*itr)->FoldingCurve.empty() && std::distance(FL.begin(), itr) < FoldCurveIndex){
@@ -232,17 +232,17 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
     while(!q.empty()){
         auto cur = q.front(); q.pop();
         cur->data->RevisionCrosPtsPosition();//端点の修正
-
-        //cur->data->Trim4Lines();
         bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
         while(!res){
             tol += 0.01;
             cur->data->SimplifyModel(tol);
+            cur->data->RevisionCrosPtsPosition();//端点の修正
             res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
             //if(DebugMode::Singleton::getInstance().isdebug())
                 std::cout << "optimization result " << res << "  ,  tol = " << tol << std::endl;
 
         }
+        cur->data->tol = tol;
         cur->data->SimpleSmooothSrf(Poly_V);
         for (const auto& child : cur->children){
             if(child != nullptr){
@@ -254,9 +254,9 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
     return true;
 }
 
-void Model::applyAAAMethod(double a, bool begincenter){
+void Model::applyAAAMethod(double a, double tol, bool begincenter){
     auto Poly_V = outline->getVertices();
-    FL[FoldCurveIndex]->applyAAAMethod(Poly_V, begincenter, a);
+    FL[FoldCurveIndex]->applyAAAMethod(Poly_V, begincenter, a, tol);
 }
 
 bool Model::RevisionCrosPtsPosition(){return FL[FoldCurveIndex]->RevisionCrosPtsPosition();}
@@ -271,9 +271,8 @@ bool Model::AssignRuling(int dim, double tol, bool begincenter){
     q.push(root);
     while (!q.empty()) {
         auto cur = q.front(); q.pop();
-        if(cur->data->isbend()){
-            cur->data->SimplifyModel(tol);
-            cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap);
+        if(cur->data->isbend()){          
+            cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap, cur->data->tol);
             cur->data->SimpleSmooothSrf(Poly_V);
         }
         for (const auto& child : cur->children){
@@ -649,7 +648,7 @@ int Model::DeleteCurve(){
 void Model::DeleteControlPoint(QPointF pt, int curveDimention, int DivSize){
     int ptInd;
     auto DelIndex = searchPointIndex(pt, ptInd, 0);
-    if(DelIndex[0] == -1 && DelIndex[1])return;
+    if(DelIndex[0] == -1 && FoldCurveIndex == -1)return;
     bool res = false;
     if(DelIndex[0] != -1){
         crvs[DelIndex[0]]->ControllPoints.erase(crvs[DelIndex[0]]->ControllPoints.begin() + ptInd);
