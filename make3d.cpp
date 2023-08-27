@@ -228,21 +228,22 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
     if(root == nullptr)return false;
     std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>> q;
     std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
-    //root->data->SimplifyModel(tol);
     q.push(root);
     while(!q.empty()){
         auto cur = q.front(); q.pop();
         cur->data->RevisionCrosPtsPosition();//端点の修正
-        tol = 0.05;
+
+        //cur->data->Trim4Lines();
         bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
         while(!res){
-            cur->data->SimplifyModel(0.05);
+            tol += 0.01;
+            cur->data->SimplifyModel(tol);
             res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
             //if(DebugMode::Singleton::getInstance().isdebug())
                 std::cout << "optimization result " << res << "  ,  tol = " << tol << std::endl;
-            tol += 0.01;
+
         }
-        cur->data->SimpleSmooothSrf(Poly_V, FL);
+        cur->data->SimpleSmooothSrf(Poly_V);
         for (const auto& child : cur->children){
             if(child != nullptr){
                 child->data->reassignruling(cur->data);
@@ -273,7 +274,7 @@ bool Model::AssignRuling(int dim, double tol, bool begincenter){
         if(cur->data->isbend()){
             cur->data->SimplifyModel(tol);
             cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap);
-            cur->data->SimpleSmooothSrf(Poly_V, FL);
+            cur->data->SimpleSmooothSrf(Poly_V);
         }
         for (const auto& child : cur->children){
             if(child != nullptr){
@@ -314,7 +315,7 @@ bool Model::Smoothing(){
     auto Poly_V = outline->getVertices();
     while (!q.empty()) {
         auto cur = q.front(); q.pop();
-        cur->data->SimpleSmooothSrf(Poly_V, FL);
+        cur->data->SimpleSmooothSrf(Poly_V);
         for (const auto& child : cur->children){
             if(child != nullptr){
                 child->data->reassignruling(cur->data);

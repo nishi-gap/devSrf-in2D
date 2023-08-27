@@ -35,7 +35,7 @@ public:
     void ReassignColor(std::vector<std::shared_ptr<Line>>& Rulings, ColorPoint& CP);
     void Trim4Lines();
     void SimplifyModel(double tol);
-    bool SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v, const std::shared_ptr<FoldLine>& parent);
+    bool SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void SortCurve(bool ascending = false);
     void reassignruling(std::shared_ptr<FoldLine>& parent);
 

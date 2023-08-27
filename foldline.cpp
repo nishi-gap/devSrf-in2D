@@ -718,7 +718,7 @@ double RevisionVertices::Minimize_PlanaritySrf(const std::vector<double>& X, std
     return f;
 }
 
-bool FoldLine::SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v, const std::shared_ptr<FoldLine>& parent){
+bool FoldLine::SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v){
 
     auto getV = [](const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& x, const std::shared_ptr<Vertex>& o2, const std::shared_ptr<Vertex>& x2)->std::shared_ptr<Vertex>{
         if(IsParallel(o, x, o2, x2))return std::shared_ptr<Vertex>(nullptr);
@@ -767,18 +767,6 @@ bool FoldLine::SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly
             for(int k = 0; k < (int)Poly_v.size(); k++){
                 v2 = MathTool::calcCrossPoint_2Vector(FoldingCurve[i]->first->p, 1000.0 * r2d + FoldingCurve[i]->first->p, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p);
                 if(MathTool::is_point_on_line(v2, Poly_v[k]->p, Poly_v[(k + 1) % (int)Poly_v.size()]->p) && r2d.dot(v2 - FoldingCurve[i]->first->p) > 0) p_clst = v2;
-            }
-            std::shared_ptr<Vertex> r2d_ptr = std::make_shared<Vertex>(1000.0 * r2d + FoldingCurve[i]->first->p), p_ptr = std::make_shared<Vertex>(FoldingCurve[i]->first->p);
-            for(auto&fc: FL){
-                if(fc == shared_from_this())continue;
-                std::vector<double>arcT = BezierClipping(fc->CtrlPts, r2d_ptr, p_ptr, 3);
-                for(auto&t: arcT){
-                    if(t < 0 || 1 < t){std::cout<<"t is not correct value " << t << std::endl; continue;}
-                    v2 = Eigen::Vector3d(0,0,0);
-                    for (int i = 0; i < int(fc->CtrlPts.size()); i++) v2 += MathTool::BernsteinBasisFunc(3, i, t) * fc->CtrlPts[i];
-                    if(!MathTool::is_point_on_line(v2, 1000.0 * r2d + FoldingCurve[i]->first->p, FoldingCurve[i]->first->p))continue;
-                    if((FoldingCurve[i]->first->p - p_clst).norm() > (v2 - FoldingCurve[i]->first->p).norm())p_clst = v2;
-                }
             }
             FoldingCurve[i]->IsCalc = true;
             FoldingCurve[i]->second->p = p_clst;
@@ -1087,7 +1075,7 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     }
    _FoldingAAAMethod(FoldingCurve, Poly_V, a2);
    a_flap = a2;
-    std::cout << "result : smaller = " << MathTool::rad2deg(a2) << ",  f_bend = " << Fbend2(FoldingCurve) << "  ,  f_paralell = " << Fparallel(FoldingCurve) << std::endl;
+    std::cout << "result : smaller = " << MathTool::rad2deg(a2)  << "(" << a2 << "),  f_bend = " << Fbend2(FoldingCurve) << "  ,  f_paralell = " << Fparallel(FoldingCurve) << std::endl;
     std::cout << "finish"<<std::endl;
     return true;
 }
@@ -1126,7 +1114,7 @@ void FoldLine::Trim4Lines(){
             }
             return (index != -1) ? Point(FoldingCurve[index], index, dmax): Point(FoldingCurve.front(), index, dmax);
         };
-        int size = 4, index = 0;
+        int size = 6, index = 0;
         std::vector<std::shared_ptr<Vertex4d>> res{FoldingCurve.front(), FoldingCurve.back()};
         do{
             std::vector<std::shared_ptr<Vertex4d>> firstLine{FoldingCurve.begin(), FoldingCurve.begin()+index+1};
@@ -1347,8 +1335,6 @@ void FoldLine::reassignruling(std::shared_ptr<FoldLine>& parent){
             if(MathTool::is_point_on_line(p->p, (it - 1)->v->p, it->v->p)){
                 V->first = p; V->second = it->v;V->third = (it - 1)->v;
                 line_v->second = p;
-                std::cout << "V = " << V << "  ,  line_v = " << line_v << std::endl;
-                std::cout << "p = "<< p->p.transpose() << " , second =  " << it->v->p.transpose() << "  , third =  " << (it- 1)->v->p.transpose() << std::endl;
                 return;
             }
         }
@@ -1360,8 +1346,6 @@ void FoldLine::reassignruling(std::shared_ptr<FoldLine>& parent){
         if(!(*it)->IsCalc)continue;
         std::shared_ptr<CrvPt_FL> p = getCrossPoint(CtrlPts, (*it)->first, (*it)->second, dim);
         if(p != nullptr){
-            //なぜかここでsecondとfirstが同じアドレスを参照しているためうまくいっていない
-            std::cout <<"p = " << p->p.transpose() << ", second = " << (*it)->second->p.transpose() << " , third = " << (*it)->first->p.transpose() << std::endl;
             FoldingCurve.push_back(std::make_shared<Vertex4d>(p, (*it)->second, (*it)->first));
             (*it)->second = p;
         }
