@@ -17,7 +17,7 @@ public:
     FoldLine(PaintTool _type);
     std::vector<Eigen::Vector3d>CtrlPts;
     std::vector<Eigen::Vector3d> point;
-    std::vector<Vertex4d> FoldingCurve;
+    std::vector<std::shared_ptr<Vertex4d>> FoldingCurve;
     std::vector<Eigen::Vector3d> CurvePts;
     std::vector<std::array<Eigen::Vector3d, 2>>  AllRulings;
     double a_flap;
@@ -33,8 +33,9 @@ public:
     std::vector<std::vector<Eigen::Vector3d>> Optimization_SmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v, bool IsConnectEndPoint);
     std::vector<std::vector<Eigen::Vector3d>> Optimization_PlanaritySrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void ReassignColor(std::vector<std::shared_ptr<Line>>& Rulings, ColorPoint& CP);
+    void Trim4Lines();
     void SimplifyModel(double tol);
-    bool SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v, const std::vector<std::shared_ptr<FoldLine>>& FL);
+    bool SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v, const std::shared_ptr<FoldLine>& parent);
     void SortCurve(bool ascending = false);
     void reassignruling(std::shared_ptr<FoldLine>& parent);
 

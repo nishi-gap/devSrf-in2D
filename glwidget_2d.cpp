@@ -334,9 +334,9 @@ void GLWidget_2D::paintGL(){
                 glColor3d(0,1,0);
                 glPointSize(5);
                 for(auto&h: fl->FoldingCurve){
-                    if(IsEraseNonFoldEdge && !h.IsCalc)continue;
+                    if(IsEraseNonFoldEdge && !h->IsCalc)continue;
                     glBegin(GL_POINTS);
-                    glVertex2d(h.first->p.x(), h.first->p.y());
+                    glVertex2d(h->first->p.x(), h->first->p.y());
                     glEnd();
                 }
 
@@ -354,12 +354,12 @@ void GLWidget_2D::paintGL(){
         for(auto& FL: model->FL){
             if(FL->FoldingCurve.empty())continue;
             std::vector<int> Vertices_Ind;
-            for(int i = 0; i < (int)FL->FoldingCurve.size(); i++){if(FL->FoldingCurve[i].IsCalc)Vertices_Ind.push_back(i);}
+            for(int i = 0; i < (int)FL->FoldingCurve.size(); i++){if(FL->FoldingCurve[i]->IsCalc)Vertices_Ind.push_back(i);}
             for(const auto& fc: FL->FoldingCurve){
                 glColor3d(0, 0, 0);
                 glPointSize(3.0f);
                 glBegin(GL_POINTS);
-                glVertex2d(fc.first->p.x(), fc.first->p.y());
+                glVertex2d(fc->first->p.x(), fc->first->p.y());
                 glEnd();
             }
             //p0:描画するエッジの始点, p1: 描画するエッジの端点, p2: 片側の平面上の点, p3: もう片方の平面上の点
@@ -397,11 +397,11 @@ void GLWidget_2D::paintGL(){
             bool IsGradation = (drawtype == PaintTool::NewGradationMode)?true: false;
             
             for(int i = 1; i < (int)FL->FoldingCurve.size(); i++)
-                DrawEdge(FL->FoldingCurve[i].first, FL->FoldingCurve[i-1].first, FL->FoldingCurve[i].second, FL->FoldingCurve[i].third, rulingWidth, IsGradation, false);
+                DrawEdge(FL->FoldingCurve[i]->first, FL->FoldingCurve[i-1]->first, FL->FoldingCurve[i]->second, FL->FoldingCurve[i]->third, rulingWidth, IsGradation, false);
             for(int i = 1; i < (int)FL->FoldingCurve.size() - 1; i++){
-                bool DashedLine = (FL->FoldingCurve[i].IsCalc)? false: true;
-                DrawEdge(FL->FoldingCurve[i].first, FL->FoldingCurve[i].second, FL->FoldingCurve[i+1].first, FL->FoldingCurve[i-1].first, rulingWidth, IsGradation, true, DashedLine);
-                DrawEdge(FL->FoldingCurve[i].first, FL->FoldingCurve[i].third, FL->FoldingCurve[i-1].first, FL->FoldingCurve[i+1].first, rulingWidth, IsGradation, true, DashedLine);
+                bool DashedLine = (FL->FoldingCurve[i]->IsCalc)? false: true;
+                DrawEdge(FL->FoldingCurve[i]->first, FL->FoldingCurve[i]->second, FL->FoldingCurve[i+1]->first, FL->FoldingCurve[i-1]->first, rulingWidth, IsGradation, true, DashedLine);
+                DrawEdge(FL->FoldingCurve[i]->first, FL->FoldingCurve[i]->third, FL->FoldingCurve[i-1]->first, FL->FoldingCurve[i+1]->first, rulingWidth, IsGradation, true, DashedLine);
             }
 
 
@@ -668,18 +668,18 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
             if(model->FL.empty())return;
             for(auto&fl: model->FL){
                 for(auto itr = fl->FoldingCurve.begin() + 1; itr != fl->FoldingCurve.end() - 1; itr++){
-                    if((Eigen::Vector3d(p.x(), p.y(), 0) - (*itr).first->p).norm() < dist){
-                        ind = std::distance(fl->FoldingCurve.begin(), itr); dist = (Eigen::Vector3d(p.x(), p.y(), 0) - (*itr).first->p).norm();
+                    if((Eigen::Vector3d(p.x(), p.y(), 0) - (*itr)->first->p).norm() < dist){
+                        ind = std::distance(fl->FoldingCurve.begin(), itr); dist = (Eigen::Vector3d(p.x(), p.y(), 0) - (*itr)->first->p).norm();
                         _fl = fl;
                     }
                 }
             }
             if(ind != -1){
                 auto v4d = _fl->FoldingCurve[ind];
-                Eigen::Vector3d et = (v4d.second->p3 -v4d.first->p3).normalized(), er = (_fl->FoldingCurve[ind-1].first->p3 -v4d.first->p3).normalized(),
-                        eb = (v4d.third->p3 -v4d.first->p3).normalized(), el = (_fl->FoldingCurve[ind+1].first->p3 -v4d.first->p3).normalized();
+                Eigen::Vector3d et = (v4d->second->p3 -v4d->first->p3).normalized(), er = (_fl->FoldingCurve[ind-1]->first->p3 -v4d->first->p3).normalized(),
+                        eb = (v4d->third->p3 -v4d->first->p3).normalized(), el = (_fl->FoldingCurve[ind+1]->first->p3 -v4d->first->p3).normalized();
                 double phi1 = std::acos(et.dot(er)), phi2 = std::acos(et.dot(el)), phi3 = std::acos(eb.dot(el)), phi4 = std::acos(eb.dot(er));
-                refV = _fl->FoldingCurve[ind].first;
+                refV = _fl->FoldingCurve[ind]->first;
                 if(DebugMode::Singleton::getInstance().isdebug())
                 std::cout << "developability  = " <<  abs(2.0*std::numbers::pi - phi1 - phi2 - phi3 - phi4) << ", phi1 = " << MathTool::rad2deg(phi1) << " , phi2 = " << MathTool::rad2deg(phi2) << ", phi3 = " << MathTool::rad2deg(phi3) << ", phi4 = " << MathTool::rad2deg(phi4) << std::endl;
             }

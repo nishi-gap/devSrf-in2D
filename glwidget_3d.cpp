@@ -120,23 +120,23 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
     for(auto& l: Surface) polygon.push_back(l->v);
     Polygons.push_back(polygon);
     if(!FldCrvs.empty() && !FldCrvs.front()->FoldingCurve.empty()){
-        std::vector<std::vector<Vertex4d>> DrawCrvs;
+        std::vector<std::vector<std::shared_ptr<Vertex4d>>> DrawCrvs;
         
         for(auto&FC: FldCrvs){
             if(FC->FoldingCurve.empty())continue;
-            std::vector<Vertex4d> DrawCrv;
-            for(const auto&v: FC->FoldingCurve){if(v.IsCalc)DrawCrv.push_back(v);}
+            std::vector<std::shared_ptr<Vertex4d>> DrawCrv;
+            for(auto& v: FC->FoldingCurve){if(v->IsCalc)DrawCrv.push_back(v);}
             DrawCrvs.push_back(DrawCrv);
-            Eigen::Vector3d CrvDir = (DrawCrv.back().first->p - DrawCrv.front().first->p).normalized();
+            Eigen::Vector3d CrvDir = (DrawCrv.back()->first->p - DrawCrv.front()->first->p).normalized();
             for(auto&P: Polygons){
                 int ind_fr = -1, ind_bc = -1;
                 for(int i = 0; i < (int)P.size(); i++){
-                    if(MathTool::is_point_on_line(DrawCrv.front().first->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))ind_fr = i;
-                    if(MathTool::is_point_on_line(DrawCrv.back().first->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))ind_bc = i;
+                    if(MathTool::is_point_on_line(DrawCrv.front()->first->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))ind_fr = i;
+                    if(MathTool::is_point_on_line(DrawCrv.back()->first->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))ind_bc = i;
                 }
                 if(ind_fr != -1 && ind_bc != -1){
                     std::vector<std::shared_ptr<Vertex>> InsertedV, InsertedV_inv;
-                    for(auto&v: DrawCrv){InsertedV.push_back(v.first);InsertedV_inv.insert(InsertedV_inv.begin(), v.first);}
+                    for(auto&v: DrawCrv){InsertedV.push_back(v->first);InsertedV_inv.insert(InsertedV_inv.begin(), v->first);}
 
                     int i_min = std::min(ind_fr, ind_bc) + 1, i_max = std::max(ind_fr, ind_bc) + 1;
                     Eigen::Vector3d Dir_prev = (P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p).normalized();
@@ -156,8 +156,8 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
         }
         for(auto&DC: DrawCrvs){
             for(auto itr = DC.begin() + 1; itr != DC.end() - 1; itr++){
-                SplitPolygon(Polygons, itr->first, itr->second);
-                SplitPolygon(Polygons, itr->first, itr->third);
+                SplitPolygon(Polygons, (*itr)->first, (*itr)->second);
+                SplitPolygon(Polygons, (*itr)->first, (*itr)->third);
             }
         }
     }else{

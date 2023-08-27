@@ -178,8 +178,8 @@ void Model::UpdateFLOrder(int dim){
             for(auto& l: outline->Lines){
                 std::shared_ptr<CrvPt_FL> P = getCrossPoint(fl->CtrlPts, l->v, l->o, dim);
                 if(P!= nullptr){
-                    if(UpVec.dot((l->v->p - l->o->p).normalized()) > 0)fl->FoldingCurve.push_back(Vertex4d(P, l->v, l->o));
-                    else fl->FoldingCurve.push_back(Vertex4d(P, l->o, l->v));
+                    if(UpVec.dot((l->v->p - l->o->p).normalized()) > 0)fl->FoldingCurve.push_back(std::make_shared<Vertex4d>(P, l->v, l->o));
+                    else fl->FoldingCurve.push_back(std::make_shared<Vertex4d>(P, l->o, l->v));
                 }
             }
             fl->SortCurve();
@@ -190,10 +190,10 @@ void Model::UpdateFLOrder(int dim){
     do{
        std::vector<LineOnFL> LoF;
         for(auto&fl: hasFoldingCurve){
-            if(outline->Lines[i]->is_on_line(fl->FoldingCurve.front().first->p))
-                LoF.push_back(LineOnFL(fl, (fl->FoldingCurve.front().first->p - outline->Lines[i]->o->p).norm()/(outline->Lines[i]->v->p - outline->Lines[i]->o->p).norm()));
-            if(outline->Lines[i]->is_on_line(fl->FoldingCurve.back().first->p))
-                LoF.push_back(LineOnFL(fl, (fl->FoldingCurve.back().first->p - outline->Lines[i]->o->p).norm()/(outline->Lines[i]->v->p - outline->Lines[i]->o->p).norm()));
+            if(outline->Lines[i]->is_on_line(fl->FoldingCurve.front()->first->p))
+                LoF.push_back(LineOnFL(fl, (fl->FoldingCurve.front()->first->p - outline->Lines[i]->o->p).norm()/(outline->Lines[i]->v->p - outline->Lines[i]->o->p).norm()));
+            if(outline->Lines[i]->is_on_line(fl->FoldingCurve.back()->first->p))
+                LoF.push_back(LineOnFL(fl, (fl->FoldingCurve.back()->first->p - outline->Lines[i]->o->p).norm()/(outline->Lines[i]->v->p - outline->Lines[i]->o->p).norm()));
         }
         if(!LoF.empty()){
             std::sort(LoF.begin(), LoF.end(), [](const LineOnFL& a, const LineOnFL& b){return a.t < b.t;});
@@ -228,12 +228,21 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
     if(root == nullptr)return false;
     std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>> q;
     std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
-    root->data->SimplifyModel(tol);
+    //root->data->SimplifyModel(tol);
     q.push(root);
     while(!q.empty()){
         auto cur = q.front(); q.pop();
-        //cur->data->RevisionCrosPtsPosition();//端点の修正
-        cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
+        cur->data->RevisionCrosPtsPosition();//端点の修正
+        tol = 0.05;
+        bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
+        while(!res){
+            cur->data->SimplifyModel(0.05);
+            res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
+            //if(DebugMode::Singleton::getInstance().isdebug())
+                std::cout << "optimization result " << res << "  ,  tol = " << tol << std::endl;
+            tol += 0.01;
+        }
+        cur->data->SimpleSmooothSrf(Poly_V, FL);
         for (const auto& child : cur->children){
             if(child != nullptr){
                 child->data->reassignruling(cur->data);
@@ -284,8 +293,8 @@ bool Model::SplitRulings(int dim){
     for(auto& r: Rulings){
         std::shared_ptr<CrvPt_FL> P = getCrossPoint(root->data->CtrlPts, r->v, r->o, dim);
         if(P!= nullptr){
-            if(UpVec.dot((r->v->p - r->o->p).normalized()) > 0)root->data->FoldingCurve.push_back(Vertex4d(P, r->v->deepCopy(), r->o->deepCopy()));
-            else root->data->FoldingCurve.push_back(Vertex4d(P, r->o->deepCopy(), r->v->deepCopy()));
+            if(UpVec.dot((r->v->p - r->o->p).normalized()) > 0)root->data->FoldingCurve.push_back(std::make_shared<Vertex4d>(P, r->v->deepCopy(), r->o->deepCopy()));
+            else root->data->FoldingCurve.push_back(std::make_shared<Vertex4d>(P, r->o->deepCopy(), r->v->deepCopy()));
         }
     }
     root->data->SortCurve();
@@ -320,15 +329,15 @@ void Model::modifyFoldingCurvePositionOn3d(){
     for(auto&FC: FL){
         for(auto&fldCrv: FC->FoldingCurve){
             for(auto&r: Rulings){
-                if(!MathTool::is_point_on_line(fldCrv.first->p, r->o->p, r->v->p))continue;
-                double t = (fldCrv.first->p - r->o->p).norm()/(r->o->p - r->v->p).norm();
-                fldCrv.first->p3_ori = fldCrv.first->p3 = t * (r->v->p3 - r->o->p3) + r->o->p3;
+                if(!MathTool::is_point_on_line(fldCrv->first->p, r->o->p, r->v->p))continue;
+                double t = (fldCrv->first->p - r->o->p).norm()/(r->o->p - r->v->p).norm();
+                fldCrv->first->p3_ori = fldCrv->first->p3 = t * (r->v->p3 - r->o->p3) + r->o->p3;
                 break;
             }
             for(auto&l: outline->Lines){
-                if(!MathTool::is_point_on_line(fldCrv.first->p, l->o->p, l->v->p))continue;
-                double t = (fldCrv.first->p - l->o->p).norm()/(l->o->p - l->v->p).norm();
-                fldCrv.first->p3_ori = fldCrv.first->p3 = t * (l->v->p3 - l->o->p3) + l->o->p3;
+                if(!MathTool::is_point_on_line(fldCrv->first->p, l->o->p, l->v->p))continue;
+                double t = (fldCrv->first->p - l->o->p).norm()/(l->o->p - l->v->p).norm();
+                fldCrv->first->p3_ori = fldCrv->first->p3 = t * (l->v->p3 - l->o->p3) + l->o->p3;
                 break;
             }
         }

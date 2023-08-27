@@ -179,7 +179,7 @@ void MainWindow::StartOptimization(){
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
     double tol = ui->TolValue->value();
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-    ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, true);
+    ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, false);
     fold_Sm();
 
 }
@@ -444,22 +444,22 @@ void MainWindow::exportobj(){
    Polygons.push_back(polygon);
 
    if(!ui->glWid2dim->model->FL.empty() && !ui->glWid2dim->model->FL[0]->FoldingCurve.empty()){
-    std::vector<std::vector<Vertex4d>> FldCrvs;
+    std::vector<std::vector<std::shared_ptr<Vertex4d>>> FldCrvs;
        for(auto&FC: ui->glWid2dim->model->FL){
             if(FC->FoldingCurve.empty())continue;
-           std::vector<Vertex4d> FldCrv;
-           for(auto&fc: FC->FoldingCurve){if(fc.IsCalc)FldCrv.push_back(fc);}
+           std::vector<std::shared_ptr<Vertex4d>> FldCrv;
+           for(auto&fc: FC->FoldingCurve){if(fc->IsCalc)FldCrv.push_back(fc);}
            FldCrvs.push_back(FldCrv);
-           Eigen::Vector3d CrvDir = (FldCrv.back().first->p - FldCrv.front().first->p).normalized();
+           Eigen::Vector3d CrvDir = (FldCrv.back()->first->p - FldCrv.front()->first->p).normalized();
            for(auto&P: Polygons){
                int ind_fr = -1, ind_bc = -1;
                for(int i = 0; i < (int)P.size(); i++){
-                   if(MathTool::is_point_on_line(FldCrv.front().first->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))ind_fr = i;
-                   if(MathTool::is_point_on_line(FldCrv.back().first->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))ind_bc = i;
+                   if(MathTool::is_point_on_line(FldCrv.front()->first->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))ind_fr = i;
+                   if(MathTool::is_point_on_line(FldCrv.back()->first->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))ind_bc = i;
                }
                if(ind_fr != -1 && ind_bc != -1){
                    std::vector<std::shared_ptr<Vertex>> InsertedV, InsertedV_inv;
-                   for(auto&v: FldCrv){InsertedV.push_back(v.first);InsertedV_inv.insert(InsertedV_inv.begin(), v.first);}
+                   for(auto&v: FldCrv){InsertedV.push_back(v->first);InsertedV_inv.insert(InsertedV_inv.begin(), v->first);}
 
                    int i_min = std::min(ind_fr, ind_bc) + 1, i_max = std::max(ind_fr, ind_bc) + 1;
                    Eigen::Vector3d Dir_prev = (P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p).normalized();
@@ -511,8 +511,8 @@ void MainWindow::exportobj(){
 
        for(auto&FC: FldCrvs){
            for(auto it = FC.begin() + 1; it != FC.end() - 1; it++ ){
-               SplitPolygon(Polygons, it->first, it->second);
-               SplitPolygon(Polygons, it->first, it->third);
+               SplitPolygon(Polygons, (*it)->first, (*it)->second);
+               SplitPolygon(Polygons, (*it)->first, (*it)->third);
            }
       }
    }else{
@@ -592,13 +592,17 @@ void MainWindow::exportobj(){
     for(auto&c: planerity_value)QuantitativeResult << c << ", ";
     QuantitativeResult << "\nDevelopability\n" ;
     if(!(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())){
-        for(auto itr = ui->glWid2dim->model->FL[0]->FoldingCurve.begin() + 1; itr != ui->glWid2dim->model->FL[0]->FoldingCurve.end() - 1; itr++){
-            Eigen::Vector3d et = itr->second->p3 - itr->first->p3, er = (itr - 1)->first->p3 - itr->first->p3, eb = itr->third->p3 - itr->first->p3, el = (itr + 1)->first->p3 - itr->first->p3;
-            et = et.normalized(); er = er.normalized(); eb = eb.normalized(); el = el.normalized();
-            double phi1 = std::acos(et.dot(er)), phi2 = std::acos(et.dot(el)), phi3 = std::acos(eb.dot(el)), phi4 = std::acos(eb.dot(er));
-            double a = abs(2.0*std::numbers::pi - (phi1 + phi2 + phi3 + phi4));
-            if(a != -1)QuantitativeResult << a << ", ";
+        for(auto&FL: ui->glWid2dim->model->FL){
+            if(FL->FoldingCurve.empty())continue;
+            for(auto itr = FL->FoldingCurve.begin() + 1; itr != FL->FoldingCurve.end() - 1; itr++){
+                Eigen::Vector3d et = (*itr)->second->p3 - (*itr)->first->p3, er = (*(itr - 1))->first->p3 - (*itr)->first->p3, eb = (*itr)->third->p3 - (*itr)->first->p3, el = (*(itr + 1))->first->p3 - (*itr)->first->p3;
+                et = et.normalized(); er = er.normalized(); eb = eb.normalized(); el = el.normalized();
+                double phi1 = std::acos(et.dot(er)), phi2 = std::acos(et.dot(el)), phi3 = std::acos(eb.dot(el)), phi4 = std::acos(eb.dot(er));
+                double a = abs(2.0*std::numbers::pi - (phi1 + phi2 + phi3 + phi4));
+                if(a != -1)QuantitativeResult << a << ", ";
+            }
         }
+
     }
 
 
