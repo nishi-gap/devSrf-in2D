@@ -35,12 +35,12 @@ public:
     std::vector<std::vector<Eigen::Vector3d>> Optimization_PlanaritySrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void ReassignColor(std::vector<std::shared_ptr<Line>>& Rulings, ColorPoint& CP);
     void Trim4Lines();
-    void SimplifyModel(double tol);
+    void SimplifyModel(double tol, bool isroot);
     bool SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void SortCurve(bool ascending = false);
     void reassignruling(std::shared_ptr<FoldLine>& parent);
 
-    void applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincenter, double a, double _tol);
+    void applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincenter, double a, double _tol, bool isroot);
     void drawRulingInAllAngles(std::vector<std::array<Eigen::Vector3d, 2>>& _Rulings);
 
 private:

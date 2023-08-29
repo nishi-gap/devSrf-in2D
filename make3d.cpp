@@ -231,18 +231,23 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
     q.push(root);
     while(!q.empty()){
         auto cur = q.front(); q.pop();
-        cur->data->RevisionCrosPtsPosition();//端点の修正
-        bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
-        while(!res){
-            tol += 0.01;
-            cur->data->SimplifyModel(tol);
+        if(!cur->data->isbend()){
             cur->data->RevisionCrosPtsPosition();//端点の修正
-            res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
-            //if(DebugMode::Singleton::getInstance().isdebug())
-                std::cout << "optimization result " << res << "  ,  tol = " << tol << std::endl;
-
+            bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
+            while(!res){
+                tol += 0.01;
+                bool isroot = (cur == root)? true: false;
+                cur->data->SimplifyModel(tol, isroot);
+                cur->data->RevisionCrosPtsPosition();//端点の修正
+                res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
+                //if(DebugMode::Singleton::getInstance().isdebug())
+                    std::cout << "optimization result " << res << "  ,  tol = " << tol << std::endl;
+            }
+            std::cout <<"bending result : tol = " << cur->data->tol << " , a_flap = " << cur->data->a_flap << std::endl;
+            cur->data->tol = tol;
         }
-        cur->data->tol = tol;
+        bool isroot = (root == cur)? true: false;
+        cur->data->applyAAAMethod(Poly_V, false, cur->data->a_flap, cur->data->tol, isroot);
         cur->data->SimpleSmooothSrf(Poly_V);
         for (const auto& child : cur->children){
             if(child != nullptr){
@@ -256,7 +261,9 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
 
 void Model::applyAAAMethod(double a, double tol, bool begincenter){
     auto Poly_V = outline->getVertices();
-    FL[FoldCurveIndex]->applyAAAMethod(Poly_V, begincenter, a, tol);
+    auto root = NTree_fl.GetRoot();
+    bool isroot = (root->data == FL[FoldCurveIndex])? true: false;
+    FL[FoldCurveIndex]->applyAAAMethod(Poly_V, begincenter, a, tol, isroot);
 }
 
 bool Model::RevisionCrosPtsPosition(){return FL[FoldCurveIndex]->RevisionCrosPtsPosition();}
@@ -271,8 +278,10 @@ bool Model::AssignRuling(int dim, double tol, bool begincenter){
     q.push(root);
     while (!q.empty()) {
         auto cur = q.front(); q.pop();
-        if(cur->data->isbend()){          
-            cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap, cur->data->tol);
+        if(cur->data->a_flap != -1){
+            bool isroot = (root == cur)? true: false;
+            cur->data->RevisionCrosPtsPosition();//端点の修正
+            cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap, cur->data->tol, isroot);
             cur->data->SimpleSmooothSrf(Poly_V);
         }
         for (const auto& child : cur->children){
@@ -303,7 +312,9 @@ bool Model::SplitRulings(int dim){
 
 void Model::SimplifyModel(double tol){
     if(!(0 <= FoldCurveIndex && FoldCurveIndex < (int)FL.size()) || FL[FoldCurveIndex]->FoldingCurve.empty())return;
-    FL[FoldCurveIndex]->SimplifyModel(tol);
+    auto root = NTree_fl.GetRoot();
+    bool isroot = (root->data == FL[FoldCurveIndex])? true: false;
+    FL[FoldCurveIndex]->SimplifyModel(tol, isroot);
 }
 
 bool Model::Smoothing(){
