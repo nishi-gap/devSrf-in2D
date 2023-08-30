@@ -49,10 +49,9 @@ FORMS += \
 INCLUDEPATH += $$PWD/includes \
                 $$PWD/includes/nlopt/api
 
-QMAKE_RPATHDIR += $$PWD/includes/dlls
+#QMAKE_RPATHDIR += $$PWD/includes/dlls
 LIBS += $$PWD/includes/libs/nlopt.lib
-LIBS += $$PWD/includes/dlls/nlopt.dll
-
+#QMAKE_POST_LINK += cp $$PWD/includes/dlls/nlopt.dll $$OUT_PWD/nlopt.dll
 #dllファイルの追加：横メニューバーのプロジェクト→ビルドと実行メニューのうちメニューを選択→環境→PATHを編集してdllが入ったフォルダを追記するとできる
 #dllファイルの追加：横メニューバーのプロジェクト→BUild Environmentのシステム環境変数を使用をクリック→Pathの中にdllのフォルダを追加
 # Default rules for deployment.
