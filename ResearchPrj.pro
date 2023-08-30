@@ -47,10 +47,16 @@ FORMS += \
     widget.ui
 
 INCLUDEPATH += $$PWD/includes \
-                $$PWD/includes/nlopt/api
+                $$PWD/includes/nlopt/src/api
 
-#QMAKE_RPATHDIR += $$PWD/includes/dlls
-LIBS += $$PWD/includes/libs/nlopt.lib
+
+win32-x86_64: {
+    LIBS += $$PWD/includes/libs/nlopt.lib
+}
+mac: {
+    LIBS += -L$$PWD/includes/libs/ -lnlopt
+}
+
 #QMAKE_POST_LINK += cp $$PWD/includes/dlls/nlopt.dll $$OUT_PWD/nlopt.dll
 #dllファイルの追加：横メニューバーのプロジェクト→ビルドと実行メニューのうちメニューを選択→環境→PATHを編集してdllが入ったフォルダを追記するとできる
 #dllファイルの追加：横メニューバーのプロジェクト→BUild Environmentのシステム環境変数を使用をクリック→Pathの中にdllのフォルダを追加

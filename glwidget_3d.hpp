@@ -8,7 +8,12 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPointF>
-#include<GL/glu.h>
+#ifdef Q_OS_MAC
+
+#elif defined(Q_OS_WIN)
+    #include<GL/glu.h>   // Windowsの場合
+#endif
+
 
 typedef std::vector<std::array<Eigen::Vector3d, 2>> Ruling3d;
 typedef std::vector<std::shared_ptr<Vertex>> Polygon_V;

@@ -1248,13 +1248,12 @@ bool FoldLine::RevisionCrosPtsPosition(){
 
 void FoldLine::ReassignColor(std::vector<std::shared_ptr<Line>>& Rulings, ColorPoint& CP){
     //Y字のとき折り線は山であると仮定(谷の場合は色を反転)
-    typedef struct {
+    struct MVK{
         std::shared_ptr<Line> r;
         int type_mvk;//0:mountain && k < pi, 1: mountain && k >= pi, 2: vally && k < pi, 3: vally && k >= pi, -1: gradation = 0
         //0の数 + 3の数 == rulingの数 || 1の数 + 2の数 == rulingの数 -> 山谷とkの割り当てが正しい
-        //それ以外
-         //0の数 > 2の数 -> 　2の色を変換 (逆もまた然り)(1と3でも同様に)
-    }MVK;
+        //それ以外　0の数 > 2の数 -> 　2の色を変換 (逆もまた然り)(1と3でも同様に)
+    };
     std::vector<MVK> InitState;
     std::vector<std::shared_ptr<Vertex4d>> ValidFC;
     for(auto&fc: FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
@@ -1269,14 +1268,14 @@ void FoldLine::ReassignColor(std::vector<std::shared_ptr<Line>>& Rulings, ColorP
        Eigen::Vector3d Np = (e2.cross(ValidFC[i]->third->p3 - ValidFC[i]->first->p3)).normalized();
        double phi = std::acos(N.dot(Np));
 
-        double color;
         if(phi < CP.angle)color = CP.color/CP.angle *phi;
         else color = ((255.0 - CP.color)*(phi - CP.angle)/(std::numbers::pi - CP.angle) + CP.color);
         for(auto&r: Rulings){
             if(r->et == EdgeType::r && MathTool::is_point_on_line(ValidFC[i]->first->p, r->v->p, r->o->p)){
                 int mv = (r->color == 0)? -1: (r->color > 0)? 0: 1;
                 int type_mvk = (mv == 0 && k < std::numbers::pi)? 0: (mv == 0 && k >= std::numbers::pi)? 1: (mv == 1 && k < std::numbers::pi)? 2: (mv == 1 && k >= std::numbers::pi)? 3: -1;
-                InitState.push_back(MVK(r, type_mvk));
+                auto _mv = MVK{r, type_mvk};
+                InitState.push_back(_mv);
                 MV[type_mvk + 1] += 1;
                 break;
             }
