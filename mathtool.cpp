@@ -54,37 +54,6 @@ namespace MathTool{
         return false;
     }
 
-    void Triangulation(std::vector<Eigen::Vector3d>&input, std::vector<std::array<Eigen::Vector3d, 3>>&output){
-        output.clear();
-        std::vector<Eigen::Vector3d> Edges;
-        std::copy(input.begin(), input.end(), back_inserter(Edges) );
-        int n = Edges.size();
-        while(Edges.size() >= 3){
-            n = Edges.size();
-            for(int i = 0; i < n; i++){
-                int prev = (n + i - 1) % n;
-                int next = (n + i + 1) % n;
-                std::array<Eigen::Vector3d, 3> tri = {Edges[prev], Edges[i], Edges[next]};
-                bool elimTriMesh = true;
-                for(int j = 0; j < n - 3; j++){
-                    Eigen::Vector3d p = Edges[(next + 1 + j) % n];
-                    bool check1 = hasPointInTriangle3D(p, tri);
-                    bool check2 = IsAngleLessThan180(tri[1], tri[0], tri[2]);
-                    if(check1 || !check2){
-                        elimTriMesh = false;
-                        break;
-                    }
-                }
-                if(elimTriMesh){
-                    Edges.erase(Edges.begin() + i);
-                    output.push_back(tri);
-                    break;
-                }
-            }
-
-        }
-    }
-
     bool IsAngleLessThan180(Eigen::Vector3d& o, Eigen::Vector3d& a, Eigen::Vector3d& b){
         Eigen::Vector3d ao = (a - o), bo = (b - o);
         ao = ao.normalized(); bo = bo.normalized();

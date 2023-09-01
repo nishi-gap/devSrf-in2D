@@ -99,7 +99,6 @@ bool IsIntersect(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, const Eig
 Eigen::Vector3d getIntersectionPoint(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2,const Eigen::Vector3d p3, const Eigen::Vector3d& p4);
 Eigen::Vector3d calcCrossPoint_2Vector(const Eigen::Vector3d& p1, const Eigen::Vector3d& q1, const Eigen::Vector3d& p2, const Eigen::Vector3d& q2);
 
-void Triangulation(std::vector<Eigen::Vector3d>&input, std::vector<std::array<Eigen::Vector3d, 3>>&output);
 bool hasPointInTriangle3D(const Eigen::Vector3d& p, std::array<Eigen::Vector3d, 3>& V);
 bool IsAngleLessThan180(Eigen::Vector3d& o, Eigen::Vector3d& a, Eigen::Vector3d& b);
 

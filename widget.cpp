@@ -566,15 +566,48 @@ void MainWindow::exportobj(){
 
     Eigen::Vector3d Zaxis(0,0,1);
     std::vector<std::array<Eigen::Vector3d, 3>> TriMeshs;
-    for(auto&V: Vertices){
+    auto Triangulation = [](std::vector<std::shared_ptr<Vertex>>&input, std::vector<std::array<Eigen::Vector3d, 3>>&output){
+        output.clear();
+        std::vector<std::shared_ptr<Vertex>> Edges;
+        std::copy(input.begin(), input.end(), back_inserter(Edges) );
+        int n = Edges.size();
+        while(Edges.size() >= 3){
+            n = Edges.size();
+            for(int i = 0; i < n; i++){
+               int prev = (n + i - 1) % n;
+               int next = (n + i + 1) % n;
+               std::array<std::shared_ptr<Vertex>, 3> tri = {Edges[prev], Edges[i], Edges[next]};
+               bool elimTriMesh = true;
+               for(int j = 0; j < n - 3; j++){
+                   Eigen::Vector3d p = Edges[(next + 1 + j) % n]->p;
+                   auto _tri = std::array{tri[0]->p, tri[1]->p, tri[2]->p};
+                   bool check1 = MathTool::hasPointInTriangle3D(p, _tri);
+                   bool check2 = MathTool::IsAngleLessThan180(tri[1]->p, tri[0]->p, tri[2]->p);
+                   if(check1 || !check2){
+                       elimTriMesh = false;
+                       break;
+                   }
+               }
+               if(elimTriMesh){
+                   Edges.erase(Edges.begin() + i);
+                   Eigen::Vector3d N = ((tri[1]->p3 - tri[0]->p3).cross(tri[2]->p3 -tri[0]->p3)).normalized();
+                   if(N.dot(Eigen::Vector3d::UnitZ()) < 0){ std::swap(tri[0], tri[2]);}
+                   output.push_back({tri[0]->p3, tri[1]->p3, tri[2]->p3});
+                   break;
+               }
+            }
+
+        }
+    };
+
+    for(auto&poly: Polygons){
         std::vector<std::array<Eigen::Vector3d, 3>> trimesh;
-        MathTool::Triangulation(V, trimesh);
+        Triangulation(poly, trimesh);
         TriMeshs.insert(TriMeshs.end(), trimesh.begin(), trimesh.end());
     }
-    for(const auto& mesh: TriMeshs){
+    for(auto& mesh: TriMeshs){
         for(const auto&v: mesh)WriteList_tri.append("v " + QString::number(v.x()) + " " + QString::number(v.y()) + " " + QString::number(v.z()) + "\n");
         N = ((mesh[1] - mesh[0]).cross(mesh[2] - mesh[0])).normalized();
-        if(N.dot(Eigen::Vector3d::UnitZ()) < 0) N *= -1;
         Normals.push_back(N);
     }
     for(const auto&n : Normals) WriteList_tri.append("vn " + QString::number(n.x()) + " " + QString::number(n.y()) + " " + QString::number(n.z()) + "\n");
