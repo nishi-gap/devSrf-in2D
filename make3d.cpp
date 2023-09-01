@@ -236,11 +236,11 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
             bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
             while(!res){
                 bool isroot = (cur == root)? true: false;
-                cur->data->SimplifyModel(cur->data->validsize--, isroot);
+                cur->data->SimplifyModel(-1, isroot);
                 cur->data->RevisionCrosPtsPosition();//端点の修正
                 res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
                 //if(DebugMode::Singleton::getInstance().isdebug())
-                    std::cout << "optimization result " << res << "  ,  tol = " << tol << std::endl;
+                std::cout << "optimization result " << res << "  ,  tol = " << tol << ", ruling num = " << cur->data->validsize << std::endl;
             }
             std::cout <<"bending result : tol = " << cur->data->tol << " valid ruling num = " << cur->data->validsize  << " , a_flap = " << cur->data->a_flap << std::endl;
         }

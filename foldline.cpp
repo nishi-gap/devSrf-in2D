@@ -790,6 +790,7 @@ bool FoldLine::SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly
         for(j = 0; j < (int)FoldingCurve.size(); j++){if(v_clst == FoldingCurve[j]->second)break;}
         FoldingCurve.back()->second->p3 = calcTargetDistanceOnPlane(FoldingCurve.back()->second->p, FoldingCurve[j]->first, FoldingCurve[j]->second, FoldingCurve[j-1]->second);
     }else FoldingCurve.back()->second->p3 = calcTargetDistanceOnPlane(FoldingCurve.back()->second->p, FoldingCurve.end()[-2]->first, FoldingCurve.back()->first, FoldingCurve.end()[-2]->second);
+    validsize = FoldingCurve.size();
     return true;
 }
 
@@ -1140,6 +1141,7 @@ void FoldLine::SimplifyModel(int iselim, bool isroot){
 
     int n = (isroot)? 0: 1;
     validsize -= iselim;
+    validsize = (validsize < 0)? 0: (validsize > (int)FoldingCurve.size())? (int)FoldingCurve.size(): validsize;
     for(auto it = FoldingCurve.begin() + n; it != FoldingCurve.end() - n; it++){
         (*it)->IsCalc = true;
         (*it)->first->p = (*it)->first->p2_ori; (*it)->first->p3 = (*it)->first->p3_ori;
@@ -1425,7 +1427,7 @@ void FoldLine::drawRulingInAllAngles(std::vector<std::array<Eigen::Vector3d, 2>>
 
 void FoldLine::applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincener, double a, double _tol, bool isroot){
     if(FoldingCurve.empty() && a_flap == -1)return;
-    SimplifyModel(validsize, isroot);
+    SimplifyModel(0, isroot);
     //if(!begincener)_FoldingAAAMethod(FoldingCurve, Poly_V, a);
     //else _FoldingAAAMethod_center(FoldingCurve, Poly_V, a);
     _FoldingAAAMethod(FoldingCurve, Poly_V, a);
