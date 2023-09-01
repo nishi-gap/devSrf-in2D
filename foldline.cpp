@@ -324,9 +324,9 @@ double RulingsCrossed(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve){
     std::vector<std::shared_ptr<Vertex4d>> ValidFC;
     for(auto&fc: FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
     for(int i = 1; i < (int)ValidFC.size() -1; i++){
-        for(int j = -1; j <= 1; j +=2){
-            int i2 = i + j;
-            if(i2 <= 0 || i2 >= (int)ValidFC.size() - 1)continue;
+        for(int j = i; j < (int)ValidFC.size() -1; j ++){
+            int i2 = j;
+            if(i == j)continue;
             Eigen::Vector3d p1 = ValidFC[i]->first->p, q1 = ValidFC[i]->second->p, p2 = ValidFC[i2]->first->p, q2 = ValidFC[i2]->second->p;
             double t = ((p2.x() - p1.x())*(p2.y() - q2.y()) - (p2.x() - q2.x())*(p2.y() - p1.y()))/((q1.x() - p1.x()) * (p2.y() - q2.y()) - (p2.x() - q2.x())*(q1.y() - p1.y()));
             if(0 < t && t < 1) f += abs(1.0/t);

@@ -16,6 +16,7 @@
 #include <tuple>
 #include <fstream>
 #include <QFileDialog>
+#include <QFileInfo>
 #include "make3d.hpp"
 #include "originalbutton.hpp"
 

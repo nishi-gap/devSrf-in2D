@@ -406,7 +406,7 @@ void MainWindow::exportobj(){
         msgBox.exec();
         return;
     }
-    QStringList WriteList;
+    QStringList WriteList, WriteList_tri;
     std::vector<Eigen::Vector3d> Normals;
     Eigen::Vector3d befN = {0,0,0}, N;
     Eigen::Transform<double, 3, Eigen::Affine> Mirror;
@@ -417,16 +417,16 @@ void MainWindow::exportobj(){
     std::vector<std::shared_ptr<Vertex>> polygon;
     std::vector<double> planerity_value;
 
-   auto Planerity  = [](const std::vector<Eigen::Vector3d>& vertices, const std::vector<std::shared_ptr<Line>>& lines)->double{
+    auto Planerity  = [](const std::vector<std::shared_ptr<Vertex>>& vertices, const std::vector<std::shared_ptr<Line>>& lines)->double{
        if((int)vertices.size() == 3)return 0.0;
        else{
            std::vector<Eigen::Vector3d> QuadPlane;
            for(auto&v: vertices){
                bool IsOutlineVertices = false;
                for(auto&l: lines){
-                   if(l->v->p3 == v)IsOutlineVertices = true;
+                   if(l->v->p3 == v->p3)IsOutlineVertices = true;
                }
-               if(!IsOutlineVertices)QuadPlane.push_back(v);
+               if(!IsOutlineVertices)QuadPlane.push_back(v->p3);
            }
            double l_avg = ((QuadPlane[0] - QuadPlane[2]).norm() + (QuadPlane[1] - QuadPlane[3]).norm())/2.0;
            double d;
@@ -538,10 +538,10 @@ void MainWindow::exportobj(){
 
     for(auto&poly: Polygons){
         std::vector<Eigen::Vector3d> V;
-        poly = SortPolygon(poly);
-        for(auto&p: poly)V.push_back(Mirror * p->p3);
+        auto poly_sort = SortPolygon(poly);
+        for(auto&p: poly_sort)V.push_back(Mirror * p->p3);
         Vertices.push_back(V);
-        planerity_value.push_back(Planerity(V,ui->glWid2dim->model->outline->Lines));
+        planerity_value.push_back(Planerity(poly, ui->glWid2dim->model->outline->Lines));
     }
 
     for(const auto& mesh: Vertices){
@@ -563,6 +563,28 @@ void MainWindow::exportobj(){
         WriteList.append(s);
     }
 
+    Eigen::Vector3d Zaxis(0,0,1);
+    std::vector<std::array<Eigen::Vector3d, 3>> TriMeshs;
+    for(auto&V: Vertices){
+        std::vector<std::array<Eigen::Vector3d, 3>> trimesh;
+        MathTool::Triangulation(V, trimesh);
+        TriMeshs.insert(TriMeshs.end(), trimesh.begin(), trimesh.end());
+    }
+    for(const auto& mesh: TriMeshs){
+        for(const auto&v: mesh)WriteList_tri.append("v " + QString::number(v.x()) + " " + QString::number(v.y()) + " " + QString::number(v.z()) + "\n");
+        N = ((mesh[1] - mesh[0]).cross(mesh[2] - mesh[0])).normalized();
+        if(N.dot(Eigen::Vector3d::UnitZ()) < 0) N *= -1;
+        Normals.push_back(N);
+    }
+    for(const auto&n : Normals) WriteList_tri.append("vn " + QString::number(n.x()) + " " + QString::number(n.y()) + " " + QString::number(n.z()) + "\n");
+    cnt = 1;
+    for(int i = 0; i < (int)TriMeshs.size(); i++){
+        QString s = "f ";
+        for(int j = 0; j < 3; j++)s += QString::number(cnt++) + "//" + QString::number(i+1) + " ";
+        s += "\n";
+        WriteList_tri.append(s);
+    }
+
     const QString DirName = "./OBJ";
     const QDir dir; dir.mkdir(DirName);
     QDir CurDir = QDir::current(); CurDir.cd(DirName);
@@ -581,6 +603,20 @@ void MainWindow::exportobj(){
     foreach (QString item, WriteList) {
         out << item;
     }
+    // QFileInfoクラスを使用してファイル名を解析
+    QFileInfo fileInfo(fileName);
+    QString baseName = fileInfo.baseName();
+    QString dirPath = fileInfo.dir().path();
+    QString originalExtension = fileInfo.suffix();
+    QString fileName_tri = dirPath + "/" + baseName + "_tri." + originalExtension;
+    QFile file_tri(fileName_tri);
+    if (!file_tri.open(QIODevice::WriteOnly)) {
+        QMessageBox::information(this, tr("Unable to open file"), file.errorString());
+        return;
+    }
+    QTextStream out2(&file_tri);
+    foreach(QString item, WriteList_tri)out2 << item;
+
     CurDir.cd(CSVDir);
     //平面性の結果
     QFile QuantitativeResult_file(fileName.split(u'.')[0] + "QuantitativeResult.csv");
