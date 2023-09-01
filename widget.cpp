@@ -1,6 +1,5 @@
-#include "widget.hpp"
+#include "widget.h"
 #include "ui_widget.h"
-
 MainWindow::MainWindow(QWidget *parent)
     : QWidget(parent), ui(new Ui::MainWindow)
 {
@@ -72,6 +71,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->addFL_bezier, &QPushButton::clicked, this, &MainWindow::addFoldLine_bezier);
     connect(this, &MainWindow::signalFLtype, ui->glWid2dim, &GLWidget_2D::changeFoldType);
     connect(ui->ToleranceValue, &QSlider::valueChanged, this, &MainWindow::changeToleranceValue_Slider);
+    connect(ui->elimRuling, &QSpinBox::valueChanged, this, &MainWindow::changeRulingNum);
 
     connect(ui->TolValue, &QDoubleSpinBox::valueChanged, this, &MainWindow::changeToleranceValue_Spin);
     connect(ui->ReassinColorButton, &QPushButton::clicked, this, &MainWindow::ReassinColor);
@@ -108,10 +108,11 @@ MainWindow::MainWindow(QWidget *parent)
 
     CurvesNum[0] = MainWindow::CurvesNum[1] = MainWindow::CurvesNum[2] = MainWindow::CurvesNum[3] = 0;
     SelectedBtn = nullptr;
+
 }
 
 static bool begin_center = false;
-
+static int befNum = 0;
 MainWindow::~MainWindow()
 {
     delete ui;
@@ -133,6 +134,14 @@ void MainWindow::moveCtrlPts_fl(){emit signalFLtype(PaintTool::FoldLine_move);}
 void MainWindow::color_FL(){emit signalFLtype(PaintTool::FoldLine_move);}
 
 void MainWindow::ModelBack(){
+    ui->glWid2dim->update();
+    ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
+}
+
+void MainWindow::changeRulingNum(int n){
+    int iselim = (n < befNum)? -1: (n == befNum)? 0: 1;
+    if(iselim == -1 || iselim == 1)ui->glWid2dim->model->SimplifyModel(iselim);
+    befNum = n;
     ui->glWid2dim->update();
     ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
 }
@@ -171,7 +180,7 @@ void MainWindow::changeToleranceValue_Spin(double val){
     ui->glWid2dim->VisualizeMVColor(true);
 
     ui->ToleranceValue->setValue(int(val/maxSpin * maxSlider));
-    ui->glWid2dim->model->SimplifyModel(val);
+    //ui->glWid2dim->model->SimplifyModel(val);
     fold_Sm();
 }
 

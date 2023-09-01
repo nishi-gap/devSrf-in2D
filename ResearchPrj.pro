@@ -30,16 +30,27 @@ SOURCES += \
 
 HEADERS += \
     #arcball.h \
+    cbox.h \
     cbox.hpp \
+    foldline.h \
     foldline.hpp \
+    glwidget_2d.h \
     glwidget_2d.hpp \
+    glwidget_3d.h \
     glwidget_3d.hpp \
+    gradationwidget.h \
     gradationwidget.hpp \
+    gtoolwnd.h \
     gtoolwnd.hpp \
+    make3d.h \
     make3d.hpp \
+    mathtool.h \
     mathtool.hpp \
+    originalbutton.h \
     originalbutton.hpp \
+    setrulings.h \
     setrulings.hpp \
+    widget.h \
     widget.hpp
 
 FORMS += \
@@ -48,6 +59,8 @@ FORMS += \
 
 INCLUDEPATH += $$PWD/includes \
                 $$PWD/includes/nlopt/api
+
+DESTDIR = $$PWD
 
 #QMAKE_RPATHDIR += $$PWD/includes/dlls
 LIBS += $$PWD/includes/libs/nlopt.lib

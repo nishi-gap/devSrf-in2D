@@ -1,4 +1,4 @@
-#include "setrulings.hpp"
+#include "setrulings.h"
 using namespace MathTool;
 
 Vertex::Vertex(Eigen::Vector3d _p, bool _deformed){

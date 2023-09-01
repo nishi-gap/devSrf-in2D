@@ -1,4 +1,4 @@
-#include "mathtool.hpp"
+#include "mathtool.h"
 
 namespace DebugMode{
     Singleton& Singleton::getInstance(){

@@ -1,4 +1,4 @@
-#include "originalbutton.hpp"
+#include "originalbutton.h"
 
 OriginalButton::OriginalButton(QString &text, QWidget *parent) : QPushButton(text, parent)
 {

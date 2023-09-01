@@ -2,7 +2,6 @@
 #define GTOOLWND_H
 
 #include <QWidget>
-#include <glm/glm.hpp>
 #include <QMainWindow>
 #include <QPushButton>
 #include <QComboBox>
@@ -24,7 +23,7 @@ public:
     Ui::GToolWnd *gtw;
 
 public slots:
-    void set(std::vector<glm::f64vec2>CurvePath);
+    void set(std::vector<Eigen::Vector2d>CurvePath);
 
 signals:
 

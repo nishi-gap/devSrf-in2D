@@ -1,4 +1,4 @@
-#include "widget.hpp"
+#include "widget.h"
 #include <QApplication>
 #include <iomanip>
 

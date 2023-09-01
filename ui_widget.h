@@ -25,8 +25,8 @@
 #include <QtWidgets/QSpinBox>
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QWidget>
-#include <glwidget_2d.hpp>
-#include <glwidget_3d.hpp>
+#include "glwidget_2d.h"
+#include "glwidget_3d.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -95,6 +95,7 @@ public:
     QSlider *ToleranceValue;
     QDoubleSpinBox *TolValue;
     QPushButton *ReassinColorButton;
+    QSpinBox *elimRuling;
     QLabel *label_2;
     QPushButton *startButton;
     QPushButton *switchDraw;
@@ -214,7 +215,7 @@ public:
         OutlineBox->setGeometry(QRect(20, 460, 161, 211));
         verticalLayoutWidget_3 = new QWidget(OutlineBox);
         verticalLayoutWidget_3->setObjectName("verticalLayoutWidget_3");
-        verticalLayoutWidget_3->setGeometry(QRect(20, 20, 121, 191));
+        verticalLayoutWidget_3->setGeometry(QRect(20, 20, 121, 195));
         verticalLayout_3 = new QVBoxLayout(verticalLayoutWidget_3);
         verticalLayout_3->setObjectName("verticalLayout_3");
         verticalLayout_3->setContentsMargins(0, 0, 0, 0);
@@ -363,7 +364,7 @@ public:
         symmetryButton->setGeometry(QRect(10, 30, 111, 21));
         FoldLineBox = new QGroupBox(MainWindow);
         FoldLineBox->setObjectName("FoldLineBox");
-        FoldLineBox->setGeometry(QRect(680, 450, 131, 181));
+        FoldLineBox->setGeometry(QRect(680, 410, 131, 211));
         verticalLayoutWidget_5 = new QWidget(FoldLineBox);
         verticalLayoutWidget_5->setObjectName("verticalLayoutWidget_5");
         verticalLayoutWidget_5->setGeometry(QRect(10, 30, 114, 111));
@@ -399,6 +400,9 @@ public:
         ReassinColorButton = new QPushButton(FoldLineBox);
         ReassinColorButton->setObjectName("ReassinColorButton");
         ReassinColorButton->setGeometry(QRect(20, 150, 80, 18));
+        elimRuling = new QSpinBox(FoldLineBox);
+        elimRuling->setObjectName("elimRuling");
+        elimRuling->setGeometry(QRect(40, 180, 42, 25));
         label_2 = new QLabel(MainWindow);
         label_2->setObjectName("label_2");
         label_2->setGeometry(QRect(1030, 490, 31, 16));

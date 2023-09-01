@@ -1,5 +1,4 @@
-#define PI 3.14159265359
-#include "glwidget_2d.hpp"
+#include "glwidget_2d.h"
 
 GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
 {

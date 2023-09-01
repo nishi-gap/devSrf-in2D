@@ -1,4 +1,4 @@
-#include "make3d.hpp"
+#include "make3d.h"
 using namespace MathTool;
 
 Model::Model(){
@@ -235,16 +235,14 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
             cur->data->RevisionCrosPtsPosition();//端点の修正
             bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
             while(!res){
-                tol += 0.01;
                 bool isroot = (cur == root)? true: false;
-                cur->data->SimplifyModel(tol, isroot);
+                cur->data->SimplifyModel(cur->data->validsize--, isroot);
                 cur->data->RevisionCrosPtsPosition();//端点の修正
                 res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
                 //if(DebugMode::Singleton::getInstance().isdebug())
                     std::cout << "optimization result " << res << "  ,  tol = " << tol << std::endl;
             }
-            std::cout <<"bending result : tol = " << cur->data->tol << " , a_flap = " << cur->data->a_flap << std::endl;
-            cur->data->tol = tol;
+            std::cout <<"bending result : tol = " << cur->data->tol << " valid ruling num = " << cur->data->validsize  << " , a_flap = " << cur->data->a_flap << std::endl;
         }
         bool isroot = (root == cur)? true: false;
         cur->data->applyAAAMethod(Poly_V, false, cur->data->a_flap, cur->data->tol, isroot);
@@ -307,7 +305,15 @@ bool Model::SplitRulings(int dim){
         }
     }
     root->data->SortCurve();
+    root->data->validsize = root->data->FoldingCurve.size();
     return true;
+}
+
+void Model::SimplifyModel(int iselim){
+    if(!(0 <= FoldCurveIndex && FoldCurveIndex < (int)FL.size()) || FL[FoldCurveIndex]->FoldingCurve.empty())return;
+    auto root = NTree_fl.GetRoot();
+    bool isroot = (root->data == FL[FoldCurveIndex])? true: false;
+    FL[FoldCurveIndex]->SimplifyModel(iselim, isroot);
 }
 
 void Model::SimplifyModel(double tol){

@@ -1,5 +1,4 @@
-
-#include "foldline.hpp"
+#include "foldline.h"
 
 const double eps = 1e-7;
 std::string File_Ebend = "./Optimization/Ebend.csv";
@@ -172,6 +171,7 @@ FoldLine::FoldLine(PaintTool _type)
     CurvePts.clear();
     a_flap = -1;
     tol = 0;
+    validsize = 0;
 }
 
 void FoldLine::SortCurve(bool ascending){
@@ -1093,10 +1093,8 @@ inline double RevisionVertices::getK(const Eigen::Vector3d o, const Eigen::Vecto
     return k;
 }
 
-void FoldLine::Trim4Lines(){
-    //間引いた後の数を4に限定する
-    //候補をVlistにいれる、確定をresにいれる
-    auto elim_rulings = [](std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve)->std::vector<std::shared_ptr<Vertex4d>>{
+void FoldLine::SimplifyModel(int iselim, bool isroot){
+    auto elim_rulings = [&]()->std::vector<std::shared_ptr<Vertex4d>>{
         struct Point{
             std::shared_ptr<Vertex4d> p;
             int index;
@@ -1120,7 +1118,7 @@ void FoldLine::Trim4Lines(){
             }
             return (index != -1) ? Point(FoldingCurve[index], index, dmax): Point(FoldingCurve.front(), index, dmax);
         };
-        int size = 6, index = 0;
+        int index = 0;
         std::vector<std::shared_ptr<Vertex4d>> res{FoldingCurve.front(), FoldingCurve.back()};
         do{
             std::vector<std::shared_ptr<Vertex4d>> firstLine{FoldingCurve.begin(), FoldingCurve.begin()+index+1};
@@ -1131,21 +1129,29 @@ void FoldLine::Trim4Lines(){
             if(p_first.index == -1 && p_second.index != -1)p = p_second;
             else if(p_first.index != -1 && p_second.index == -1)p = p_first;
             else p = (p_first.dist > p_second.dist) ? p_first : p_second;
-            
+
             for(int i = 1; i < (int)res.size(); i++){
                 if(res[i]->first->s < p.p->first->s && p.p->first->s < res[i-1]->first->s){res.insert(res.begin() + i, p.p);break;}
             }
             index = p.index;
-        }while((int)res.size() < size);
+        }while((int)res.size() < validsize);
         return res;
     };
-    std::vector<std::shared_ptr<Vertex4d>> fc_trimed = elim_rulings(FoldingCurve);
-        for(auto&V4d: FoldingCurve){
-        if(std::find_if(fc_trimed.begin(), fc_trimed.end(), [&V4d](const std::shared_ptr<Vertex4d>& V){return V4d->first == V->first;}) == fc_trimed.end())
-        V4d->IsCalc = false;
+
+    int n = (isroot)? 0: 1;
+    validsize -= iselim;
+    for(auto it = FoldingCurve.begin() + n; it != FoldingCurve.end() - n; it++){
+        (*it)->IsCalc = true;
+        (*it)->first->p = (*it)->first->p2_ori; (*it)->first->p3 = (*it)->first->p3_ori;
+        (*it)->second->p = (*it)->second->p2_ori; (*it)->second->p3 = (*it)->second->p3_ori;
+        (*it)->third->p = (*it)->third->p2_ori; (*it)->third->p3 = (*it)->third->p3_ori;
+    }
+    auto res = elim_rulings();
+    for(auto&V4d: FoldingCurve){
+        if(std::find_if(res.begin(), res.end(), [&V4d](const std::shared_ptr<Vertex4d>& V){return V4d->first == V->first;}) != res.end()){
+        }else V4d->IsCalc = false;
     }
     return;
-
 }
 
 void FoldLine::SimplifyModel(double tol, bool isroot){
@@ -1161,6 +1167,7 @@ void FoldLine::SimplifyModel(double tol, bool isroot){
         if(std::find_if(tmp.begin(), tmp.end(), [&V4d](const std::shared_ptr<Vertex4d>& V){return V4d->first == V->first;}) != tmp.end()){
         }else V4d->IsCalc = false;
     }
+    this->tol = tol;
     return;
     std::vector<int>Vertices_Ind;
     for(int i = 0; i < (int)FoldingCurve.size(); i++){if(FoldingCurve[i]->IsCalc)Vertices_Ind.push_back(i);}
@@ -1357,10 +1364,9 @@ void FoldLine::reassignruling(std::shared_ptr<FoldLine>& parent){
         if(p != nullptr){
             FoldingCurve.push_back(std::make_shared<Vertex4d>(p, (*it)->second, (*it)->first));
             (*it)->second = p;
-        }else {std::cout << "null line " << (*it)->first->p.x() << ", " << (*it)->first->p.y() << "  :  " << (*it)->second->p.x() << ", " << (*it)->second->p.y() << std::endl;}
+        }
     }
-    std::cout<<std::endl;
-
+    validsize = FoldingCurve.size();
     SortCurve();
     parent->SortCurve();
 }
@@ -1419,7 +1425,7 @@ void FoldLine::drawRulingInAllAngles(std::vector<std::array<Eigen::Vector3d, 2>>
 
 void FoldLine::applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincener, double a, double _tol, bool isroot){
     if(FoldingCurve.empty() && a_flap == -1)return;
-    SimplifyModel(_tol, isroot);
+    SimplifyModel(validsize, isroot);
     //if(!begincener)_FoldingAAAMethod(FoldingCurve, Poly_V, a);
     //else _FoldingAAAMethod_center(FoldingCurve, Poly_V, a);
     _FoldingAAAMethod(FoldingCurve, Poly_V, a);

@@ -9,7 +9,6 @@
 #include <QPushButton>
 #include <QSlider>
 #include <QLineEdit>
-#include <QOpenGLWidget>
 #include <gtoolwnd.h>
 #include <QCheckBox>
 #include <QAbstractButton>
@@ -17,9 +16,11 @@
 #include <tuple>
 #include <fstream>
 #include <QFileDialog>
+#include <QFileInfo>
+#include <utility>
 #include "make3d.h"
 #include "originalbutton.h"
-#include "mathtool.h"
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -80,7 +81,8 @@ public slots:
 
     void changeToleranceValue_Slider(int val);
     void changeToleranceValue_Spin(double val);
-    void StartSmoothingSurface();
+    void changeRulingNum(int val);
+    void sendFoldingParam(double &tol, bool &begincenter);
 
     void ReassinColor();
 
@@ -95,15 +97,15 @@ public slots:
     void StartOptimization_plararity();
 private:
     Ui::MainWindow *ui;
-    Model *model;
+    std::shared_ptr<Model> model;
     QList<std::tuple<QCheckBox *, PaintTool >> CBoxlist;
     int crvPtNum;
-    std::vector<std::vector<glm::f64vec3>> output;
+    std::vector<std::vector<Eigen::Vector3d>> output;
     void exportobj();
 
-    std::vector<Btn4Crv*> LayerList;
+    std::vector<std::shared_ptr<Btn4Crv>> LayerList;
 
-    Btn4Crv *SelectedBtn;
+    std::shared_ptr<Btn4Crv> SelectedBtn;
     QPoint dragPos;
     QRect originalPos;
     int CurvesNum[4];
@@ -120,7 +122,6 @@ signals:
     void signalFLtype(PaintTool state);
     void signalNewLineWidth(double d);
 
-    void sendAngle(double val, int keyType);
-
+    void sendAngle(double val, double tol, int keyType);
 };
 #endif // WIDGET_H
