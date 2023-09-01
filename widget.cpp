@@ -72,9 +72,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->addFL_bezier, &QPushButton::clicked, this, &MainWindow::addFoldLine_bezier);
     connect(this, &MainWindow::signalFLtype, ui->glWid2dim, &GLWidget_2D::changeFoldType);
     connect(ui->ToleranceValue, &QSlider::valueChanged, this, &MainWindow::changeToleranceValue_Slider);
+
     connect(ui->TolValue, &QDoubleSpinBox::valueChanged, this, &MainWindow::changeToleranceValue_Spin);
     connect(ui->ReassinColorButton, &QPushButton::clicked, this, &MainWindow::ReassinColor);
-    connect(ui->glWid2dim, &GLWidget_2D::getFoldParam, this, sendFoldingParam);
+    connect(ui->glWid2dim, &GLWidget_2D::getFoldParam, this, &MainWindow::sendFoldingParam);
 
     //fold line debug
     connect(ui->startButton, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::Start4Debug_CF);
