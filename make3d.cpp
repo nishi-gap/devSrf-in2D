@@ -236,7 +236,7 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
             bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
             while(!res){
                 bool isroot = (cur == root)? true: false;
-                cur->data->SimplifyModel(-1, isroot);
+                cur->data->SimplifyModel(1, isroot);
                 cur->data->RevisionCrosPtsPosition();//端点の修正
                 res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
                 //if(DebugMode::Singleton::getInstance().isdebug())
