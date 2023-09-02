@@ -232,12 +232,13 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
     while(!q.empty()){
         auto cur = q.front(); q.pop();
         if(!cur->data->isbend()){
-            cur->data->RevisionCrosPtsPosition();//端点の修正
+            //cur->data->RevisionCrosPtsPosition();//端点の修正
             bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
             while(!res){
                 bool isroot = (cur == root)? true: false;
-                cur->data->SimplifyModel(1, isroot);
-                cur->data->RevisionCrosPtsPosition();//端点の修正
+                int validsize = cur->data->validsize - 1;
+                cur->data->SimplifyModel(validsize, isroot);
+                //cur->data->RevisionCrosPtsPosition();//端点の修正
                 res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
                 //if(DebugMode::Singleton::getInstance().isdebug())
                 std::cout << "optimization result " << res << "  ,  tol = " << tol << ", ruling num = " << cur->data->validsize << std::endl;
@@ -276,11 +277,11 @@ bool Model::AssignRuling(int dim, double tol, bool begincenter){
     q.push(root);
     while (!q.empty()) {
         auto cur = q.front(); q.pop();
-        if(cur->data->a_flap != -1){
+        if(cur->data->isbend()){
             bool isroot = (root == cur)? true: false;
-            cur->data->RevisionCrosPtsPosition();//端点の修正
-            cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap, cur->data->tol, isroot);
-            cur->data->SimpleSmooothSrf(Poly_V);
+            //cur->data->RevisionCrosPtsPosition();//端点の修正
+            //cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap, cur->data->tol, isroot);
+            //cur->data->SimpleSmooothSrf(Poly_V);
         }
         for (const auto& child : cur->children){
             if(child != nullptr){
@@ -313,7 +314,8 @@ void Model::SimplifyModel(int iselim){
     if(!(0 <= FoldCurveIndex && FoldCurveIndex < (int)FL.size()) || FL[FoldCurveIndex]->FoldingCurve.empty())return;
     auto root = NTree_fl.GetRoot();
     bool isroot = (root->data == FL[FoldCurveIndex])? true: false;
-    FL[FoldCurveIndex]->SimplifyModel(iselim, isroot);
+    int validsize = FL[FoldCurveIndex]->validsize - iselim;
+    FL[FoldCurveIndex]->SimplifyModel(validsize, isroot);
 }
 
 void Model::SimplifyModel(double tol){

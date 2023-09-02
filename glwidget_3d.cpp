@@ -50,25 +50,22 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
         else{
             std::vector<Eigen::Vector3d> QuadPlane;
             for(auto&v: vertices){
-                bool IsOutlineVertices = false;
-                for(auto&p: Poly_V){
-                    if(p->v->p3 == v->p3)IsOutlineVertices = true;
-                }
-                if(!IsOutlineVertices)QuadPlane.push_back(v->p3);
+                if(std::find_if(Poly_V.begin(), Poly_V.end(),[&](const std::shared_ptr<Line>& L){return (L->v->p - v->p).norm() < 1e-9; }) == Poly_V.end())
+                    QuadPlane.push_back(v->p3);
             }
+            if((int)QuadPlane.size() < 3)return 0;
             double l_avg = ((QuadPlane[0] - QuadPlane[2]).norm() + (QuadPlane[1] - QuadPlane[3]).norm())/2.0;
             double d;
             Eigen::Vector3d u1 = (QuadPlane[0] - QuadPlane[2]).normalized(), u2 = (QuadPlane[1]-  QuadPlane[3]).normalized();
             if((u1.cross(u2)).norm() < 1e-9){
-                Eigen::Vector3d H = QuadPlane[3] + u2.dot(QuadPlane[1] - QuadPlane[3])*u2;
+                Eigen::Vector3d H = QuadPlane[3] + u2.dot(QuadPlane[1] - QuadPlane[3]) * u2;
                 d = (H - QuadPlane[1]).norm();
-            }else{            
+            }else{
                 d = ((u1.cross(u2)).dot(QuadPlane[2] - QuadPlane[3]))/(u1.cross(u2)).norm();
             }
             return d/l_avg;
         }
     };
-
 
     drawdist = 0.0;
     Vertices.clear();
