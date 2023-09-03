@@ -35,7 +35,6 @@ inline Eigen::Vector3d calcTargetDistanceOnPlane(Eigen::Vector3d p, const std::s
     A(0,0) = v1->p.x() - o->p.x(); A(0,1) = v2->p.x() - o->p.x();
     A(1,0) = v1->p.y() - o->p.y(); A(1,1) = v2->p.y() - o->p.y();
     Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
-    auto tmp = (x(0) * (v1->p - o->p) + x(1) * (v2->p - o->p) + o->p - p).norm();
     return  x(0) * (v1->p3 - o->p3) + x(1) * (v2->p3 - o->p3) + o->p3;
 }
 
@@ -997,7 +996,6 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     if(k >= std::numbers::pi && IsMount){a_min = std::numbers::pi; a_max = std::numbers::pi + a_con;}
     if(k < std::numbers::pi && !IsMount){a_min = 0.0;a_max = a_con - std::numbers::pi;}
     if(k >= std::numbers::pi && !IsMount){a_min = a_con - std::numbers::pi; a_max = std::numbers::pi;}
-    a = (a_min + a_max)/2.0;
 
     if(DebugMode::Singleton::getInstance().isdebug()) std::cout <<MathTool::rad2deg(a_ll) << " , " << MathTool::rad2deg(a_con)<<std::endl;
     if(DebugMode::Singleton::getInstance().isdebug()){
@@ -1030,7 +1028,7 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     }
 
     RevisionVertices::ObjData od = {FoldingCurve, Poly_V};
-    ConstFunc = false;
+    ConstFunc = true;
     if(!ConstFunc)od.AddWeight(wb, wp, -1); else od.AddWeight(wb, wp, 100.0);
     //od.AddWeight(wb, wp, 100.0);
     nlopt::opt opt;
@@ -1038,7 +1036,7 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     opt.set_min_objective(ObjFunc_FlapAngle, &od);
     opt.set_lower_bounds(a_min);
     opt.set_upper_bounds(a_max);
-    opt.add_inequality_constraint(Fruling, &od);
+    //opt.add_inequality_constraint(Fruling, &od);
     //opt.set_param("inner_maxeval", 100);
     opt.set_maxtime(1.0);//stop over this time
     opt.set_xtol_rel(1e-13);
@@ -1076,7 +1074,12 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     }
 
     catch (std::exception& e){std::cout << "nlopt failed: " << e.what() << std::endl;}
-    
+    a_flap = (minf_amin < minf_amax) ? res_amin: res_amax;
+    _FoldingAAAMethod(FoldingCurve, Poly_V, a_flap);
+    std::cout << "result : smaller = " << MathTool::rad2deg(a_flap)  << "(" << a_flap << "), tol = " << tol <<  "  f_bend = " << Fbend2(FoldingCurve) << "  ,  f_ruling = " <<RulingsCrossed(FoldingCurve) << std::endl;
+    std::cout << "finish"<<std::endl;
+    return false;
+
     double th_ruling = 1e-9;
     if(f_ruling_amin < th_ruling && f_ruling_amax < th_ruling){
         a2 = (minf_amax > minf_amin) ? res_amin: res_amax;
@@ -1097,6 +1100,44 @@ inline double RevisionVertices::getK(const Eigen::Vector3d o, const Eigen::Vecto
     double k = std::acos(v.dot(v2));
     if(Eigen::Vector3d::UnitZ().dot(v.cross(v2)) > 0)k = 2.0*std::numbers::pi - k;
     return k;
+}
+
+void FoldLine::revisecrossedruling(const std::vector<std::shared_ptr<Vertex>>& Poly_v){
+    Eigen::Matrix2d A;
+    Eigen::Vector2d b;
+    std::vector<std::shared_ptr<Vertex4d>> ValidFC;
+    for(auto&fc: FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
+    Eigen::VectorXd E_crossdst;
+    while(1){
+        E_crossdst = Eigen::VectorXd(FoldingCurve.size() - 2);
+        for(int i = 1; i < (int)ValidFC.size() -1; i++){
+            for(int j = -1; j <= 1; j +=2){
+                int i2 = i + j;
+                if(i2 <= 0 || i2 >= (int)ValidFC.size() - 1)continue;
+                A(0,0) = ValidFC[i]->first->p.x() - ValidFC[i]->second->p.x();
+                A(0,1) = -(ValidFC[i2]->first->p.x() - ValidFC[i2]->second->p.x());
+                A(1,0) = ValidFC[i]->first->p.y() - ValidFC[i]->second->p.y();
+                A(1,1) = -(ValidFC[i2]->first->p.y() - ValidFC[i2]->second->p.y());
+                b(0) = ValidFC[i]->first->p.x() - ValidFC[i2]->first->p.x();
+                b(1) = ValidFC[i]->first->p.y() - ValidFC[i2]->first->p.y();
+                Eigen::Vector2d ts = A.colPivHouseholderQr().solve(b);
+                if(0 < ts(0) && ts(0) < 1){
+                    E_crossdst(i-1) += 1.0/ts(0);
+                    ValidFC[i]->IsCalc = false;
+                }
+            }
+        }
+        //if(E_crossdst.sum() == 0)return;
+        //auto maxElement = std::max_element(E_crossdst.data(), E_crossdst.data() + E_crossdst.size());
+        // 最大値の要素のインデックスを計算
+        //int maxIndex = std::distance(E_crossdst.data(), maxElement);
+        //ValidFC[maxIndex + 1]->IsCalc = false;
+        //std::cout << "error of cross " << maxIndex + 1 << "  :  " << E_crossdst.maxCoeff() << std::endl;
+        SimpleSmooothSrf(Poly_v);
+        return;
+    }
+
+
 }
 
 void FoldLine::SimplifyModel(int iselim, bool isroot){

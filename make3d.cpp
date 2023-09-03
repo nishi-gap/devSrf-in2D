@@ -231,6 +231,7 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
     q.push(root);
     while(!q.empty()){
         auto cur = q.front(); q.pop();
+        /*
         if(!cur->data->isbend()){
             //cur->data->RevisionCrosPtsPosition();//端点の修正
             bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
@@ -244,10 +245,14 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
                 std::cout << "optimization result " << res << "  ,  tol = " << tol << ", ruling num = " << cur->data->validsize << std::endl;
             }
             std::cout <<"bending result : tol = " << cur->data->tol << " valid ruling num = " << cur->data->validsize  << " , a_flap = " << cur->data->a_flap << std::endl;
+        }*/
+        bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
+        if(!res){
+            cur->data->revisecrossedruling(Poly_V);
         }
-        bool isroot = (root == cur)? true: false;
-        cur->data->applyAAAMethod(Poly_V, false, cur->data->a_flap, cur->data->tol, isroot);
-        cur->data->SimpleSmooothSrf(Poly_V);
+        //bool isroot = (root == cur)? true: false;
+        //cur->data->applyAAAMethod(Poly_V, false, cur->data->a_flap, cur->data->tol, isroot);
+        //cur->data->SimpleSmooothSrf(Poly_V);
         for (const auto& child : cur->children){
             if(child != nullptr){
                 child->data->reassignruling(cur->data);

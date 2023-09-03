@@ -43,6 +43,7 @@ public:
     void reassignruling(std::shared_ptr<FoldLine>& parent);
 
     void applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincenter, double a, double _tol, bool isroot);
+    void revisecrossedruling(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void drawRulingInAllAngles(std::vector<std::array<Eigen::Vector3d, 2>>& _Rulings);
 
 private:
