@@ -9,6 +9,7 @@
 #include <QMouseEvent>
 #include <QPointF>
 #include <GL/glu.h>
+#include <QDebug>
 
 typedef std::vector<std::array<Eigen::Vector3d, 2>> Ruling3d;
 typedef std::vector<std::shared_ptr<Vertex>> Polygon_V;

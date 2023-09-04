@@ -616,7 +616,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
             update();
         }
         else if(drawtype == PaintTool::FoldLine_test){
-            std::cout << "can't use test now" << std::endl;
+            qDebug() << "can't use test now";
         }
         else if(drawtype == PaintTool::DeleteCurve){
             model->SelectCurve(p);
@@ -680,7 +680,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
                 double phi1 = std::acos(et.dot(er)), phi2 = std::acos(et.dot(el)), phi3 = std::acos(eb.dot(el)), phi4 = std::acos(eb.dot(er));
                 refV = _fl->FoldingCurve[ind]->first;
                 if(DebugMode::Singleton::getInstance().isdebug())
-                std::cout << "developability  = " <<  abs(2.0*std::numbers::pi - phi1 - phi2 - phi3 - phi4) << ", phi1 = " << MathTool::rad2deg(phi1) << " , phi2 = " << MathTool::rad2deg(phi2) << ", phi3 = " << MathTool::rad2deg(phi3) << ", phi4 = " << MathTool::rad2deg(phi4) << std::endl;
+                qDebug() << "developability  = " <<  abs(2.0*std::numbers::pi - phi1 - phi2 - phi3 - phi4) << ", phi1 = " << MathTool::rad2deg(phi1) << " , phi2 = " << MathTool::rad2deg(phi2) << ", phi3 = " << MathTool::rad2deg(phi3) << ", phi4 = " << MathTool::rad2deg(phi4);
             }
 
         }
@@ -768,9 +768,9 @@ void GLWidget_2D::mouseReleaseEvent(QMouseEvent * e){
 
 void GLWidget_2D::cb_ApplyCurveEvent(){
     if(KeyEvent == 0){
-        std::cout << "finished " << std::endl; KeyEvent = -1;
+        qDebug() << "finished "; KeyEvent = -1;
     }else if(KeyEvent == -1){
-        if(MoveCrvIndex[0] == -1) std::cout << "no curve is selected"<<std::endl;
+        if(MoveCrvIndex[0] == -1) qDebug() << "no curve is selected";
     }
     update();
 }
@@ -825,7 +825,7 @@ void GLWidget_2D::wheelEvent(QWheelEvent *we){
         //emit ColorChangeFrom(0, model->FL[FoldCurveIndex]->getColor());
     }else if(drawtype == PaintTool::NewGradationMode){
         if(refL == nullptr || std::find(model->Rulings.begin(), model->Rulings.end(), refL) == model->Rulings.end()){
-            std::cout<<"there is no referenced Ruling"<<std::endl;
+            qDebug()<<"there is no referenced Ruling";
             return;
         }
         model->setGradationValue(DiffWheel, refL, InterpolationType, CurvePath);
@@ -850,7 +850,7 @@ void GLWidget_2D::addPoints_intplation(QMouseEvent *e, QPointF& p){
                 dist = d; refL = r;
             }
         }
-        if(refL == nullptr || std::find(model->Rulings.begin(), model->Rulings.end(), refL) == model->Rulings.end()){std::cout<<"not found" << std::endl; return;}
+        if(refL == nullptr || std::find(model->Rulings.begin(), model->Rulings.end(), refL) == model->Rulings.end()){qDebug()<<"not found" ; return;}
         model->setGradationValue(0, refL, InterpolationType, CurvePath);
         emit ColorChangeFrom(0, refL->color);
         model->deform();
@@ -864,7 +864,7 @@ void GLWidget_2D::addPoints_intplation(QMouseEvent *e, QPointF& p){
 }
 
 void GLWidget_2D::ApplyNewGradationMode(){
-    if(refL == nullptr){std::cout << "you neeed to add gradation point"<<std::endl; return;}
+    if(refL == nullptr){qDebug() << "you neeed to add gradation point"; return;}
     emit foldingSignals();
     if(isVisibleTo(gw.get())) emit CurvePathSet(CurvePath);
     update();

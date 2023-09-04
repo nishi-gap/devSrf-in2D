@@ -1,6 +1,6 @@
 #include "foldline.h"
 
-const double eps = 1e-7;
+const double eps = 1e-8;
 std::string File_Ebend = "./Optimization/Ebend.csv";
 std::string File_Eruling = "./Optimization/Eruling.csv";
 std::ofstream ofs_Ebend, ofs_Eruling;
@@ -394,8 +394,8 @@ double Fruling(const std::vector<double> &a, std::vector<double> &grad, void* f_
     }
      _FoldingAAAMethod(FoldingCurve, Poly_V, a[0]);
     double f = RulingsCrossed(FoldingCurve);
-    if(ofs_Eruling.is_open()) ofs_Eruling << a[0] <<", " << MathTool::rad2deg(a[0]) << ", " <<  f <<  " ,  " << grad[0] << std::endl;
-    if(DebugMode::Singleton::getInstance().isdebug())std::cout <<"constraint function = " << MathTool::rad2deg(a[0]) << "(" << a[0] << ")  , " << f << std::endl;
+    if(ofs_Eruling.is_open()) ofs_Eruling << a[0] <<", " << MathTool::rad2deg(a[0]) << ", " <<  f <<  " ,  " << grad[0] ;
+    if(DebugMode::Singleton::getInstance().isdebug())qDebug() <<"constraint function = " << MathTool::rad2deg(a[0]) << "(" << a[0] << ")  , " << f ;
     return f;
  }
 
@@ -417,8 +417,8 @@ double ObjFunc_FlapAngle(const std::vector<double> &a, std::vector<double> &grad
        double fm3 = (od->wr != -1)?RulingsCrossed_NoOutline(FoldingCurve): 0;
        grad[0] = od->wb * (fp - fm)/(2.0 * eps) + od->wp * (fp2 - fm2)/(2.0 * eps) + 100.0*(fp3 - fm3)/(2.0*eps);
     }
-    //std::cout <<"Fbend(" << glm::degrees(a[0]) << ")  =  " <<  fb <<  " ,  " << grad[0] << "  ,  Fparalell = " << fp << ", Fruling2 = "<< fr <<  std::endl;
-    if(ofs_Ebend.is_open())ofs_Ebend << a[0] <<", " << MathTool::rad2deg(a[0]) << ", " <<  fb << ", " << fp <<   ",  " << grad[0] << std::endl;
+    //qDebug() <<"Fbend(" << glm::degrees(a[0]) << ")  =  " <<  fb <<  " ,  " << grad[0] << "  ,  Fparalell = " << fp << ", Fruling2 = "<< fr <<  std::endl;
+    if(ofs_Ebend.is_open())ofs_Ebend << a[0] <<", " << MathTool::rad2deg(a[0]) << ", " <<  fb << ", " << fp <<   ",  " << grad[0] ;
     return od->wb * fb + od->wp * fp + 100.0 * fr;
 }
 
@@ -455,7 +455,7 @@ double RevisionVertices::Const_Edev(const std::vector<double>& X, std::vector<do
             grad[ind] = (fp - fm)/(2.0*eps); p.z() = X[ind++];
         }
     }
-    if(DebugMode::Singleton::getInstance().isdebug())std::cout<<"developability  = " << f << std::endl;
+    if(DebugMode::Singleton::getInstance().isdebug())qDebug()<<"developability  = " << f ;
     return f;
 }
 
@@ -496,7 +496,7 @@ double RevisionVertices::Const_Econv(const std::vector<double>& X, std::vector<d
             grad[i] = (fp - fm)/(2.0*eps); P[i].z() = X[i];
         }
     }
-    if(DebugMode::Singleton::getInstance().isdebug())std::cout<<"convexity  = " << f << std::endl;
+    if(DebugMode::Singleton::getInstance().isdebug())qDebug()<<"convexity  = " << f ;
     return f;
 }
 
@@ -553,7 +553,7 @@ double RevisionVertices::Const_Eplanarity(const std::vector<double>& X, std::vec
             }
         }
     }
-    //std::cout <<"E_planarity " << f << std::endl;
+    //qDebug() <<"E_planarity " << f ;
     return f;
 }
 
@@ -637,48 +637,6 @@ double RevisionVertices::E_normal(std::vector<Eigen::Vector3d>& R, const std::ve
     return f;
 }
 
-double RevisionVertices::Minimize_SmoothSrf(const std::vector<double>& X, std::vector<double> &grad, void *f_data){
-    SmoothSurface *od = (SmoothSurface*)f_data;
-    std::vector<SmoothingArea> SA = od->SA;
-    std::vector<std::vector<Eigen::Vector3d>> P,Pori, P2d;
-    int i = 0;
-    for(auto&sa: SA){
-        std::vector<Eigen::Vector3d> tmp = {sa.stP->first->p3}, tmp_ori = {sa.stP->first->p3_ori};
-        Eigen::Vector3d vt = (sa.stP->second->p3 - sa.stP->first->p3).normalized(), vt2d = (sa.stP->second->p - sa.stP->first->p).normalized();
-        Eigen::Vector3d SpinAxis = (vt2d.y() < 0)? -Eigen::Vector3d(0,0,-1): Eigen::Vector3d(0,0,1);
-        std::vector<Eigen::Vector3d> _P2d;
-        Eigen::Vector3d befP3 = sa.stP->first->p3, befP2 = sa.stP->first->p;
-
-        for(auto&p: sa.OriginalVertices){
-            Eigen::Vector3d p3d(X[i], X[i+1], X[i+2]);
-            tmp_ori.push_back(p->p3_ori);
-            tmp.push_back(p3d);
-            i += 3;
-            Eigen::Vector3d e = p3d - befP3;
-            double l = e.norm(), phi = std::acos(vt.dot(e.normalized()));
-            Eigen::Vector3d p2d = l * (Eigen::AngleAxisd(phi, SpinAxis) * vt2d) + befP2;
-            _P2d.push_back(p2d);
-            befP2 = p2d; befP3 = p3d;
-            if(sa.qt != nullptr){
-                vt = (sa.qt->p3 - p3d).normalized(); vt2d = (sa.qt->p - p2d).normalized();
-                SpinAxis = (vt2d.y() < 0)? Eigen::Vector3d(0,0,-1): Eigen::Vector3d(0,0,1);
-            }
-        }tmp.push_back(sa.lastP->first->p3); tmp_ori.push_back(sa.lastP->first->p3_ori);
-        P.push_back(tmp); Pori.push_back(tmp_ori); P2d.push_back(_P2d);
-    }
-
-    double f_sim, f_fair, f_iso;
-    double w_sim = 10, w_fair = 0.1, w_iso = 0.;
-    if(!grad.empty()){
-        std::vector<double> dE_sim(grad.size()), dE_fair(grad.size()), dE_iso(grad.size());
-        f_sim = RevisionVertices::E_sim(P, Pori, dE_sim); f_fair = RevisionVertices::E_fair(P2d, dE_fair), f_iso = RevisionVertices::E_iso(P, Pori, dE_iso);
-        for(int i = 0; i < (int)grad.size(); i++)grad[i] = w_sim * dE_sim[i] + w_fair * dE_fair[i] + w_iso * dE_iso[i];
-
-    }
-    if(DebugMode::Singleton::getInstance().isdebug())std::cout<< "similarilty = " << f_sim << "  ,  fairness = " << f_fair << ", isometric = " << f_iso << std::endl;
-    return w_sim * f_sim + w_fair * f_fair + w_iso * f_iso;
-}
-
 double RevisionVertices::Minimize_PlanaritySrf(const std::vector<double>& X, std::vector<double> &grad, void *f_data){
 
     std::vector<std::shared_ptr<Vertex4d>> *FC = (std::vector<std::shared_ptr<Vertex4d>>*)f_data;
@@ -720,7 +678,7 @@ double RevisionVertices::Minimize_PlanaritySrf(const std::vector<double>& X, std
             }
         }
     }
-    //std::cout <<"E_normal " << f << std::endl;
+    //qDebug() <<"E_normal " << f ;
     return f;
 }
 
@@ -798,44 +756,74 @@ bool FoldLine::SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly
     return true;
 }
 
+double ProjectionOnDevSpace(Eigen::Vector3d& r, std::shared_ptr<Vertex4d>& X, const std::shared_ptr<Vertex>& xbef, const std::shared_ptr<Vertex>& xnext){
+    Eigen::Vector3d e = (X->first->p3 - xbef->p3).normalized(), e2 = (xnext->p3 - X->first->p3).normalized(), axis = (X->third->p3 - X->first->p3).normalized();
+    double phi = std::acos(e.dot(axis)) + std::acos(e2.dot(axis));
+    return std::pow(r.dot(e), 2) + std::pow(r.dot(e2), 2) - 2.0*cos(phi)*r.dot(e)*r.dot(e2);//可展性を満たすときのrulingはこの式が0になる(curved foldingより)→最適化で0になるrulingを見つける
+}
+
+double RevisionVertices::Minimize_SmoothSrf(const std::vector<double>& X, std::vector<double> &grad, void *f_data){
+    SmoothSurface *od = (SmoothSurface*)f_data;
+    std::vector<SmoothingArea> SA = od->SA;
+    std::vector<std::vector<Eigen::Vector3d>> P,Pori, P2d;
+    int i = 0;
+    for(auto&sa: SA){
+        std::vector<Eigen::Vector3d> tmp = {sa.stP->first->p3}, tmp_ori = {sa.stP->first->p3_ori};
+        Eigen::Vector3d vt = (sa.stP->second->p3 - sa.stP->first->p3).normalized(), vt2d = (sa.stP->second->p - sa.stP->first->p).normalized();
+        Eigen::Vector3d SpinAxis = (vt2d.y() < 0)? -Eigen::Vector3d(0,0,-1): Eigen::Vector3d(0,0,1);
+        std::vector<Eigen::Vector3d> _P2d;
+        Eigen::Vector3d befP3 = sa.stP->first->p3, befP2 = sa.stP->first->p;
+
+        for(auto&p: sa.OriginalVertices){
+            Eigen::Vector3d p3d(X[i], X[i+1], X[i+2]);
+            tmp_ori.push_back(p->p3_ori);
+            tmp.push_back(p3d);
+            i += 3;
+            Eigen::Vector3d e = p3d - befP3;
+            double l = e.norm(), phi = std::acos(vt.dot(e.normalized()));
+            Eigen::Vector3d p2d = l * (Eigen::AngleAxisd(phi, SpinAxis) * vt2d) + befP2;
+            _P2d.push_back(p2d);
+            befP2 = p2d; befP3 = p3d;
+            if(sa.qt != nullptr){
+                vt = (sa.qt->p3 - p3d).normalized(); vt2d = (sa.qt->p - p2d).normalized();
+                SpinAxis = (vt2d.y() < 0)? Eigen::Vector3d(0,0,-1): Eigen::Vector3d(0,0,1);
+            }
+        }tmp.push_back(sa.lastP->first->p3); tmp_ori.push_back(sa.lastP->first->p3_ori);
+        P.push_back(tmp); Pori.push_back(tmp_ori); P2d.push_back(_P2d);
+    }
+
+    double f_sim, f_fair, f_iso;
+    double w_sim = 10, w_fair = 0.1, w_iso = 0.;
+    if(!grad.empty()){
+        std::vector<double> dE_sim(grad.size()), dE_fair(grad.size()), dE_iso(grad.size());
+        f_sim = RevisionVertices::E_sim(P, Pori, dE_sim); f_fair = RevisionVertices::E_fair(P2d, dE_fair), f_iso = RevisionVertices::E_iso(P, Pori, dE_iso);
+        for(int i = 0; i < (int)grad.size(); i++)grad[i] = w_sim * dE_sim[i] + w_fair * dE_fair[i] + w_iso * dE_iso[i];
+
+    }
+    if(DebugMode::Singleton::getInstance().isdebug())qDebug()<< "similarilty = " << f_sim << "  ,  fairness = " << f_fair << ", isometric = " << f_iso ;
+    return w_sim * f_sim + w_fair * f_fair + w_iso * f_iso;
+}
+
 std::vector<std::vector<Eigen::Vector3d>> FoldLine::Optimization_SmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v, bool IsConnectEndPoint){
     std::vector<double> X;
     std::vector<std::vector<Eigen::Vector3d>> res_qt;
     std::shared_ptr<Vertex4d> bef = FoldingCurve.front();
     std::vector<RevisionVertices::SmoothingArea> SA;
     std::vector<std::shared_ptr<Vertex>> OriginalVertices;
-    int bef_ind;
-    for(auto&FC : FoldingCurve){
-        if(!FC->IsCalc){
-            X.push_back(FC->first->p3_ori.x()); X.push_back(FC->first->p3_ori.y()); X.push_back(FC->first->p3_ori.z());
-            OriginalVertices.push_back(FC->first);
-        }
-        else{
-            int ind = std::distance(FoldingCurve.begin(), std::find(FoldingCurve.begin(), FoldingCurve.end(), FC));
-            if(FC == bef){bef_ind = ind; continue;}
-            RevisionVertices::SmoothingArea sm = {bef, FC, bef_ind, ind, OriginalVertices};
-            if(bef_ind == 0 || ind == (int)FoldingCurve.size() - 1){sm.qt = nullptr; sm.qb = nullptr;}
-            SA.push_back(sm);
-            bef_ind = ind;
-            bef = FC;
-            OriginalVertices.clear();
-        }
-    }
+
     RevisionVertices::ObjData_smooth od = {SA, IsConnectEndPoint};
     if(X.empty())return res_qt;
     nlopt::opt opt;
     opt = nlopt::opt(nlopt::LD_MMA, X.size());
     opt.set_min_objective(RevisionVertices::Minimize_SmoothSrf, &od);
-    opt.add_inequality_constraint(RevisionVertices::Const_Edev, &od);
-    opt.add_inequality_constraint(RevisionVertices::Const_Econv, &od);
     opt.set_xtol_rel(1e-13);
 
     double minf;
     try {
         nlopt::result result = opt.optimize(X, minf);
         if(DebugMode::Singleton::getInstance().isdebug()){
-            std::cout <<"result :  smoothing  " <<result << std::endl;
-            std::cout << "found minimum at f = "  << std::setprecision(10) << minf << std::endl;
+            qDebug() <<"result :  smoothing  " <<result ;
+            qDebug() << "found minimum at f = " << minf ;
         }
         int i = 0;
         for(auto&FC: FoldingCurve){
@@ -891,7 +879,7 @@ std::vector<std::vector<Eigen::Vector3d>> FoldLine::Optimization_SmooothSrf(cons
                 Eigen::Vector3d et = (v4d->second->p3 -v4d->first->p3).normalized(), er = (FoldingCurve[j-1]->first->p3 -v4d->first->p3).normalized(), eb = (v4d->third->p3 -v4d->first->p3).normalized(), el = (FoldingCurve[j+1]->first->p3 -v4d->first->p3).normalized();
                 double phi1 = std::acos(et.dot(er)), phi2 = std::acos(et.dot(el)), phi3 = std::acos(eb.dot(el)), phi4 = std::acos(eb.dot(er));
                 if(DebugMode::Singleton::getInstance().isdebug())
-                    std::cout << j << " : " << abs(2.0*std::numbers::pi - phi1 - phi2 - phi3 - phi4)  << " , " << MathTool::rad2deg(phi1) << " , " << MathTool::rad2deg(phi2) << " , " << MathTool::rad2deg(phi3) << ", " << MathTool::rad2deg(phi4) << std::endl;
+                    qDebug() << j << " : " << abs(2.0*std::numbers::pi - phi1 - phi2 - phi3 - phi4)  << " , " << MathTool::rad2deg(phi1) << " , " << MathTool::rad2deg(phi2) << " , " << MathTool::rad2deg(phi3) << ", " << MathTool::rad2deg(phi4) ;
             }
         }
         std::shared_ptr<Vertex> v_clst = getClosestVertex(FoldingCurve[0]->second, FoldingCurve[0]->first, FoldingCurve, false);
@@ -904,8 +892,8 @@ std::vector<std::vector<Eigen::Vector3d>> FoldLine::Optimization_SmooothSrf(cons
             int j; for(j = 0; j < (int)FoldingCurve.size(); j++){if(v_clst == FoldingCurve[j]->second)break;}
             FoldingCurve.back()->second->p3 = calcTargetDistanceOnPlane(FoldingCurve.back()->second->p, FoldingCurve[j]->first, FoldingCurve[j]->second, FoldingCurve[j-1]->second);
         }else FoldingCurve.back()->second->p3 = calcTargetDistanceOnPlane(FoldingCurve.back()->second->p, FoldingCurve.end()[-2]->second, FoldingCurve.end()[-2]->first, FoldingCurve.back()->first);
-        std::cout<<"smoothing finish"<<std::endl;
-    }catch (std::exception& e) {std::cout << "nlopt failed: " << e.what() << std::endl; }
+        qDebug()<<"smoothing finish";
+    }catch (std::exception& e) {qDebug() << "nlopt failed: " << e.what() ; }
 
     return res_qt;
 }
@@ -925,7 +913,7 @@ std::vector<std::vector<Eigen::Vector3d>> FoldLine::Optimization_PlanaritySrf(co
            else a = (std::numbers::pi/2.0 - a > 0)? 2.0*std::numbers::pi - a: std::numbers::pi/2.0 - a;
            
            //a = 2.0 * std::numbers::pi - a;
-           if(DebugMode::Singleton::getInstance().isdebug()) std::cout << MathTool::rad2deg(a)<<std::endl;
+           if(DebugMode::Singleton::getInstance().isdebug()) qDebug() << MathTool::rad2deg(a);
            X.push_back(a); X.push_back(phi);
         }
     }
@@ -941,8 +929,8 @@ std::vector<std::vector<Eigen::Vector3d>> FoldLine::Optimization_PlanaritySrf(co
     try {
         nlopt::result result = opt.optimize(X, minf);
         if(DebugMode::Singleton::getInstance().isdebug()){
-            std::cout <<"result :  planarity  " <<result << std::endl;
-            std::cout << "found minimum at f = "  << std::setprecision(10) << minf << std::endl;
+            qDebug() <<"result :  planarity  " <<result ;
+            qDebug() << "found minimum at f = " << minf ;
         }
         int x_ind = 0;
         Eigen::Vector3d p;
@@ -950,7 +938,7 @@ std::vector<std::vector<Eigen::Vector3d>> FoldLine::Optimization_PlanaritySrf(co
             if(!(*itr)->IsCalc){
                 auto _prev = itr-1, _next = itr + 1;
                 if(DebugMode::Singleton::getInstance().isdebug())
-                    std::cout << std::distance(FoldingCurve.begin(), itr) << ": "  << MathTool::rad2deg(X[2 * x_ind]) << " , " << MathTool::rad2deg(X[2 * x_ind + 1]) << std::endl;
+                    qDebug() << std::distance(FoldingCurve.begin(), itr) << ": "  << MathTool::rad2deg(X[2 * x_ind]) << " , " << MathTool::rad2deg(X[2 * x_ind + 1]) ;
                 Eigen::Vector3d e = (*_prev)->first->p3 - (*itr)->first->p3;
                 Eigen::Vector3d N = e.cross((*_next)->first->p3 - (*itr)->first->p3);
                 Eigen::Vector3d r3d = RevisionVertices::decideRulingDirectionOn3d(e, N, X[2 * x_ind], X[2 * x_ind + 1]);
@@ -964,8 +952,8 @@ std::vector<std::vector<Eigen::Vector3d>> FoldLine::Optimization_PlanaritySrf(co
                 x_ind++;
             }
         }
-    }catch (std::exception& e) {std::cout << "nlopt failed: " << e.what() << std::endl; }
-    std::cout <<"planarity optimization finish"<<std::endl;
+    }catch (std::exception& e) {qDebug() << "nlopt failed: " << e.what() ; }
+    qDebug() <<"planarity optimization finish";
     return res_qt;
 }
 
@@ -997,13 +985,13 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     if(k < std::numbers::pi && !IsMount){a_min = 0.0;a_max = a_con - std::numbers::pi;}
     if(k >= std::numbers::pi && !IsMount){a_min = a_con - std::numbers::pi; a_max = std::numbers::pi;}
 
-    if(DebugMode::Singleton::getInstance().isdebug()) std::cout <<MathTool::rad2deg(a_ll) << " , " << MathTool::rad2deg(a_con)<<std::endl;
+    if(DebugMode::Singleton::getInstance().isdebug()) qDebug() <<MathTool::rad2deg(a_ll) << " , " << MathTool::rad2deg(a_con);
     if(DebugMode::Singleton::getInstance().isdebug()){
         std::ofstream ofs2;
         std::filesystem::create_directory("./Optimization");
 
         std::string AngleFile = "./Optimization/ChangeAngle.csv" ;
-        ofs2.open(AngleFile, std::ios::out); ofs2 << "a(radian),a(degree),Eruling, Ebend, Eparalell, Eruling2"<<std::endl;
+        ofs2.open(AngleFile, std::ios::out); ofs2 << "a(radian),a(degree),Eruling, Ebend, Eparalell, Eruling2";
         while(a <= 2.0*std::numbers::pi){
              _FoldingAAAMethod(FoldingCurve, Poly_V, a);
              double f = RulingsCrossed(FoldingCurve);
@@ -1016,14 +1004,14 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
 
         AngleFile = "./Optimization/OptimArea.csv";
         ofs2.open(AngleFile, std::ios::out);
-        ofs2 << "a(radian), a(degree) , Eruling, Ebend, Eparalell, Ebend, Eruling2"<<std::endl;
+        ofs2 << "a(radian), a(degree) , Eruling, Ebend, Eparalell, Ebend, Eruling2";
         for(double _a = a_min; _a <= a_max; _a+= 1e-3){
              _FoldingAAAMethod(FoldingCurve, Poly_V, _a);
              double f = RulingsCrossed(FoldingCurve);
              double fb = Fbend2(FoldingCurve);
               double fp =  Fparallel(FoldingCurve);
              double fr =RulingsCrossed_NoOutline(FoldingCurve);
-            ofs2 << _a << ", " << MathTool::rad2deg(_a) << " , " << f << ", " << fb << ", " <<fp <<", "<< fr << std::endl;
+              ofs2 << _a << ", " << MathTool::rad2deg(_a) << " , " << f << ", " << fb << ", " <<fp <<", "<< fr << std::endl ;
         }ofs2.close();
     }
 
@@ -1036,62 +1024,61 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     opt.set_min_objective(ObjFunc_FlapAngle, &od);
     opt.set_lower_bounds(a_min);
     opt.set_upper_bounds(a_max);
-    //opt.add_inequality_constraint(Fruling, &od);
+    opt.add_inequality_constraint(Fruling, &od);
     //opt.set_param("inner_maxeval", 100);
     opt.set_maxtime(1.0);//stop over this time
     opt.set_xtol_rel(1e-13);
-    if(DebugMode::Singleton::getInstance().isdebug())
-        std::cout << "area " << MathTool::rad2deg(a_min) << " < " << MathTool::rad2deg(a) << " < " << MathTool::rad2deg(a_max) << std::endl;
+    qDebug() << "area " << MathTool::rad2deg(a_min) << " < " << MathTool::rad2deg(a) << " < " << MathTool::rad2deg(a_max) ;
 
     double minf_amin, minf_amax, f_ruling_amin, f_ruling_amax;
     double res_amin, res_amax;
     ofs_Ebend.open(File_Ebend, std::ios::out); ofs_Eruling.open(File_Eruling, std::ios::out);
       try {
-        std::cout <<"small a" << std::endl;
+        qDebug() <<"small a" ;
         std::vector<double> _a{a_min + 0.5};
           nlopt::result result = opt.optimize(_a, minf_amin);
           _FoldingAAAMethod(FoldingCurve, Poly_V, _a[0]);
-          std::cout <<"result :  lower bound" <<result << std::endl;
+          qDebug() <<"result :  lower bound" <<result ;
           //f_ruling_amin = (ConstFunc)? RulingsCrossed(FoldingCurve):RulingsCrossed_NoOutline(FoldingCurve);
           f_ruling_amin = RulingsCrossed(FoldingCurve);
           res_amin = _a[0];
-          std::cout << "found minimum at f(" << MathTool::rad2deg(_a[0]) << ") = " << std::setprecision(10) << minf_amin << "  ,  " << f_ruling_amin << ", ruling num = " << validsize << "\n" <<  std::endl;
+          qDebug() << "found minimum at f(" << MathTool::rad2deg(_a[0]) << ") = " << minf_amin << "  ,  " << f_ruling_amin << ", ruling num = " << validsize << "\n";
       }
       catch (std::exception& e) {
-          std::cout << "nlopt failed: " << e.what() << std::endl;
+          qDebug() << "nlopt failed: " << e.what() ;
       }ofs_Ebend.close(); ofs_Eruling.close();
 
     try {
-          std::cout << "large a" << std::endl;
+          qDebug() << "large a" ;
         std::vector<double> _a{a_max - 0.5};
         nlopt::result result = opt.optimize(_a, minf_amax);
         //f_ruling_amax = (ConstFunc)? RulingsCrossed(FoldingCurve):RulingsCrossed_NoOutline(FoldingCurve);
          _FoldingAAAMethod(FoldingCurve, Poly_V, _a[0]);
         f_ruling_amax = RulingsCrossed(FoldingCurve);
-        std::cout <<"result :  upper bound" <<result << std::endl;
-        std::cout << "found minimum at f(" << MathTool::rad2deg(_a[0]) << ") = " << std::setprecision(10) << minf_amax << "  ,  "  << f_ruling_amax << " , ruling num = " << validsize << "\n" << std::endl;
+        qDebug() <<"result :  upper bound" <<result;
+        qDebug() << "found minimum at f(" << MathTool::rad2deg(_a[0]) << ") = " << minf_amax << "  ,  "  << f_ruling_amax << " , ruling num = " << validsize << "\n";
         res_amax = _a[0];
     }
 
-    catch (std::exception& e){std::cout << "nlopt failed: " << e.what() << std::endl;}
-    a_flap = (minf_amin < minf_amax) ? res_amin: res_amax;
-    _FoldingAAAMethod(FoldingCurve, Poly_V, a_flap);
-    std::cout << "result : smaller = " << MathTool::rad2deg(a_flap)  << "(" << a_flap << "), tol = " << tol <<  "  f_bend = " << Fbend2(FoldingCurve) << "  ,  f_ruling = " <<RulingsCrossed(FoldingCurve) << std::endl;
-    std::cout << "finish"<<std::endl;
-    return false;
+    catch (std::exception& e){qDebug() << "nlopt failed: " << e.what();}
+   //a_flap = (minf_amin < minf_amax) ? res_amin: res_amax;
+    //_FoldingAAAMethod(FoldingCurve, Poly_V, a_flap);
+    //qDebug() << "result : smaller = " << MathTool::rad2deg(a_flap)  << "(" << a_flap << "), tol = " << tol <<  "  f_bend = " << Fbend2(FoldingCurve) << "  ,  f_ruling = " <<RulingsCrossed(FoldingCurve);
+    //qDebug() << "finish";
+    //return true;
 
     double th_ruling = 1e-9;
     if(f_ruling_amin < th_ruling && f_ruling_amax < th_ruling){
         a2 = (minf_amax > minf_amin) ? res_amin: res_amax;
     }else if(f_ruling_amin < th_ruling && f_ruling_amax >= th_ruling){a2 = res_amin; }
     else if(f_ruling_amin >= th_ruling && f_ruling_amax < th_ruling){ a2 = res_amax; }else{
-        std::cout<<"could not avoid ruling cross"<<std::endl;
+        qDebug()<<"could not avoid ruling cross";
         return false;
     }
     _FoldingAAAMethod(FoldingCurve, Poly_V, a2);
     a_flap = a2;
-    std::cout << "result : smaller = " << MathTool::rad2deg(a2)  << "(" << a2 << "), tol = " << tol <<  "  f_bend = " << Fbend2(FoldingCurve) << "  ,  f_ruling = " <<RulingsCrossed(FoldingCurve) << std::endl;
-    std::cout << "finish"<<std::endl;
+    qDebug() << "result : smaller = " << MathTool::rad2deg(a2)  << "(" << a2 << "), tol = " << tol <<  "  f_bend = " << Fbend2(FoldingCurve) << "  ,  f_ruling = " <<RulingsCrossed(FoldingCurve);
+    qDebug() << "finish";
     return true;
 }
 
@@ -1127,12 +1114,15 @@ void FoldLine::revisecrossedruling(const std::vector<std::shared_ptr<Vertex>>& P
                 }
             }
         }
+        int cnt = 0;
+        for(auto&fc: FoldingCurve)if(fc->IsCalc)cnt++;
+        qDebug() << "valid size = " << cnt;
         //if(E_crossdst.sum() == 0)return;
         //auto maxElement = std::max_element(E_crossdst.data(), E_crossdst.data() + E_crossdst.size());
         // 最大値の要素のインデックスを計算
         //int maxIndex = std::distance(E_crossdst.data(), maxElement);
         //ValidFC[maxIndex + 1]->IsCalc = false;
-        //std::cout << "error of cross " << maxIndex + 1 << "  :  " << E_crossdst.maxCoeff() << std::endl;
+        //qDebug() << "error of cross " << maxIndex + 1 << "  :  " << E_crossdst.maxCoeff();
         SimpleSmooothSrf(Poly_v);
         return;
     }
@@ -1245,14 +1235,19 @@ void FoldLine::SimplifyModel(double tol, bool isroot){
     }
 }
 
+
 bool FoldLine::RevisionCrosPtsPosition(){
     if(FoldingCurve.empty())return false;
+    FoldingCurve[1]->IsCalc = false;
+    FoldingCurve.end()[-2]->IsCalc = false;
+    validsize -= 2;
+    return true;
     FoldingCurve.front()->first->p3 = FoldingCurve.front()->first->p3_ori;
     FoldingCurve.back()->first->p3 = FoldingCurve.back()->first->p3_ori;
     std::vector<std::shared_ptr<Vertex4d>> ValidFC;
     for(auto&fc: FoldingCurve)if(fc->IsCalc)ValidFC.push_back(fc);
     if(FoldingCurve.size() > 5){
-        std::cout << "before revision" << std::endl;
+        qDebug() << "before revision";
         for(int i = 1; i < (int)FoldingCurve.size()-1; i++){
             auto v = (FoldingCurve[i-1]->first->p - FoldingCurve[i]->first->p).normalized(), v2 = (FoldingCurve[i+1]->first->p - FoldingCurve[i]->first->p).normalized();
             double k = std::acos(v.dot(v2));
@@ -1274,9 +1269,9 @@ bool FoldLine::RevisionCrosPtsPosition(){
         double k0 = RevisionVertices::getK(FoldingCurve[1]->first->p, FoldingCurve[0]->first->p, FoldingCurve[2]->first->p);
         double k1 = RevisionVertices::getK(FoldingCurve[2]->first->p, FoldingCurve[1]->first->p, FoldingCurve[3]->first->p);
         double k2 = RevisionVertices::getK(FoldingCurve[3]->first->p, FoldingCurve[2]->first->p, FoldingCurve[4]->first->p);
-        //std::cout <<"front " << abs(k0 - k1) << ", " << abs(k1 - k2) << " , " << 2*k1 - k2 << std::endl;
+        //qDebug() <<"front " << abs(k0 - k1) << ", " << abs(k1 - k2) << " , " << 2*k1 - k2 ;
         if(abs(k0 - k1) > abs(k1 - k2)){
-            std::cout <<"front"<<std::endl;
+            qDebug() <<"front";
             FoldingCurve[0]->first->p = ReviseEndPosition(FoldingCurve[2]->first->p - FoldingCurve[1]->first->p,  -(2.*k1 - k2));
             Eigen::Vector3d newPos = getCrossPosition(FoldingCurve[0]->first, FoldingCurve[1]->first, FoldingCurve[0]->third, FoldingCurve[0]->second);
             FoldingCurve[0]->first->p = newPos;
@@ -1286,9 +1281,9 @@ bool FoldLine::RevisionCrosPtsPosition(){
         k0 = RevisionVertices::getK(FoldingCurve.end()[-2]->first->p, FoldingCurve.end()[-3]->first->p, FoldingCurve.back()->first->p);
         k1 = RevisionVertices::getK(FoldingCurve.end()[-3]->first->p, FoldingCurve.end()[-4]->first->p, FoldingCurve.end()[-2]->first->p);
         k2 = RevisionVertices::getK(FoldingCurve.end()[-4]->first->p, FoldingCurve.end()[-5]->first->p, FoldingCurve.end()[-3]->first->p);
-        //std::cout <<"back " << abs(k0 - k1) << ", " << abs(k1 - k2) << ", " << 2.*k1 - k2 <<  std::endl;
+        //qDebug() <<"back " << abs(k0 - k1) << ", " << abs(k1 - k2) << ", " << 2.*k1 - k2 <<  std::endl;
         if(abs(k0 - k1) > abs(k1 - k2)){
-            std::cout << "back"<<std::endl;
+            qDebug() << "back";
             FoldingCurve.back()->first->p = ReviseEndPosition(FoldingCurve.end()[-3]->first->p - FoldingCurve.end()[-2]->first->p, 2.*k1 - k2);
             Eigen::Vector3d newPos2 = getCrossPosition(FoldingCurve.back()->first, FoldingCurve.end()[-2]->first, FoldingCurve.back()->third, FoldingCurve.back()->second);
             FoldingCurve.back()->first->p = newPos2;
@@ -1301,10 +1296,10 @@ bool FoldLine::RevisionCrosPtsPosition(){
 
 }
 
-void FoldLine::ReassignColor(std::vector<std::shared_ptr<Line>>& Rulings, ColorPoint& CP){
+void FoldLine::ReassignColor(){
     //Y字のとき折り線は山であると仮定(谷の場合は色を反転)
     typedef struct {
-        std::shared_ptr<Line> r;
+        std::shared_ptr<Vertex4d> v;
         int type_mvk;//0:mountain && k < pi, 1: mountain && k >= pi, 2: vally && k < pi, 3: vally && k >= pi, -1: gradation = 0
         //0の数 + 3の数 == rulingの数 || 1の数 + 2の数 == rulingの数 -> 山谷とkの割り当てが正しい
         //それ以外
@@ -1320,40 +1315,30 @@ void FoldLine::ReassignColor(std::vector<std::shared_ptr<Line>>& Rulings, ColorP
         e2 = (ValidFC[i+1]->first->p - ValidFC[i]->first->p).normalized();
         double k = std::acos(e.dot(e2));
         if(Eigen::Vector3d::UnitZ().dot(e.cross(e2)) > 0)k = 2.0*std::numbers::pi - k;
-       Eigen::Vector3d N = ((ValidFC[i]->third->p3 - ValidFC[i]->first->p3).cross(e)).normalized();
-       Eigen::Vector3d Np = (e2.cross(ValidFC[i]->third->p3 - ValidFC[i]->first->p3)).normalized();
-       double phi = std::acos(N.dot(Np));
+        Eigen::Vector3d f_nv = ((ValidFC[i]->third->p3 - ValidFC[i]->first->p3).cross(ValidFC[i-1]->first->p3 - ValidFC[i]->first->p3)).normalized();
+        Eigen::Vector3d fp_nv = ((ValidFC[i+1]->first->p3 - ValidFC[i]->first->p3).cross(ValidFC[i]->third->p3 - ValidFC[i]->first->p3)).normalized();
+        Eigen::Vector3d SpinAxis = (ValidFC[i]->third->p3 - ValidFC[i]->first->p3).normalized();
 
-        double color;
-        if(phi < CP.angle)color = CP.color/CP.angle *phi;
-        else color = ((255.0 - CP.color)*(phi - CP.angle)/(std::numbers::pi - CP.angle) + CP.color);
-        for(auto&r: Rulings){
-            if(r->et == EdgeType::r && MathTool::is_point_on_line(ValidFC[i]->first->p, r->v->p, r->o->p)){
-                int mv = (r->color == 0)? -1: (r->color > 0)? 0: 1;
-                int type_mvk = (mv == 0 && k < std::numbers::pi)? 0: (mv == 0 && k >= std::numbers::pi)? 1: (mv == 1 && k < std::numbers::pi)? 2: (mv == 1 && k >= std::numbers::pi)? 3: -1;
-                InitState.push_back(MVK(r, type_mvk));
-                MV[type_mvk + 1] += 1;
-                break;
+        //std::string s = (SpinAxis.dot(f_nv.cross(fp_nv)) <-1e-5)? "red": "blue";
+        //qDebug() << "color = " << s ;
+        int mv = (abs(SpinAxis.dot(f_nv.cross(fp_nv))) < 1e-6 )? -1: (SpinAxis.dot(f_nv.cross(fp_nv)) < 1e-6)? 0: 1;
+        int type_mvk = (mv == 0 && k < std::numbers::pi)? 0: (mv == 0 && k >= std::numbers::pi)? 1: (mv == 1 && k < std::numbers::pi)? 2: (mv == 1 && k >= std::numbers::pi)? 3: -1;
+        InitState.push_back(MVK(ValidFC[i], type_mvk));
+        MV[type_mvk + 1] += 1;
+    }
+
+    if(MV[0] != 0){qDebug() << "no folding pattern was found"; return;}
+    if(MV[1] == MV[2] && MV[3] == MV[4] && MV[1] == MV[4]){
+    }else{
+        for(auto& IS: InitState){
+            if(MV[1] + MV[4] > MV[2] + MV[3] ){
+                if(IS.type_mvk == 1 || IS.type_mvk == 2){IS.v->IsCalc = false;}
+            }else{
+                if(IS.type_mvk == 0 || IS.type_mvk == 3){IS.v->IsCalc = false;}
             }
         }
     }
-
-    if(MV[0] != 0){std::cout << "no folding pattern was found"<< std::endl; return;}
-    while(!(MV[1] + MV[4] == (int)ValidFC.size() - 2 || MV[2] + MV[3] == (int)ValidFC.size() - 2)){
-        if(MV[1] == MV[2] && MV[3] == MV[4] && MV[1] == MV[4]){
-        }else{
-            for(auto& IS: InitState){
-                if(MV[1] + MV[4] > MV[2] + MV[3] ){
-                    if(IS.type_mvk == 1){IS.r->color *= -1; IS.type_mvk = 3; MV[2]--; MV[4]++;}
-                    if(IS.type_mvk == 2){IS.r->color *= -1; IS.type_mvk = 0; MV[3]--; MV[1]++;}
-                }else{
-                    if(IS.type_mvk == 0){IS.r->color *= -1; IS.type_mvk = 2; MV[1]--; MV[3]++;}
-                    if(IS.type_mvk == 3){IS.r->color *= -1; IS.type_mvk = 1; MV[4]--; MV[2]++;}
-                }
-            }
-        }
-    }
-    std::cout <<"color changed"<<std::endl;
+    qDebug() <<"color changed";
 }
 
 template <typename T>
@@ -1368,7 +1353,7 @@ void FoldLine::reassignruling(std::shared_ptr<FoldLine>& parent){
     auto getCrossPoint = [](std::vector<Eigen::Vector3d>& CtrlPts, std::shared_ptr<Vertex> v, std::shared_ptr<Vertex> o, int dim){
         std::vector<double>arcT = BezierClipping(CtrlPts, v, o, dim);
         for(auto&t: arcT){
-            if(t < 0 || 1 < t){std::cout<<"t is not correct value " << t << std::endl; continue;}
+            if(t < 0 || 1 < t){qDebug()<<"t is not correct value " << t ; continue;}
             Eigen::Vector3d v2(0,0,0);
             for (int i = 0; i < int(CtrlPts.size()); i++) v2 += MathTool::BernsteinBasisFunc(dim, i, t) * CtrlPts[i];
             if(!MathTool::is_point_on_line(v2, v->p, o->p))continue;
@@ -1477,7 +1462,7 @@ void FoldLine::applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V
     //if(!begincener)_FoldingAAAMethod(FoldingCurve, Poly_V, a);
     //else _FoldingAAAMethod_center(FoldingCurve, Poly_V, a);
     _FoldingAAAMethod(FoldingCurve, Poly_V, a);
-    if(DebugMode::Singleton::getInstance().isdebug())std::cout << a << " , " << validsize << "  ,,  " << RulingsCrossed(FoldingCurve) << " , " <<RulingsCrossed_NoOutline(FoldingCurve) << std::endl;
+    if(DebugMode::Singleton::getInstance().isdebug())qDebug() << a << " , " << validsize << "  ,,  " << RulingsCrossed(FoldingCurve) << " , " <<RulingsCrossed_NoOutline(FoldingCurve) ;
     if(RulingsCrossed(FoldingCurve) < 1e-9){
         a_flap = a; //tol = _tol;
     }
@@ -1703,7 +1688,7 @@ void _FoldingAAAMethod(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, con
             for(j = 0; j < (int)Vertices_Ind.size(); j++){
                 if(FoldingCurve[Vertices_Ind[j]]->second->p == v_clst->p)break;
             }
-            if(j == (int)Vertices_Ind.size())std::cout <<"can't find correct edge right" << std::endl;
+            if(j == (int)Vertices_Ind.size())qDebug() <<"can't find correct edge right" ;
             else{
                 auto p = calcTargetDistanceOnPlane(FoldingCurve[Vertices_Ind[0]]->second->p, v_clst, FoldingCurve[Vertices_Ind[j]]->first, FoldingCurve[Vertices_Ind[j+1]]->first);
                 FoldingCurve[Vertices_Ind[0]]->second->p3 = p;
@@ -1725,7 +1710,7 @@ void _FoldingAAAMethod(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, con
             for(j = 0; j < (int)Vertices_Ind.size(); j++){
                 if(FoldingCurve[Vertices_Ind[j]]->second->p == v_clst->p)break;
             }
-            if(j == (int)Vertices_Ind.size())std::cout <<"can't find correct edge right" << std::endl;
+            if(j == (int)Vertices_Ind.size())qDebug() <<"can't find correct edge right" ;
             else{
                 auto p = calcTargetDistanceOnPlane(FoldingCurve[Vertices_Ind.back()]->second->p, v_clst,  FoldingCurve[Vertices_Ind[j]]->first, FoldingCurve[Vertices_Ind[j-1]]->first);
                 FoldingCurve[Vertices_Ind.back()]->second->p3 = p;

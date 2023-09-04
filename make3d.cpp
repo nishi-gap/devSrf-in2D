@@ -1,4 +1,5 @@
 #include "make3d.h"
+#include <QDebug>
 using namespace MathTool;
 
 Model::Model(){
@@ -33,7 +34,7 @@ void Model::SetMaxFold(double val){
     if(!outline->IsClosed())return;
     for(auto& c: crvs){
         if(c->isempty){
-            std::cout << "crvs has empty"<<std::endl;
+            qDebug() << "crvs has empty";
             return;
         }
     }
@@ -104,13 +105,7 @@ void Model::deform(){
                         M = TMs.back();
                         T = Eigen::Translation3d(l->v->p - Rulings.back()->o->p);
                         R = Eigen::AngleAxisd(Color2Angle(Rulings.back()->color, ColorPt), axis);
-                        //std::cout << (l->v->p3).transpose() << " , " << (l->v->p3_ori).transpose() << std::endl;
-                        //std::cout << "T = " << (T * Eigen::Vector3d(0,0,0)).transpose() << std::endl;
-                        //std::cout << "R * T = " << (R * T * Eigen::Vector3d(0,0,0)).transpose() << std::endl;
-                        //std::cout << "M * T = " << (M * R * T) << std::endl;
-                        //std::cout << "T * R * M = " << ((M * (R * T)) * Eigen::Vector3d(0,0,0)).transpose() << std::endl;
                         l->v->p3_ori = l->v->p3 = (M * R * T) * Eigen::Vector3d(0,0,0);
-                        //std::cout << "res  " << (l->v->p3).transpose() << " , " << (l->v->p3_ori).transpose() << std::endl;
                         break;
                     }else{
                         T = Eigen::Translation3d(l->v->p - Rulings[i]->o->p);
@@ -139,7 +134,7 @@ void Model::ChangeFoldLineState(){
 std::shared_ptr<CrvPt_FL> getCrossPoint(std::vector<Eigen::Vector3d>& CtrlPts,  const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o, int dim){
     std::vector<double>arcT = BezierClipping(CtrlPts, v, o, dim);
     for(auto&t: arcT){
-        if(t < 0 || 1 < t){std::cout<<"t is not correct value " << t << std::endl; continue;}
+        if(t < 0 || 1 < t){qDebug()<<"t is not correct value " << t; continue;}
         Eigen::Vector3d v2(0,0,0);
         for (int i = 0; i < int(CtrlPts.size()); i++) v2 += MathTool::BernsteinBasisFunc(dim, i, t) * CtrlPts[i];
         if(!MathTool::is_point_on_line(v2, v->p, o->p))continue;
@@ -215,7 +210,7 @@ void Model::UpdateFLOrder(int dim){
         }
         i = (i + 1) % (int)outline->Lines.size();
     }while(i != btm_i);
-    if(DebugMode::Singleton::getInstance().isdebug())std::cout <<"order of FoldLines"<<std::endl;
+    if(DebugMode::Singleton::getInstance().isdebug())qDebug() <<"order of FoldLines";
     NTree_fl.print();
     return;
 }
@@ -231,9 +226,10 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
     q.push(root);
     while(!q.empty()){
         auto cur = q.front(); q.pop();
-        /*
-        if(!cur->data->isbend()){
-            //cur->data->RevisionCrosPtsPosition();//端点の修正
+        cur->data->ReassignColor();
+        cur->data->RevisionCrosPtsPosition();//端点の修正
+        if(ConstFunc){
+            qDebug() << "trim each iteration";
             bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
             while(!res){
                 bool isroot = (cur == root)? true: false;
@@ -242,17 +238,18 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
                 //cur->data->RevisionCrosPtsPosition();//端点の修正
                 res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
                 //if(DebugMode::Singleton::getInstance().isdebug())
-                std::cout << "optimization result " << res << "  ,  tol = " << tol << ", ruling num = " << cur->data->validsize << std::endl;
+                qDebug() << "optimization result " << res << "  ,  tol = " << tol << ", ruling num = " << cur->data->validsize;
             }
-            std::cout <<"bending result : tol = " << cur->data->tol << " valid ruling num = " << cur->data->validsize  << " , a_flap = " << cur->data->a_flap << std::endl;
-        }*/
-        bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
-        if(!res){
+            qDebug() <<"bending result : tol = " << cur->data->tol << " valid ruling num = " << cur->data->validsize  << " , a_flap = " << cur->data->a_flap ;
+            bool isroot = (root == cur)? true: false;
+            cur->data->applyAAAMethod(Poly_V, false, cur->data->a_flap, cur->data->tol, isroot);
+            cur->data->SimpleSmooothSrf(Poly_V);
+        }else{
+            qDebug() << "remove cross ruling and modify";
+            bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
             cur->data->revisecrossedruling(Poly_V);
         }
-        //bool isroot = (root == cur)? true: false;
-        //cur->data->applyAAAMethod(Poly_V, false, cur->data->a_flap, cur->data->tol, isroot);
-        //cur->data->SimpleSmooothSrf(Poly_V);
+
         for (const auto& child : cur->children){
             if(child != nullptr){
                 child->data->reassignruling(cur->data);
@@ -370,7 +367,7 @@ void Model::modifyFoldingCurvePositionOn3d(){
 
 void Model:: addConstraint(QPointF& cursol, int type, int gridsize, Eigen::Vector3d (&axis)[2]){
     if(outline->IsClosed()){
-        std::cout<<"constraint can be applied only not closed outline"<<std::endl;
+        qDebug()<<"constraint can be applied only not closed outline";
         return;
     }
     Eigen::Vector3d p = SetOnGrid(cursol, gridsize);
@@ -409,7 +406,7 @@ void Model:: addConstraint(QPointF& cursol, int type, int gridsize, Eigen::Vecto
         ol_vertices.push_back(SymPts);
     }
     else if(IsConnected == 2){//元々あったedgeを削除してつなぎなおす
-        std::cout<<"can't use now"<<std::endl;
+        qDebug()<<"can't use now";
     }
 }
 
@@ -532,11 +529,11 @@ void Model::SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, 
         auto itr_next = std::find(path.begin(), path.end(), GradationPoints[i+1]);
         int next = (itr_next != path.end()) ? std::distance(path.begin(), itr_next): -1;
         if(cur == -1){
-        std::cout<< i << "  cur"<<std::endl;
+        qDebug()<< i << "  cur";
             return;
         }
         if(next == -1 ){
-            std::cout<< i << "  next"<<std::endl;
+            qDebug()<< i << "  next";
             return;
         }
         Eigen::Vector3d befcenter = getCenter(GradationPoints[i]);
@@ -557,8 +554,7 @@ void Model::SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, 
 }
 
 void Model::setGradationValue(int val, const std::shared_ptr<Line>& refL, int InterpolationType, std::vector<Eigen::Vector2d>& CurvePath){
-    //if(Faces.size() == 0 || std::find(Edges.begin(), Edges.end(), refHE) == Edges.end()){std::cout<<"no selected" << std::endl; return;
-    if(Rulings.empty() || std::find(Rulings.begin(), Rulings.end(), refL) == Rulings.end()){std::cout<<"no selected" << std::endl; return;}
+    if(Rulings.empty() || std::find(Rulings.begin(), Rulings.end(), refL) == Rulings.end()){qDebug()<<"no selected"; return;}
     if(refL->et != EdgeType::r)return;
     refL->color += val;
     refL->color = (refL->color < -255.0)? -255.0 : (255.0 < refL->color)? 255.0 : refL->color;

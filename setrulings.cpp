@@ -1,4 +1,5 @@
 #include "setrulings.h"
+#include <QDebug>
 using namespace MathTool;
 
 Vertex::Vertex(Eigen::Vector3d _p, bool _deformed){
@@ -137,7 +138,7 @@ bool CRV::setPoint(const std::vector<std::shared_ptr<Vertex>>&outline, Eigen::Ve
 }
 
 void CRV::BezierRulings(std::shared_ptr<OUTLINE>& outline, int& DivSize, int crvPtNum){
-    std::cout << "you can't use now"<<std::endl;
+    qDebug() << "you can't use now";
     return;
     double l = 1000; //適当に大きな値
     Eigen::Vector3d N, T;

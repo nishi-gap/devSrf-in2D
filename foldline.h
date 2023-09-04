@@ -10,7 +10,7 @@
 #include <iomanip>
 #include <filesystem>
 #include <nlopt.hpp>
-
+#include <QDebug>
 class FoldLine : public std::enable_shared_from_this<FoldLine>
 {
 public:
@@ -34,7 +34,7 @@ public:
     bool Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double wb, double wp, bool ConstFunc = true);
     std::vector<std::vector<Eigen::Vector3d>> Optimization_SmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v, bool IsConnectEndPoint);
     std::vector<std::vector<Eigen::Vector3d>> Optimization_PlanaritySrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
-    void ReassignColor(std::vector<std::shared_ptr<Line>>& Rulings, ColorPoint& CP);
+    void ReassignColor();
     void TrimLines(int size);
     void SimplifyModel(double tol, bool isroot);
     void SimplifyModel(int iselim, bool isroot);
@@ -46,12 +46,14 @@ public:
     void revisecrossedruling(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void drawRulingInAllAngles(std::vector<std::array<Eigen::Vector3d, 2>>& _Rulings);
 
+
 private:
     double color;
     bool setCurve(int dim);
     int curveNum;
     PaintTool type;
     std::vector<std::shared_ptr<CrvPt_FL>> Points_On_Curve;
+
 
 };
 

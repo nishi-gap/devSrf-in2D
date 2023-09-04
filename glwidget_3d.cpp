@@ -341,7 +341,7 @@ void GLWidget_3D::DrawMeshLines(){
 void GLWidget_3D::PlanarityDispay(bool state){
     VisiblePlanarity = !VisiblePlanarity;
     for(auto&c: PlanarityColor)
-    if(c > th_planarity && DebugMode::Singleton::getInstance().isdebug())std::cout << "planarity : " << c << std::endl;
+        if(c > th_planarity && DebugMode::Singleton::getInstance().isdebug())qDebug() << "planarity : " << c;
     update();
 }
 
