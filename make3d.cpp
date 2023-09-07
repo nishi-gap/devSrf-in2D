@@ -224,19 +224,20 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
     std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>> q;
     std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
     q.push(root);
+    int rank = 0;
     while(!q.empty()){
         auto cur = q.front(); q.pop();
         cur->data->ReassignColor();
-        cur->data->RevisionCrosPtsPosition();//端点の修正
+        //cur->data->RevisionCrosPtsPosition();//端点の修正
         if(ConstFunc){
             qDebug() << "trim each iteration";
-            bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
+            bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, ConstFunc);
             while(!res){
                 bool isroot = (cur == root)? true: false;
                 int validsize = cur->data->validsize - 1;
                 cur->data->SimplifyModel(validsize, isroot);
                 //cur->data->RevisionCrosPtsPosition();//端点の修正
-                res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
+                res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, ConstFunc);
                 //if(DebugMode::Singleton::getInstance().isdebug())
                 qDebug() << "optimization result " << res << "  ,  tol = " << tol << ", ruling num = " << cur->data->validsize;
             }
@@ -246,13 +247,14 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
             cur->data->SimpleSmooothSrf(Poly_V);
         }else{
             qDebug() << "remove cross ruling and modify";
-            bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, ConstFunc);
+            bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, ConstFunc);
             cur->data->revisecrossedruling(Poly_V);
         }
 
         for (const auto& child : cur->children){
             if(child != nullptr){
                 child->data->reassignruling(cur->data);
+                rank++;
                 q.push(child);
             }
         }
@@ -282,8 +284,8 @@ bool Model::AssignRuling(int dim, double tol, bool begincenter){
         if(cur->data->isbend()){
             bool isroot = (root == cur)? true: false;
             //cur->data->RevisionCrosPtsPosition();//端点の修正
-            //cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap, cur->data->tol, isroot);
-            //cur->data->SimpleSmooothSrf(Poly_V);
+            cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap, cur->data->tol, isroot);
+            cur->data->SimpleSmooothSrf(Poly_V);
         }
         for (const auto& child : cur->children){
             if(child != nullptr){

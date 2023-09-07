@@ -31,7 +31,7 @@ public:
 
     double getColor();
     bool RevisionCrosPtsPosition();
-    bool Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double wb, double wp, bool ConstFunc = true);
+    bool Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double wb, double wp, int rank, bool ConstFunc = true);
     std::vector<std::vector<Eigen::Vector3d>> Optimization_SmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v, bool IsConnectEndPoint);
     std::vector<std::vector<Eigen::Vector3d>> Optimization_PlanaritySrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void ReassignColor();
@@ -53,7 +53,7 @@ private:
     int curveNum;
     PaintTool type;
     std::vector<std::shared_ptr<CrvPt_FL>> Points_On_Curve;
-
+    std::vector<Eigen::Vector3d> Cubic_splineinterpolation();
 
 };
 
