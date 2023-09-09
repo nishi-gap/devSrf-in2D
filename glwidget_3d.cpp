@@ -20,6 +20,7 @@ GLWidget_3D::GLWidget_3D(QWidget *parent):QOpenGLWidget(parent)
     Mirror = Eigen::Matrix3d::Identity();
     Mirror(1,1) = -1;
     Scale = 0.1;
+    Points.clear(); Curve.clear();
 }
 GLWidget_3D::~GLWidget_3D(){
 
@@ -120,7 +121,7 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
         std::vector<std::vector<std::shared_ptr<Vertex4d>>> DrawCrvs;
         
         for(auto&FC: FldCrvs){
-            if(FC->FoldingCurve.empty())continue;
+            if(FC->FoldingCurve.size() <= 2)continue;
             std::vector<std::shared_ptr<Vertex4d>> DrawCrv;
             for(auto& v: FC->FoldingCurve){if(v->IsCalc)DrawCrv.push_back(v);}
             DrawCrvs.push_back(DrawCrv);

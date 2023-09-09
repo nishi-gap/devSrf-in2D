@@ -1,7 +1,7 @@
 #ifndef GLWIDGET_3D_H
 #define GLWIDGET_3D_H
 
-#include <foldline.h>
+#include "foldline.h"
 #include <QWheelEvent>
 #include <QOpenGLFunctions_3_0>
 #include <QOpenGLWidget>
@@ -52,6 +52,8 @@ private:
 
     std::vector<std::vector<Eigen::Vector3d>> Vertices;
     std::vector<std::array<Eigen::Vector3d, 3>> TriMeshs;
+    std::vector<Eigen::Vector3d> Curve;
+    std::vector<Eigen::Vector3d> Points;
 
     Eigen::Matrix3d Mirror;
     double Scale;

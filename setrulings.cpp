@@ -677,3 +677,75 @@ std::vector<std::shared_ptr<Vertex>> SortPolygon(std::vector<std::shared_ptr<Ver
     return poly_sort;
 }
 
+#include <Eigen/Dense>
+//https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/INT-APP/CURVE-INT-global.html
+//http://www.cad.zju.edu.cn/home/zhx/GM/009/00-bsia.pdf
+Eigen::MatrixXd GlobalSplineInterpolation(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, std::vector<double>&Knot, bool is3d, int dim){
+    int n = FoldingCurve.size() - 1;
+    int s = FoldingCurve.size();
+    std::vector<double> T(s, 0);
+    int m = s + dim;
+    Knot.assign(m + 1,0);
+    //if(s < 1)return std::vector<Eigen::Vector3d>{};
+    Eigen::MatrixXd Points(s,3);
+    for(int i = 0; i <= n; i++){
+        if(is3d){Points.row(i) = FoldingCurve[i]->first->p3;}
+        else{Points.row(i) = FoldingCurve[i]->first->p;}
+    }
+
+    //The Centripetal Method
+    double L= 0.0; for(int i = 1; i < s; i++)L += sqrt((Points.row(i) - Points.row(i - 1)).norm());
+    for(int i = 1; i < s; i++){
+        double sum = 0; for(int j = 1; j <= i; j++)sum += sqrt((Points.row(j) - Points.row(j - 1)).norm());
+        T[i] = sum/L;
+    }
+
+    for(int i = 0; i < s; i++)FoldingCurve[i]->first->s = T[i];//update parameter t
+
+    //The Universal method
+    for(int i = 0; i <= dim; i++)Knot[i] = 0;
+    for(int i = 0; i <= dim; i++)Knot[m - dim + i] = 1;
+    for(int i = 1; i <= n - dim; i++){
+        double d = (double)s/(double)(s - dim);
+        double a = i * d - 1;
+        //Knot[dim + i] = (1.0 - a)*T[int(i * d)-1] + a*T[int(i * d)];
+        //Knot[dim + i] = (double)i/(double)(s - dim);
+        //Knot[dim+i] = 0;
+        for(int j = i; j < i+dim; j++){
+            Knot[dim+i] += T[j];
+        }Knot[dim+i] /= (double)dim;
+    }
+
+    //Knot Matrix
+    Eigen::MatrixXd KnotMatrix = Eigen::MatrixXd::Zero(s, s);
+    for(int i = 0; i < s; i++){
+        double u = T[i];
+        if(u == Knot[0]){ KnotMatrix(i,0) = 1;continue;}
+        if(u == Knot[m]){KnotMatrix(i,n) = 1; continue;}
+
+        //for(int j = 0; j < s; j++){N(i,j) = basis(n,j,dim,u,Knot);}
+
+        for(int k = 0; k < m; k++){
+            if(!(Knot[k] <= u && u < Knot[k+1]))continue;
+            KnotMatrix(i,k) = 1;
+            for(int d = 1; d <= dim; d++){
+                //N(i,k - d) = (Knot[k+1] != Knot[k - d + 1]) ? (Knot[k+1] - u)/(Knot[k+1] - Knot[k - d + 1]) * N(i,k - d + 1): 0;
+                //N(i,j) = basis(s,j,dim,u,Knot);
+                for(int j = k - d + 1; j < k; j++){
+                    //N(i,j) = (Knot[j+d] != Knot[j]) ? (u - Knot[j])/(Knot[j+d] - Knot[j])*N(i,j): 0;
+                    KnotMatrix(i,j) += (Knot[j+d + 1] != Knot[j + 1]) ? (Knot[j + d + 1] - u)/(Knot[j+d + 1] - Knot[j + 1])*KnotMatrix(i,j+1): 0;
+                }
+                KnotMatrix(i,k) = (Knot[k+d] != Knot[k])? (u - Knot[k])/(Knot[k+d] - Knot[k])*KnotMatrix(i,k): 0;
+            }
+        }
+    }
+    //Eigen::MatrixXd inv(s,s); inv = KnotMatrix.inverse();
+    return KnotMatrix.ldlt().solve(Points);
+    Eigen::MatrixXd NewPoints(s, 3);
+    //qDebug() << "size = " << (inv * Points).rows();
+    return Points;
+    //
+    //CtrlPts_res[0] = glm::f64vec3{_D(0,0), _D(0,1), _D(0,2)};
+    //CtrlPts_res[n] = glm::f64vec3{_D(n,0), _D(n,1), _D(n,2)};//もしからしたらこれ必要かも
+}
+

@@ -46,8 +46,9 @@ public:
     bool Smoothing();
     bool RevisionCrosPtsPosition();
     void SortFoldingCurve(int dim);
-    bool BendingModel(double wb, double wp, int dim, double tol, bool ConstFunc = true);
+    bool BendingModel(double wb, double wp, int dim, double tol, int bendrank, bool ConstFunc = true);
     bool AssignRuling(int dim, double tol, bool begincenter);
+    int getLayerNum();
     std::vector<Eigen::Vector3d> resPts;
 
     //Smooth Surface

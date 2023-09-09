@@ -1,9 +1,6 @@
 #include "foldline.h"
 
 const double eps = 1e-8;
-std::string File_Ebend = "./Optimization/Ebend.csv";
-std::string File_Eruling = "./Optimization/Eruling.csv";
-std::ofstream ofs_Ebend, ofs_Eruling;
 
 inline Eigen::Vector3d _calcruling3d(const double& a, Eigen::Vector3d e, Eigen::Vector3d e2, Eigen::Vector3d axis, double& beta, std::vector<double>& Phi);
 void CalcRuling(double a, std::shared_ptr<Vertex4d>& xbef, std::shared_ptr<Vertex4d>& x, std::shared_ptr<Vertex4d>& xnext, const std::vector<std::shared_ptr<Vertex>>& Poly_V, double& a2, Eigen::Vector3d& SrfN, const Eigen::Vector3d& SpinAixs);
@@ -420,7 +417,6 @@ double Fruling(const std::vector<double> &a, std::vector<double> &grad, void* f_
     }
      _FoldingAAAMethod(FoldingCurve, Poly_V, a[0]);
     double f = RulingsCrossed(FoldingCurve);
-    if(ofs_Eruling.is_open()) ofs_Eruling << a[0] <<", " << MathTool::rad2deg(a[0]) << ", " <<  f <<  " ,  " << grad[0] ;
     if(DebugMode::Singleton::getInstance().isdebug())qDebug() <<"constraint function = " << MathTool::rad2deg(a[0]) << "(" << a[0] << ")  , " << f ;
     return f;
  }
@@ -444,7 +440,6 @@ double ObjFunc_FlapAngle(const std::vector<double> &a, std::vector<double> &grad
        grad[0] = od->wb * (fp - fm)/(2.0 * eps) + od->wp * (fp2 - fm2)/(2.0 * eps) + 100.0*(fp3 - fm3)/(2.0*eps);
     }
     //qDebug() <<"Fbend(" << glm::degrees(a[0]) << ")  =  " <<  fb <<  " ,  " << grad[0] << "  ,  Fparalell = " << fp << ", Fruling2 = "<< fr <<  std::endl;
-    if(ofs_Ebend.is_open())ofs_Ebend << a[0] <<", " << MathTool::rad2deg(a[0]) << ", " <<  fb << ", " << fp <<   ",  " << grad[0] ;
     return od->wb * fb + od->wp * fp + 100.0 * fr;
 }
 
@@ -1058,7 +1053,7 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
 
     double minf_amin, minf_amax, f_ruling_amin, f_ruling_amax;
     double res_amin, res_amax;
-    ofs_Ebend.open(File_Ebend, std::ios::out); ofs_Eruling.open(File_Eruling, std::ios::out);
+
       try {
         qDebug() <<"small a" ;
         std::vector<double> _a{a_min + 0.5};
@@ -1072,7 +1067,7 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
       }
       catch (std::exception& e) {
           qDebug() << "nlopt failed: " << e.what() ;
-      }ofs_Ebend.close(); ofs_Eruling.close();
+      }
 
     try {
           qDebug() << "large a" ;
@@ -1367,13 +1362,7 @@ void FoldLine::ReassignColor(){
     qDebug() <<"color changed";
 }
 
-template <typename T>
-class PointOnEndEdge{
-    public:
-    std::shared_ptr<T> v;
-    double t;
-    PointOnEndEdge(std::shared_ptr<T>&_v, double _t): v(_v), t(_t){}
-};
+template class PointOnEndEdge<std::shared_ptr<Vertex>>;
 
 void FoldLine::reassignruling(std::shared_ptr<FoldLine>& parent){
     auto getCrossPoint = [](std::vector<Eigen::Vector3d>& CtrlPts, std::shared_ptr<Vertex> v, std::shared_ptr<Vertex> o, int dim){
@@ -1482,10 +1471,27 @@ void FoldLine::drawRulingInAllAngles(std::vector<std::array<Eigen::Vector3d, 2>>
 
 }
 
-std::vector<Eigen::Vector3d> FoldLine::Cubic_splineinterpolation(){
+
+
+void FoldLine::AnotherMethod(std::vector<Eigen::Vector3d>& BCurve){
+    int s = FoldingCurve.size();
+    std::vector<double> Knot;
+    int dim = 3;
+    //Eigen::MatrixXd Points;
+    Eigen::MatrixXd Points = GlobalSplineInterpolation(FoldingCurve, Knot, true, dim);
+    int num = 10000;
+    double t = Knot[dim];
+    while(t <= 1){
+        Eigen::Vector3d v(0,0,0);
+        for(int j = 0; j < s; j++)v += MathTool::basis(s-1, j, dim, t, Knot)*Points.row(s);
+        BCurve.push_back(v);
+        t += (Knot[s] - Knot[dim])/(double)(num);
+    }
+    return;
 }
 
 void FoldLine::applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincener, double a, double _tol, bool isroot){
+
     if(FoldingCurve.empty() && a_flap == -1)return;
     SimplifyModel(validsize, isroot);
     //if(!begincener)_FoldingAAAMethod(FoldingCurve, Poly_V, a);
@@ -1495,6 +1501,7 @@ void FoldLine::applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V
     if(RulingsCrossed(FoldingCurve) < 1e-9){
         a_flap = a; //tol = _tol;
     }
+
     return;
 }
 

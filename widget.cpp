@@ -1,4 +1,5 @@
 #include "widget.h"
+#include <QDebug>
 #include "ui_widget.h"
 MainWindow::MainWindow(QWidget *parent)
     : QWidget(parent), ui(new Ui::MainWindow)
@@ -72,6 +73,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this, &MainWindow::signalFLtype, ui->glWid2dim, &GLWidget_2D::changeFoldType);
     connect(ui->ToleranceValue, &QSlider::valueChanged, this, &MainWindow::changeToleranceValue_Slider);
     connect(ui->elimRuling, &QSpinBox::valueChanged, this, &MainWindow::changeRulingNum);
+    connect(ui->spinBox_bendcurve, &QSpinBox::valueChanged, this, &MainWindow::BendCurve);
 
     connect(ui->TolValue, &QDoubleSpinBox::valueChanged, this, &MainWindow::changeToleranceValue_Spin);
     connect(ui->ReassinColorButton, &QPushButton::clicked, this, &MainWindow::ReassinColor);
@@ -122,6 +124,7 @@ void MainWindow::SymmetricConstraint(){ emit constraintType(0);}
 
 void MainWindow::Initialize(){
     LayerList.clear();
+    ui->spinBox_bendcurve->setValue(0);
     update();
 }
 void MainWindow::ChangeMaxColor(int val){model->SetMaxFold((double)val);}
@@ -189,9 +192,19 @@ void MainWindow::StartOptimization(){
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
     double tol = ui->TolValue->value();
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-    ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, false);
+    int layerNum = ui->glWid2dim->model->getLayerNum();
+    ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, layerNum, true);
     fold_Sm();
 
+}
+
+void MainWindow::BendCurve(int num){
+    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+    double tol = ui->TolValue->value();
+    double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
+    qDebug() << "the number of bend curve is " << num;
+    ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, num, true);
+    fold_Sm();
 }
 
 void MainWindow::StartOptimization_plararity(){
@@ -309,7 +322,7 @@ void MainWindow::switchActivateCheckBox(PaintTool active){
 void MainWindow::ReassinColor(){
     if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
     else if(!ui->glWid2dim->model->FL.empty() && !ui->glWid2dim->model->FL[0]->FoldingCurve.empty()){
-        ui->glWid2dim->model->FL[0]->ReassignColor(ui->glWid2dim->model->Rulings, ui->glWid2dim->model->ColorPt);
+        ui->glWid2dim->model->FL[0]->ReassignColor();
         ui->glWid2dim->model->deform();
         ui->glWid2dim->update();
         ui->glWid2dim->model->modifyFoldingCurvePositionOn3d();
@@ -320,34 +333,39 @@ void MainWindow::ReassinColor(){
     }
 }
 
+
 void MainWindow::keyPressEvent(QKeyEvent *e){
+    static bool optimmethod = true;
     ui->glWid3dim->receiveKeyEvent(e);
     ui->glWid2dim->receiveKeyEvent(e);
-    if(e->key() == Qt::Key_2){
+    if(e->key() == Qt::Key_M){
         if(ui->glWid2dim->model->FL.empty())return;
         double tol = ui->TolValue->value();
         ui->glWid2dim->model->AssignRuling(3, tol, false);
         ui->glWid2dim->update();
         fold_Sm();
     }
+    if(e->key() == Qt::Key_O)optimmethod = true;
     if(e->key() == Qt::Key_W){
         if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
         double tol = ui->TolValue->value();
-        double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-        ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, true);
+        double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value(); 
+        qDebug() << "optimmethod = " << optimmethod;
+        int layerNum = ui->glWid2dim->model->getLayerNum();
+        ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, layerNum,  optimmethod);
         fold_Sm();
     }
     if(e->key() == Qt::Key_D){
         DebugMode::Singleton::getInstance().switchval();
-        if(DebugMode::Singleton::getInstance().isdebug())std::cout << "DebugMode On" << std::endl;
-        else std::cout << "DebugMode off" << std::endl;
+        if(DebugMode::Singleton::getInstance().isdebug())qDebug() << "DebugMode On";
+        else qDebug() << "DebugMode off";
     }
     else if(e->key() == Qt::Key_Return){emit PressedEnter();}
     else if(e->key() == Qt::Key_C){
 
         if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
         else if(!ui->glWid2dim->model->FL.empty()){
-            ui->glWid2dim->model->FL[0]->ReassignColor(ui->glWid2dim->model->Rulings, ui->glWid2dim->model->ColorPt);
+            ui->glWid2dim->model->FL[0]->ReassignColor();
             ui->glWid2dim->model->deform();
             ui->glWid2dim->model->modifyFoldingCurvePositionOn3d();
             ui->glWid2dim->update();
@@ -373,8 +391,9 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     }
     else if(e->key() == Qt::Key_K){
         begin_center = !begin_center;
-        std::cout << "flap angle start  " << ((!begin_center)? "end point": "center") << std::endl;
+        qDebug() << "flap angle start  " << ((!begin_center)? "end point": "center");
     }
+
     else{
 
     }
@@ -683,9 +702,24 @@ void MainWindow::exportobj(){
                 if(a != -1)QuantitativeResult << a << ", ";
             }
         }
-
     }
-
+    QuantitativeResult << "\nPlanarity(adjacent ruling)\n" ;
+    for(auto&FL: ui->glWid2dim->model->FL){
+        if(FL->FoldingCurve.empty())continue;
+        for(auto itr = FL->FoldingCurve.begin() + 1; itr != FL->FoldingCurve.end() - 2; itr++){
+            double l_avg = (((*itr)->first->p3 - (*(itr+1))->second->p3).norm() + ((*itr)->second->p3 - (*(itr+1))->first->p3).norm())/2.0;
+            double d;
+            Eigen::Vector3d u1 = ((*itr)->first->p3 - (*(itr+1))->second->p3).normalized(), u2 = ((*itr)->second->p3-  (*(itr+1))->first->p3).normalized();
+            if((u1.cross(u2)).norm() < 1e-9){
+                Eigen::Vector3d H = (*(itr+1))->first->p3 + u2.dot((*itr)->second->p3 - (*(itr+1))->first->p3)*u2;
+                d = (H - (*itr)->second->p3).norm();
+            }else{
+                auto u = u1.cross(u2);
+                d = (u.dot((*(itr+1))->second->p3 - (*(itr+1))->first->p3))/(u1.cross(u2)).norm();
+            }
+            QuantitativeResult << d/l_avg << ", ";
+        }
+    }
 
 }
 

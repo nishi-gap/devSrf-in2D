@@ -9,11 +9,10 @@
 #include <QWheelEvent>
 #include <QPointF>
 #include <QMessageBox>
-#include <gtoolwnd.h>
+#include "gtoolwnd.h"
 #include <QString>
 #include <QPushButton>
 #include "setrulings.h"
-#include "mathtool.h"
 #include <QDebug>
 
 class GLWidget_2D : public QOpenGLWidget, protected QOpenGLFunctions_3_0

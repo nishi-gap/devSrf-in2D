@@ -14,7 +14,6 @@ CONFIG += c++20
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    #arcball.cpp \
     cbox.cpp \
     foldline.cpp \
     glwidget_2d.cpp \
@@ -29,7 +28,6 @@ SOURCES += \
     widget.cpp
 
 HEADERS += \
-    #arcball.h \
     cbox.h \
     foldline.h \
     glwidget_2d.h \
@@ -52,10 +50,9 @@ INCLUDEPATH += $$PWD/includes \
 DESTDIR = $$PWD
 
 #QMAKE_RPATHDIR += $$PWD/includes/dlls
-LIBS += $$PWD/includes/libs/nlopt.lib \
-        $$PWD/includes/libs/libgslcblas.a \
-        $$PWD/includes/libs/libgslcblas.dll.a
-        $$PWD/includes/libs/libgslcblas.la
+LIBS += $$PWD/includes/libs/nlopt.lib
+
+
 #QMAKE_POST_LINK += cp $$PWD/includes/dlls/nlopt.dll $$OUT_PWD/nlopt.dll
 #dllファイルの追加：横メニューバーのプロジェクト→ビルドと実行メニューのうちメニューを選択→環境→PATHを編集してdllが入ったフォルダを追記するとできる
 #dllファイルの追加：横メニューバーのプロジェクト→BUild Environmentのシステム環境変数を使用をクリック→Pathの中にdllのフォルダを追加

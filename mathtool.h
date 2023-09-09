@@ -2,14 +2,11 @@
 #define MATHTOOL_H
 
 #include <cmath>
-#include <iomanip>
 #include <vector>
 #include <iostream>
 #include <tuple>
 #include <Eigen/Dense>
 #include <utility>
-#include <fstream>
-#include <sstream>
 #include <algorithm>
 #include <numbers>
 #include <queue>
@@ -121,7 +118,6 @@ Eigen::Vector3d bezier(std::vector<Eigen::Vector3d>& CtrlPts, double t, int dim)
 
 double basis(int n, int i, int p, double u, std::vector<double>& U);
 
-std::vector<double> LSM_apply(std::vector<double>&y, int dim = 1);
 Eigen::Vector3d ProjectionVector(const Eigen::Vector3d& v, Eigen::Vector3d n, bool Isnormalize = false);
 
 template<typename T>
@@ -226,6 +222,20 @@ public:
         for (const std::shared_ptr<NTreeNode<T>>& child : node->children)printTree(child, depth + 1);
     }
     void print(){printTree(root);}
+    int getLayerNum(){
+        int rank = 0;
+        if (root == nullptr)return rank;
+        std::queue<std::shared_ptr<NTreeNode<T>>> q;
+        q.push(root);
+        while (!q.empty()) {
+            std::shared_ptr<NTreeNode<T>> cur = q.front(); q.pop();
+            for (std::shared_ptr<NTreeNode<T>> child : cur->children){
+                if(child != nullptr)q.push(child);
+            }
+            rank++;
+        }
+        return rank;
+    }
 };
 
 #endif // MATHTOOL_H

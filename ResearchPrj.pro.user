@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 11.0.2, 2023-09-03T20:52:56. -->
+<!-- Written by QtCreator 11.0.2, 2023-09-09T16:42:29. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -77,7 +77,9 @@
     <value type="QString" key="ClangTools.DiagnosticConfig">Builtin.DefaultTidyAndClazy</value>
     <value type="int" key="ClangTools.ParallelJobs">6</value>
     <value type="bool" key="ClangTools.PreferConfigFile">true</value>
-    <valuelist type="QVariantList" key="ClangTools.SelectedDirs"/>
+    <valuelist type="QVariantList" key="ClangTools.SelectedDirs">
+     <value type="QString">C:/Users/gap29/Documents/QtPrj/devSrf-in2D/ResearchPrj.pro</value>
+    </valuelist>
     <valuelist type="QVariantList" key="ClangTools.SelectedFiles"/>
     <valuelist type="QVariantList" key="ClangTools.SuppressedDiagnostics"/>
     <value type="bool" key="ClangTools.UseGlobalSettings">true</value>
@@ -159,6 +161,7 @@
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
       <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.MakeStep</value>
+      <value type="qlonglong" key="Qt4ProjectManager.MakeStep.JobCount">8</value>
       <value type="QString" key="Qt4ProjectManager.MakeStep.MakeArguments">clean</value>
      </valuemap>
      <value type="qlonglong" key="ProjectExplorer.BuildStepList.StepsCount">1</value>
@@ -170,7 +173,9 @@
     <value type="bool" key="ProjectExplorer.BuildConfiguration.ClearSystemEnvironment">false</value>
     <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.CustomParsers"/>
     <value type="bool" key="ProjectExplorer.BuildConfiguration.ParseStandardOutput">false</value>
-    <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges"/>
+    <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges">
+     <value type="QString">Path=C:\Qt\Tools\mingw1120_64\bin;C:\Qt\6.5.2\mingw_64\bin;C:\Qt\Tools\mingw1120_64\bin;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files\Git\cmd;C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\;C:\msys64\mingw64\bin;C:\msys64\usr\local\bin;C:\msys64\usr\bin;C:\msys64\bin;C:\msys64\opt\bin;C:\Users\gap29\AppData\Local\Microsoft\WindowsApps;C:\Users\gap29\AppData\Local\Programs\Microsoft VS Code\bin;C:\Program Files\CMake\bin;C:\Program Files\LLVM\bin;C:\Users\gap29\Documents\QtPrj\devSrf-in2D\includes\dlls</value>
+    </valuelist>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Release</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4BuildConfiguration</value>
     <value type="int" key="Qt4ProjectManager.Qt4BuildConfiguration.BuildConfiguration">0</value>
@@ -404,9 +409,10 @@
     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.CustomExecutableRunConfiguration</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey"></value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4RunConfiguration:C:/Users/gap29/Documents/QtPrj/devSrf-in2D/ResearchPrj.pro</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/gap29/Documents/QtPrj/devSrf-in2D/ResearchPrj.pro</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseLibrarySearchPath">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
    </valuemap>
    <value type="qlonglong" key="ProjectExplorer.Target.RunConfigurationCount">1</value>

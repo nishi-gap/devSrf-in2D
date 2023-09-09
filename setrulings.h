@@ -141,9 +141,8 @@ private:
 
 void CrossDetection(std::shared_ptr<OUTLINE>& outline, std::shared_ptr<CRV>& crvs);
 
-
+Eigen::MatrixXd GlobalSplineInterpolation(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, std::vector<double>&Knot, bool is3d, int dim);
 std::vector<double> BezierClipping(std::vector<Eigen::Vector3d>&CtrlPts, const std::shared_ptr<Vertex>& p, const std::shared_ptr<Vertex>& q, int dim);
 std::vector<std::shared_ptr<Vertex>> SortPolygon(std::vector<std::shared_ptr<Vertex>>& polygon);
-//std::vector<glm::f64vec3> GlobalSplineInterpolation(std::vector<CrvPt_FL>& Q, std::vector<glm::f64vec3>& CtrlPts_res, std::vector<double>& Knot, double& CurveLen, bool is3d = true, int dim = 3, int t_type = 2);
 
 #endif // SETRULINGS_H

@@ -1,16 +1,21 @@
 #ifndef FOLDLINE_H
 #define FOLDLINE_H
 
-#include <cmath>
-#include <numbers>
-#include <setrulings.h>
-#include <utility>
+#include "setrulings.h"
 #include <fstream>
 #include <sstream>
-#include <iomanip>
 #include <filesystem>
 #include <nlopt.hpp>
 #include <QDebug>
+
+template <typename T>
+class PointOnEndEdge{
+public:
+    std::shared_ptr<T> v;
+    double t;
+    PointOnEndEdge(std::shared_ptr<T>&_v, double _t): v(_v), t(_t){}
+};
+
 class FoldLine : public std::enable_shared_from_this<FoldLine>
 {
 public:
@@ -46,16 +51,14 @@ public:
     void revisecrossedruling(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void drawRulingInAllAngles(std::vector<std::array<Eigen::Vector3d, 2>>& _Rulings);
 
-
+    void AnotherMethod(std::vector<Eigen::Vector3d>& BCurve);
 private:
     double color;
     bool setCurve(int dim);
     int curveNum;
     PaintTool type;
     std::vector<std::shared_ptr<CrvPt_FL>> Points_On_Curve;
-    std::vector<Eigen::Vector3d> Cubic_splineinterpolation();
-
+    //Eigen::MatrixXd GlobalSplineInterpolation(std::vector<double>&Knot, bool is3d, int dim);
 };
-
 
 #endif // FOLDLINE_H

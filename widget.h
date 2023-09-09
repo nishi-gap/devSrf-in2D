@@ -95,6 +95,7 @@ public slots:
     void SimpleSmoothing();
     void StartOptimization();
     void StartOptimization_plararity();
+    void BendCurve(int num);
 private:
     Ui::MainWindow *ui;
     std::shared_ptr<Model> model;

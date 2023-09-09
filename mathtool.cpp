@@ -223,30 +223,6 @@ namespace MathTool{
         return v;
     }
 
-    std::vector<double> LSM_apply(std::vector<double>&_y, int dim){
-        //type: 0->x, 1->y, 2->x*x, 3->xy
-        auto sum = [](std::vector<double>&y, int type){
-            double z = 0.0;
-            for(int i = 0; i < (int)y.size(); i++)z += (type == 0) ? i: (type==1)?y[i]: (type==2)?i*i: i*y[i];
-            return z;
-        };
-        std::string file = "result_lsm.csv";
-        std::ofstream ofs(file);
-        int n = _y.size();
-        std::vector<double> Y(n);
-
-        ofs << "row data(y), result(y)" << std::endl;
-        if(dim == 1){
-            double xy = sum(_y,3), xx = sum(_y,2), x = sum(_y,0), y = sum(_y,1);
-            double a = ((double)n*xy - x*y)/((double)n * xx - x*x);
-            double b = (xx*y - xy*x)/((double)n*xx - x*x);
-            for(int i = 0; i < n; i++){
-                Y[i] = a*(double)i + b;
-                ofs << _y[i] << ", " << Y[i] << std::endl;
-            }
-        }
-        return Y;
-    }
 
     Eigen::Vector3d ProjectionVector(const Eigen::Vector3d& v, Eigen::Vector3d n, bool Isnormalized){
         n = n.normalized();

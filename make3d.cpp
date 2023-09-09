@@ -55,7 +55,6 @@ void Model::deform(){
         else if(CP.color < a) return -((std::numbers::pi - CP.angle)/(255.0 - CP.color)* (abs(a) - CP.color) + CP.angle);
         return ((std::numbers::pi - CP.angle)/(255.0 - CP.color)* (abs(a) - CP.color) + CP.angle);
     };
-
     if(Rulings.empty() || !outline->IsClosed())return;
     std::vector<Eigen::Transform<double, 3, Eigen::Affine>> TMs;
     std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons;
@@ -215,17 +214,24 @@ void Model::UpdateFLOrder(int dim){
     return;
 }
 
+int Model::getLayerNum(){return NTree_fl.getLayerNum();}
 
-bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFunc){
+bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank, bool ConstFunc){
     UpdateFLOrder(dim);
     SplitRulings(dim);
     std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>> root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
+    if(bendrank == 0){
+        AssignRuling(dim, tol, false);
+        return true;
+    }
     std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>> q;
     std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
     q.push(root);
     int rank = 0;
+    int bendnum = 0;
     while(!q.empty()){
+        if(bendnum == bendrank)break;
         auto cur = q.front(); q.pop();
         cur->data->ReassignColor();
         //cur->data->RevisionCrosPtsPosition();//端点の修正
@@ -257,7 +263,8 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, bool ConstFu
                 rank++;
                 q.push(child);
             }
-        }
+        }     
+        bendnum++;
     }
     return true;
 }
