@@ -677,13 +677,12 @@ std::vector<std::shared_ptr<Vertex>> SortPolygon(std::vector<std::shared_ptr<Ver
     return poly_sort;
 }
 
-#include <Eigen/Dense>
 //https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/INT-APP/CURVE-INT-global.html
 //http://www.cad.zju.edu.cn/home/zhx/GM/009/00-bsia.pdf
-Eigen::MatrixXd GlobalSplineInterpolation(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, std::vector<double>&Knot, bool is3d, int dim){
+Eigen::MatrixXd GlobalSplineInterpolation(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, std::vector<double>&Knot, std::vector<double>& T, bool is3d, int dim){
     int n = FoldingCurve.size() - 1;
     int s = FoldingCurve.size();
-    std::vector<double> T(s, 0);
+    T.assign(s, 0);
     int m = s + dim;
     Knot.assign(m + 1,0);
     //if(s < 1)return std::vector<Eigen::Vector3d>{};
@@ -700,7 +699,7 @@ Eigen::MatrixXd GlobalSplineInterpolation(std::vector<std::shared_ptr<Vertex4d>>
         T[i] = sum/L;
     }
 
-    for(int i = 0; i < s; i++)FoldingCurve[i]->first->s = T[i];//update parameter t
+    //for(int i = 0; i < s; i++)FoldingCurve[i]->first->s = T[i];//update parameter t
 
     //The Universal method
     for(int i = 0; i <= dim; i++)Knot[i] = 0;
@@ -711,36 +710,54 @@ Eigen::MatrixXd GlobalSplineInterpolation(std::vector<std::shared_ptr<Vertex4d>>
         //Knot[dim + i] = (1.0 - a)*T[int(i * d)-1] + a*T[int(i * d)];
         //Knot[dim + i] = (double)i/(double)(s - dim);
         //Knot[dim+i] = 0;
-        for(int j = i; j < i+dim; j++){
-            Knot[dim+i] += T[j];
-        }Knot[dim+i] /= (double)dim;
+        for(int j = i; j < i+dim; j++) Knot[dim+i] += T[j];
+        Knot[dim+i] /= (double)dim;
     }
 
+    auto calculateCoefficientsMatrix = [](int n, int p, double u, const std::vector<double>& knots){
+        Eigen::VectorXd N = Eigen::VectorXd::Zero(n + 1);
+        if(u == knots[0]){N(0) = 1; return N;}
+        if(u == knots.back()){N(n) = 1; return N;}
+        int k = 0;
+        while (!(knots[k] <= u && u < knots[k + 1]))  k++;
+        N(k) = 1.0; // Degree 0 coefficient
+        for (int d = 1; d <= p; d++) {
+            N(k -d) = (knots[k+1] - u)/(knots[k+1] - knots[k - d + 1]) * N(k-d+1);
+            for(int i = k - d + 1; i <= k-1; i++)N(i) = (u - knots[i])/(knots[i+d] - knots[i])*N(i) + (knots[i+d+1] - u)/(knots[i+d+1] - knots[i+1])*N(i+1);
+            N(k) = (u - knots[k])/(knots[k+d] - knots[k])*N(k);
+        }
+        return N;
+    };
     //Knot Matrix
     Eigen::MatrixXd KnotMatrix = Eigen::MatrixXd::Zero(s, s);
     for(int i = 0; i < s; i++){
+        Eigen::VectorXd _N = calculateCoefficientsMatrix(s-1, dim, T[i], Knot);
+
+        KnotMatrix.row(i) = _N;
+    }
+    /*
+    for(int i = 0; i < s; i++){//列ベクトル
         double u = T[i];
-        if(u == Knot[0]){ KnotMatrix(i,0) = 1;continue;}
-        if(u == Knot[m]){KnotMatrix(i,n) = 1; continue;}
-
+        if(u == Knot[0]){ KnotMatrix(0,i) = 1;continue;}
+        if(u == Knot[m]){KnotMatrix(n,i) = 1; continue;}
         //for(int j = 0; j < s; j++){N(i,j) = basis(n,j,dim,u,Knot);}
-
         for(int k = 0; k < m; k++){
             if(!(Knot[k] <= u && u < Knot[k+1]))continue;
-            KnotMatrix(i,k) = 1;
+            KnotMatrix(k,i) = 1;
             for(int d = 1; d <= dim; d++){
                 //N(i,k - d) = (Knot[k+1] != Knot[k - d + 1]) ? (Knot[k+1] - u)/(Knot[k+1] - Knot[k - d + 1]) * N(i,k - d + 1): 0;
                 //N(i,j) = basis(s,j,dim,u,Knot);
                 for(int j = k - d + 1; j < k; j++){
                     //N(i,j) = (Knot[j+d] != Knot[j]) ? (u - Knot[j])/(Knot[j+d] - Knot[j])*N(i,j): 0;
-                    KnotMatrix(i,j) += (Knot[j+d + 1] != Knot[j + 1]) ? (Knot[j + d + 1] - u)/(Knot[j+d + 1] - Knot[j + 1])*KnotMatrix(i,j+1): 0;
+                    KnotMatrix(j,i) += (Knot[j+d + 1] != Knot[j + 1]) ? (Knot[j + d + 1] - u)/(Knot[j+d + 1] - Knot[j + 1])*KnotMatrix(i,j+1): 0;
                 }
                 KnotMatrix(i,k) = (Knot[k+d] != Knot[k])? (u - Knot[k])/(Knot[k+d] - Knot[k])*KnotMatrix(i,k): 0;
             }
         }
-    }
+    }*/
+
     //Eigen::MatrixXd inv(s,s); inv = KnotMatrix.inverse();
-    return KnotMatrix.ldlt().solve(Points);
+    return KnotMatrix.colPivHouseholderQr().solve(Points);
     Eigen::MatrixXd NewPoints(s, 3);
     //qDebug() << "size = " << (inv * Points).rows();
     return Points;

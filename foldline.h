@@ -50,8 +50,8 @@ public:
     void applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincenter, double a, double _tol, bool isroot);
     void revisecrossedruling(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void drawRulingInAllAngles(std::vector<std::array<Eigen::Vector3d, 2>>& _Rulings);
-
-    void AnotherMethod(std::vector<Eigen::Vector3d>& BCurve);
+    void AnotherMethod(int& dim, std::vector<Eigen::Vector3d>& Points_bsp, std::vector<Eigen::Vector3d>& BCurve);
+    void AnotherMethod(int type, const std::vector<std::shared_ptr<Vertex>>& Poly_V, std::vector<std::array<std::array<Eigen::Vector3d, 2>, 3>>& TNBs);
 private:
     double color;
     bool setCurve(int dim);

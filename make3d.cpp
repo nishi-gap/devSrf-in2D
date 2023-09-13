@@ -216,6 +216,12 @@ void Model::UpdateFLOrder(int dim){
 
 int Model::getLayerNum(){return NTree_fl.getLayerNum();}
 
+void Model::AnotherMethod(int type, std::vector<std::array<std::array<Eigen::Vector3d, 2>, 3>>& TNBs){
+    std::vector<std::shared_ptr<Vertex>> Poly_v = outline->getVertices();
+
+    FL[FoldCurveIndex]->AnotherMethod(type, Poly_v, TNBs);
+}
+
 bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank, bool ConstFunc){
     UpdateFLOrder(dim);
     SplitRulings(dim);
@@ -231,7 +237,10 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
     int rank = 0;
     int bendnum = 0;
     while(!q.empty()){
-        if(bendnum == bendrank)break;
+        if(bendnum == bendrank){
+            AssignRuling(dim, tol, false);
+            return true;
+        }
         auto cur = q.front(); q.pop();
         cur->data->ReassignColor();
         //cur->data->RevisionCrosPtsPosition();//端点の修正

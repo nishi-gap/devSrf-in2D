@@ -882,9 +882,9 @@
   <widget class="QSpinBox" name="spinBox_bendcurve">
    <property name="geometry">
     <rect>
-     <x>1180</x>
-     <y>410</y>
-     <width>111</width>
+     <x>1090</x>
+     <y>390</y>
+     <width>81</width>
      <height>20</height>
     </rect>
    </property>

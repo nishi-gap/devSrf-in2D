@@ -22,8 +22,11 @@ class GLWidget_3D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
 {
     Q_OBJECT
 public:
+    void reset();
     void setVertices(const Lines Surface = Lines(),  const Lines Rulings = Lines(),  const FoldLine3d FldCrvs = FoldLine3d(), const Ruling3d& _AllRulings = Ruling3d());
     void ReceiveParam(std::vector<std::vector<Eigen::Vector3d>>&_C);
+    void ReceiveCurve(std::vector<Eigen::Vector3d>&_C, std::vector<Eigen::Vector3d>& _P);
+    void ReceiveTNBs(const std::vector<std::array<std::array<Eigen::Vector3d, 2>, 3>>& TNBs);
     void receiveKeyEvent(QKeyEvent *e);
     void PlanarityDispay(bool state);
     void EraseNonFoldEdge(bool state);
@@ -52,8 +55,7 @@ private:
 
     std::vector<std::vector<Eigen::Vector3d>> Vertices;
     std::vector<std::array<Eigen::Vector3d, 3>> TriMeshs;
-    std::vector<Eigen::Vector3d> Curve;
-    std::vector<Eigen::Vector3d> Points;
+    std::vector<Eigen::Vector3d> Curve, Points;
 
     Eigen::Matrix3d Mirror;
     double Scale;

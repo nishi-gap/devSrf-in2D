@@ -125,6 +125,7 @@ void MainWindow::SymmetricConstraint(){ emit constraintType(0);}
 void MainWindow::Initialize(){
     LayerList.clear();
     ui->spinBox_bendcurve->setValue(0);
+    ui->glWid3dim->reset();
     update();
 }
 void MainWindow::ChangeMaxColor(int val){model->SetMaxFold((double)val);}
@@ -393,7 +394,20 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         begin_center = !begin_center;
         qDebug() << "flap angle start  " << ((!begin_center)? "end point": "center");
     }
+    else if(e->key() == Qt::Key_N){
+        std::vector<Eigen::Vector3d> InterpolatedCurve;
+        static int type = 3;
+        qDebug() << "type = " << type;
+        std::vector<std::array<std::array<Eigen::Vector3d, 2>, 3>> TNBs;
+        std::vector<Eigen::Vector3d> Points, BCurve;
+        ui->glWid2dim->model->FL[0]->AnotherMethod(type, Points, BCurve);
+        type++;
+        ui->glWid3dim->ReceiveCurve(BCurve, Points);
 
+        //ui->glWid2dim->model->AnotherMethod(type, TNBs);
+        //ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
+        //ui->glWid3dim->ReceiveTNBs(TNBs);
+    }
     else{
 
     }

@@ -12,7 +12,7 @@
 #include <QtCore/QVariant>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QWidget>
-#include <gradationwidget.hpp>
+#include "gradationwidget.h"
 
 QT_BEGIN_NAMESPACE
 

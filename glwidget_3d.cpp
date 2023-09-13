@@ -26,6 +26,10 @@ GLWidget_3D::~GLWidget_3D(){
 
 }
 
+void GLWidget_3D::reset(){
+    Points.clear(); Curve.clear();
+}
+
 void GLWidget_3D::initializeGL(){
     initializeOpenGLFunctions();
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -121,7 +125,7 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
         std::vector<std::vector<std::shared_ptr<Vertex4d>>> DrawCrvs;
         
         for(auto&FC: FldCrvs){
-            if(FC->FoldingCurve.size() <= 2)continue;
+            if((int)FC->FoldingCurve.size() <= 2)continue;
             std::vector<std::shared_ptr<Vertex4d>> DrawCrv;
             for(auto& v: FC->FoldingCurve){if(v->IsCalc)DrawCrv.push_back(v);}
             DrawCrvs.push_back(DrawCrv);
@@ -204,13 +208,31 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
 inline void GLWidget_3D::dispV(Eigen::Vector3d p){
     glVertex3d(p.x(), p.y(), p.z());
 }
+
 void GLWidget_3D::ReceiveParam(std::vector<std::vector<Eigen::Vector3d>>&_C){
     C = _C;
     for(auto&c: C){
         for(auto&p: c) p = Scale * Mirror * p;
     }
 }
+void GLWidget_3D::ReceiveCurve(std::vector<Eigen::Vector3d>&_C, std::vector<Eigen::Vector3d>&_P){
+    Curve = _C;
+    for(auto&c: Curve) c = Scale * Mirror * c;
 
+    Points.clear();
+    for(auto&p: _P) Points.push_back(Scale * Mirror * p);
+
+}
+
+void GLWidget_3D::ReceiveTNBs(const std::vector<std::array<std::array<Eigen::Vector3d, 2>, 3>>& TNBs){
+    AllRulings.clear();
+    for(auto&TNB: TNBs){
+        for(auto&v: TNB){
+            std::array<Eigen::Vector3d, 2> tmpV{Scale * Mirror * v[0], Scale * Mirror * v[1]};
+            AllRulings.push_back(tmpV);
+        }
+    }
+}
 void GLWidget_3D::paintGL(){
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -219,15 +241,27 @@ void GLWidget_3D::paintGL(){
 
     glLoadIdentity();
     perspective(30.0f, (float)s.width() / (float)s.height(), 1.f, 100.f);
-    //glm::f64mat4 RotY = glm::rotate(angleY, Eigen::Vector3d{0,1,0}), RotX = glm::rotate(angleX, Eigen::Vector3d(1,0,0));
-    //glm::f64mat4 Trans = glm::translate(Eigen::Vector3d{- TransX, - TransY, - TransZ});
-    //Eigen::Vector3d camPos = RotY * RotX * Trans * glm::f64vec4{center, 1};
-
-
     glScaled(0.1, 0.1, 0.1);
     glTranslated(-center.x() - TransX, -center.y() - TransY, -center.z() -drawdist + TransZ);
     glRotated(0.2 * angleX, 0.0, 1.0, 0.0);
     glRotated(0.2 * angleY, 1.0, 0.0, 0.0);
+
+    glColor3d(0,0,0);
+    glBegin(GL_LINE_STRIP);
+    for(const auto&c: Points) glVertex3d(c.x(), c.y(), c.z());
+    glEnd();
+    for(const auto&c: Points){
+        glPointSize(10);
+        glBegin(GL_POINTS);
+        glColor3d(1,0,0);
+        glVertex3d(c.x(), c.y(), c.z());
+        glEnd();
+    }
+
+    glColor3d(0,1,0);
+    glBegin(GL_LINE_STRIP);
+    for(const auto&c: Curve) glVertex3d(c.x(), c.y(), c.z());
+    glEnd();
 
     if(!eraseMesh){
         DrawMeshLines();
@@ -238,9 +272,12 @@ void GLWidget_3D::paintGL(){
 
     glPolygonOffset(0.5f,1.f);
     for(int i = 0; i < (int)AllRulings.size(); i++){
-        glColor3d(0, (double)i/AllRulings.size(), (double)i/AllRulings.size());
+        //glColor3d(0, (double)i/AllRulings.size(), (double)i/AllRulings.size());
         //if(i % 2 == 0)glColor3d(1,0,0);
         //else glColor3d(0,1,0);
+        if(i % 3 == 0)glColor3d(1,0,0);
+        else if(i % 3 == 1)glColor3d(0,1,0);
+        else glColor3d(0,0,1);
         glBegin(GL_LINES);
         glVertex3d(AllRulings[i][0].x(), AllRulings[i][0].y(), AllRulings[i][0].z());
         glVertex3d(AllRulings[i][1].x(), AllRulings[i][1].y(), AllRulings[i][1].z());
@@ -276,7 +313,6 @@ void GLWidget_3D::paintGL(){
 
 void GLWidget_3D::DrawMesh(bool isFront){
     glPolygonOffset(1.f,0.5f);
-
     if(VisiblePlanarity){
         for(int i = 0; i < (int)Vertices.size(); i++){
             if(drawEdgePlane == i)continue;
@@ -394,7 +430,7 @@ void GLWidget_3D::receiveKeyEvent(QKeyEvent *e){
     if(e->key() == Qt::Key_C)eraseCtrlPt = !eraseCtrlPt;
     if(e->key() == Qt::Key_X)eraseCrossPt = !eraseCrossPt;
     if(e->key() == Qt::Key_D)eraseCurve = !eraseCurve;
-    if(e->key() == Qt::Key_O)drawEdgePlane = -1;
+    if(e->key() == Qt::Key_O)eraseMesh = !eraseMesh;
 
 
     update();

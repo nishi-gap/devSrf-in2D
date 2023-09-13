@@ -112,6 +112,7 @@ public:
     QCheckBox *ConnectEndPointBox;
     QPushButton *OptPlararity_Button;
     QCheckBox *developablityButton;
+    QSpinBox *spinBox_bendcurve;
 
     void setupUi(QWidget *MainWindow)
     {
@@ -350,7 +351,7 @@ public:
         LayerListWidget->setGeometry(QRect(1160, 450, 141, 311));
         glWid3dim = new GLWidget_3D(MainWindow);
         glWid3dim->setObjectName("glWid3dim");
-        glWid3dim->setGeometry(QRect(640, 10, 631, 381));
+        glWid3dim->setGeometry(QRect(640, 10, 631, 371));
         line_5 = new QFrame(MainWindow);
         line_5->setObjectName("line_5");
         line_5->setGeometry(QRect(-20, 400, 20, 451));
@@ -364,7 +365,7 @@ public:
         symmetryButton->setGeometry(QRect(10, 30, 111, 21));
         FoldLineBox = new QGroupBox(MainWindow);
         FoldLineBox->setObjectName("FoldLineBox");
-        FoldLineBox->setGeometry(QRect(680, 410, 131, 211));
+        FoldLineBox->setGeometry(QRect(680, 390, 131, 211));
         verticalLayoutWidget_5 = new QWidget(FoldLineBox);
         verticalLayoutWidget_5->setObjectName("verticalLayoutWidget_5");
         verticalLayoutWidget_5->setGeometry(QRect(10, 30, 114, 111));
@@ -467,6 +468,9 @@ public:
         developablityButton = new QCheckBox(MainWindow);
         developablityButton->setObjectName("developablityButton");
         developablityButton->setGeometry(QRect(1070, 410, 121, 18));
+        spinBox_bendcurve = new QSpinBox(MainWindow);
+        spinBox_bendcurve->setObjectName("spinBox_bendcurve");
+        spinBox_bendcurve->setGeometry(QRect(1090, 390, 81, 20));
 
         retranslateUi(MainWindow);
 
