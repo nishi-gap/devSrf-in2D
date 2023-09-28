@@ -58,6 +58,7 @@ public slots:
     //new gradation mode
     void changeInterpolationType();
     void ApplyNewColor(int wd, int color);
+    void FinishColorChange();
 
     //輪郭
     void sendNewEdgeNum();

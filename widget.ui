@@ -19,7 +19,7 @@
      <x>10</x>
      <y>10</y>
      <width>621</width>
-     <height>451</height>
+     <height>411</height>
     </rect>
    </property>
    <widget class="Line" name="line_4">
@@ -53,7 +53,7 @@
    <property name="geometry">
     <rect>
      <x>510</x>
-     <y>460</y>
+     <y>420</y>
      <width>151</width>
      <height>231</height>
     </rect>
@@ -135,7 +135,7 @@
    <property name="geometry">
     <rect>
      <x>340</x>
-     <y>450</y>
+     <y>420</y>
      <width>161</width>
      <height>221</height>
     </rect>
@@ -231,12 +231,25 @@
      <string>binary MV color</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="btn_ColorFinish">
+    <property name="geometry">
+     <rect>
+      <x>40</x>
+      <y>190</y>
+      <width>80</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>finish</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QGroupBox" name="OutlineBox">
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>460</y>
+     <y>430</y>
      <width>161</width>
      <height>211</height>
     </rect>
@@ -312,8 +325,8 @@
   <widget class="QGroupBox" name="DivideSizeBox">
    <property name="geometry">
     <rect>
-     <x>190</x>
-     <y>530</y>
+     <x>200</x>
+     <y>510</y>
      <width>121</width>
      <height>131</height>
     </rect>
@@ -528,7 +541,7 @@
    <property name="geometry">
     <rect>
      <x>190</x>
-     <y>460</y>
+     <y>440</y>
      <width>131</width>
      <height>61</height>
     </rect>

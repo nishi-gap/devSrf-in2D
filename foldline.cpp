@@ -5,6 +5,7 @@ const double eps = 1e-7;
 inline Eigen::Vector3d _calcruling3d(const double& a, Eigen::Vector3d e, Eigen::Vector3d e2, Eigen::Vector3d axis, double& beta, std::vector<double>& Phi);
 void CalcRuling(double a, std::shared_ptr<Vertex4d>& xbef, std::shared_ptr<Vertex4d>& x, std::shared_ptr<Vertex4d>& xnext, const std::vector<std::shared_ptr<Vertex>>& Poly_V, double& a2, Eigen::Vector3d& SrfN, const Eigen::Vector3d& SpinAixs);
 inline double update_flapangle(double a, const Eigen::Vector3d& befN, const Eigen::Vector3d& SrfN, const Eigen::Vector3d& e);
+inline double update_flapangle2(double a, const Eigen::Vector3d& befN, const Eigen::Vector3d& SrfN, const Eigen::Vector3d& e);
 void _FoldingAAAMethod(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, const std::vector<std::shared_ptr<Vertex>>& Poly_V, const double angle);
 void _FoldingAAAMethod_center(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, const std::vector<std::shared_ptr<Vertex>>& Poly_V, const double angle);
 std::vector<std::shared_ptr<Vertex4d>> TrimPoints(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, double tol);
@@ -1001,7 +1002,7 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     double a_con = a_ll + std::numbers::pi;
     if(a_con > 2.0*std::numbers::pi)a_con -= 2.0*std::numbers::pi;
     if(a_con < 0)a_con +=2.0*std::numbers::pi;
-
+    qDebug() << "a_con = " << MathTool::rad2deg(a_con);
     double phi3 = std::acos(e2.dot(SpinAxis)), phi4 = std::acos(e.dot(SpinAxis));
     double k = 2.0 * std::numbers::pi - phi3 - phi4;
     double a_min, a_max;
@@ -1693,6 +1694,14 @@ inline double update_flapangle(double a, const Eigen::Vector3d& befN, const Eige
     return a - tau;
 }
 
+inline double update_flapangle2(double a, const Eigen::Vector3d& befN, const Eigen::Vector3d& SrfN, const Eigen::Vector3d& e){
+    double dir = (-e).dot(befN.cross(SrfN));
+    double tau = std::acos(SrfN.dot(befN));
+    if(dir <= 0)tau = 2.0*std::numbers::pi - tau;
+    if(a - tau <= 0)return a - tau + 2.0 * std::numbers::pi;
+    return a - tau;
+}
+
 inline Eigen::Vector3d _calcruling3d(const double& a, Eigen::Vector3d e, Eigen::Vector3d e2, Eigen::Vector3d axis, double& beta, std::vector<double>& Phi){
     e = e.normalized(); e2 = e2.normalized(); axis = axis.normalized();
     beta = std::acos(e.dot(e2));
@@ -1730,6 +1739,7 @@ void CalcRuling(double a, std::shared_ptr<Vertex4d>& xbef, std::shared_ptr<Verte
     if(cos_a > 1)cos_a = 1;
     else if(cos_a < -1)cos_a = -1;
     a2 = std::atan2(sin_a, cos_a);
+    if(a2 < 0)a2 += 2*std::numbers::pi;//koko chuui
     SrfN = MathTool::ProjectionVector(e.cross(e2), e2, true);
 }
 
@@ -1783,7 +1793,7 @@ void _FoldingAAAMethod_center(std::vector<std::shared_ptr<Vertex4d>>& FoldingCur
 
     double a2 = 0, l;
     Eigen::Vector3d e, e2, x;
-    Eigen::Vector3d N, r, befN;
+    Eigen::Vector3d N, r, befN, befedge;
     std::vector<int> Vertices_Ind;
     for(int i = 0; i < (int)FoldingCurve.size(); i++){if(FoldingCurve[i]->IsCalc)Vertices_Ind.push_back(i);}
 
@@ -1801,11 +1811,12 @@ void _FoldingAAAMethod_center(std::vector<std::shared_ptr<Vertex4d>>& FoldingCur
         e2 = (fc_next->first->p3 - x).normalized();
         if(ind != (int)Vertices_Ind.size()/2){
             Eigen::Vector3d SrfN = MathTool::ProjectionVector(e.cross(e2), -e, true);
-            a = update_flapangle(a2, befN, SrfN, e);
+            Eigen::Vector3d edge = MathTool::ProjectionVector(e2, -e, true);
+            a = update_flapangle2(a2, befedge, edge, e);
         }
         CalcRuling(a, fc_bef, fc, fc_next, Poly_V, a2, befN, -Eigen::Vector3d::UnitZ());
         if(ind == (int)FoldingCurve.size() -2)break;
-        befN = MathTool::ProjectionVector(e.cross(e2), e2, true);
+        befN = MathTool::ProjectionVector(e.cross(e2), e2, true); befedge = MathTool::ProjectionVector(e, e2, true);
         if(ind != 1){
             //for(int i = Vertices_Ind[ind-1] + 1; i < Vertices_Ind[ind]; i++)
             //    SetOnPlane(FoldingCurve[i], Poly_V, FoldingCurve[Vertices_Ind[ind]],FoldingCurve[Vertices_Ind[ind-1]], FoldingCurve[Vertices_Ind[ind]]->second,  FoldingCurve[Vertices_Ind[ind-1]]->second, 0);
@@ -1817,10 +1828,13 @@ void _FoldingAAAMethod_center(std::vector<std::shared_ptr<Vertex4d>>& FoldingCur
         x = fc->first->p3;
         e = (fc_bef->first->p3 - x).normalized();
         e2 = (fc_next->first->p3 - x).normalized();
-        if(ind != (int)Vertices_Ind.size()/2 -1){Eigen::Vector3d SrfN = MathTool::ProjectionVector(e.cross(e2), -e, true);a = update_flapangle(a2, befN, SrfN, e);}
+        if(ind != (int)Vertices_Ind.size()/2 -1){
+            Eigen::Vector3d SrfN = MathTool::ProjectionVector(e.cross(e2), -e, true);Eigen::Vector3d edge = MathTool::ProjectionVector(e2, -e, true);
+            a = update_flapangle2(a2, befN, edge, e);
+        }
         CalcRuling(a, fc_bef, fc, fc_next, Poly_V, a2, befN, Eigen::Vector3d::UnitZ());
         if(ind == (int)FoldingCurve.size() -2)break;
-        befN = MathTool::ProjectionVector(e.cross(e2), e2, true);
+        befN = MathTool::ProjectionVector(e.cross(e2), e2, true);befedge = MathTool::ProjectionVector(e, e2, true);
         if(ind != 1){
             //for(int i = Vertices_Ind[ind-1] + 1; i < Vertices_Ind[ind]; i++)
             //    SetOnPlane(FoldingCurve[i], Poly_V, FoldingCurve[Vertices_Ind[ind]],FoldingCurve[Vertices_Ind[ind-1]], FoldingCurve[Vertices_Ind[ind]]->second,  FoldingCurve[Vertices_Ind[ind-1]]->second, 0);
@@ -1863,7 +1877,7 @@ void _FoldingAAAMethod(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, con
 
     double a2 = 0, l;
     Eigen::Vector3d e, e2, x;
-    Eigen::Vector3d N, r, befN;
+    Eigen::Vector3d N, r, befN, befedge;
     std::vector<int> Vertices_Ind;
     for(int i = 0; i < (int)FoldingCurve.size(); i++){if(FoldingCurve[i]->IsCalc)Vertices_Ind.push_back(i);}
 
@@ -1883,11 +1897,12 @@ void _FoldingAAAMethod(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, con
         e2 = (fc_next->first->p3 - x).normalized();
         if(ind != 1){
             Eigen::Vector3d SrfN = MathTool::ProjectionVector(e.cross(e2), -e, true);
-            a = update_flapangle(a2, befN, SrfN, e);
+            Eigen::Vector3d edge = MathTool::ProjectionVector(e2, -e, true);
+            a = update_flapangle2(a2, befedge, edge, e);
         }
         CalcRuling(a, fc_bef, fc, fc_next, Poly_V, a2, befN, -Eigen::Vector3d::UnitZ());
         if(ind == (int)FoldingCurve.size() -2)break;
-        befN = MathTool::ProjectionVector(e.cross(e2), e2, true);
+        befN = MathTool::ProjectionVector(e.cross(e2), e2, true);befedge = MathTool::ProjectionVector(e, e2, true);
         if(ind != 1){
             for(int i = Vertices_Ind[ind-1] + 1; i < Vertices_Ind[ind]; i++)
                 SetOnPlane(FoldingCurve[i], Poly_V, FoldingCurve[Vertices_Ind[ind]],FoldingCurve[Vertices_Ind[ind-1]], FoldingCurve[Vertices_Ind[ind]]->second,  FoldingCurve[Vertices_Ind[ind-1]]->second, 0);

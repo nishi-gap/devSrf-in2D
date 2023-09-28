@@ -54,6 +54,7 @@ public:
     QLineEdit *CP_colorval;
     QSlider *CP_colorSlider;
     QCheckBox *BinaryMVColor;
+    QPushButton *btn_ColorFinish;
     QGroupBox *OutlineBox;
     QWidget *verticalLayoutWidget_3;
     QVBoxLayout *verticalLayout_3;
@@ -121,7 +122,7 @@ public:
         MainWindow->resize(1402, 847);
         glWid2dim = new GLWidget_2D(MainWindow);
         glWid2dim->setObjectName("glWid2dim");
-        glWid2dim->setGeometry(QRect(10, 10, 621, 451));
+        glWid2dim->setGeometry(QRect(10, 10, 621, 411));
         line_4 = new QFrame(glWid2dim);
         line_4->setObjectName("line_4");
         line_4->setGeometry(QRect(-10, 0, 20, 451));
@@ -134,7 +135,7 @@ public:
         line_6->setFrameShadow(QFrame::Sunken);
         CurveListBox = new QGroupBox(MainWindow);
         CurveListBox->setObjectName("CurveListBox");
-        CurveListBox->setGeometry(QRect(510, 460, 151, 231));
+        CurveListBox->setGeometry(QRect(510, 420, 151, 231));
         verticalLayoutWidget = new QWidget(CurveListBox);
         verticalLayoutWidget->setObjectName("verticalLayoutWidget");
         verticalLayoutWidget->setGeometry(QRect(10, 20, 121, 204));
@@ -176,7 +177,7 @@ public:
 
         GradationBox = new QGroupBox(MainWindow);
         GradationBox->setObjectName("GradationBox");
-        GradationBox->setGeometry(QRect(340, 450, 161, 221));
+        GradationBox->setGeometry(QRect(340, 420, 161, 221));
         AddPointsButton = new QPushButton(GradationBox);
         AddPointsButton->setObjectName("AddPointsButton");
         AddPointsButton->setGeometry(QRect(0, 30, 151, 24));
@@ -211,9 +212,12 @@ public:
         BinaryMVColor = new QCheckBox(GradationBox);
         BinaryMVColor->setObjectName("BinaryMVColor");
         BinaryMVColor->setGeometry(QRect(20, 140, 111, 31));
+        btn_ColorFinish = new QPushButton(GradationBox);
+        btn_ColorFinish->setObjectName("btn_ColorFinish");
+        btn_ColorFinish->setGeometry(QRect(40, 190, 80, 24));
         OutlineBox = new QGroupBox(MainWindow);
         OutlineBox->setObjectName("OutlineBox");
-        OutlineBox->setGeometry(QRect(20, 460, 161, 211));
+        OutlineBox->setGeometry(QRect(20, 430, 161, 211));
         verticalLayoutWidget_3 = new QWidget(OutlineBox);
         verticalLayoutWidget_3->setObjectName("verticalLayoutWidget_3");
         verticalLayoutWidget_3->setGeometry(QRect(20, 20, 121, 195));
@@ -259,7 +263,7 @@ public:
 
         DivideSizeBox = new QGroupBox(MainWindow);
         DivideSizeBox->setObjectName("DivideSizeBox");
-        DivideSizeBox->setGeometry(QRect(190, 530, 121, 131));
+        DivideSizeBox->setGeometry(QRect(200, 510, 121, 131));
         verticalLayoutWidget_4 = new QWidget(DivideSizeBox);
         verticalLayoutWidget_4->setObjectName("verticalLayoutWidget_4");
         verticalLayoutWidget_4->setGeometry(QRect(0, 20, 101, 71));
@@ -359,7 +363,7 @@ public:
         line_5->setFrameShadow(QFrame::Sunken);
         GeometoryConstraitBox = new QGroupBox(MainWindow);
         GeometoryConstraitBox->setObjectName("GeometoryConstraitBox");
-        GeometoryConstraitBox->setGeometry(QRect(190, 460, 131, 61));
+        GeometoryConstraitBox->setGeometry(QRect(190, 440, 131, 61));
         symmetryButton = new QPushButton(GeometoryConstraitBox);
         symmetryButton->setObjectName("symmetryButton");
         symmetryButton->setGeometry(QRect(10, 30, 111, 21));
@@ -498,6 +502,7 @@ public:
         CBox_InterpolationType->setItemText(2, QCoreApplication::translate("MainWindow", "B-spline", nullptr));
 
         BinaryMVColor->setText(QCoreApplication::translate("MainWindow", "binary MV color", nullptr));
+        btn_ColorFinish->setText(QCoreApplication::translate("MainWindow", "finish", nullptr));
         OutlineBox->setTitle(QCoreApplication::translate("MainWindow", "Outline", nullptr));
         outline_rectangle->setText(QCoreApplication::translate("MainWindow", "Rectangle", nullptr));
         outline_polyline->setText(QCoreApplication::translate("MainWindow", "PolyLine", nullptr));

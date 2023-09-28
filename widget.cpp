@@ -38,6 +38,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->glWid2dim, &GLWidget_2D::ColorChangeFrom, this, &MainWindow::ApplyNewColor);
     connect(this, &MainWindow::makeGradation, ui->glWid2dim, &GLWidget_2D::ApplyNewGradationMode);
     connect(ui->CP_colorSlider, &QSlider::valueChanged, ui->glWid2dim, &GLWidget_2D::getGradationFromSlider);
+    connect(ui->btn_ColorFinish, &QPushButton::clicked, this, &MainWindow::FinishColorChange);
 
     //曲線
     connect(ui->curve_add, &QPushButton::clicked, ui->glWid2dim, &GLWidget_2D::AddCurve);
@@ -127,6 +128,11 @@ void MainWindow::Initialize(){
     ui->spinBox_bendcurve->setValue(0);
     ui->glWid3dim->reset();
     update();
+}
+
+void MainWindow::FinishColorChange(){
+    qDebug()<< "gradation mode finish";
+    ui->glWid2dim->InitializeDrawMode();
 }
 void MainWindow::ChangeMaxColor(int val){model->SetMaxFold((double)val);}
 

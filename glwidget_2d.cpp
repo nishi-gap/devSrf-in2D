@@ -1,4 +1,5 @@
 #include "glwidget_2d.h"
+#include <GL/glu.h>
 
 GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
 {
@@ -34,12 +35,12 @@ GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
     IsEraseNonFoldEdge = false;
     visibleCurve = true;
     model = std::make_shared<Model>(crvPtNum);
-
+    camscale = 100;
 }
 GLWidget_2D::~GLWidget_2D(){}
 
-void GLWidget_2D::InitializeDrawMode(int state){
-    if(state == 0)return; drawtype = PaintTool::None; MoveCrvIndex = {-1, -1}; emit SendNewActiveCheckBox(PaintTool::None);
+void GLWidget_2D::InitializeDrawMode(){
+    drawtype = PaintTool::None; MoveCrvIndex = {-1, -1}; emit SendNewActiveCheckBox(PaintTool::None);
 }
 void GLWidget_2D::VisualizeMVColor(bool state){IsMVcolor_binary = state;update();}
 
@@ -300,9 +301,16 @@ void GLWidget_2D::paintGL(){
     glClearColor(1.0,1.0,1.0,1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     QSize s = this->size();
+    glViewport(0,0,s.width(),s.height());
     glLoadIdentity();
-    glOrtho(-0.5, (float)s.width() -0.5, (float)s.height() -0.5, -0.5, -1, 1);
-
+    //glOrtho(-0.5, (float)s.width() -0.5, (float)s.height() -0.5, -0.5, -1, 1);
+    //透視投影行列
+    double aspect = static_cast<double>(s.width()) / static_cast<double>(s.height());
+    double znear = 0.5, zfar = 200;
+    double ymax = znear * std::tan(MathTool::deg2rad(60)), ymin = -ymax;
+    double xmin = ymin * aspect, xmax = ymax * aspect;
+    glFrustum( xmin, xmax, ymin, ymax, znear, zfar);
+    glTranslated(0,0,camscale -100);
     if(visibleGrid == 1)DrawGrid();
 
     //折曲線の描画
@@ -832,6 +840,11 @@ void GLWidget_2D::wheelEvent(QWheelEvent *we){
         emit ColorChangeFrom(0, refL->color);
         model->deform();
         if(isVisibleTo(gw.get())) emit CurvePathSet(CurvePath);
+    }
+    if(drawtype == PaintTool::None){
+        camscale += DiffWheel;
+        camscale = (camscale < 0)?0.0: (camscale > 200)? 200: camscale;
+        qDebug() << "camscale  " << camscale;
     }
     emit foldingSignals();
     update();

@@ -43,6 +43,8 @@ public:
     double angle = 0.0;
     void EraseNonFoldEdge(bool state);
 
+    //初期状態
+    void InitializeDrawMode();
 protected:
     void initializeGL();
     void paintGL();
@@ -52,8 +54,6 @@ protected:
     void mouseReleaseEvent(QMouseEvent *e);
 
 public slots:
-    //初期状態
-    void InitializeDrawMode(int state);
 
     //輪郭関係
     void DrawOutlineRectangle();
@@ -114,6 +114,7 @@ private:
 
     bool IsEraseNonFoldEdge;
     std::array<int,2> MoveCrvIndex; //-1: 未参照
+    double camscale;//0 < camscale < 2
 
     int KeyEvent; //-1:None  0:Enter  1: Back-Space  2:Other
     //OutlineRectangle, RulingBezier, RulingBspline, RulingLine, RulingArc,  OutlinePolygon, OutlinePolyline, MoveControlPoint, SetColor, NewGradationMode, InsertControlPoint,
