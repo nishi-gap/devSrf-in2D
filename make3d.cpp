@@ -216,11 +216,6 @@ void Model::UpdateFLOrder(int dim){
 
 int Model::getLayerNum(){return NTree_fl.getLayerNum();}
 
-void Model::AnotherMethod(int type, std::vector<std::array<std::array<Eigen::Vector3d, 2>, 3>>& TNBs){
-    std::vector<std::shared_ptr<Vertex>> Poly_v = outline->getVertices();
-
-    FL[FoldCurveIndex]->AnotherMethod(type, Poly_v, TNBs);
-}
 
 bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank, bool ConstFunc){
     UpdateFLOrder(dim);

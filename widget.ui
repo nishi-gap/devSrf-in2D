@@ -902,6 +902,19 @@
     </rect>
    </property>
   </widget>
+  <widget class="QCheckBox" name="VisualizeRegCrv">
+   <property name="geometry">
+    <rect>
+     <x>1180</x>
+     <y>390</y>
+     <width>121</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Regression Curve</string>
+   </property>
+  </widget>
  </widget>
  <customwidgets>
   <customwidget>

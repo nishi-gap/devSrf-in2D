@@ -49,7 +49,6 @@ public:
     bool BendingModel(double wb, double wp, int dim, double tol, int bendrank, bool ConstFunc = true);
     bool AssignRuling(int dim, double tol, bool begincenter);
     int getLayerNum();
-    void AnotherMethod(int type, std::vector<std::array<std::array<Eigen::Vector3d, 2>, 3>>& TNBs);
     std::vector<Eigen::Vector3d> resPts;
 
     //Smooth Surface

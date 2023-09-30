@@ -43,6 +43,10 @@ public:
     double angle = 0.0;
     void EraseNonFoldEdge(bool state);
 
+    //regression curve
+    std::vector<std::vector<std::shared_ptr<Vertex>>> RegressionCurve;
+    void ReceiveRegressionCurve(std::vector<std::vector<std::shared_ptr<Vertex>>>& RegCrv);
+
     //初期状態
     void InitializeDrawMode();
 protected:
@@ -149,6 +153,7 @@ private:
 
     int constType;
     Eigen::Vector3d SetOnGrid(QPointF& cursol, double gridsize);
+
 
 signals:
     void foldingSignals();

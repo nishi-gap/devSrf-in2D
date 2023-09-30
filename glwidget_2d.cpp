@@ -35,7 +35,8 @@ GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
     IsEraseNonFoldEdge = false;
     visibleCurve = true;
     model = std::make_shared<Model>(crvPtNum);
-    camscale = 100;
+    camscale = 1;
+    RegressionCurve.clear();
 }
 GLWidget_2D::~GLWidget_2D(){}
 
@@ -288,29 +289,47 @@ void GLWidget_2D::changeflapgnle(double val, double tol, bool begin_center){
     update();
 }
 
+void GLWidget_2D::ReceiveRegressionCurve(std::vector<std::vector<std::shared_ptr<Vertex>>>& RegCrv){
+    RegressionCurve = RegCrv;
+    update();
+}
+
 void GLWidget_2D::initializeGL(){
     makeCurrent();
     initializeOpenGLFunctions();
     glClearColor(1.f, 1.f, 1.f, 1.f);
     QSize s = this->size();
     glViewport(0,0,s.width(),s.height());
+
+    // アルファブレンディングを有効にする
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 void GLWidget_2D::paintGL(){
     makeCurrent();
     glClearColor(1.0,1.0,1.0,1.0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    QSize s = this->size();
-    glViewport(0,0,s.width(),s.height());
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);;
+    glViewport(0,0,size().width(),size().height());
+    glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     //glOrtho(-0.5, (float)s.width() -0.5, (float)s.height() -0.5, -0.5, -1, 1);
     //透視投影行列
-    double aspect = static_cast<double>(s.width()) / static_cast<double>(s.height());
-    double znear = 0.5, zfar = 200;
+    //
+    double left = -0.5, right = static_cast<double>(size().width()) - 0.5;
+    double bottom = static_cast<double>(size().height()) - 0.5, top = -0.5;
+    double nearClip = -1, farClip = 1;
+    glFrustum(left, right, bottom, top, nearClip, farClip);
+    double aspect = static_cast<double>(size().width()) / static_cast<double>(size().height());
+    double znear = 0.5, zfar = 100;
     double ymax = znear * std::tan(MathTool::deg2rad(60)), ymin = -ymax;
     double xmin = ymin * aspect, xmax = ymax * aspect;
-    glFrustum( xmin, xmax, ymin, ymax, znear, zfar);
+    //glFrustum( xmin, xmax, ymin, ymax, znear, zfar);
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
     glTranslated(0,0,camscale -100);
+
     if(visibleGrid == 1)DrawGrid();
 
     //折曲線の描画
@@ -351,6 +370,31 @@ void GLWidget_2D::paintGL(){
         }
 
     }
+
+    //regression curve
+    glColor3d(1,0,0);
+    glPointSize(4);
+    for(const auto&RC: RegressionCurve){
+        for(auto&v: RC){
+            glBegin(GL_POINTS);
+            glVertex2d(v->p.x(), v->p.y());
+            glEnd();
+        }
+    }
+    glColor3d(0,0,0);
+    glEnable(GL_LINE_STIPPLE);
+    glLineStipple(1 , 0x00F0);
+    for(const auto&RC: RegressionCurve){
+        glBegin(GL_LINE_LOOP);
+        for(auto&v: RC)glVertex2d(v->p.x(), v->p.y());
+        glEnd();
+    }
+    glDisable(GL_LINE_STIPPLE);
+
+    glColor4d(1,0,0, 0.4);
+    glBegin(GL_LINE_STRIP);
+    for(const auto&RC: RegressionCurve) glVertex2d(RC.back()->p.x(), RC.back()->p.y());
+    glEnd();
 
     glPolygonOffset(0.0,1.0);
     auto getcolor = [](double c, double a, double y)->double{
@@ -843,7 +887,7 @@ void GLWidget_2D::wheelEvent(QWheelEvent *we){
     }
     if(drawtype == PaintTool::None){
         camscale += DiffWheel;
-        camscale = (camscale < 0)?0.0: (camscale > 200)? 200: camscale;
+        camscale = (camscale < -100)?-100.0: (camscale > 200)? 200: camscale;
         qDebug() << "camscale  " << camscale;
     }
     emit foldingSignals();

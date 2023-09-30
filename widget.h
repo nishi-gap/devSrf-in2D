@@ -97,6 +97,9 @@ public slots:
     void StartOptimization();
     void StartOptimization_plararity();
     void BendCurve(int num);
+
+    //Regression Curve
+    void SwitchingVisualization_RegCurve();
 private:
     Ui::MainWindow *ui;
     std::shared_ptr<Model> model;

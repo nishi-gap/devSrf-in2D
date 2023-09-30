@@ -1532,143 +1532,115 @@ double ObjFunc_CtrlPoints_bsp(const std::vector<double> &x, std::vector<double> 
     return f;
 }
 
-void FoldLine::AnotherMethod(int& dim, std::vector<Eigen::Vector3d>& Points_bsp, std::vector<Eigen::Vector3d>& BCurve){
-    std::vector<double> Knot, S;
-    dim = dim % (FoldingCurve.size() - 1);
-    qDebug() << "dimention " << dim;
-    //Eigen::MatrixXd Points;
-    Eigen::MatrixXd Points = GlobalSplineInterpolation(FoldingCurve, Knot, S, true, dim);
-    std::vector<Eigen::Vector3d> Vec_t, Vec_n, Vec_b, Vec_r;
-    std::vector<double> Beta, _Alpha, Tau, Kappa;
-    Points_bsp.clear();
-    for(int i = 0; i < Points.rows(); i++)Points_bsp.push_back(Points.row(i));
-    BCurve.clear();
-    std::ofstream ofs;
-    std::filesystem::create_directory("./Optimization");
-    std::string File = "./Optimization/TNB-parameter.csv" ;
-    ofs.open(File, std::ios::out); ofs << "t, tau\n";
-    double len3d = 0.0, len2d = 0.0;
-    Eigen::Vector3d bef2d, c3d, bef3d, c2d;
-    auto diff_bsp = [&](double t, int dim, std::vector<double>&Knot, std::vector<Eigen::Vector3d>& P){
-        std::array<Eigen::Vector3d, 3> dr;
-        Eigen::Vector3d x = MathTool::bspline(P, t, dim, Knot);
-        Eigen::Vector3d xp = MathTool::bspline(P, t + eps, dim, Knot), xm = MathTool::bspline(P, t - eps, dim, Knot);
-        Eigen::Vector3d xp2 = MathTool::bspline(P, t + 2.0*eps, dim, Knot), xm2 = MathTool::bspline(P, t - 2.0*eps, dim, Knot);
-        dr[0] = (xp - xm)/(2.0*eps);
-        dr[1] = (xp - 2.0*x + xm)/(eps*eps);
-        dr[2] = (xm2 - 2.0 * xm + 2.0 * xp - xp2) / (2.0 * eps * eps * eps);
-        return dr;
+std::vector<std::vector<std::shared_ptr<Vertex>>> FoldLine::CalclateRegressionCurve(double a, const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool IsWriteCSV, bool IsMinlength){
+    auto getRulingLength = [](const std::shared_ptr<Vertex4d>& x, const std::shared_ptr<Vertex4d>& x2 ,double a, double b, double k)->std::vector<double>{
+        double phi2 = std::acos(((x->second->p - x->first->p).normalized()).dot((x2->first->p - x->first->p).normalized()));
+        double dx = (x2->second->p - x2->first->p).norm();
+        double c = cos(phi2)*cos(phi2) + std::pow((sin(b)*cos(a) - sin(k))/(cos(k) - sin(b)), 2)*sin(phi2)*sin(phi2);
+        double root = std::pow(dx*cos(phi2),2) - c*dx;
+        if(root <0){qDebug() << "root is minus"; return {};}
+        double l = (dx*cos(phi2)-std::sqrt(root))/c, l2 = (dx*cos(phi2)+std::sqrt(root))/c;
+        return {std::min(l, l2), std::max(l,l2)};
+    };
+    auto getCrossPoint = [](Eigen::Vector3d&crosspoint, std::shared_ptr<Vertex4d>& x){
+        double l = (crosspoint - x->first->p).norm();
+        Eigen::Vector3d r2d = (x->second->p - x->first->p).normalized(), r3d = (x->second->p3 - x->first->p3).normalized();
+        if(r2d.dot((crosspoint - x->first->p).normalized()) < 0)r3d *= -1;
+        return std::make_shared<Vertex>(Vertex(crosspoint, l*r3d + x->first->p3));
     };
 
-    for(int i = 0; i < 10000; i++){
-        double t = (double)i/10000.0;
-        c3d = MathTool::bspline(Points_bsp, t, dim, Knot);
-        BCurve.push_back(c3d);
-        c2d = MathTool::bezier(CtrlPts, t, 3);
-        if(i != 0){
-            len2d += (c2d - bef2d) .norm(); len3d += (c3d - bef3d).norm();
+    if(FoldingCurve.size() < 4)return{};
+
+    std::vector<std::shared_ptr<Vertex4d>> ValidFC;
+    for(const auto&FC: FoldingCurve){if(FC->IsCalc)ValidFC.push_back(FC);}
+    a = MathTool::deg2rad(a);
+    std::vector<std::array<double,3>> ABKs;
+    double a2;
+    Eigen::Vector3d befedge, befN;
+    for(int ind = 1; ind < (int)ValidFC.size() - 1; ind++){
+        Eigen::Vector3d e = (ValidFC[ind-1]->first->p3 - ValidFC[ind]->first->p3).normalized(), e2 = (ValidFC[ind+1]->first->p3 - ValidFC[ind]->first->p3).normalized(), axis = (ValidFC[ind]->third->p3 - ValidFC[ind]->first->p3).normalized();
+        if(ind != 1){
+            Eigen::Vector3d edge = MathTool::ProjectionVector(e2, -e, true);
+            a = update_flapangle2(a2, befedge, edge, e);
         }
-        bef2d = c2d; bef3d = c3d;
-        auto dr_bs = diff_bsp(t, dim, Knot, Points_bsp);
-        double tau = dr_bs[0].dot(dr_bs[1].cross(dr_bs[2]))/std::pow((dr_bs[0].cross(dr_bs[1])).norm(), 2);
-        ofs << t << ", " << tau << std::endl;
-    }ofs.close();
-    qDebug() << "length error " << len2d - len3d;
-    return;
-
-}
-
-void FoldLine::AnotherMethod(int type, const std::vector<std::shared_ptr<Vertex>>& Poly_V, std::vector<std::array<std::array<Eigen::Vector3d, 2>, 3>>& TNBs){
-    auto diff_bezier = [&](double t){
-        std::array<Eigen::Vector3d, 3> dr;
-        dr[0] = -3.0*(1-t)*(1-t) * CtrlPts[0] + 3*(3*t*t - 4*t + 1) * CtrlPts[1] + 3*(2.0 - 3.0*t)*t * CtrlPts[2] + 3*t*t * CtrlPts[3];
-        dr[1] = 6*(1.0 - t) * CtrlPts[0] + 6.0*(3*t - 2) * CtrlPts[1] + 6.0*(1.0 - 3*t) * CtrlPts[2] + 6.0* t * CtrlPts[3];
-        dr[2] = -6 * CtrlPts[0] + 6 * CtrlPts[1] - 6 * CtrlPts[2] + 6 * CtrlPts[3];
-        return dr;
-    };
-    auto diff_bsp = [&](double t, int dim, std::vector<double>&Knot, std::vector<Eigen::Vector3d>& P){
-        std::array<Eigen::Vector3d, 3> dr;
-        Eigen::Vector3d x = MathTool::bspline(P, t, dim, Knot);
-        Eigen::Vector3d xp = MathTool::bspline(P, t + eps, dim, Knot), xm = MathTool::bspline(P, t - eps, dim, Knot);
-        Eigen::Vector3d xp2 = MathTool::bspline(P, t + 2.0*eps, dim, Knot), xm2 = MathTool::bspline(P, t - 2.0*eps, dim, Knot);
-        dr[0] = (xp - xm)/(2.0*eps);
-        dr[1] = (xp - 2.0*x + xm)/(eps*eps);
-        dr[2] = (xm2 - 2.0 * xm + 2.0 * xp - xp2) / (2.0 * eps * eps * eps);
-        return dr;
-    };
-    auto dk = [](const Eigen::Vector3d& N, const Eigen::Vector3d& dr, const Eigen::Vector3d&dr2)->double{
-        return (dr2.dot(N) + dr2.dot(dr)/(dr.cross(dr2.cross(dr))).norm())/dr.norm();
-    };
-    std::vector<double> Knot, S;
-    int dim = 3;
-    //Eigen::MatrixXd Points;
-    Eigen::MatrixXd Points = GlobalSplineInterpolation(FoldingCurve, Knot, S, true, dim);
-    TNBs.clear();
-    std::vector<Eigen::Vector3d> Vec_t, Vec_n, Vec_b, Vec_r;
-    std::vector<double> Beta, _Alpha, Tau, Kappa;
-    std::vector<Eigen::Vector3d> Points_bsp;
-
-    for(int i = 0; i < Points.rows(); i++)Points_bsp.push_back(Points.row(i));
-
-    for(int i = 1; i < (int)FoldingCurve.size() - 1; i++){
-        std::array<Eigen::Vector3d, 3> dr_bz, dr_bs;
-        dr_bz = diff_bezier(FoldingCurve[i]->first->s);
-        dr_bs = diff_bsp(S[i], dim, Knot, Points_bsp);
-        double k2d = (dr_bz[0].cross(dr_bz[1])).norm()/std::pow(dr_bz[0].norm(), 3), k3d = (dr_bs[0].cross(dr_bs[1])).norm()/std::pow(dr_bs[0].norm(), 3);
-        double tau = dr_bs[0].dot(dr_bs[1].cross(dr_bs[2]))/std::pow((dr_bs[0].cross(dr_bs[1])).norm(), 2);
-        Eigen::Vector3d T2d = dr_bz[0].normalized(), axis = (FoldingCurve[i]->third->p - FoldingCurve[i]->first->p).normalized();
-        Eigen::Vector3d T3d = dr_bs[0].normalized(), B3d = (dr_bs[0].cross(dr_bs[1])).normalized();
-        Eigen::Vector3d N3d = (dr_bs[0].cross(dr_bs[1].cross(dr_bs[0]))).normalized(), N2d = (dr_bz[0].cross(dr_bz[1].cross(dr_bz[0]))).normalized();
-        double b_fix = std::acos(T2d.dot(axis));
-        //Eigen::Vector3d N2d = (dr_bz[0].cross(dr_bz[1].cross(dr_bz[0]))).normalized();
-        double dK = (dk(N2d, dr_bz[0], dr_bz[1])*k3d - k2d * dk(N3d, dr_bs[0], dr_bs[1]))/(k3d*k3d);
-        double a = k2d/k3d; a = (a < -1)? std::numbers::pi: (a > 1)? 0: acos(a);
-        double da = -dK/sin(a);
-        double bl = std::atan((-da + tau)/(k3d*sin(a))); if(bl < 0)bl += std::numbers::pi;
-        double br = std::atan((da + tau)/(k3d*sin(a))); if(br < 0)br += std::numbers::pi;
-        qDebug() << "diff beta = " << b_fix - bl << ", b_fix " << MathTool::rad2deg(b_fix) << ", bl = " << MathTool::rad2deg(bl) << " , br = " << MathTool::rad2deg(br);
-        double sq = tau*tau - 4.0*dK*k3d/tan(b_fix);
-        qDebug() << i << ": sq = " << sq << " , k2d " << k2d << " , k3d " << k3d << " , tau " << tau << " da " << da << ", a "<< MathTool::rad2deg(a);
-        Vec_t.push_back(T3d); Vec_n.push_back(N3d); Vec_b.push_back(B3d);
-        Beta.push_back(b_fix); Vec_r.push_back(axis); _Alpha.push_back(a); Tau.push_back(tau); Kappa.push_back(k3d);
-        std::array<std::array<Eigen::Vector3d, 2>,3> TNB{{{20*T3d + FoldingCurve[i]->first->p3, FoldingCurve[i]->first->p3}, {20*N3d + FoldingCurve[i]->first->p3, FoldingCurve[i]->first->p3},{20*B3d + FoldingCurve[i]->first->p3, FoldingCurve[i]->first->p3}}};
-        //TNBs.push_back(TNB);
+        CalcRuling(a, ValidFC[ind-1], ValidFC[ind], ValidFC[ind+1], Poly_V, a2, befN, -Eigen::Vector3d::UnitZ());
+        double b = std::acos(e.dot(e2)), k = 2.0*std::numbers::pi - (std::acos(axis.dot(e)) + std::acos(axis.dot(e2)));
+        ABKs.push_back({a,b,k});
+        if(ind == (int)FoldingCurve.size() -2)break;
+        befN = MathTool::ProjectionVector(e.cross(e2), e2, true);befedge = MathTool::ProjectionVector(e, e2, true);
     }
-    return;
-    nlopt::opt opt;
-    RevisionVertices::FrenetFrame ff = {Vec_t, Vec_n, Vec_b, Vec_r, Beta, Tau, Kappa};
-    opt = nlopt::opt(nlopt::LD_MMA, (int)Beta.size());
-    opt.set_min_objective(ObjFunc_closeRuling, &ff);
-    //opt.set_param("inner_maxeval", 100);
-    opt.set_maxtime(5.0);//stop over this time
-    opt.set_xtol_rel(1e-13);
 
-    double minf, res;
-    try {
-        auto Alpha = _Alpha;
-        nlopt::result result = opt.optimize(_Alpha, minf);
-        for(int i  = 0; i < (int)Beta.size(); i++){
-            Eigen::Vector3d crossPoint;
-            double beta = getbeta(Tau[i], Kappa[i], Beta[i], _Alpha[i]);
-            Eigen::Matrix3d rotationMatrix = Eigen::AngleAxisd( beta, Eigen::Vector3d(0,0,1)).toRotationMatrix();
-            Eigen::Vector3d r2d = (rotationMatrix * Vec_t[i]); r2d *= 1000.0; r2d += FoldingCurve[i+1]->first->p;
-            Eigen::Vector3d r3d = (cos(beta)*Vec_t[i] - sin(beta)*cos(_Alpha[i])*Vec_n[i] + sin(beta)*sin(_Alpha[i])*Vec_b[i]);
-            for(int k = 0; k < (int)Poly_V.size(); k++){
-                crossPoint = MathTool::calcCrossPoint_2Vector(FoldingCurve[i]->first->p, r2d, Poly_V[k]->p, Poly_V[(k + 1) % (int)Poly_V.size()]->p);
-                if(MathTool::is_point_on_line(crossPoint, Poly_V[k]->p, Poly_V[(k + 1) % (int)Poly_V.size()]->p) && r2d.dot(crossPoint - FoldingCurve[i]->first->p) > 0)break;
+    std::vector<std::vector<std::shared_ptr<Vertex>>> Triangles;
+    if(IsWriteCSV){
+
+        Eigen::Vector3d e = (ValidFC[0]->first->p3 - ValidFC[1]->first->p3).normalized(),e2 = (ValidFC[2]->first->p3 - ValidFC[1]->first->p3).normalized();
+        Eigen::Vector3d SpinAxis = (ValidFC[1]->third->p3 - ValidFC[1]->first->p3).normalized();
+        Eigen::Vector3d Nb = -(e.cross(e2)).normalized(), N4 = (e.cross(SpinAxis)).normalized();
+
+        double a_ll = std::atan2(e.dot(Nb.cross(N4)), N4.dot(-Nb));
+        if(a_ll < 0)a_ll += 2.0*std::numbers::pi;
+        double acon = a_ll + std::numbers::pi;
+        if(acon > 2.0*std::numbers::pi)acon -= 2.0*std::numbers::pi;
+        if(acon < 0)acon +=2.0*std::numbers::pi;
+
+        std::ofstream ofs;
+        std::filesystem::create_directory("./Optimization");
+        std::string File = "./Optimization/RegressionCurve_";
+        File += std::to_string(ValidFC.size() - 3) + ".csv" ;
+        ofs.open(File, std::ios::out);
+        ofs << "a(radian), a(degree), area, Ebend, Eruling, |a - a_con|"<<std::endl;
+        for(double _a = 0.0; _a <= 2.0*std::numbers::pi; _a+= 1e-3){
+            a = _a;
+            for(int ind = 1; ind < (int)ValidFC.size() - 1; ind++){
+                Eigen::Vector3d e = (ValidFC[ind-1]->first->p3 - ValidFC[ind]->first->p3).normalized(), e2 = (ValidFC[ind+1]->first->p3 - ValidFC[ind]->first->p3).normalized(), axis = (ValidFC[ind]->third->p3 - ValidFC[ind]->first->p3).normalized();
+                if(ind != 1){
+                    Eigen::Vector3d edge = MathTool::ProjectionVector(e2, -e, true);
+                    a = update_flapangle2(a2, befedge, edge, e);
+                }
+                CalcRuling(a, ValidFC[ind-1], ValidFC[ind], ValidFC[ind+1], Poly_V, a2, befN, -Eigen::Vector3d::UnitZ());
+                if(ind == (int)FoldingCurve.size() -2)break;
+                befN = MathTool::ProjectionVector(e.cross(e2), e2, true);befedge = MathTool::ProjectionVector(e, e2, true);
             }
-            FoldingCurve[i]->second->p = crossPoint;
+            double area = 0.0, Ebend = 0.0, Eruling = 0.0;
+            for(int i = 1; i < (int)ValidFC.size()-2; i++){
+                //triangle area
+                if(((ValidFC[i]->second->p - ValidFC[i]->first->p).normalized()).dot((ValidFC[i+1]->second->p - ValidFC[i+1]->first->p).normalized()) > 1.0 - 1e-7){
+                    area = 0.0; break;
+                }else{
+                    auto crosspoint = calcCrossPoint_2Vertex(ValidFC[i]->first, ValidFC[i]->second, ValidFC[i+1]->first, ValidFC[i+1]->second);
+                    Eigen::Vector3d e = ValidFC[i+1]->first->p - ValidFC[i]->first->p, e2 = crosspoint - ValidFC[i]->first->p, epair = crosspoint - ValidFC[i+1]->first->p;
+                    area += 1.0/std::sqrt(std::pow(e.norm(),2)*std::pow(e2.norm(),2) - std::pow(e.dot(e2),2))/2.0;
+                }
 
-            qDebug() << i << "  :  error of alpha is " << Alpha[i] - _Alpha[i] ;
-            qDebug() << i <<  "  , a = " << MathTool::rad2deg(_Alpha[i]) << ", b = " << MathTool::rad2deg(beta) << " , p3d = " << r3d.x() << ", " << r3d.y() << ", " << r3d.z();
-            FoldingCurve[i+1]->second->p3 = (FoldingCurve[i+1]->second->p - FoldingCurve[i+1]->first->p).norm() * r3d + FoldingCurve[i+1]->first->p3;
+                //bending energy
+                Eigen::Vector3d N = (ValidFC[i-1]->first->p3 - ValidFC[i]->first->p3).cross(ValidFC[i]->second->p3 - ValidFC[i]->first->p3).normalized();
+                Eigen::Vector3d N2 = (ValidFC[i]->second->p3 - ValidFC[i]->first->p3).cross(ValidFC[i+1]->first->p3 - ValidFC[i]->first->p3).normalized();
+                Ebend += 1.0/std::pow(std::acos(N.dot(N2)),2);
+
+                //Is ruling crossed
+                Eigen::Matrix2d A; Eigen::Vector2d b(ValidFC[i]->first->p.x() - ValidFC[i+1]->first->p.x(), ValidFC[i]->first->p.y() - ValidFC[i+1]->first->p.y());
+                A(0,0) = ValidFC[i]->first->p.x() - ValidFC[i]->second->p.x();
+                A(0,1) = -(ValidFC[i+1]->first->p.x() - ValidFC[i+1]->second->p.x());
+                A(1,0) = ValidFC[i]->first->p.y() - ValidFC[i]->second->p.y();
+                A(1,1) = -(ValidFC[i+1]->first->p.y() - ValidFC[i+1]->second->p.y());
+                Eigen::Vector2d ts = A.colPivHouseholderQr().solve(b);
+                Eruling += (0 < ts(0) && ts(0) < 1)? 1.0/ts(0): 0;
+            }
+            ofs << _a << " , " << MathTool::rad2deg(_a) << " , " << area << " , " << Ebend << " , " << Eruling << " , " << std::abs(acon - _a) <<  std::endl;
         }
+        ofs.close();
     }
-    catch (std::exception& e) {
-        qDebug() << "nlopt failed: " << e.what() ;
+    for(int i = 1; i < (int)ValidFC.size()-2; i++){
+        auto L = getRulingLength(ValidFC[i],ValidFC[i+1], ABKs[i+1][0], ABKs[i+1][1],ABKs[i+1][2]);
+        auto crosspoint = calcCrossPoint_2Vertex(ValidFC[i]->first, ValidFC[i]->second, ValidFC[i+1]->first, ValidFC[i+1]->second);
+        if(L.empty())continue;
+        double l = (crosspoint - ValidFC[i]->first->p).norm();
+        //qDebug() << "ruling length " << l;
+        //qDebug() << "error  L0" << l - L[0];
+        //if(L.size() == 2)qDebug() << "error  L1" << l - L[1];
+        Triangles.push_back({ValidFC[i]->first, ValidFC[i+1]->first, getCrossPoint(crosspoint, ValidFC[i])});
     }
-
-    return;
+    return Triangles;
 }
 
 void FoldLine::applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincener, double a, double _tol, bool isroot){
@@ -2003,3 +1975,4 @@ void Douglas_Peucker_algorithm(std::vector<std::shared_ptr<Vertex4d>>& FoldingCu
         res.push_back(FoldingCurve.back());
     }
 }
+

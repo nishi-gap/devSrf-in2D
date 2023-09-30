@@ -26,7 +26,7 @@ public:
     void setVertices(const Lines Surface = Lines(),  const Lines Rulings = Lines(),  const FoldLine3d FldCrvs = FoldLine3d(), const Ruling3d& _AllRulings = Ruling3d());
     void ReceiveParam(std::vector<std::vector<Eigen::Vector3d>>&_C);
     void ReceiveCurve(std::vector<Eigen::Vector3d>&_C, std::vector<Eigen::Vector3d>& _P);
-    void ReceiveTNBs(const std::vector<std::array<std::array<Eigen::Vector3d, 2>, 3>>& TNBs);
+    void ReceiveRegressionCurve(std::vector<std::vector<std::shared_ptr<Vertex>>>& _RegCurve);
     void receiveKeyEvent(QKeyEvent *e);
     void PlanarityDispay(bool state);
     void EraseNonFoldEdge(bool state);
@@ -37,6 +37,8 @@ public:
     ~GLWidget_3D();
 
     std::vector<Eigen::Vector3d> FoldLineVertices;
+    std::vector<std::vector<Eigen::Vector3d>> RegCurve;
+
     Ruling3d AllRulings;
 protected:
     void initializeGL();

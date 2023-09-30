@@ -109,16 +109,33 @@ MainWindow::MainWindow(QWidget *parent)
     //Erase Non Fold Edge
     connect(ui->EraseNonFoldButton, &QCheckBox::clicked, this, &MainWindow::EraseNonFoldEdge);
 
+    //regression curve
+    connect(ui->VisualizeRegCrv, &QCheckBox::clicked, this, &MainWindow::SwitchingVisualization_RegCurve);
+
     CurvesNum[0] = MainWindow::CurvesNum[1] = MainWindow::CurvesNum[2] = MainWindow::CurvesNum[3] = 0;
     SelectedBtn = nullptr;
 
 }
+
+//regression curve
+static bool MinLength = true;
+static bool IsvisibleRegCrv = false;
 
 static bool begin_center = false;
 static int befNum = 0;
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::SwitchingVisualization_RegCurve(){
+    IsvisibleRegCrv  = !IsvisibleRegCrv;
+    qDebug() << "IsvisibleRegCrv = " << IsvisibleRegCrv;
+    std::vector<std::vector<std::shared_ptr<Vertex>>> empty;
+    if(!IsvisibleRegCrv){
+        ui->glWid3dim->ReceiveRegressionCurve(empty);
+        ui->glWid2dim->ReceiveRegressionCurve(empty);
+    }
 }
 
 void MainWindow::SymmetricConstraint(){ emit constraintType(0);}
@@ -250,6 +267,13 @@ void MainWindow::changeAngleFromSlider(int val){
     double a = (double)val/18000.0 * std::numbers::pi;
     double tol =  ui->TolValue->value();
     emit sendAngle(a, tol, begin_center);
+
+    if(IsvisibleRegCrv){
+         std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model->outline->getVertices();
+         auto Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(static_cast<double>(val)/100.0, Poly_V, false, MinLength);
+         ui->glWid3dim->ReceiveRegressionCurve(Triangles);
+         ui->glWid2dim->ReceiveRegressionCurve(Triangles);
+    }
 }
 
 void MainWindow::changeAngleFromSpinBox(double val){
@@ -257,6 +281,12 @@ void MainWindow::changeAngleFromSpinBox(double val){
     double a = (double)val*std::numbers::pi/180.0;
     double tol =  ui->TolValue->value();
     emit sendAngle(a, tol, begin_center);
+    if(IsvisibleRegCrv){
+         std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model->outline->getVertices();
+         auto Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(val, Poly_V, false, MinLength);
+         ui->glWid3dim->ReceiveRegressionCurve(Triangles);
+         ui->glWid2dim->ReceiveRegressionCurve(Triangles);
+    }
 }
 
 void MainWindow::changeLineWidthFromSlider(int n){
@@ -274,7 +304,6 @@ void MainWindow::fold_Sm(){
     if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
     else if(!ui->glWid2dim->model->FL.empty()){
          ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
-
     }
     else{
          ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
@@ -401,18 +430,10 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         qDebug() << "flap angle start  " << ((!begin_center)? "end point": "center");
     }
     else if(e->key() == Qt::Key_N){
-        std::vector<Eigen::Vector3d> InterpolatedCurve;
-        static int type = 3;
-        qDebug() << "type = " << type;
-        std::vector<std::array<std::array<Eigen::Vector3d, 2>, 3>> TNBs;
-        std::vector<Eigen::Vector3d> Points, BCurve;
-        ui->glWid2dim->model->FL[0]->AnotherMethod(type, Points, BCurve);
-        type++;
-        ui->glWid3dim->ReceiveCurve(BCurve, Points);
-
-        //ui->glWid2dim->model->AnotherMethod(type, TNBs);
-        //ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
-        //ui->glWid3dim->ReceiveTNBs(TNBs);
+        double a = static_cast<double>(ui->angleSlider->value())/100.0;
+        std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model->outline->getVertices();
+        auto Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(a,Poly_V,true, MinLength);
+        qDebug() <<"csv file export";
     }
     else{
 

@@ -114,6 +114,7 @@ public:
     QPushButton *OptPlararity_Button;
     QCheckBox *developablityButton;
     QSpinBox *spinBox_bendcurve;
+    QCheckBox *VisualizeRegCrv;
 
     void setupUi(QWidget *MainWindow)
     {
@@ -475,6 +476,9 @@ public:
         spinBox_bendcurve = new QSpinBox(MainWindow);
         spinBox_bendcurve->setObjectName("spinBox_bendcurve");
         spinBox_bendcurve->setGeometry(QRect(1090, 390, 81, 20));
+        VisualizeRegCrv = new QCheckBox(MainWindow);
+        VisualizeRegCrv->setObjectName("VisualizeRegCrv");
+        VisualizeRegCrv->setGeometry(QRect(1180, 390, 121, 22));
 
         retranslateUi(MainWindow);
 
@@ -538,6 +542,7 @@ public:
         ConnectEndPointBox->setText(QCoreApplication::translate("MainWindow", "ConnectEndPoint", nullptr));
         OptPlararity_Button->setText(QCoreApplication::translate("MainWindow", "planarity", nullptr));
         developablityButton->setText(QCoreApplication::translate("MainWindow", "developability", nullptr));
+        VisualizeRegCrv->setText(QCoreApplication::translate("MainWindow", "Regression Curve", nullptr));
     } // retranslateUi
 
 };

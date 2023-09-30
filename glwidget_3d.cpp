@@ -27,7 +27,7 @@ GLWidget_3D::~GLWidget_3D(){
 }
 
 void GLWidget_3D::reset(){
-    Points.clear(); Curve.clear();
+    Points.clear(); Curve.clear(); RegCurve.clear();
 }
 
 void GLWidget_3D::initializeGL(){
@@ -41,6 +41,11 @@ void GLWidget_3D::initializeGL(){
     glViewport(s.width(),0,s.width(),s.height());
     glEnable(GL_POLYGON_OFFSET_FILL);
     glEnable(GL_DEPTH_TEST);
+
+    // アルファブレンディングを有効にする
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 }
 
 void GLWidget_3D::EraseNonFoldEdge(bool state){
@@ -224,23 +229,25 @@ void GLWidget_3D::ReceiveCurve(std::vector<Eigen::Vector3d>&_C, std::vector<Eige
 
 }
 
-void GLWidget_3D::ReceiveTNBs(const std::vector<std::array<std::array<Eigen::Vector3d, 2>, 3>>& TNBs){
-    AllRulings.clear();
-    for(auto&TNB: TNBs){
-        for(auto&v: TNB){
-            std::array<Eigen::Vector3d, 2> tmpV{Scale * Mirror * v[0], Scale * Mirror * v[1]};
-            AllRulings.push_back(tmpV);
-        }
+void GLWidget_3D::ReceiveRegressionCurve(std::vector<std::vector<std::shared_ptr<Vertex>>>& _RegCurve){
+    RegCurve.clear();
+    for(const auto&RC: _RegCurve){
+        std::vector<Eigen::Vector3d> _RC;
+        for(const auto&v: RC) _RC.push_back(Scale * Mirror * v->p3);
+        RegCurve.push_back(_RC);
     }
+    update();
 }
+
 void GLWidget_3D::paintGL(){
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     QSize s = this->size();
-
-    glLoadIdentity();
+    glMatrixMode(GL_PROJECTION);
     perspective(30.0f, (float)s.width() / (float)s.height(), 1.f, 100.f);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
     glScaled(0.1, 0.1, 0.1);
     glTranslated(-center.x() - TransX, -center.y() - TransY, -center.z() -drawdist + TransZ);
     glRotated(0.2 * angleX, 0.0, 1.0, 0.0);
@@ -307,6 +314,29 @@ void GLWidget_3D::paintGL(){
         glDisable(GL_LINE_STIPPLE);
     }
 
+    //draw regression curve
+    glPolygonOffset(1.5f,2.f);
+    glPointSize(6);
+    glColor3d(1,0,0);
+    for(auto&RC: RegCurve){
+        for(auto&v: RC){
+            glBegin(GL_POINTS);
+            glVertex3d(v.x(), v.y(), v.z());
+            glEnd();
+        }
+    }
+    glColor4d(0.4,0.4,1,0.3);
+    for(auto&RC: RegCurve){
+        glBegin(GL_POLYGON);
+        for(auto&v: RC)glVertex3d(v.x(), v.y(), v.z());
+        glEnd();
+    }
+    glColor4d(0.,0.,0,0.7);
+    for(auto&RC: RegCurve){
+        glBegin(GL_LINE_LOOP);
+        for(auto&v: RC)glVertex3d(v.x(), v.y(), v.z());
+        glEnd();
+    }
     glPolygonOffset(0.f,0.f);
 
 }
