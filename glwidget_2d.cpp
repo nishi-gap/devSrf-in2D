@@ -35,7 +35,7 @@ GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
     IsEraseNonFoldEdge = false;
     visibleCurve = true;
     model = std::make_shared<Model>(crvPtNum);
-    camscale = 1;
+    difCursol_x = difCursol_y = 0.0; camscale = -1;
     RegressionCurve.clear();
 }
 GLWidget_2D::~GLWidget_2D(){}
@@ -301,6 +301,7 @@ void GLWidget_2D::initializeGL(){
     QSize s = this->size();
     glViewport(0,0,s.width(),s.height());
 
+    //glEnable(GL_DEPTH_TEST);
     // アルファブレンディングを有効にする
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -309,26 +310,14 @@ void GLWidget_2D::initializeGL(){
 void GLWidget_2D::paintGL(){
     makeCurrent();
     glClearColor(1.0,1.0,1.0,1.0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);;
-    glViewport(0,0,size().width(),size().height());
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    //glOrtho(-0.5, (float)s.width() -0.5, (float)s.height() -0.5, -0.5, -1, 1);
-    //透視投影行列
-    //
-    double left = -0.5, right = static_cast<double>(size().width()) - 0.5;
-    double bottom = static_cast<double>(size().height()) - 0.5, top = -0.5;
-    double nearClip = -1, farClip = 1;
-    glFrustum(left, right, bottom, top, nearClip, farClip);
-    double aspect = static_cast<double>(size().width()) / static_cast<double>(size().height());
-    double znear = 0.5, zfar = 100;
-    double ymax = znear * std::tan(MathTool::deg2rad(60)), ymin = -ymax;
-    double xmin = ymin * aspect, xmax = ymax * aspect;
-    //glFrustum( xmin, xmax, ymin, ymax, znear, zfar);
+    glOrtho(-0.5, (float)size().width() -0.5, (float)size().height() -0.5, -0.5, -1, 100);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    glTranslated(0,0,camscale -100);
+    glTranslated(difCursol_x, difCursol_y, camscale);
 
     if(visibleGrid == 1)DrawGrid();
 
@@ -340,7 +329,7 @@ void GLWidget_2D::paintGL(){
                 glPointSize(5);
                 for(auto&v: fl->CtrlPts){
                     glBegin(GL_POINTS);
-                    glVertex2d(v.x(),v.y());
+                    glVertex3d(v.x(),v.y(), 0);
                     glEnd();
                 }
 
@@ -348,13 +337,13 @@ void GLWidget_2D::paintGL(){
                 glLineStipple(1 , 0xF0F0);
                 glBegin(GL_LINE_STRIP);
                 glColor3d(0,0,0);
-                for(auto&v: fl->CtrlPts)glVertex2d(v.x(), v.y());
+                for(auto&v: fl->CtrlPts)glVertex3d(v.x(), v.y(), 0);
                 glEnd();
                 glDisable(GL_LINE_STIPPLE);
 
                 if(fl->CurvePts.empty())continue;
                 glBegin(GL_LINE_STRIP);
-                for(auto&v: fl->CurvePts) glVertex2d(v.x(),v.y());
+                for(auto&v: fl->CurvePts) glVertex3d(v.x(),v.y(), 0);
                 glEnd();
 
                 glColor3d(0,1,0);
@@ -362,7 +351,7 @@ void GLWidget_2D::paintGL(){
                 for(auto&h: fl->FoldingCurve){
                     if(IsEraseNonFoldEdge && !h->IsCalc)continue;
                     glBegin(GL_POINTS);
-                    glVertex2d(h->first->p.x(), h->first->p.y());
+                    glVertex3d(h->first->p.x(), h->first->p.y(),0);
                     glEnd();
                 }
 
@@ -377,7 +366,7 @@ void GLWidget_2D::paintGL(){
     for(const auto&RC: RegressionCurve){
         for(auto&v: RC){
             glBegin(GL_POINTS);
-            glVertex2d(v->p.x(), v->p.y());
+            glVertex3d(v->p.x(), v->p.y(),0);
             glEnd();
         }
     }
@@ -386,14 +375,14 @@ void GLWidget_2D::paintGL(){
     glLineStipple(1 , 0x00F0);
     for(const auto&RC: RegressionCurve){
         glBegin(GL_LINE_LOOP);
-        for(auto&v: RC)glVertex2d(v->p.x(), v->p.y());
+        for(auto&v: RC)glVertex3d(v->p.x(), v->p.y(),0);
         glEnd();
     }
     glDisable(GL_LINE_STIPPLE);
 
     glColor4d(1,0,0, 0.4);
     glBegin(GL_LINE_STRIP);
-    for(const auto&RC: RegressionCurve) glVertex2d(RC.back()->p.x(), RC.back()->p.y());
+    for(const auto&RC: RegressionCurve) glVertex3d(RC.back()->p.x(), RC.back()->p.y(),0);
     glEnd();
 
     glPolygonOffset(0.0,1.0);
@@ -410,7 +399,7 @@ void GLWidget_2D::paintGL(){
                 glColor3d(0, 0, 0);
                 glPointSize(3.0f);
                 glBegin(GL_POINTS);
-                glVertex2d(fc->first->p.x(), fc->first->p.y());
+                glVertex3d(fc->first->p.x(), fc->first->p.y(),0);
                 glEnd();
             }
             //p0:描画するエッジの始点, p1: 描画するエッジの端点, p2: 片側の平面上の点, p3: もう片方の平面上の点
@@ -436,12 +425,12 @@ void GLWidget_2D::paintGL(){
                     glLineStipple(1 , 0xF0F0);
                 }
                 glBegin(GL_LINES);
-                glVertex2d(p1->p.x(), p1->p.y());  glVertex2d(p0->p.x(), p0->p.y());
+                glVertex3d(p1->p.x(), p1->p.y(),0);  glVertex3d(p0->p.x(), p0->p.y(),0);
                 glEnd();
                 if(DashedLine)glDisable(GL_LINE_STIPPLE);
 
                 glColor3d(0, 0, 0);
-                glPointSize(3.0f); glBegin(GL_POINTS); glVertex2d(p0->p.x(), p0->p.y());
+                glPointSize(3.0f); glBegin(GL_POINTS); glVertex3d(p0->p.x(), p0->p.y(),0);
                 glEnd();
 
             };
@@ -462,7 +451,7 @@ void GLWidget_2D::paintGL(){
             glBegin(GL_POINT);
             glPointSize(6.f);
             glColor3d(1,0,0);
-            glVertex2d(refV->p.x(), refV->p.y());
+            glVertex3d(refV->p.x(), refV->p.y(),0);
             glEnd();
         }
     }else{
@@ -485,17 +474,17 @@ void GLWidget_2D::paintGL(){
                     }
                 }else{ glLineWidth(1.f); glColor3d(0,0,0); }
                 glBegin(GL_LINES);
-                glVertex2d((*itr_r)->o->p.x(), (*itr_r)->o->p.y());
-                glVertex2d((*itr_r)->v->p.x(), (*itr_r)->v->p.y());
+                glVertex3d((*itr_r)->o->p.x(), (*itr_r)->o->p.y(),0);
+                glVertex3d((*itr_r)->v->p.x(), (*itr_r)->v->p.y(),0);
                 glEnd();
 
                 glColor3d(0, 0, 0);
                 glPointSize(3.0f);
                 glBegin(GL_POINTS);
-                glVertex2d((*itr_r)->o->p.x(), (*itr_r)->o->p.y());
+                glVertex3d((*itr_r)->o->p.x(), (*itr_r)->o->p.y(),0);
                 glEnd();
                 glBegin(GL_POINTS);
-                glVertex2d((*itr_r)->v->p.x(), (*itr_r)->v->p.y());
+                glVertex3d((*itr_r)->v->p.x(), (*itr_r)->v->p.y(),0);
                 glEnd();
                 glColor3d(0, 0, 0);
             }
@@ -511,17 +500,17 @@ void GLWidget_2D::paintGL(){
             auto  Vertices = model->outline->getVertices();
             for(auto& v: Vertices){
                 glBegin(GL_POINTS);
-                glVertex2d(v->p.x(), v->p.y());
+                glVertex3d(v->p.x(), v->p.y(),0);
                 glEnd();
             }
 
             if(model->outline->IsClosed()){
                 glBegin(GL_LINE_LOOP);
-                for(auto& r: Vertices)glVertex2d(r->p.x(), r->p.y());
+                for(auto& r: Vertices)glVertex3d(r->p.x(), r->p.y(),0);
                 glEnd();
             }else{
                 glBegin(GL_LINE_STRIP);
-                for(auto& v: Vertices) glVertex2d(v->p.x(), v->p.y());
+                for(auto& v: Vertices) glVertex3d(v->p.x(), v->p.y(),0);
                 glEnd();
             }
         }
@@ -530,19 +519,19 @@ void GLWidget_2D::paintGL(){
                 glColor3d(0, 0, 0);
                 glPointSize(5.0f);
                 glBegin(GL_POINTS);
-                glVertex2d(model->outline->origin.x(), model->outline->origin.y());
+                glVertex3d(model->outline->origin.x(), model->outline->origin.y(),0);
                 glEnd();
 
                 glColor3d(0, 0, 0);
                 glPointSize(4.0f);
                 for(auto& v: model->outline->getVertices()){
                     glBegin(GL_POINTS);
-                    glVertex2d(v->p.x(), v->p.y());
+                    glVertex3d(v->p.x(), v->p.y(),0);
                     glEnd();
                 }
 
                 glBegin(GL_LINE_LOOP);
-                for(auto& r: model->outline->getVertices())glVertex2d(r->p.x(), r->p.y());
+                for(auto& r: model->outline->getVertices())glVertex3d(r->p.x(), r->p.y(),0);
                 glEnd();
             }
 
@@ -551,7 +540,7 @@ void GLWidget_2D::paintGL(){
         for(auto& Vertices: model->ol_vertices){
             for(auto&v: Vertices){
                 glBegin(GL_POINTS);
-                glVertex2d(v->p.x(), v->p.y());
+                glVertex3d(v->p.x(), v->p.y(),0);
                 glEnd();
             }
         }
@@ -560,7 +549,7 @@ void GLWidget_2D::paintGL(){
         for(auto& Vertices: model->ol_vertices){
             glBegin(GL_LINE_STRIP);
             for(auto&v: Vertices){
-                glVertex2d(v->p.x(), v->p.y());
+                glVertex3d(v->p.x(), v->p.y(),0);
             }
             glEnd();
         }
@@ -580,7 +569,7 @@ void GLWidget_2D::paintGL(){
                     glColor3d(1, 0, 0);
                     glPointSize(5.0f);
                     glBegin(GL_POINTS);
-                    glVertex2d( c.x(), c.y());
+                    glVertex3d( c.x(), c.y(),0);
 
                     glEnd();
                 }
@@ -588,7 +577,7 @@ void GLWidget_2D::paintGL(){
                 glLineStipple(1 , 0xF0F0);
                 glBegin(GL_LINE_STRIP);
                 glColor3d(0.4, 0.4, 0.4);
-                for (auto& c: model->crvs[i]->ControllPoints)glVertex2d( c.x(), c.y());
+                for (auto& c: model->crvs[i]->ControllPoints)glVertex3d( c.x(), c.y(),0);
                 glEnd();
                 glDisable(GL_LINE_STIPPLE);
                 glPolygonOffset(0.f,0.f);
@@ -622,7 +611,6 @@ void GLWidget_2D::DrawGrid(){
         glEnd();
         x += gridsize;
     }
-
     while(y < geo.height() - gridsize/2){
         glBegin(GL_LINES);
         glVertex2d(0, y);
@@ -630,7 +618,6 @@ void GLWidget_2D::DrawGrid(){
         glEnd();
         y += gridsize;
     }
-
 }
 
 void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
@@ -643,25 +630,34 @@ void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
         res = model->RevisionCrosPtsPosition();
         if(res) emit foldingSignals();
     }
+    if(e->modifiers().testFlag(Qt::ControlModifier)){
+        //コントロールキーを押しているときtrueを返す
+    }
     update();
 }
 
 
 void GLWidget_2D::mousePressEvent(QMouseEvent *e){
-    QPointF p = this->mapFromGlobal(QCursor::pos());
+    QPointF p = mapFromGlobal(QCursor::pos());
     Eigen::Vector3d p_ongrid = SetOnGrid(p, gridsize);
-    if(drawtype == PaintTool::None) {return;}
+    if(drawtype == PaintTool::None) {
+        if(e->button() == Qt::LeftButton)IsLeftClicked = true;
+        if(e->button() == Qt::RightButton){IsRightClicked = true; difCursol_x = difCursol_y = 0.0;}
+        befCur = p;
+        update();
+        return;
+    }
     if(e->button() ==Qt::LeftButton){
-        if(drawtype == PaintTool::Rectangle_ol)model->drawOutline(p, 0, gridsize);
+        if(drawtype == PaintTool::Rectangle_ol)model->drawOutline(p, 0, gridsize, size());
         else if(drawtype == PaintTool::Polyline_ol){
-            model->drawOutline(p, 1, gridsize);
+            model->drawOutline(p, 1, gridsize, size());
         }
-        else if(drawtype == PaintTool::Polygon_ol)model->drawOutline(p, 2, gridsize);
-        else if(drawtype == PaintTool::EditVertex_ol)model->editOutlineVertex(p, gridsize, 0);
+        else if(drawtype == PaintTool::Polygon_ol)model->drawOutline(p, 2, gridsize, size());
+        else if(drawtype == PaintTool::EditVertex_ol)model->editOutlineVertex(p, gridsize, size(), 0);
 
         else if(drawtype == PaintTool::Move_ol) model->outline->MoveOutline(p_ongrid);
-        else if(drawtype == PaintTool::Const_ol) model->addConstraint(p, 0, gridsize, model->Axis4Const);
-        else if(drawtype ==PaintTool::ConnectVertices_ol)model->ConnectOutline(p, gridsize);
+        else if(drawtype == PaintTool::Const_ol) model->addConstraint(p, 0, gridsize, model->Axis4Const, size());
+        else if(drawtype ==PaintTool::ConnectVertices_ol)model->ConnectOutline(p, gridsize, size());
         else if(drawtype == PaintTool::NewGradationMode || drawtype ==PaintTool::FoldlineColor)addPoints_intplation(e, p);
         else if(drawtype == PaintTool::FoldLine_bezier || drawtype == PaintTool::FoldLine_arc || drawtype == PaintTool::FoldLine_line ){
             model->AddControlPoint_FL(p_ongrid, 0, curveDimention);
@@ -754,18 +750,27 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
 }
 
 void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
-    if(drawtype == PaintTool::None) {return;}
     QPointF p = this->mapFromGlobal(QCursor::pos());
+
+    if(drawtype == PaintTool::None) {
+        if(IsLeftClicked){
+            difCursol_x += 0.1*(p.x() - befCur.x()); difCursol_y += 0.1*(p.y() - befCur.y());
+        }
+        update();
+        befCur = p;
+        return;
+    }
+
     Eigen::Vector3d p_ongrid = SetOnGrid(p, gridsize);
     if(drawtype == PaintTool::Polygon_ol){
         if(model->outline->hasPtNum == 1){
-            model->drawOutline(p, 2, gridsize, false);
+            model->drawOutline(p, 2, gridsize, size(), false);
             model->outline->hasPtNum = 1;
         }
     }
     if(drawtype == PaintTool::Move_ol) model->outline->MoveOutline(p_ongrid);
     else if(drawtype == PaintTool::EditVertex_ol){
-        model->editOutlineVertex(p, gridsize, 1);
+        model->editOutlineVertex(p, gridsize, size(), 1);
         model->addRulings();
         model->deform();
         emit foldingSignals();
@@ -810,9 +815,14 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
 void GLWidget_2D::mouseReleaseEvent(QMouseEvent * e){
     movePt = -1;
     QPointF p = mapFromGlobal(QCursor::pos());
+    if(drawtype == PaintTool::None){
+        IsLeftClicked = IsRightClicked = false;
+    }
+
+
     if(MoveCrvIndex[0] != -1 && !model->crvs.empty()) model->crvs[MoveCrvIndex[0]]->InsertPointSegment = -1;
     if(drawtype == PaintTool::EditVertex_ol){
-        model->editOutlineVertex(p, gridsize, 2);
+        model->editOutlineVertex(p, gridsize, size(), 2);
         if(model->outline->IsClosed())model->deform();
     }
     update();

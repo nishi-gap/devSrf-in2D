@@ -4,6 +4,7 @@
 #include <list>
 #include <numeric>
 #include <QPointF>
+#include <QSize>
 #include "foldline.h"
 
 class Model{
@@ -25,11 +26,11 @@ public:
 
     void setGradationValue(int val, const std::shared_ptr<Line>& refL, int InterpolationType, std::vector<Eigen::Vector2d>& CurvePath);
     void SetMaxFold(double val);
-    void drawOutline(QPointF& cursol, int drawtype, double gridsize, bool IsClicked = true);
-    void editOutlineVertex(QPointF& cursol, double gridsize, int event);
-    void addConstraint(QPointF& cursol, int type, int gridsize, Eigen::Vector3d (&axis)[2]);
+    void drawOutline(QPointF& cursol, int drawtype, double gridsize, const QSize&S, bool IsClicked = true);
+    void editOutlineVertex(QPointF& cursol, double gridsize, const QSize& S, int event);
+    void addConstraint(QPointF& cursol, int type, int gridsize, Eigen::Vector3d (&axis)[2], const QSize& S);
     void deleteOutline(QPointF& cursol);
-    void ConnectOutline(QPointF& cursol, double gridsize);
+    void ConnectOutline(QPointF& cursol, double gridsize, const QSize& S);
     void addRulings(); //0:move curve point, 1: add(erase, insert) curve point
 
     //FoldLine
@@ -74,7 +75,7 @@ private:
 
     inline void clear();
 
-    Eigen::Vector3d SetOnGrid(QPointF& cursol, double gridsize);
+    Eigen::Vector3d SetOnGrid(QPointF& cursol, double gridsize, const QSize& S);
 
     std::vector<int> refCrv;//0:未参照　1:参照
     std::vector<int> refFL;

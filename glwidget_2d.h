@@ -153,7 +153,9 @@ private:
 
     int constType;
     Eigen::Vector3d SetOnGrid(QPointF& cursol, double gridsize);
-
+    QPointF befCur;
+    double difCursol_x, difCursol_y;
+    bool IsLeftClicked, IsRightClicked;
 
 signals:
     void foldingSignals();

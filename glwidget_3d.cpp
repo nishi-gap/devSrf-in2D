@@ -11,9 +11,6 @@ GLWidget_3D::GLWidget_3D(QWidget *parent):QOpenGLWidget(parent)
     center = Eigen::Vector3d(0,0,0);
     eraseMesh = eraseCtrlPt = eraseCrossPt = eraseVec = eraseCurve = false;
     VisiblePlanarity = false;
-    //Eigen::Vector3d up(0,1,0);
-    //arccam = ArcBallCam(Eigen::Vector3d{0,0,-100}, center, up);
-    drawdist = 0.0;
     drawEdgePlane = -1;
     IsEraseNonFoldEdge = false;
 
@@ -34,11 +31,14 @@ void GLWidget_3D::initializeGL(){
     initializeOpenGLFunctions();
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     QSize s = this->size();
-    TransX = 50.f, TransY = 0.f, TransZ = -200.f;
+    TransX = 25.f, TransY = -16.f, TransZ = -100.f;
     angleY = 90;
     //Eigen::Vector3d up(0,1,0);
     //arccam = ArcBallCam(Eigen::Vector3d(0,0,-100), center, up);
     glViewport(s.width(),0,s.width(),s.height());
+    glMatrixMode(GL_PROJECTION);
+    perspective(30.0f, (float)s.width() / (float)s.height(), 0.1, 100.f);
+    glMatrixMode(GL_MODELVIEW);
     glEnable(GL_POLYGON_OFFSET_FILL);
     glEnable(GL_DEPTH_TEST);
 
@@ -77,7 +77,6 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
         }
     };
 
-    drawdist = 0.0;
     Vertices.clear();
     TriMeshs.clear();
     PlanarityColor.clear();
@@ -243,13 +242,10 @@ void GLWidget_3D::paintGL(){
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    QSize s = this->size();
-    glMatrixMode(GL_PROJECTION);
-    perspective(30.0f, (float)s.width() / (float)s.height(), 1.f, 100.f);
-    glMatrixMode(GL_MODELVIEW);
+
     glLoadIdentity();
     glScaled(0.1, 0.1, 0.1);
-    glTranslated(-center.x() - TransX, -center.y() - TransY, -center.z() -drawdist + TransZ);
+    glTranslated(-TransX, -TransY, TransZ);
     glRotated(0.2 * angleX, 0.0, 1.0, 0.0);
     glRotated(0.2 * angleY, 1.0, 0.0, 0.0);
 

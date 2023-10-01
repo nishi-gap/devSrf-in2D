@@ -42,7 +42,7 @@ void Model::SetMaxFold(double val){
 }
 
 
-Eigen::Vector3d Model::SetOnGrid(QPointF& cursol, double gridsize){
+Eigen::Vector3d Model::SetOnGrid(QPointF& cursol, double gridsize, const QSize& S){
     int x = (int)cursol.x() % (int)gridsize, y = (int)cursol.y() % (int)gridsize;
     x = (cursol.x() - x + gridsize/2);
     y = (cursol.y() - y + gridsize/2);
@@ -378,12 +378,12 @@ void Model::modifyFoldingCurvePositionOn3d(){
     }
 }
 
-void Model:: addConstraint(QPointF& cursol, int type, int gridsize, Eigen::Vector3d (&axis)[2]){
+void Model:: addConstraint(QPointF& cursol, int type, int gridsize, Eigen::Vector3d (&axis)[2], const QSize& S){
     if(outline->IsClosed()){
         qDebug()<<"constraint can be applied only not closed outline";
         return;
     }
-    Eigen::Vector3d p = SetOnGrid(cursol, gridsize);
+    Eigen::Vector3d p = SetOnGrid(cursol, gridsize, S);
     if(axis[0] == Eigen::Vector3d(-1,-1,0)){axis[0] = p; return;}
     else if(axis[1] == Eigen::Vector3d(-1,-1,0) && axis[0] != p)axis[1] = p;
     Eigen::Vector3d V = (axis[1] - axis[0]).normalized();
@@ -423,16 +423,16 @@ void Model:: addConstraint(QPointF& cursol, int type, int gridsize, Eigen::Vecto
     }
 }
 
-void Model::drawOutline(QPointF& cursol, int drawtype, double gridsize, bool IsClicked){
-    Eigen::Vector3d p = SetOnGrid(cursol, gridsize);
+void Model::drawOutline(QPointF& cursol, int drawtype, double gridsize, const QSize& S, bool IsClicked){
+    Eigen::Vector3d p = SetOnGrid(cursol, gridsize, S);
     if(drawtype == 0 || drawtype == 1){
         if(outline->hasPtNum != 2)outline->addVertex(p);
     }else if(drawtype == 2) outline->drawPolygon(p, IsClicked);
 
 }
 
-void Model::editOutlineVertex(QPointF& cursol, double gridsize, int event){
-    Eigen::Vector3d p = SetOnGrid(cursol, gridsize);
+void Model::editOutlineVertex(QPointF& cursol, double gridsize, const QSize& S, int event){
+    Eigen::Vector3d p = SetOnGrid(cursol, gridsize, S);
     static int grabedOutlineVertex = -1;
     if(event == 0){
         float dist = 5;
@@ -449,8 +449,8 @@ void Model::editOutlineVertex(QPointF& cursol, double gridsize, int event){
     }else if(event == 2)grabedOutlineVertex = -1;
 }
 
-void Model::ConnectOutline(QPointF& cursol, double gridsize){
-    Eigen::Vector3d p = SetOnGrid(cursol, gridsize);
+void Model::ConnectOutline(QPointF& cursol, double gridsize, const QSize& S){
+    Eigen::Vector3d p = SetOnGrid(cursol, gridsize, S);
     std::vector<std::shared_ptr<Vertex>> V = outline->getVertices();
     for(auto&v: V){
         if(p == v->p){
