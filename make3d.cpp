@@ -217,7 +217,7 @@ void Model::UpdateFLOrder(int dim){
 int Model::getLayerNum(){return NTree_fl.getLayerNum();}
 
 
-bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank, bool ConstFunc){
+bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank, int alg, bool ConstFunc){
     UpdateFLOrder(dim);
     SplitRulings(dim);
     std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>> root = NTree_fl.GetRoot();
@@ -241,7 +241,9 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
         //cur->data->RevisionCrosPtsPosition();//端点の修正
         if(ConstFunc){
             qDebug() << "trim each iteration";
-            bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, ConstFunc);
+            bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, false);
+            bool res_true = res;
+            res = true;
             while(!res){
                 bool isroot = (cur == root)? true: false;
                 int validsize = cur->data->validsize - 1;
@@ -251,6 +253,7 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
                 //if(DebugMode::Singleton::getInstance().isdebug())
                 qDebug() << "optimization result " << res << "  ,  tol = " << tol << ", ruling num = " << cur->data->validsize;
             }
+            if(!res_true)cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, true);
             qDebug() <<"bending result : tol = " << cur->data->tol << " valid ruling num = " << cur->data->validsize  << " , a_flap = " << cur->data->a_flap ;
             bool isroot = (root == cur)? true: false;
             cur->data->applyAAAMethod(Poly_V, false, cur->data->a_flap, cur->data->tol, isroot);

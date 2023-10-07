@@ -381,16 +381,29 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         ui->glWid2dim->update();
         fold_Sm();
     }
-    if(e->key() == Qt::Key_O)optimmethod = true;
-    if(e->key() == Qt::Key_W){
+    if(e->key() == Qt::Key_1){
+        qDebug() <<"use ruling intersection";
         if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
         double tol = ui->TolValue->value();
-        double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value(); 
+        double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
         qDebug() << "optimmethod = " << optimmethod;
         int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, layerNum,  optimmethod);
+        ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, layerNum, 0, optimmethod);
         fold_Sm();
+        qDebug()<<"/////////////////////////";
     }
+    if(e->key() == Qt::Key_2){
+        qDebug()<<"use regression curve and triangle area";
+        if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+        double tol = ui->TolValue->value();
+        double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
+        qDebug() << "optimmethod = " << optimmethod;
+        int layerNum = ui->glWid2dim->model->getLayerNum();
+        ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, layerNum, 1, optimmethod);
+        fold_Sm();
+        qDebug()<<"/////////////////////////";
+    }
+    if(e->key() == Qt::Key_O)optimmethod = true;
     if(e->key() == Qt::Key_D){
         DebugMode::Singleton::getInstance().switchval();
         if(DebugMode::Singleton::getInstance().isdebug())qDebug() << "DebugMode On";
