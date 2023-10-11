@@ -13,9 +13,11 @@ Vertex::Vertex(Eigen::Vector3d _p2, Eigen::Vector3d _p3, bool _deformed){
     deformed = _deformed;
 }
 
-std::shared_ptr<Vertex> Vertex::deepCopy(){
-    return std::make_shared<Vertex>(p, p3, deformed);
-}
+std::shared_ptr<Vertex> Vertex::deepCopy(){ return std::make_shared<Vertex>(p, p3, deformed);}
+
+std::shared_ptr<CrvPt_FL> CrvPt_FL::deepCopy(){return std::make_shared<CrvPt_FL>(p,p3,s);}
+
+std::shared_ptr<Vertex4d> Vertex4d::deepCopy(){ return std::make_shared<Vertex4d>(first->deepCopy(),second->deepCopy(),third->deepCopy());}
 
 bool Line::is_on_line(Eigen::Vector3d p){ return MathTool::is_point_on_line(p, v->p, o->p);}
 

@@ -12,6 +12,7 @@ namespace DebugMode{
 namespace MathTool{
     double rad2deg(double a){return a * 180.0/std::numbers::pi;}
     double deg2rad(double a){return a * std::numbers::pi/180.0;}
+
     Eigen::Vector3d bspline(std::vector<Eigen::Vector3d>&CtrlPts, double t, int dim, std::vector<double>Knot){
         Eigen::Vector3d vec(0,0,0);
         for(int j = 0; j < (int)CtrlPts.size(); j++){

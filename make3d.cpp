@@ -172,8 +172,10 @@ void Model::UpdateFLOrder(int dim){
             for(auto& l: outline->Lines){
                 std::shared_ptr<CrvPt_FL> P = getCrossPoint(fl->CtrlPts, l->v, l->o, dim);
                 if(P!= nullptr){
-                    if(UpVec.dot((l->v->p - l->o->p).normalized()) > 0)fl->FoldingCurve.push_back(std::make_shared<Vertex4d>(P, l->v, l->o));
-                    else fl->FoldingCurve.push_back(std::make_shared<Vertex4d>(P, l->o, l->v));
+                    std::shared_ptr<Vertex> sec, thi;
+                    if(UpVec.dot((l->v->p - l->o->p).normalized()) > 0){sec = l->v->deepCopy(); thi = l->o->deepCopy();}
+                    else{sec = l->o->deepCopy(); thi = l->v->deepCopy();}
+                    fl->FoldingCurve.push_back(std::make_shared<Vertex4d>(P, sec, thi));
                 }
             }
             fl->SortCurve();
@@ -210,12 +212,17 @@ void Model::UpdateFLOrder(int dim){
         i = (i + 1) % (int)outline->Lines.size();
     }while(i != btm_i);
     if(DebugMode::Singleton::getInstance().isdebug())qDebug() <<"order of FoldLines";
-    NTree_fl.print();
+    //NTree_fl.print();
+    for(auto&r: Rulings)r->hasCrossPoint = false;
     return;
 }
 
 int Model::getLayerNum(){return NTree_fl.getLayerNum();}
 
+//曲面の輪郭がもつ三次元上の頂点を正しい位置に配置する
+void Model::SetOnVertices_outline(){
+    //std::vector<std::shared_ptr<Line>> Lines = outline->getVertices();
+}
 
 bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank, int alg, bool ConstFunc){
     UpdateFLOrder(dim);
@@ -241,7 +248,7 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
         //cur->data->RevisionCrosPtsPosition();//端点の修正
         if(ConstFunc){
             qDebug() << "trim each iteration";
-            bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, false);
+            bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, alg, ConstFunc);
             bool res_true = res;
             res = true;
             while(!res){
@@ -249,18 +256,18 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
                 int validsize = cur->data->validsize - 1;
                 cur->data->SimplifyModel(validsize, isroot);
                 //cur->data->RevisionCrosPtsPosition();//端点の修正
-                res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, ConstFunc);
+                res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, alg, ConstFunc);
                 //if(DebugMode::Singleton::getInstance().isdebug())
                 qDebug() << "optimization result " << res << "  ,  tol = " << tol << ", ruling num = " << cur->data->validsize;
             }
-            if(!res_true)cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, true);
+            if(!res_true)cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, alg, ConstFunc);
             qDebug() <<"bending result : tol = " << cur->data->tol << " valid ruling num = " << cur->data->validsize  << " , a_flap = " << cur->data->a_flap ;
             bool isroot = (root == cur)? true: false;
             cur->data->applyAAAMethod(Poly_V, false, cur->data->a_flap, cur->data->tol, isroot);
             cur->data->SimpleSmooothSrf(Poly_V);
         }else{
             qDebug() << "remove cross ruling and modify";
-            bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, ConstFunc);
+            bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, alg, ConstFunc);
             cur->data->revisecrossedruling(Poly_V);
         }
 
@@ -273,6 +280,7 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
         }     
         bendnum++;
     }
+    SetOnVertices_outline();
     return true;
 }
 
@@ -319,8 +327,11 @@ bool Model::SplitRulings(int dim){
     for(auto& r: Rulings){
         std::shared_ptr<CrvPt_FL> P = getCrossPoint(root->data->CtrlPts, r->v, r->o, dim);
         if(P!= nullptr){
-            if(UpVec.dot((r->v->p - r->o->p).normalized()) > 0)root->data->FoldingCurve.push_back(std::make_shared<Vertex4d>(P, r->v->deepCopy(), r->o->deepCopy()));
-            else root->data->FoldingCurve.push_back(std::make_shared<Vertex4d>(P, r->o->deepCopy(), r->v->deepCopy()));
+            r->hasCrossPoint = true;
+            std::shared_ptr<Vertex> sec, thi;
+            if(UpVec.dot((r->v->p - r->o->p).normalized()) > 0){ sec = r->v->deepCopy(); thi = r->o->deepCopy();}
+            else{sec = r->o->deepCopy(); thi = r->v->deepCopy(); }
+            root->data->FoldingCurve.push_back(std::make_shared<Vertex4d>(P, sec, thi));
         }
     }
     root->data->SortCurve();

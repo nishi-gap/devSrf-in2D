@@ -15,6 +15,7 @@ public:
     Eigen::Vector3d p3;
     Eigen::Vector3d p3_ori, p2_ori;
     bool deformed;
+    Vertex(): p(Eigen::Vector3d::Zero()), p3(Eigen::Vector3d::Zero()){};
     Vertex(Eigen::Vector3d _p, bool _deformed = false);
     Vertex(Eigen::Vector3d _p2, Eigen::Vector3d _p3, bool _deformed = false);
     std::shared_ptr<Vertex> deepCopy();
@@ -34,6 +35,7 @@ public:
     bool IsValid;
     CrvPt_FL(Eigen::Vector3d _p2, Eigen::Vector3d _p3,  double _s) : Vertex(_p2, _p3), s(_s), IsValid(true){}
     CrvPt_FL(Eigen::Vector3d _p2, double _s) : Vertex(_p2), s(_s), IsValid(true){}
+    std::shared_ptr<CrvPt_FL> deepCopy();
     bool operator == (const CrvPt_FL &p)const{return s == p.s && rt == p.rt && IsValid == p.IsValid;}
     bool operator != (const CrvPt_FL &p)const{return !(s == p.s && rt == p.rt && IsValid == p.IsValid);}
     //void set(Eigen::Vector3d _p,const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& e);
@@ -47,7 +49,9 @@ public:
     std::shared_ptr<Vertex> second;
     std::shared_ptr<Vertex> third;
     Vertex4d(): first{nullptr}, second{nullptr}, third{nullptr} {}
+    Vertex4d(CrvPt_FL v, Vertex v2, Vertex v3): first(std::make_shared<CrvPt_FL>(v)), second(std::make_shared<Vertex>(v2)), third(std::make_shared<Vertex>(v3)){}
     Vertex4d(const std::shared_ptr<CrvPt_FL>& v, const std::shared_ptr<Vertex>& v2, const std::shared_ptr<Vertex>& v3): first(v), second(v2), third(v3), IsCalc(true){}
+    std::shared_ptr<Vertex4d> deepCopy();
     void release();
     bool operator == (const Vertex4d &V4d)const{return first == V4d.first && second == V4d.second && third == V4d.third && IsCalc == V4d.IsCalc;}
     bool operator != (const Vertex4d &V4d)const{ return first != V4d.first || second != V4d.second || third != V4d.third || IsCalc != V4d.IsCalc; }
@@ -60,12 +64,13 @@ public:
 class Line : public std::enable_shared_from_this<Line>{
 public:
     int IsCrossed; //-1:交差なし, 0:同じruling上で交差, 1:上にあるレイヤー上のrulingと交差
+    bool hasCrossPoint;
     double color;
     std::shared_ptr<Vertex> o;
     std::shared_ptr<Vertex> v;//原則の方向はv[1] - v[0] (v[0]が原点)
     EdgeType et = EdgeType::none;
-    Line(const std::shared_ptr<Vertex>& _o, const std::shared_ptr<Vertex>& _v, EdgeType _et): o(_o), v(_v), et(_et), IsCrossed(-1), color(0){}
-    Line():o(nullptr),v(nullptr), IsCrossed(-1), color(0) {}
+    Line(const std::shared_ptr<Vertex>& _o, const std::shared_ptr<Vertex>& _v, EdgeType _et): o(_o), v(_v), et(_et), IsCrossed(-1), color(0), hasCrossPoint(false){}
+    Line():o(nullptr),v(nullptr), IsCrossed(-1), color(0), hasCrossPoint(false) {}
     //bool operator !=(const Line& l)const{return IsCrossed != l.IsCrossed || color != l.color || (v[0] != l.v[0] && v[0] != l.v[1]);}
     //bool operator ==(const Line &l)const{return IsCrossed == l.IsCrossed && color == l.color && ((v[0] == l.v[0] && v[1] == l.v[1]) || (v[1] == l.v[0] && v[0] == l.v[1]));}
     bool is_on_line(Eigen::Vector3d p);

@@ -92,10 +92,8 @@ public slots:
     void changeLineWidthFromSpinBox(double d);
 
     //optimization or discrete developable surface
-    void StartSmoothingSurface();
     void SimpleSmoothing();
     void StartOptimization();
-    void StartOptimization_plararity();
     void BendCurve(int num);
 
     //Regression Curve

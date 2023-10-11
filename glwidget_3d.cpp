@@ -90,27 +90,53 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
         AllRulings.push_back(tmpV);
     }
 
-    auto SplitPolygon = [](std::vector<std::vector<std::shared_ptr<Vertex>>>& Polygons, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
+    auto IsOverlapped = [](const std::vector<std::shared_ptr<Vertex>>& mesh, const std::shared_ptr<Vertex>& p)->bool{
+        for(const auto&v: mesh){
+            if((v->p - p->p).norm() < 1e-6)return true;
+        }
+        return false;
+    };
+
+    //firstの頂点(折曲線上の点)と輪郭の頂点が重なる場合輪郭の頂点を取り除く
+    auto RemoveOverlappedVertex = [&](std::vector<std::shared_ptr<Vertex>>& mesh){
+        int i = 0;
+        while(i < (int)mesh.size()){
+            bool isOverlapped = false;
+            for(int j = i+1; j < (int)mesh.size() && !isOverlapped; j++){
+                if((mesh[i]->p - mesh[j]->p).norm() < 1e-6){mesh.erase(mesh.begin() + j); isOverlapped = true;}
+            }
+            i = (isOverlapped)? 0: i+1;
+        }
+    };
+
+    auto SplitPolygon = [&](std::vector<std::vector<std::shared_ptr<Vertex>>>& Polygons, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
         for(auto& Poly :Polygons){
             for(int i = 0; i < (int)Poly.size(); i++){
-                auto it_v = std::find(Poly.begin(), Poly.end(), v), it_o = std::find(Poly.begin(), Poly.end(), o);
-                if(it_v != Poly.end() && it_o != Poly.end()){
-                    int i_min = std::min(std::distance(Poly.begin(), it_v), std::distance(Poly.begin(), it_o)), i_max = std::max(std::distance(Poly.begin(), it_v), std::distance(Poly.begin(), it_o));
+                int IsOnLine_v = -1, IsOnLine_o = -1;
+                for(int j = 0; j < (int)Poly.size(); j++){
+                    if(MathTool::is_point_on_line(v->p, Poly[j]->p, Poly[(j + 1) % (int)Poly.size()]->p))IsOnLine_v = j;
+                    if(MathTool::is_point_on_line(o->p, Poly[j]->p, Poly[(j + 1) % (int)Poly.size()]->p))IsOnLine_o = j;
+                }
+                if(IsOnLine_v != -1 && IsOnLine_o != -1){
+                    int i_min = std::min(IsOnLine_v, IsOnLine_o), i_max = std::max(IsOnLine_v, IsOnLine_o);
                     std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
                     if((i_max + 1 - i_min) < 3 || ((int)Poly.size() - (i_max - i_min - 1)) < 3)return;
                     Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
                     Polygons.push_back(poly2);
                     return;
                 }
-                if(it_v != Poly.end())break;
-                if(!MathTool::is_point_on_line(v->p, Poly[i]->p, Poly[(i + 1) % (int)Poly.size()]->p))continue;
-                Poly.insert(Poly.begin() + i + 1, v);
+                if(IsOnLine_v == -1)break;
+                //if(it_v != Poly.end())break;
+                //if(!MathTool::is_point_on_line(v->p, Poly[i]->p, Poly[(i + 1) % (int)Poly.size()]->p))continue;
+                //Poly.insert(Poly.begin() + i + 1, v);
+                if(!IsOverlapped(Poly, v) && MathTool::is_point_on_line(v->p, Poly[i]->p, Poly[(i + 1) % (int)Poly.size()]->p)) Poly.insert(Poly.begin() + i + 1, v);
+                //if(!IsOverlapped(Poly, o) && MathTool::is_point_on_line(v->p, Poly[i]->p, Poly[(i + 1) % (int)Poly.size()]->p)) Poly.insert(Poly.begin() + i + 1, o);
                 break;
             }
             int f_ind = -1, s_ind = -1;
             for(int i = 0; i < (int)Poly.size(); i++){
-                if(Poly[i] == o)f_ind = i;
-                if(Poly[i] == v)s_ind = i;
+                if((Poly[i]->p - o->p).norm() < 1e-6)f_ind = i;
+                if((Poly[i]->p - v->p).norm() < 1e-6)s_ind = i;
             }
             if(f_ind == -1 || s_ind == -1)continue;
             int i_min = std::min(f_ind, s_ind), i_max = std::max(f_ind, s_ind);
@@ -147,6 +173,7 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                     int i_min = std::min(ind_fr, ind_bc) + 1, i_max = std::max(ind_fr, ind_bc) + 1;
                     Eigen::Vector3d Dir_prev = (P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p).normalized();
                     std::vector<std::shared_ptr<Vertex>> poly2 = {P.begin() + i_min, P.begin() + i_max};
+
                     P.erase(P.begin() + i_min, P.begin() + i_max);
                     if(Eigen::Vector3d(0,0,1).dot(CrvDir.cross(Dir_prev)) < 0){
                         P.insert(P.begin() + i_min, InsertedV.begin(), InsertedV.end());
@@ -155,6 +182,7 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                         P.insert(P.begin() + i_min, InsertedV_inv.begin(), InsertedV_inv.end());
                         poly2.insert(poly2.end(), InsertedV.begin(), InsertedV.end());
                     }
+                    RemoveOverlappedVertex(P); RemoveOverlappedVertex(poly2);
                     Polygons.push_back(poly2);
                     break;
                 }
@@ -166,22 +194,22 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                 SplitPolygon(Polygons, (*itr)->first, (*itr)->third);
             }
         }
-    }else{
-        for(auto itr_r = Rulings.begin(); itr_r != Rulings.end(); itr_r++){
-            for(auto&P: Polygons){
-                int vind = -1, oind = -1;
-                for(int i = 0; i < (int)P.size(); i++){
-                    if(MathTool::is_point_on_line((*itr_r)->o->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))oind = i;
-                    if(MathTool::is_point_on_line((*itr_r)->v->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))vind = i;
-                }
-                if(vind == -1 || oind == -1)continue;
-                int i_min = std::min(vind, oind) + 1, i_max = std::max(vind, oind) + 1;
-                std::vector<std::shared_ptr<Vertex>> poly2 = {P.begin() + i_min, P.begin() + i_max};
-                P.erase(P.begin() + i_min, P.begin() + i_max);
-                P.push_back((*itr_r)->o); P.push_back((*itr_r)->v); P = SortPolygon(P);
-                poly2.push_back((*itr_r)->o); poly2.push_back((*itr_r)->v); poly2 = SortPolygon(poly2);
-                Polygons.push_back(poly2);
+    }
+    for(auto itr_r = Rulings.begin(); itr_r != Rulings.end(); itr_r++){
+        if((*itr_r)->hasCrossPoint)continue;
+        for(auto&P: Polygons){
+            int vind = -1, oind = -1;
+            for(int i = 0; i < (int)P.size(); i++){
+                if(MathTool::is_point_on_line((*itr_r)->o->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))oind = i;
+                if(MathTool::is_point_on_line((*itr_r)->v->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))vind = i;
             }
+            if(vind == -1 || oind == -1)continue;
+            int i_min = std::min(vind, oind) + 1, i_max = std::max(vind, oind) + 1;
+            std::vector<std::shared_ptr<Vertex>> poly2 = {P.begin() + i_min, P.begin() + i_max};
+            P.erase(P.begin() + i_min, P.begin() + i_max);
+            P.push_back((*itr_r)->o); P.push_back((*itr_r)->v); P = SortPolygon(P);
+            poly2.push_back((*itr_r)->o); poly2.push_back((*itr_r)->v); poly2 = SortPolygon(poly2);
+            Polygons.push_back(poly2);
         }
     }
 
@@ -193,8 +221,6 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
         for(auto& p: p_sort)vertices.push_back(Scale * (Mirror * p->p3));
         Vertices.push_back(vertices);
     }
-
-
 
     //for(auto&V: Vertices){
         //Triangulation(V, trimesh);
@@ -228,13 +254,16 @@ void GLWidget_3D::ReceiveCurve(std::vector<Eigen::Vector3d>&_C, std::vector<Eige
 
 }
 
-void GLWidget_3D::ReceiveRegressionCurve(std::vector<std::vector<std::shared_ptr<Vertex>>>& _RegCurve){
+void GLWidget_3D::ReceiveRegressionCurve(const std::vector<std::vector<std::vector<std::shared_ptr<Vertex>>>>& _RegCurve, const std::vector<std::vector<double>>&color){
     RegCurve.clear();
-    for(const auto&RC: _RegCurve){
-        std::vector<Eigen::Vector3d> _RC;
-        for(const auto&v: RC) _RC.push_back(Scale * Mirror * v->p3);
-        RegCurve.push_back(_RC);
+    for(int i = 0; i < (int)color.size(); i++){
+        drawobj obj = drawobj(color[i],_RegCurve[i]);
+        for(auto&mesh: obj.V){
+            for(auto&v: mesh)v = Scale * Mirror * v;
+        }
+        RegCurve.push_back(obj);
     }
+
     update();
 }
 
@@ -313,26 +342,29 @@ void GLWidget_3D::paintGL(){
     //draw regression curve
     glPolygonOffset(1.5f,2.f);
     glPointSize(6);
-    glColor3d(1,0,0);
     for(auto&RC: RegCurve){
-        for(auto&v: RC){
-            glBegin(GL_POINTS);
-            glVertex3d(v.x(), v.y(), v.z());
+        glColor3d(RC.c[0],RC.c[1],RC.c[2]);
+        for(auto&mesh: RC.V){
+            for(auto&v: mesh){
+                glBegin(GL_POINTS);
+                glVertex3d(v.x(), v.y(), v.z());
+                glEnd();
+            }
+        }
+        glColor4d(RC.c[0], RC.c[1], RC.c[2], 0.3);
+        for(auto&mesh: RC.V){
+            glBegin(GL_POLYGON);
+            for(auto&v: mesh) glVertex3d(v.x(), v.y(), v.z());
+            glEnd();
+        }
+        glColor4d(0.,0.,0,0.7);
+        for(auto&mesh: RC.V){
+            glBegin(GL_LINE_LOOP);
+            for(auto&v: mesh)glVertex3d(v.x(), v.y(), v.z());
             glEnd();
         }
     }
-    glColor4d(0.4,0.4,1,0.3);
-    for(auto&RC: RegCurve){
-        glBegin(GL_POLYGON);
-        for(auto&v: RC)glVertex3d(v.x(), v.y(), v.z());
-        glEnd();
-    }
-    glColor4d(0.,0.,0,0.7);
-    for(auto&RC: RegCurve){
-        glBegin(GL_LINE_LOOP);
-        for(auto&v: RC)glVertex3d(v.x(), v.y(), v.z());
-        glEnd();
-    }
+
     glPolygonOffset(0.f,0.f);
 
 }

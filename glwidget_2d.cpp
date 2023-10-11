@@ -289,8 +289,9 @@ void GLWidget_2D::changeflapgnle(double val, double tol, bool begin_center){
     update();
 }
 
-void GLWidget_2D::ReceiveRegressionCurve(std::vector<std::vector<std::shared_ptr<Vertex>>>& RegCrv){
-    RegressionCurve = RegCrv;
+void GLWidget_2D::ReceiveRegressionCurve(const std::vector<std::vector<std::vector<std::shared_ptr<Vertex>>>>& RC, const std::vector<std::vector<double>>color){
+    RegressionCurve.clear();
+    for(int i = 0; i < (int)RC.size(); i++)RegressionCurve.push_back(drawobj(color[i], RC[i]));
     update();
 }
 
@@ -361,135 +362,139 @@ void GLWidget_2D::paintGL(){
     }
 
     //regression curve
-    glColor3d(1,0,0);
-    glPointSize(4);
     for(const auto&RC: RegressionCurve){
-        for(auto&v: RC){
-            glBegin(GL_POINTS);
-            glVertex3d(v->p.x(), v->p.y(),0);
+        glColor3d(RC.c[0], RC.c[1], RC.c[2]);
+        glPointSize(4);
+        for(auto&Vertices: RC.V){
+            for(auto&v: Vertices){
+                glBegin(GL_POINTS);
+                glVertex3d(v->p.x(), v->p.y(),0);
+                glEnd();
+            }
+        }
+        glColor3d(0,0,0);
+        glEnable(GL_LINE_STIPPLE);
+        glLineStipple(1 , 0x00F0);
+        for(const auto&Vertices: RC.V){
+            glBegin(GL_LINE_LOOP);
+            for(auto&v: Vertices)glVertex3d(v->p.x(), v->p.y(),0);
             glEnd();
         }
-    }
-    glColor3d(0,0,0);
-    glEnable(GL_LINE_STIPPLE);
-    glLineStipple(1 , 0x00F0);
-    for(const auto&RC: RegressionCurve){
-        glBegin(GL_LINE_LOOP);
-        for(auto&v: RC)glVertex3d(v->p.x(), v->p.y(),0);
+        glDisable(GL_LINE_STIPPLE);
+
+        glColor4d(1,0,0, 0.4);
+        glBegin(GL_LINE_STRIP);
+        for(const auto&V: RC.V) glVertex3d(V.back()->p.x(), V.back()->p.y(),0);
         glEnd();
     }
-    glDisable(GL_LINE_STIPPLE);
-
-    glColor4d(1,0,0, 0.4);
-    glBegin(GL_LINE_STRIP);
-    for(const auto&RC: RegressionCurve) glVertex3d(RC.back()->p.x(), RC.back()->p.y(),0);
-    glEnd();
 
     glPolygonOffset(0.0,1.0);
     auto getcolor = [](double c, double a, double y)->double{
         if(y < a)return c/a * y/255.0;
         return ((255.0 - c)*(y - a)/(std::numbers::pi - a) + c)/255.0;
     };
-    if(!model->FL.empty() && !model->FL[0]->FoldingCurve.empty()){
-        for(auto& FL: model->FL){
-            if(FL->FoldingCurve.empty())continue;
-            std::vector<int> Vertices_Ind;
-            for(int i = 0; i < (int)FL->FoldingCurve.size(); i++){if(FL->FoldingCurve[i]->IsCalc)Vertices_Ind.push_back(i);}
-            for(const auto& fc: FL->FoldingCurve){
-                glColor3d(0, 0, 0);
-                glPointSize(3.0f);
-                glBegin(GL_POINTS);
-                glVertex3d(fc->first->p.x(), fc->first->p.y(),0);
-                glEnd();
-            }
-            //p0:描画するエッジの始点, p1: 描画するエッジの端点, p2: 片側の平面上の点, p3: もう片方の平面上の点
-            auto DrawEdge = [&](const std::shared_ptr<Vertex>& p0, const std::shared_ptr<Vertex>& p1, const std::shared_ptr<Vertex>& p2, const std::shared_ptr<Vertex>& p3, double LineWidth, bool IsGradation, bool IsRuling, bool DashedLine = false){
-                glLineWidth(LineWidth);
-                Eigen::Vector3d f_nv = ((p1->p3 - p0->p3).cross(p2->p3 - p0->p3)).normalized(),fp_nv = ((p3->p3 - p0->p3).cross(p1->p3 - p0->p3)).normalized();
-                Eigen::Vector3d SpinAxis = (p1->p3 - p0->p3).normalized();
-                if(IsGradation){
-                    double color = getcolor(model->ColorPt.color, model->ColorPt.angle, std::acos(f_nv.dot(fp_nv)));
-                    if(SpinAxis.dot(f_nv.cross(fp_nv)) <-1e-5){//mount
-                       if(!IsMVcolor_binary)glColor3d(1, 1.0 - color, 1.0 - color);
-                       else glColor3d(1,0,0);
-                    }else if(SpinAxis.dot(f_nv.cross(fp_nv)) > 1e-5){//valley
-                        if(!IsMVcolor_binary)glColor3d(1.0 - color,1.0 - color,1);
-                        else glColor3d(0,0,1);
-                    }else{
-                        if(IsEraseNonFoldEdge &&  IsRuling)return;
-                        glColor3d(0,0,0);
-                    }
-                }else{ glLineWidth(1.f); glColor3d(0,0,0); }
-                if(DashedLine){
-                    glEnable(GL_LINE_STIPPLE);
-                    glLineStipple(1 , 0xF0F0);
-                }
-                glBegin(GL_LINES);
-                glVertex3d(p1->p.x(), p1->p.y(),0);  glVertex3d(p0->p.x(), p0->p.y(),0);
-                glEnd();
-                if(DashedLine)glDisable(GL_LINE_STIPPLE);
-
-                glColor3d(0, 0, 0);
-                glPointSize(3.0f); glBegin(GL_POINTS); glVertex3d(p0->p.x(), p0->p.y(),0);
-                glEnd();
-
-            };
-            bool IsGradation = (drawtype == PaintTool::NewGradationMode)?true: false;
-            
-            for(int i = 1; i < (int)FL->FoldingCurve.size(); i++)
-                DrawEdge(FL->FoldingCurve[i]->first, FL->FoldingCurve[i-1]->first, FL->FoldingCurve[i]->second, FL->FoldingCurve[i]->third, rulingWidth, IsGradation, false);
-            for(int i = 1; i < (int)FL->FoldingCurve.size() - 1; i++){
-                bool DashedLine = (FL->FoldingCurve[i]->IsCalc)? false: true;
-                DrawEdge(FL->FoldingCurve[i]->first, FL->FoldingCurve[i]->second, FL->FoldingCurve[i+1]->first, FL->FoldingCurve[i-1]->first, rulingWidth, IsGradation, true, DashedLine);
-                DrawEdge(FL->FoldingCurve[i]->first, FL->FoldingCurve[i]->third, FL->FoldingCurve[i-1]->first, FL->FoldingCurve[i+1]->first, rulingWidth, IsGradation, true, DashedLine);
-            }
-
-
-            glColor3d(0,0,0);
-        }
-        if(refV != nullptr){
-            glBegin(GL_POINT);
-            glPointSize(6.f);
-            glColor3d(1,0,0);
-            glVertex3d(refV->p.x(), refV->p.y(),0);
+    //折曲線上の4価頂点の描画
+    for(auto& FL: model->FL){
+        if(FL->FoldingCurve.empty())continue;
+        std::vector<int> Vertices_Ind;
+        for(int i = 0; i < (int)FL->FoldingCurve.size(); i++){if(FL->FoldingCurve[i]->IsCalc)Vertices_Ind.push_back(i);}
+        for(const auto& fc: FL->FoldingCurve){
+            glColor3d(0, 0, 0);
+            glPointSize(3.0f);
+            glBegin(GL_POINTS);
+            glVertex3d(fc->first->p.x(), fc->first->p.y(),0);
             glEnd();
         }
-    }else{
-        for(auto itr_r = model->Rulings.begin(); itr_r != model->Rulings.end(); itr_r++){
-            glColor3d(0,0,0);
-            glLineWidth(1);
-            if((*itr_r)->et == EdgeType::r){
-                if(drawtype == PaintTool::NewGradationMode){
-                    glLineWidth(rulingWidth);
-                    double color = getcolor(model->ColorPt.color, model->ColorPt.angle, (*itr_r)->color/255.0);
-                    if(color > 1e-3){//mount
-                       if(!IsMVcolor_binary)glColor3d(1,1.0 - color,1.0 - color);
-                       else glColor3d(1,0,0);
-                    }else if(color < -1e-3){//valley
-                        if(!IsMVcolor_binary)glColor3d(1.0 - color,1.0 - color,1);
-                        else glColor3d(0,0,1);
-                    }else{
-                        if(IsEraseNonFoldEdge && (*itr_r)->et == EdgeType::r)continue;
-                        glColor3d(0,0,0);
-                    }
-                }else{ glLineWidth(1.f); glColor3d(0,0,0); }
-                glBegin(GL_LINES);
-                glVertex3d((*itr_r)->o->p.x(), (*itr_r)->o->p.y(),0);
-                glVertex3d((*itr_r)->v->p.x(), (*itr_r)->v->p.y(),0);
-                glEnd();
-
-                glColor3d(0, 0, 0);
-                glPointSize(3.0f);
-                glBegin(GL_POINTS);
-                glVertex3d((*itr_r)->o->p.x(), (*itr_r)->o->p.y(),0);
-                glEnd();
-                glBegin(GL_POINTS);
-                glVertex3d((*itr_r)->v->p.x(), (*itr_r)->v->p.y(),0);
-                glEnd();
-                glColor3d(0, 0, 0);
+        //p0:描画するエッジの始点, p1: 描画するエッジの端点, p2: 片側の平面上の点, p3: もう片方の平面上の点
+        auto DrawEdge = [&](const std::shared_ptr<Vertex>& p0, const std::shared_ptr<Vertex>& p1, const std::shared_ptr<Vertex>& p2, const std::shared_ptr<Vertex>& p3, double LineWidth, bool IsGradation, bool IsRuling, bool DashedLine = false){
+            glLineWidth(LineWidth);
+            Eigen::Vector3d f_nv = ((p1->p3 - p0->p3).cross(p2->p3 - p0->p3)).normalized(),fp_nv = ((p3->p3 - p0->p3).cross(p1->p3 - p0->p3)).normalized();
+            Eigen::Vector3d SpinAxis = (p1->p3 - p0->p3).normalized();
+            if(IsGradation){
+                double color = getcolor(model->ColorPt.color, model->ColorPt.angle, std::acos(f_nv.dot(fp_nv)));
+                if(SpinAxis.dot(f_nv.cross(fp_nv)) <-1e-5){//mount
+                    if(!IsMVcolor_binary)glColor3d(1, 1.0 - color, 1.0 - color);
+                    else glColor3d(1,0,0);
+                }else if(SpinAxis.dot(f_nv.cross(fp_nv)) > 1e-5){//valley
+                    if(!IsMVcolor_binary)glColor3d(1.0 - color,1.0 - color,1);
+                    else glColor3d(0,0,1);
+                }else{
+                    if(IsEraseNonFoldEdge &&  IsRuling)return;
+                    glColor3d(0,0,0);
+                }
+            }else{ glLineWidth(1.f); glColor3d(0,0,0); }
+            if(DashedLine){
+                glEnable(GL_LINE_STIPPLE);
+                glLineStipple(1 , 0xF0F0);
             }
+            glBegin(GL_LINES);
+            glVertex3d(p1->p.x(), p1->p.y(),0);  glVertex3d(p0->p.x(), p0->p.y(),0);
+            glEnd();
+            if(DashedLine)glDisable(GL_LINE_STIPPLE);
+
+            glColor3d(0, 0, 0);
+            glPointSize(3.0f); glBegin(GL_POINTS); glVertex3d(p0->p.x(), p0->p.y(),0);
+            glEnd();
+
+        };
+        bool IsGradation = (drawtype == PaintTool::NewGradationMode)?true: false;
+
+        for(int i = 1; i < (int)FL->FoldingCurve.size(); i++)
+            DrawEdge(FL->FoldingCurve[i]->first, FL->FoldingCurve[i-1]->first, FL->FoldingCurve[i]->second, FL->FoldingCurve[i]->third, rulingWidth, IsGradation, false);
+        for(int i = 1; i < (int)FL->FoldingCurve.size() - 1; i++){
+            bool DashedLine = (FL->FoldingCurve[i]->IsCalc)? false: true;
+            DrawEdge(FL->FoldingCurve[i]->first, FL->FoldingCurve[i]->second, FL->FoldingCurve[i+1]->first, FL->FoldingCurve[i-1]->first, rulingWidth, IsGradation, true, DashedLine);
+            DrawEdge(FL->FoldingCurve[i]->first, FL->FoldingCurve[i]->third, FL->FoldingCurve[i-1]->first, FL->FoldingCurve[i+1]->first, rulingWidth, IsGradation, true, DashedLine);
+        }
+
+
+        glColor3d(0,0,0);
+    }
+    if(refV != nullptr){
+        glBegin(GL_POINT);
+        glPointSize(6.f);
+        glColor3d(1,0,0);
+        glVertex3d(refV->p.x(), refV->p.y(),0);
+        glEnd();
+    }
+
+    //折曲線との交差がないrulingの描画
+    for(auto itr_r = model->Rulings.begin(); itr_r != model->Rulings.end(); itr_r++){
+        if((*itr_r)->hasCrossPoint)continue;
+        glColor3d(0,0,0);
+        glLineWidth(1);
+        if((*itr_r)->et == EdgeType::r){
+            if(drawtype == PaintTool::NewGradationMode){
+                glLineWidth(rulingWidth);
+                double color = getcolor(model->ColorPt.color, model->ColorPt.angle, (*itr_r)->color/255.0);
+                if(color > 1e-3){//mount
+                    if(!IsMVcolor_binary)glColor3d(1,1.0 - color,1.0 - color);
+                    else glColor3d(1,0,0);
+                }else if(color < -1e-3){//valley
+                    if(!IsMVcolor_binary)glColor3d(1.0 - color,1.0 - color,1);
+                    else glColor3d(0,0,1);
+                }else{
+                    if(IsEraseNonFoldEdge && (*itr_r)->et == EdgeType::r)continue;
+                    glColor3d(0,0,0);
+                }
+            }else{ glLineWidth(1.f); glColor3d(0,0,0); }
+            glBegin(GL_LINES);
+            glVertex3d((*itr_r)->o->p.x(), (*itr_r)->o->p.y(),0);
+            glVertex3d((*itr_r)->v->p.x(), (*itr_r)->v->p.y(),0);
+            glEnd();
+
+            glColor3d(0, 0, 0);
+            glPointSize(3.0f);
+            glBegin(GL_POINTS);
+            glVertex3d((*itr_r)->o->p.x(), (*itr_r)->o->p.y(),0);
+            glEnd();
+            glBegin(GL_POINTS);
+            glVertex3d((*itr_r)->v->p.x(), (*itr_r)->v->p.y(),0);
+            glEnd();
+            glColor3d(0, 0, 0);
         }
     }
+
 
     //可展面の輪郭描画
     {
@@ -754,7 +759,7 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
 
     if(drawtype == PaintTool::None) {
         if(IsLeftClicked){
-            difCursol_x += 0.1*(p.x() - befCur.x()); difCursol_y += 0.1*(p.y() - befCur.y());
+            difCursol_x += 0.5*(p.x() - befCur.x()); difCursol_y += 0.5*(p.y() - befCur.y());
         }
         update();
         befCur = p;

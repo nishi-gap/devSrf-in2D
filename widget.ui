@@ -681,7 +681,7 @@
    <property name="geometry">
     <rect>
      <x>1050</x>
-     <y>630</y>
+     <y>580</y>
      <width>80</width>
      <height>18</height>
     </rect>
@@ -729,7 +729,7 @@
    <property name="geometry">
     <rect>
      <x>1010</x>
-     <y>650</y>
+     <y>610</y>
      <width>149</width>
      <height>15</height>
     </rect>
@@ -769,24 +769,11 @@
     <string>optmization</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="SmoothingButton">
-   <property name="geometry">
-    <rect>
-     <x>1050</x>
-     <y>550</y>
-     <width>80</width>
-     <height>18</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Smoothing</string>
-   </property>
-  </widget>
   <widget class="QPushButton" name="SimpleSmoothButton">
    <property name="geometry">
     <rect>
      <x>1050</x>
-     <y>570</y>
+     <y>550</y>
      <width>91</width>
      <height>21</height>
     </rect>
@@ -808,7 +795,7 @@
     <double>0.100000000000000</double>
    </property>
    <property name="value">
-    <double>0.000000000000000</double>
+    <double>0.100000000000000</double>
    </property>
   </widget>
   <widget class="QDoubleSpinBox" name="ParalellWeightButton">
@@ -824,7 +811,7 @@
     <double>0.100000000000000</double>
    </property>
    <property name="value">
-    <double>0.100000000000000</double>
+    <double>0.000000000000000</double>
    </property>
   </widget>
   <widget class="QLabel" name="label_4">
@@ -864,19 +851,6 @@
    </property>
    <property name="text">
     <string>ConnectEndPoint</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="OptPlararity_Button">
-   <property name="geometry">
-    <rect>
-     <x>1050</x>
-     <y>600</y>
-     <width>80</width>
-     <height>18</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>planarity</string>
    </property>
   </widget>
   <widget class="QCheckBox" name="developablityButton">

@@ -18,6 +18,20 @@ typedef std::vector<Eigen::Vector3d> Curve3d;
 //typedef std::vector<CrvPt_FL> CrvFL3d;
 typedef std::vector<std::shared_ptr<FoldLine>> FoldLine3d;
 
+class drawobj{
+public:
+    std::vector<double>c;
+    std::vector<std::vector<Eigen::Vector3d>> V;
+    drawobj(const std::vector<double>&_c, const std::vector<std::vector<std::shared_ptr<Vertex>>>& _V){
+        c = std::move(_c);
+        for(auto&mesh: _V){
+            std::vector<Eigen::Vector3d> tmp;
+            for(auto&v: mesh)tmp.push_back(v->p3);
+            V.push_back(tmp);
+        }
+    }
+};
+
 class GLWidget_3D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
 {
     Q_OBJECT
@@ -26,7 +40,7 @@ public:
     void setVertices(const Lines Surface = Lines(),  const Lines Rulings = Lines(),  const FoldLine3d FldCrvs = FoldLine3d(), const Ruling3d& _AllRulings = Ruling3d());
     void ReceiveParam(std::vector<std::vector<Eigen::Vector3d>>&_C);
     void ReceiveCurve(std::vector<Eigen::Vector3d>&_C, std::vector<Eigen::Vector3d>& _P);
-    void ReceiveRegressionCurve(std::vector<std::vector<std::shared_ptr<Vertex>>>& _RegCurve);
+    void ReceiveRegressionCurve(const std::vector<std::vector<std::vector<std::shared_ptr<Vertex>>>>& _RegCurve, const std::vector<std::vector<double>>&color);
     void receiveKeyEvent(QKeyEvent *e);
     void PlanarityDispay(bool state);
     void EraseNonFoldEdge(bool state);
@@ -37,7 +51,9 @@ public:
     ~GLWidget_3D();
 
     std::vector<Eigen::Vector3d> FoldLineVertices;
-    std::vector<std::vector<Eigen::Vector3d>> RegCurve;
+
+    //regression curve
+    std::vector<drawobj> RegCurve;
 
     Ruling3d AllRulings;
 protected:
@@ -58,6 +74,7 @@ private:
     std::vector<std::vector<Eigen::Vector3d>> Vertices;
     std::vector<std::array<Eigen::Vector3d, 3>> TriMeshs;
     std::vector<Eigen::Vector3d> Curve, Points;
+
 
     Eigen::Matrix3d Mirror;
     double Scale;

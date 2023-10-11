@@ -32,6 +32,7 @@ public:
     void deleteOutline(QPointF& cursol);
     void ConnectOutline(QPointF& cursol, double gridsize, const QSize& S);
     void addRulings(); //0:move curve point, 1: add(erase, insert) curve point
+    void SetOnVertices_outline();
 
     //FoldLine
     bool AddControlPoint_FL(Eigen::Vector3d& p, int event, int curveDimention);

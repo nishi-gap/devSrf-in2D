@@ -44,8 +44,14 @@ public:
     void EraseNonFoldEdge(bool state);
 
     //regression curve
-    std::vector<std::vector<std::shared_ptr<Vertex>>> RegressionCurve;
-    void ReceiveRegressionCurve(std::vector<std::vector<std::shared_ptr<Vertex>>>& RegCrv);
+    class drawobj{
+    public:
+        std::vector<double>c;
+        std::vector<std::vector<std::shared_ptr<Vertex>>> V;
+        drawobj(const std::vector<double>&_c, const std::vector<std::vector<std::shared_ptr<Vertex>>>& _V){c = _c; V= std::move(_V);}
+    };
+    std::vector<drawobj> RegressionCurve;
+    void ReceiveRegressionCurve(const std::vector<std::vector<std::vector<std::shared_ptr<Vertex>>>>& RC,const std::vector<std::vector<double>>color);
 
     //初期状態
     void InitializeDrawMode();

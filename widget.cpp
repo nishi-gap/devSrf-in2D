@@ -98,10 +98,8 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     //planarity
-    connect(ui->SmoothingButton, &QPushButton::clicked, this, &MainWindow::StartSmoothingSurface);
     connect(ui->SimpleSmoothButton, &QPushButton::clicked, this, &MainWindow::SimpleSmoothing);
     connect(ui->PlanarityButton, &QCheckBox::clicked, ui->glWid3dim, &GLWidget_3D::PlanarityDispay);
-    connect(ui->OptPlararity_Button, &QPushButton::clicked, this, &MainWindow::StartOptimization_plararity);
 
     //optimization or discrete developable surface
     connect(ui->OptBtn, &QPushButton::clicked, this, &MainWindow::StartOptimization);
@@ -118,7 +116,6 @@ MainWindow::MainWindow(QWidget *parent)
 }
 
 //regression curve
-static bool MinLength = true;
 static bool IsvisibleRegCrv = false;
 
 static bool begin_center = false;
@@ -133,8 +130,9 @@ void MainWindow::SwitchingVisualization_RegCurve(){
     qDebug() << "IsvisibleRegCrv = " << IsvisibleRegCrv;
     std::vector<std::vector<std::shared_ptr<Vertex>>> empty;
     if(!IsvisibleRegCrv){
-        ui->glWid3dim->ReceiveRegressionCurve(empty);
-        ui->glWid2dim->ReceiveRegressionCurve(empty);
+        std::vector<double> color_reg{0.8, 0, 0.}, color_fixreg{0,0,0.8};
+        ui->glWid3dim->ReceiveRegressionCurve({}, {});
+        ui->glWid2dim->ReceiveRegressionCurve({}, {});
     }
 }
 
@@ -231,26 +229,6 @@ void MainWindow::BendCurve(int num){
     fold_Sm();
 }
 
-void MainWindow::StartOptimization_plararity(){
-    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
-    auto Poly_V = ui->glWid2dim->model->outline->getVertices();
-    auto res = ui->glWid2dim->model->FL[0]->Optimization_PlanaritySrf(Poly_V);
-    fold_Sm();
-    ui->glWid3dim->ReceiveParam(res);
-}
-
-void MainWindow::StartSmoothingSurface(){
-    auto Poly_V = ui->glWid2dim->model->outline->getVertices();
-    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
-    bool ICE = ui->ConnectEndPointBox->isChecked();
-    auto res = ui->glWid2dim->model->FL[0]->Optimization_SmooothSrf(Poly_V, ICE);
-    if(!res.empty()){
-        //ui->glWid2dim->update();
-        //ui->glWid3dim->setVertices(ui->glWid2dim->model->Faces, ui->glWid2dim->model->outline->getVertices(), ui->glWid2dim->model->Edges, ui->glWid2dim->model->vertices, ui->glWid2dim->model->FL[0]->FoldingCurve, ui->glWid2dim->AllRulings);
-        fold_Sm();
-        ui->glWid3dim->ReceiveParam(res);
-    }
-}
 
 void MainWindow::SimpleSmoothing(){
     auto Poly_V = ui->glWid2dim->model->outline->getVertices();
@@ -258,6 +236,7 @@ void MainWindow::SimpleSmoothing(){
     bool res = ui->glWid2dim->model->Smoothing();
     if(res){
         ui->glWid2dim->update();
+        ui->glWid2dim->model->SetOnVertices_outline();
          ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
     }
 }
@@ -269,10 +248,12 @@ void MainWindow::changeAngleFromSlider(int val){
     emit sendAngle(a, tol, begin_center);
 
     if(IsvisibleRegCrv){
+         std::vector<double> color_reg{0.8, 0, 0.}, color_fixreg{0,0,0.8};
          std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model->outline->getVertices();
-         auto Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(static_cast<double>(val)/100.0, Poly_V, false, MinLength);
-         ui->glWid3dim->ReceiveRegressionCurve(Triangles);
-         ui->glWid2dim->ReceiveRegressionCurve(Triangles);
+         std::vector<std::vector<std::shared_ptr<Vertex>>> Tri_fixside;
+         auto Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(static_cast<double>(val)/100.0, Poly_V, false, Tri_fixside);
+         ui->glWid3dim->ReceiveRegressionCurve({Triangles, Tri_fixside}, {color_reg,color_fixreg});
+         ui->glWid2dim->ReceiveRegressionCurve({Triangles, Tri_fixside}, {color_reg,color_fixreg});
     }
 }
 
@@ -282,10 +263,13 @@ void MainWindow::changeAngleFromSpinBox(double val){
     double tol =  ui->TolValue->value();
     emit sendAngle(a, tol, begin_center);
     if(IsvisibleRegCrv){
-         std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model->outline->getVertices();
-         auto Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(val, Poly_V, false, MinLength);
-         ui->glWid3dim->ReceiveRegressionCurve(Triangles);
-         ui->glWid2dim->ReceiveRegressionCurve(Triangles);
+        std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model->outline->getVertices();
+        std::vector<std::vector<std::shared_ptr<Vertex>>> Tri_fixside;
+        std::vector<double> color_reg{0.8, 0, 0.}, color_fixreg{0,0,0.8};
+        std::vector<std::vector<std::shared_ptr<Vertex>>> Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(val, Poly_V, false, Tri_fixside);
+        auto Tri = {Triangles, Tri_fixside};
+        ui->glWid3dim->ReceiveRegressionCurve(Tri, {color_reg,color_fixreg});
+        ui->glWid2dim->ReceiveRegressionCurve({Triangles, Tri_fixside}, {color_reg,color_fixreg});
     }
 }
 
@@ -302,10 +286,9 @@ void MainWindow::changeLineWidthFromSpinBox(double d){
 void MainWindow::fold_Sm(){
     ui->glWid2dim->update();
     if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
-    else if(!ui->glWid2dim->model->FL.empty()){
-         ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
-    }
+
     else{
+        ui->glWid2dim->model->SetOnVertices_outline();
          ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
     }
 }
@@ -378,6 +361,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         if(ui->glWid2dim->model->FL.empty())return;
         double tol = ui->TolValue->value();
         ui->glWid2dim->model->AssignRuling(3, tol, false);
+        ui->glWid2dim->model->SetOnVertices_outline();
         ui->glWid2dim->update();
         fold_Sm();
     }
@@ -445,7 +429,8 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     else if(e->key() == Qt::Key_N){
         double a = static_cast<double>(ui->angleSlider->value())/100.0;
         std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model->outline->getVertices();
-        auto Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(a,Poly_V,true, MinLength);
+        std::vector<std::vector<std::shared_ptr<Vertex>>> Tri_fixside;
+        auto Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(a,Poly_V,true, Tri_fixside);
         qDebug() <<"csv file export";
     }
     else{
