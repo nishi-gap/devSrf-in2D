@@ -37,7 +37,7 @@ public:
     double getColor();
     bool RevisionCrosPtsPosition();
     bool Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double wb, double wp, int rank, int alg, bool ConstFunc);
-
+    bool Optimization_Vertex(const std::vector<std::shared_ptr<Vertex>>& Poly_V);
     std::vector<std::vector<Eigen::Vector3d>> Optimization_SmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v, bool IsConnectEndPoint);
     std::vector<std::vector<Eigen::Vector3d>> Optimization_PlanaritySrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void ReassignColor();
@@ -46,7 +46,7 @@ public:
     void SimplifyModel(int iselim, bool isroot);
     bool SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void SortCurve(bool ascending = false);
-    void reassignruling(std::shared_ptr<FoldLine>& parent);
+    void reassignruling(std::shared_ptr<FoldLine>& parent, const std::vector<std::shared_ptr<Line>>& Surface, const std::vector<std::shared_ptr<Line>>& Rulings);
 
     void applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool begincenter, double a, double _tol, bool isroot);
     void revisecrossedruling(const std::vector<std::shared_ptr<Vertex>>& Poly_v);

@@ -23,7 +23,7 @@ bool Line::is_on_line(Eigen::Vector3d p){ return MathTool::is_point_on_line(p, v
 
 CRV::CRV(int _crvNum, int DivSize){
     curveNum = _crvNum;
-    for(int i = 0; i < curveNum; i++)CurvePoints.resize(i);
+    CurvePoints.resize(curveNum);
     for(int i = 0; i < DivSize-1;i++)Rulings.push_back(std::make_shared<Line>());
     isempty = true;
     curveType = CurveType::none;
@@ -41,6 +41,7 @@ bool CRV::eraseCtrlPt(int curveDimention, int crvPtNum){
     }else if(curveType == CurveType::line){
         return drawLine();
     }
+    return false;
 }
 
 //void CRV::movePt(glm::f64vec3 p, int ind){ControllPoints[ind] = p;}
@@ -129,8 +130,8 @@ bool CRV::setPoint(const std::vector<std::shared_ptr<Vertex>>&outline, Eigen::Ve
     }
     auto itr = std::find(crossPoint.begin(), crossPoint.end(), minPt);
     if(itr == crossPoint.end())return IsIntersected;
-    int minInd = std::distance(crossPoint.begin(), itr);
-    minInd /= 2;
+    //int minInd = std::distance(crossPoint.begin(), itr);
+    //minInd /= 2;
     //P.push_back(crossPoint[2 * minInd]); P.push_back(crossPoint[2 * minInd + 1]);//原因ここ?
     for(int i = 0; i < (int)crossPoint.size(); i++){
         P.push_back(crossPoint[i]);
@@ -768,3 +769,126 @@ Eigen::MatrixXd GlobalSplineInterpolation(std::vector<std::shared_ptr<Vertex4d>>
     //CtrlPts_res[n] = glm::f64vec3{_D(n,0), _D(n,1), _D(n,2)};//もしからしたらこれ必要かも
 }
 
+std::vector<std::vector<std::shared_ptr<Vertex>>> MakeModel(const std::vector<std::shared_ptr<Line>>& Surface,
+                                                            const std::vector<std::shared_ptr<Line>>& Rulings,  const std::vector<std::vector<std::shared_ptr<Vertex4d>>>& FoldingCurves){
+    //firstの頂点(折曲線上の点)と輪郭の頂点が重なる場合輪郭の頂点を取り除く
+    auto RemoveOverlappedVertex = [&](std::vector<std::shared_ptr<Vertex>>& mesh){
+        int i = 0;
+        while(i < (int)mesh.size()){
+            bool isOverlapped = false;
+            for(int j = i+1; j < (int)mesh.size() && !isOverlapped; j++){
+                if((mesh[i]->p - mesh[j]->p).norm() < 1e-6){mesh.erase(mesh.begin() + j); isOverlapped = true;}
+            }
+            i = (isOverlapped)? 0: i+1;
+        }
+    };
+
+    auto SplitPolygon = [&](std::vector<std::vector<std::shared_ptr<Vertex>>>& Polygons, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
+        for(auto& Poly :Polygons){
+            int IsOnLine_v = -1, ind_o = -1, ind_v = -1;
+            for(int j = 0; j < (int)Poly.size(); j++){
+                if(MathTool::is_point_on_line(v->p, Poly[j]->p, Poly[(j + 1) % (int)Poly.size()]->p))IsOnLine_v = j;
+                if((o->p - Poly[j]->p).norm() < 1e-6)ind_o = j;
+                if((v->p - Poly[j]->p).norm() < 1e-6)ind_v = j;
+            }
+            if(ind_v != -1 && ind_o != -1){
+                int i_min = std::min(ind_v, ind_o), i_max = std::max(ind_v, ind_o);
+                std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
+                if((i_max + 1 - i_min) < 3 || ((int)Poly.size() - (i_max - i_min - 1)) < 3)return;
+                Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
+                Polygons.push_back(poly2);
+                return;
+            }
+            if(IsOnLine_v == -1)continue;
+            Poly.insert(Poly.begin() + IsOnLine_v + 1, v);
+            int f_ind = -1, s_ind = -1;
+            for(int i = 0; i < (int)Poly.size(); i++){
+                if((Poly[i]->p - o->p).norm() < 1e-6)f_ind = i;
+                if((Poly[i]->p - v->p).norm() < 1e-6)s_ind = i;
+            }
+            if(f_ind == -1 || s_ind == -1)continue;
+            int i_min = std::min(f_ind, s_ind), i_max = std::max(f_ind, s_ind);
+            std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
+            Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
+            Polygons.push_back(poly2);
+            return;
+        }
+    };
+    
+    std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons;
+    std::vector<std::shared_ptr<Vertex>> polygon;
+    for(auto& l: Surface) polygon.push_back(l->v);
+    Polygons.push_back(polygon);
+    std::vector<std::vector<std::shared_ptr<Vertex4d>>> DrawCrvs;
+
+    for(auto&FC: FoldingCurves){
+        if((int)FC.size() <= 2)continue;
+        std::vector<std::shared_ptr<Vertex4d>> DrawCrv;
+        for(auto& v: FC){if(v->IsCalc)DrawCrv.push_back(v);}
+        DrawCrvs.push_back(DrawCrv);
+        Eigen::Vector3d CrvDir = (DrawCrv.back()->first->p - DrawCrv.front()->first->p).normalized();
+        for(auto&P: Polygons){
+            int ind_fr = -1, ind_bc = -1;
+            for(int i = 0; i < (int)P.size(); i++){
+                if(MathTool::is_point_on_line(DrawCrv.front()->first->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))ind_fr = i;
+                if(MathTool::is_point_on_line(DrawCrv.back()->first->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))ind_bc = i;
+            }
+            if(ind_fr != -1 && ind_bc != -1){
+                std::vector<std::shared_ptr<Vertex>> InsertedV, InsertedV_inv;
+                for(auto&v: DrawCrv){InsertedV.push_back(v->first);InsertedV_inv.insert(InsertedV_inv.begin(), v->first);}
+                int i_min = std::min(ind_fr, ind_bc) + 1, i_max = std::max(ind_fr, ind_bc) + 1;
+                Eigen::Vector3d Dir_prev;
+                std::vector<std::shared_ptr<Vertex>> poly2;
+                if(i_min == i_max){//折曲線の端点が同じ辺上にある
+                    Dir_prev = (P[(ind_bc + 1) % (int)P.size()]->p - P[ind_bc]->p).normalized();
+                    if(CrvDir.dot(Dir_prev) > 0){
+                        P.insert(P.begin() + i_min, InsertedV.begin(), InsertedV.end());
+                        poly2.insert(poly2.end(), InsertedV_inv.begin(), InsertedV_inv.end());
+                    }else{
+                        P.insert(P.begin() + i_min, InsertedV_inv.begin(), InsertedV_inv.end());
+                        poly2.insert(poly2.end(), InsertedV.begin(), InsertedV.end());
+                    }
+                }else{
+                    Dir_prev = (P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p).normalized();
+                    poly2 = {P.begin() + i_min, P.begin() + i_max};
+                    P.erase(P.begin() + i_min, P.begin() + i_max);
+                    if(Eigen::Vector3d(0,0,1).dot(CrvDir.cross(Dir_prev)) < 0){
+                        P.insert(P.begin() + i_min, InsertedV.begin(), InsertedV.end());
+                        poly2.insert(poly2.end(), InsertedV_inv.begin(), InsertedV_inv.end());
+                    }else{
+                        P.insert(P.begin() + i_min, InsertedV_inv.begin(), InsertedV_inv.end());
+                        poly2.insert(poly2.end(), InsertedV.begin(), InsertedV.end());
+                    }
+                }
+                RemoveOverlappedVertex(P); RemoveOverlappedVertex(poly2);
+                Polygons.push_back(poly2);
+                break;
+            }
+        }
+    }
+    for(auto&DC: DrawCrvs){
+        for(auto itr = DC.begin() + 1; itr != DC.end() - 1; itr++){
+            SplitPolygon(Polygons, (*itr)->first, (*itr)->second);
+            SplitPolygon(Polygons, (*itr)->first, (*itr)->third);
+        }
+    }
+
+    for(auto itr_r = Rulings.begin(); itr_r != Rulings.end(); itr_r++){
+        if((*itr_r)->hasCrossPoint)continue;
+        for(auto&P: Polygons){
+            int vind = -1, oind = -1;
+            for(int i = 0; i < (int)P.size(); i++){
+                if(MathTool::is_point_on_line((*itr_r)->o->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))oind = i;
+                if(MathTool::is_point_on_line((*itr_r)->v->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))vind = i;
+            }
+            if(vind == -1 || oind == -1)continue;
+            int i_min = std::min(vind, oind) + 1, i_max = std::max(vind, oind) + 1;
+            std::vector<std::shared_ptr<Vertex>> poly2 = {P.begin() + i_min, P.begin() + i_max};
+            P.erase(P.begin() + i_min, P.begin() + i_max);
+            P.push_back((*itr_r)->o); P.push_back((*itr_r)->v); P = SortPolygon(P);
+            poly2.push_back((*itr_r)->o); poly2.push_back((*itr_r)->v); poly2 = SortPolygon(poly2);
+            Polygons.push_back(poly2);
+        }
+    }
+    return Polygons;
+}

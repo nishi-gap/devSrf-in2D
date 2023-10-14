@@ -42,25 +42,6 @@ public:
 
 };
 
-class Vertex4d{
-public:
-    bool IsCalc;
-    std::shared_ptr<CrvPt_FL> first;
-    std::shared_ptr<Vertex> second;
-    std::shared_ptr<Vertex> third;
-    Vertex4d(): first{nullptr}, second{nullptr}, third{nullptr} {}
-    Vertex4d(CrvPt_FL v, Vertex v2, Vertex v3): first(std::make_shared<CrvPt_FL>(v)), second(std::make_shared<Vertex>(v2)), third(std::make_shared<Vertex>(v3)){}
-    Vertex4d(const std::shared_ptr<CrvPt_FL>& v, const std::shared_ptr<Vertex>& v2, const std::shared_ptr<Vertex>& v3): first(v), second(v2), third(v3), IsCalc(true){}
-    std::shared_ptr<Vertex4d> deepCopy();
-    void release();
-    bool operator == (const Vertex4d &V4d)const{return first == V4d.first && second == V4d.second && third == V4d.third && IsCalc == V4d.IsCalc;}
-    bool operator != (const Vertex4d &V4d)const{ return first != V4d.first || second != V4d.second || third != V4d.third || IsCalc != V4d.IsCalc; }
-    bool operator == (const std::shared_ptr<Vertex> &V)const{return first == V; }
-    bool operator != (const std::shared_ptr<Vertex> &V)const{return first != V; }
-    //void operator = (const Vertex4d &V){first = V.first; second = V.second; third = V.third; IsCalc = V.IsCalc;}
-};
-
-
 class Line : public std::enable_shared_from_this<Line>{
 public:
     int IsCrossed; //-1:交差なし, 0:同じruling上で交差, 1:上にあるレイヤー上のrulingと交差
@@ -74,6 +55,26 @@ public:
     //bool operator !=(const Line& l)const{return IsCrossed != l.IsCrossed || color != l.color || (v[0] != l.v[0] && v[0] != l.v[1]);}
     //bool operator ==(const Line &l)const{return IsCrossed == l.IsCrossed && color == l.color && ((v[0] == l.v[0] && v[1] == l.v[1]) || (v[1] == l.v[0] && v[0] == l.v[1]));}
     bool is_on_line(Eigen::Vector3d p);
+};
+class Vertex4d{
+public:
+    bool IsCalc;
+    std::shared_ptr<CrvPt_FL> first;
+    std::shared_ptr<Vertex> second;
+    std::shared_ptr<Vertex> third;
+    std::shared_ptr<Line> line_parent;
+    void addline(std::shared_ptr<Vertex4d>& parent){line_parent = std::make_shared<Line>(parent->third, parent->second, EdgeType::r);};
+    void addline(std::shared_ptr<Line>& L){line_parent = L;}
+    Vertex4d(): first{nullptr}, second{nullptr}, third{nullptr} {}
+    Vertex4d(CrvPt_FL v, Vertex v2, Vertex v3): first(std::make_shared<CrvPt_FL>(v)), second(std::make_shared<Vertex>(v2)), third(std::make_shared<Vertex>(v3)){}
+    Vertex4d(const std::shared_ptr<CrvPt_FL>& v, const std::shared_ptr<Vertex>& v2, const std::shared_ptr<Vertex>& v3): first(v), second(v2), third(v3), IsCalc(true){}
+    std::shared_ptr<Vertex4d> deepCopy();
+    void release();
+    bool operator == (const Vertex4d &V4d)const{return first == V4d.first && second == V4d.second && third == V4d.third && IsCalc == V4d.IsCalc;}
+    bool operator != (const Vertex4d &V4d)const{ return first != V4d.first || second != V4d.second || third != V4d.third || IsCalc != V4d.IsCalc; }
+    bool operator == (const std::shared_ptr<Vertex> &V)const{return first == V; }
+    bool operator != (const std::shared_ptr<Vertex> &V)const{return first != V; }
+    //void operator = (const Vertex4d &V){first = V.first; second = V.second; third = V.third; IsCalc = V.IsCalc;}
 };
 
 class CRV{
@@ -127,6 +128,7 @@ public:
 
     bool IsClosed();
     int VerticesNum;
+    std::vector<std::shared_ptr<Vertex>> vertices;
     void addVertex(const std::shared_ptr<Vertex>&v, int n);
     void addVertex(Eigen::Vector3d& p);
     void eraseVertex();
@@ -141,7 +143,7 @@ public:
     bool IsPointInFace(Eigen::Vector3d p);
     Eigen::Vector3d getNormalVec();
 private:
-    std::vector<std::shared_ptr<Vertex>> vertices;
+
     int movePointIndex(Eigen::Vector3d p);
 };
 
@@ -150,5 +152,6 @@ void CrossDetection(std::shared_ptr<OUTLINE>& outline, std::shared_ptr<CRV>& crv
 Eigen::MatrixXd GlobalSplineInterpolation(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, std::vector<double>&Knot, std::vector<double>& T, bool is3d, int dim);
 std::vector<double> BezierClipping(std::vector<Eigen::Vector3d>&CtrlPts, const std::shared_ptr<Vertex>& p, const std::shared_ptr<Vertex>& q, int dim);
 std::vector<std::shared_ptr<Vertex>> SortPolygon(std::vector<std::shared_ptr<Vertex>>& polygon);
-
+std::vector<std::vector<std::shared_ptr<Vertex>>> MakeModel(const std::vector<std::shared_ptr<Line>>& Surface,
+                                                            const std::vector<std::shared_ptr<Line>>& Rulings,  const std::vector<std::vector<std::shared_ptr<Vertex4d>>>& FoldingCurves);
 #endif // SETRULINGS_H

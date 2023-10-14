@@ -6,6 +6,7 @@
 #include <QPointF>
 #include <QSize>
 #include "foldline.h"
+#include <Eigen/Core>
 
 class Model{
 public:
@@ -32,7 +33,7 @@ public:
     void deleteOutline(QPointF& cursol);
     void ConnectOutline(QPointF& cursol, double gridsize, const QSize& S);
     void addRulings(); //0:move curve point, 1: add(erase, insert) curve point
-    void SetOnVertices_outline();
+    void SetOnVertices_outline(bool IsupdateEndPt);
 
     //FoldLine
     bool AddControlPoint_FL(Eigen::Vector3d& p, int event, int curveDimention);
@@ -70,6 +71,7 @@ public:
     int DeleteCurve();
 private:
 
+    void initializeSurfaceVertices();
     bool SplitRulings(int dim);
     void LinearInterPolation(const std::vector<std::shared_ptr<Line>>& path);
     void SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, std::vector<Eigen::Vector2d>& CurvePath);

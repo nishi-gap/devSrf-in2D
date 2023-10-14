@@ -63,7 +63,7 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                 if(std::find_if(Poly_V.begin(), Poly_V.end(),[&](const std::shared_ptr<Line>& L){return (L->v->p - v->p).norm() < 1e-9; }) == Poly_V.end())
                     QuadPlane.push_back(v->p3);
             }
-            if((int)QuadPlane.size() < 3)return 0;
+            if((int)QuadPlane.size() <= 3)return 0;
             double l_avg = ((QuadPlane[0] - QuadPlane[2]).norm() + (QuadPlane[1] - QuadPlane[3]).norm())/2.0;
             double d;
             Eigen::Vector3d u1 = (QuadPlane[0] - QuadPlane[2]).normalized(), u2 = (QuadPlane[1]-  QuadPlane[3]).normalized();
@@ -89,7 +89,7 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
         std::array<Eigen::Vector3d, 2> tmpV{Scale * Mirror * v[0], Scale * Mirror * v[1]};
         AllRulings.push_back(tmpV);
     }
-
+    /*
     auto IsOverlapped = [](const std::vector<std::shared_ptr<Vertex>>& mesh, const std::shared_ptr<Vertex>& p)->bool{
         for(const auto&v: mesh){
             if((v->p - p->p).norm() < 1e-6)return true;
@@ -111,28 +111,22 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
 
     auto SplitPolygon = [&](std::vector<std::vector<std::shared_ptr<Vertex>>>& Polygons, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
         for(auto& Poly :Polygons){
-            for(int i = 0; i < (int)Poly.size(); i++){
-                int IsOnLine_v = -1, IsOnLine_o = -1;
-                for(int j = 0; j < (int)Poly.size(); j++){
-                    if(MathTool::is_point_on_line(v->p, Poly[j]->p, Poly[(j + 1) % (int)Poly.size()]->p))IsOnLine_v = j;
-                    if(MathTool::is_point_on_line(o->p, Poly[j]->p, Poly[(j + 1) % (int)Poly.size()]->p))IsOnLine_o = j;
-                }
-                if(IsOnLine_v != -1 && IsOnLine_o != -1){
-                    int i_min = std::min(IsOnLine_v, IsOnLine_o), i_max = std::max(IsOnLine_v, IsOnLine_o);
-                    std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
-                    if((i_max + 1 - i_min) < 3 || ((int)Poly.size() - (i_max - i_min - 1)) < 3)return;
-                    Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
-                    Polygons.push_back(poly2);
-                    return;
-                }
-                if(IsOnLine_v == -1)break;
-                //if(it_v != Poly.end())break;
-                //if(!MathTool::is_point_on_line(v->p, Poly[i]->p, Poly[(i + 1) % (int)Poly.size()]->p))continue;
-                //Poly.insert(Poly.begin() + i + 1, v);
-                if(!IsOverlapped(Poly, v) && MathTool::is_point_on_line(v->p, Poly[i]->p, Poly[(i + 1) % (int)Poly.size()]->p)) Poly.insert(Poly.begin() + i + 1, v);
-                //if(!IsOverlapped(Poly, o) && MathTool::is_point_on_line(v->p, Poly[i]->p, Poly[(i + 1) % (int)Poly.size()]->p)) Poly.insert(Poly.begin() + i + 1, o);
-                break;
+            int IsOnLine_v = -1, ind_o = -1, ind_v = -1;
+            for(int j = 0; j < (int)Poly.size(); j++){
+                if(MathTool::is_point_on_line(v->p, Poly[j]->p, Poly[(j + 1) % (int)Poly.size()]->p))IsOnLine_v = j;
+                if((o->p - Poly[j]->p).norm() < 1e-6)ind_o = j;
+                if((v->p - Poly[j]->p).norm() < 1e-6)ind_v = j;
             }
+            if(ind_v != -1 && ind_o != -1){
+                int i_min = std::min(ind_v, ind_o), i_max = std::max(ind_v, ind_o);
+                std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
+                if((i_max + 1 - i_min) < 3 || ((int)Poly.size() - (i_max - i_min - 1)) < 3)return;
+                Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
+                Polygons.push_back(poly2);
+                return;
+            }
+            if(IsOnLine_v == -1)continue;
+            Poly.insert(Poly.begin() + IsOnLine_v + 1, v);
             int f_ind = -1, s_ind = -1;
             for(int i = 0; i < (int)Poly.size(); i++){
                 if((Poly[i]->p - o->p).norm() < 1e-6)f_ind = i;
@@ -171,17 +165,30 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
                     for(auto&v: DrawCrv){InsertedV.push_back(v->first);InsertedV_inv.insert(InsertedV_inv.begin(), v->first);}
 
                     int i_min = std::min(ind_fr, ind_bc) + 1, i_max = std::max(ind_fr, ind_bc) + 1;
-                    Eigen::Vector3d Dir_prev = (P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p).normalized();
-                    std::vector<std::shared_ptr<Vertex>> poly2 = {P.begin() + i_min, P.begin() + i_max};
-
-                    P.erase(P.begin() + i_min, P.begin() + i_max);
-                    if(Eigen::Vector3d(0,0,1).dot(CrvDir.cross(Dir_prev)) < 0){
-                        P.insert(P.begin() + i_min, InsertedV.begin(), InsertedV.end());
-                        poly2.insert(poly2.end(), InsertedV_inv.begin(), InsertedV_inv.end());
+                    Eigen::Vector3d Dir_prev;
+                    std::vector<std::shared_ptr<Vertex>> poly2;
+                    if(i_min == i_max){//折曲線の端点が同じ辺上にある
+                        Dir_prev = (P[(ind_bc + 1) % (int)P.size()]->p - P[ind_bc]->p).normalized();
+                        if(CrvDir.dot(Dir_prev) > 0){
+                            P.insert(P.begin() + i_min, InsertedV.begin(), InsertedV.end());
+                            poly2.insert(poly2.end(), InsertedV_inv.begin(), InsertedV_inv.end());
+                        }else{
+                            P.insert(P.begin() + i_min, InsertedV_inv.begin(), InsertedV_inv.end());
+                            poly2.insert(poly2.end(), InsertedV.begin(), InsertedV.end());
+                        }
                     }else{
-                        P.insert(P.begin() + i_min, InsertedV_inv.begin(), InsertedV_inv.end());
-                        poly2.insert(poly2.end(), InsertedV.begin(), InsertedV.end());
+                        Dir_prev = (P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p).normalized();
+                        poly2 = {P.begin() + i_min, P.begin() + i_max};
+                        P.erase(P.begin() + i_min, P.begin() + i_max);
+                        if(Eigen::Vector3d(0,0,1).dot(CrvDir.cross(Dir_prev)) < 0){
+                            P.insert(P.begin() + i_min, InsertedV.begin(), InsertedV.end());
+                            poly2.insert(poly2.end(), InsertedV_inv.begin(), InsertedV_inv.end());
+                        }else{
+                            P.insert(P.begin() + i_min, InsertedV_inv.begin(), InsertedV_inv.end());
+                            poly2.insert(poly2.end(), InsertedV.begin(), InsertedV.end());
+                        }
                     }
+
                     RemoveOverlappedVertex(P); RemoveOverlappedVertex(poly2);
                     Polygons.push_back(poly2);
                     break;
@@ -212,7 +219,10 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
             Polygons.push_back(poly2);
         }
     }
-
+    */
+    std::vector<std::vector<std::shared_ptr<Vertex4d>>> FoldingCurves;
+    for(auto&FldCrv: FldCrvs)FoldingCurves.push_back(FldCrv->FoldingCurve);
+    std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons = MakeModel(Surface, Rulings, FoldingCurves);
     for(auto& polygon: Polygons){
         auto p_sort = SortPolygon(polygon);
         if(!Rulings.empty())PlanarityColor.push_back(Planerity(p_sort, Surface));
@@ -222,10 +232,7 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
         Vertices.push_back(vertices);
     }
 
-    //for(auto&V: Vertices){
-        //Triangulation(V, trimesh);
-        //TriMeshs.insert(TriMeshs.end(), trimesh.begin(), trimesh.end());
-    //}
+
     for(auto&tri : TriMeshs){
         _center = (tri[2] + tri[1] + tri[0])/3.0;
         double area = ((tri[2] - tri[0]).cross(tri[1] - tri[0])).norm()/2.0;
@@ -277,7 +284,6 @@ void GLWidget_3D::paintGL(){
     glTranslated(-TransX, -TransY, TransZ);
     glRotated(0.2 * angleX, 0.0, 1.0, 0.0);
     glRotated(0.2 * angleY, 1.0, 0.0, 0.0);
-
     glColor3d(0,0,0);
     glBegin(GL_LINE_STRIP);
     for(const auto&c: Points) glVertex3d(c.x(), c.y(), c.z());

@@ -236,7 +236,7 @@ void MainWindow::SimpleSmoothing(){
     bool res = ui->glWid2dim->model->Smoothing();
     if(res){
         ui->glWid2dim->update();
-        ui->glWid2dim->model->SetOnVertices_outline();
+        ui->glWid2dim->model->SetOnVertices_outline(false);
          ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
     }
 }
@@ -267,9 +267,8 @@ void MainWindow::changeAngleFromSpinBox(double val){
         std::vector<std::vector<std::shared_ptr<Vertex>>> Tri_fixside;
         std::vector<double> color_reg{0.8, 0, 0.}, color_fixreg{0,0,0.8};
         std::vector<std::vector<std::shared_ptr<Vertex>>> Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(val, Poly_V, false, Tri_fixside);
-        auto Tri = {Triangles, Tri_fixside};
-        ui->glWid3dim->ReceiveRegressionCurve(Tri, {color_reg,color_fixreg});
-        ui->glWid2dim->ReceiveRegressionCurve({Triangles, Tri_fixside}, {color_reg,color_fixreg});
+        ui->glWid3dim->ReceiveRegressionCurve({Triangles}, {color_reg});
+        ui->glWid2dim->ReceiveRegressionCurve({Triangles}, {color_reg});
     }
 }
 
@@ -288,8 +287,8 @@ void MainWindow::fold_Sm(){
     if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
 
     else{
-        ui->glWid2dim->model->SetOnVertices_outline();
-         ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
+        ui->glWid2dim->model->SetOnVertices_outline(false);
+        ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
     }
 }
 
@@ -361,7 +360,6 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         if(ui->glWid2dim->model->FL.empty())return;
         double tol = ui->TolValue->value();
         ui->glWid2dim->model->AssignRuling(3, tol, false);
-        ui->glWid2dim->model->SetOnVertices_outline();
         ui->glWid2dim->update();
         fold_Sm();
     }
@@ -384,6 +382,13 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         qDebug() << "optimmethod = " << optimmethod;
         int layerNum = ui->glWid2dim->model->getLayerNum();
         ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, layerNum, 1, optimmethod);
+        fold_Sm();
+        qDebug()<<"/////////////////////////";
+    }
+    else if(e->key() == Qt::Key_3){
+        qDebug()<<"vertices moving";
+        int layerNum = ui->glWid2dim->model->getLayerNum();
+        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, 2, optimmethod);
         fold_Sm();
         qDebug()<<"/////////////////////////";
     }
@@ -418,8 +423,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
              ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
         }
     }
-    else if(e->key() == Qt::Key_3 ||e->key() == Qt::Key_4){
-    }else if(e->modifiers().testFlag(Qt::ControlModifier)){
+    else if(e->modifiers().testFlag(Qt::ControlModifier)){
         if(e->key() == Qt::Key_S)exportobj();
     }
     else if(e->key() == Qt::Key_K){
@@ -486,7 +490,7 @@ void MainWindow::exportobj(){
     std::vector<double> planerity_value;
 
     auto Planerity  = [](const std::vector<std::shared_ptr<Vertex>>& vertices, const std::vector<std::shared_ptr<Line>>& lines)->double{
-       if((int)vertices.size() == 3)return 0.0;
+        if((int)vertices.size() <= 3)return 0.0;
        else{
            std::vector<Eigen::Vector3d> QuadPlane;
            for(auto&v: vertices){
@@ -496,6 +500,7 @@ void MainWindow::exportobj(){
                }
                if(!IsOutlineVertices)QuadPlane.push_back(v->p3);
            }
+           if((int)QuadPlane.size() <= 3)return 0.0;
            double l_avg = ((QuadPlane[0] - QuadPlane[2]).norm() + (QuadPlane[1] - QuadPlane[3]).norm())/2.0;
            double d;
            Eigen::Vector3d u1 = (QuadPlane[0] - QuadPlane[2]).normalized(), u2 = (QuadPlane[1]-  QuadPlane[3]).normalized();
@@ -509,7 +514,7 @@ void MainWindow::exportobj(){
            return d/l_avg;
        }
    };
-
+    /*
    for(auto& l: ui->glWid2dim->model->outline->Lines) polygon.push_back(l->v);
    Polygons.push_back(polygon);
 
@@ -548,36 +553,38 @@ void MainWindow::exportobj(){
            }
        }
 
-        auto SplitPolygon = [](std::vector<std::vector<std::shared_ptr<Vertex>>>& Polygons, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
-            for(auto& Poly :Polygons){
-                for(int i = 0; i < (int)Poly.size(); i++){
-                    auto it_v = std::find(Poly.begin(), Poly.end(), v), it_o = std::find(Poly.begin(), Poly.end(), o);
-                    if(it_v != Poly.end() && it_o != Poly.end()){
-                        int i_min = std::min(std::distance(Poly.begin(), it_v), std::distance(Poly.begin(), it_o)), i_max = std::max(std::distance(Poly.begin(), it_v), std::distance(Poly.begin(), it_o));
-                        std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
-                        if((i_max + 1 - i_min) < 3 || ((int)Poly.size() - (i_max - i_min - 1)) < 3)return;
-                        Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
-                        Polygons.push_back(poly2);
-                        return;
-                    }
-                    if(it_v != Poly.end())break;
-                    if(!MathTool::is_point_on_line(v->p, Poly[i]->p, Poly[(i + 1) % (int)Poly.size()]->p))continue;
-                    Poly.insert(Poly.begin() + i + 1, v);
-                    break;
-                }
-                int f_ind = -1, s_ind = -1;
-                for(int i = 0; i < (int)Poly.size(); i++){
-                    if(Poly[i] == o)f_ind = i;
-                    if(Poly[i] == v)s_ind = i;
-                }
-                if(f_ind == -1 || s_ind == -1)continue;
-                int i_min = std::min(f_ind, s_ind), i_max = std::max(f_ind, s_ind);
-                std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
-                Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
-                Polygons.push_back(poly2);
-                return;
-            }
-        };
+       auto SplitPolygon = [&](std::vector<std::vector<std::shared_ptr<Vertex>>>& Polygons, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
+           for(auto& Poly :Polygons){
+               int IsOnLine_v = -1, ind_o = -1, ind_v = -1;
+               for(int j = 0; j < (int)Poly.size(); j++){
+                   if(MathTool::is_point_on_line(v->p, Poly[j]->p, Poly[(j + 1) % (int)Poly.size()]->p))IsOnLine_v = j;
+                   if((o->p - Poly[j]->p).norm() < 1e-6)ind_o = j;
+                   if((v->p - Poly[j]->p).norm() < 1e-6)ind_v = j;
+               }
+               if(ind_v != -1 && ind_o != -1){
+                   int i_min = std::min(ind_v, ind_o), i_max = std::max(ind_v, ind_o);
+                   std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
+                   if((i_max + 1 - i_min) < 3 || ((int)Poly.size() - (i_max - i_min - 1)) < 3)return;
+                   Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
+                   Polygons.push_back(poly2);
+                   return;
+               }
+               if(IsOnLine_v == -1)continue;
+               Poly.insert(Poly.begin() + IsOnLine_v + 1, v);
+               int f_ind = -1, s_ind = -1;
+               for(int i = 0; i < (int)Poly.size(); i++){
+                   if((Poly[i]->p - o->p).norm() < 1e-6)f_ind = i;
+                   if((Poly[i]->p - v->p).norm() < 1e-6)s_ind = i;
+               }
+               if(f_ind == -1 || s_ind == -1)continue;
+               int i_min = std::min(f_ind, s_ind), i_max = std::max(f_ind, s_ind);
+               std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
+               Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
+               Polygons.push_back(poly2);
+               return;
+           }
+       };
+
 
        for(auto&FC: FldCrvs){
            for(auto it = FC.begin() + 1; it != FC.end() - 1; it++ ){
@@ -603,6 +610,10 @@ void MainWindow::exportobj(){
            }
        }
    }
+   */
+   std::vector<std::vector<std::shared_ptr<Vertex4d>>> FoldingCurves;
+    for(auto&FldCrv: ui->glWid2dim->model->FL)FoldingCurves.push_back(FldCrv->FoldingCurve);
+   Polygons = MakeModel(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, FoldingCurves);
 
     for(auto&poly: Polygons){
         std::vector<Eigen::Vector3d> V;

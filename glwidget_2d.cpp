@@ -437,7 +437,7 @@ void GLWidget_2D::paintGL(){
             glEnd();
 
         };
-        bool IsGradation = (drawtype == PaintTool::NewGradationMode)?true: false;
+        bool IsGradation = (drawtype == PaintTool::NewGradationMode || drawtype == PaintTool::FoldLine_bezier)?true: false;
 
         for(int i = 1; i < (int)FL->FoldingCurve.size(); i++)
             DrawEdge(FL->FoldingCurve[i]->first, FL->FoldingCurve[i-1]->first, FL->FoldingCurve[i]->second, FL->FoldingCurve[i]->third, rulingWidth, IsGradation, false);
@@ -464,7 +464,7 @@ void GLWidget_2D::paintGL(){
         glColor3d(0,0,0);
         glLineWidth(1);
         if((*itr_r)->et == EdgeType::r){
-            if(drawtype == PaintTool::NewGradationMode){
+            if(drawtype == PaintTool::NewGradationMode|| drawtype == PaintTool::FoldLine_bezier){
                 glLineWidth(rulingWidth);
                 double color = getcolor(model->ColorPt.color, model->ColorPt.angle, (*itr_r)->color/255.0);
                 if(color > 1e-3){//mount
@@ -979,5 +979,5 @@ Eigen::Vector3d GLWidget_2D::SetOnGrid(QPointF& cursol, double gridsize){
     int x = (int)cursol.x() % (int)gridsize, y = (int)cursol.y() % (int)gridsize;
     x = (cursol.x() - x + gridsize/2);
     y = (cursol.y() - y + gridsize/2);
-    return Eigen::Vector3d{x,y,0};
+    return Eigen::Vector3d{static_cast<double>(x),static_cast<double>(y),0};
 }
