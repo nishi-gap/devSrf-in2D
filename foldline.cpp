@@ -532,6 +532,45 @@ double Fruling(const std::vector<double> &X, std::vector<double> &grad, void* f_
     return f;
  }
 
+double Fruling4Vertex(const std::vector<double> &X, std::vector<double> &grad, void* f_data)
+{
+    RevisionVertices::ObjData_v *od = (RevisionVertices::ObjData_v *)f_data;
+    std::vector<std::shared_ptr<Vertex>> Poly_V = od->Poly_V;
+    for(int i = 0; i < static_cast<int>(X.size()); i++){
+        od->FC[i]->first->p = X[i] * (od->FC[i]->line_parent->v->p - od->FC[i]->first->p).normalized() + od->FC[i]->first->p;
+        od->FC[i]->first->p3 = X[i] * (od->FC[i]->line_parent->v->p3 - od->FC[i]->first->p3).normalized() + od->FC[i]->first->p3;
+    }
+    _FoldingAAAMethod(od->FC, Poly_V, od->a);
+    double f = RulingsCrossed(od->FC);
+    std::vector<double> a = X;
+    if(!grad.empty()){
+        double fp, fm;
+        for(int i = 0; i < (int)X.size(); i++){
+            a[i] = X[i] + eps;
+            if(i != 0){
+                od->FC[i]->first->p = a[i] * (od->FC[i]->line_parent->v->p - od->FC[i]->first->p).normalized() + od->FC[i]->first->p;
+                od->FC[i]->first->p3 = a[i] * (od->FC[i]->line_parent->v->p3 - od->FC[i]->first->p3).normalized() + od->FC[i]->first->p3;
+            }
+             _FoldingAAAMethod(od->FC, Poly_V, od->a);fp = RulingsCrossed(od->FC);
+            a[i] = X[i] - eps;
+            if(i != 0){
+                od->FC[i]->first->p = a[i] * (od->FC[i]->line_parent->v->p - od->FC[i]->first->p).normalized() + od->FC[i]->first->p;
+                od->FC[i]->first->p3 = a[i] * (od->FC[i]->line_parent->v->p3 - od->FC[i]->first->p3).normalized() + od->FC[i]->first->p3;
+            }
+            _FoldingAAAMethod(od->FC, Poly_V, od->a);  fm = RulingsCrossed(od->FC);
+            if(i != 0){
+                od->FC[i]->first->p = X[i] * (od->FC[i]->line_parent->v->p - od->FC[i]->first->p).normalized() + od->FC[i]->first->p;
+                od->FC[i]->first->p3 = X[i] * (od->FC[i]->line_parent->v->p3 - od->FC[i]->first->p3).normalized() + od->FC[i]->first->p3;
+            }
+            grad[i] = (fp - fm)/(2.0 * eps);
+            a[i] = X[i];
+        }
+    }
+
+    if(DebugMode::Singleton::getInstance().isdebug())qDebug() <<"constraint function = " << MathTool::rad2deg(a[0]) << "(" << a[0] << ")  , " << f ;
+    return f;
+}
+
 double ObjFunc_RulingIntersection(const std::vector<double> &X, std::vector<double> &grad, void* f_data){
     RevisionVertices::ObjData *od = (RevisionVertices::ObjData *)f_data;
     std::vector<std::shared_ptr<Vertex>> Poly_V = od->Poly_V;
@@ -750,7 +789,7 @@ bool FoldLine::Optimization_Vertex(const std::vector<std::shared_ptr<Vertex>>& P
     RevisionVertices::ObjData_v od = {a_flap, FC, Poly_V};
     opt = nlopt::opt(nlopt::LD_MMA, X.size());
     opt.set_min_objective(ObjFunc_Vertex, &od);
-    opt.add_inequality_constraint(Fruling, &od);
+    opt.add_inequality_constraint(Fruling4Vertex, &od);
     opt.set_lower_bounds(bnd_lower);
     opt.set_maxtime(10.0);//stop over this time
     opt.set_xtol_rel(1e-9);
