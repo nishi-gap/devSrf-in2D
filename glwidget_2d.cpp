@@ -180,6 +180,7 @@ void GLWidget_2D::DeleteCurve(){
 
 void GLWidget_2D::changeFoldType(PaintTool state){
     drawtype = state;
+    IsMVcolor_binary = true;
     if(state != PaintTool::FoldlineColor){
         std::shared_ptr<FoldLine> fl = std::make_shared<FoldLine>(state);
         model->FL.push_back(fl);

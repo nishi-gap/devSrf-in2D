@@ -892,3 +892,10 @@ std::vector<std::vector<std::shared_ptr<Vertex>>> MakeModel(const std::vector<st
     }
     return Polygons;
 }
+
+Eigen::Vector3d getCenter(const std::vector<Eigen::Vector3d>& vertices){
+    Eigen::Vector3d c(Eigen::Vector3d::Zero());
+    for(auto&v: vertices)c += v;
+    c /= static_cast<double>(vertices.size());
+    return c;
+}
