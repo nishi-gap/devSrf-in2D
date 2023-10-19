@@ -226,49 +226,54 @@ void Model::UpdateFLOrder(int dim){
 
 int Model::getLayerNum(){return NTree_fl.getLayerNum();}
 
+
+void Model::SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::shared_ptr<Line>>& Surface, const std::vector<std::shared_ptr<Line>>& Rulings, bool IsupdateEndPt){
+    auto IsOverlapped = [](std::shared_ptr<Vertex>&p, std::shared_ptr<Vertex>&q)->bool{return ((p->p - q->p).norm() < 1e-8)? true: false;};
+    int s = Surface.size();
+    std::shared_ptr<Vertex> prev = nullptr, next = nullptr;
+    std::shared_ptr<Vertex> downcast = std::dynamic_pointer_cast<Vertex>(v4d->first);
+    for(int i = 0; i < s; i++){
+        if(IsOverlapped(downcast, Surface[i]->o)){v4d->first->p3 = Surface[i]->o->p3; return;}
+        if(MathTool::is_point_on_line(v4d->first->p, Surface[i]->o->p, Surface[i]->v->p)){prev = Surface[i]->o; next = Surface[i]->v;}
+    }
+
+    for(int i = 0; i < (int)FL.size(); i++){
+        if(FL[i]->FoldingCurve.empty())continue;
+        for(auto it = FL[i]->FoldingCurve.begin() + 1; it != FL[i]->FoldingCurve.end()-1;it++){
+            if(!(*it)->IsCalc)continue;
+            if(IsOverlapped(downcast, (*it)->second)){v4d->first->p3 = (*it)->second->p3; return;}
+            if(IsOverlapped(downcast, (*it)->third)){v4d->first->p3 = (*it)->third->p3; return;}
+            if(MathTool::is_point_on_line(v4d->first->p, (*it)->second->p, next->p) && MathTool::is_point_on_line((*it)->second->p, prev->p, next->p)){prev = (*it)->second;continue;}
+            if(MathTool::is_point_on_line(v4d->first->p, (*it)->second->p, prev->p) && MathTool::is_point_on_line((*it)->second->p, prev->p, next->p)){next = (*it)->second;continue;}
+            if(MathTool::is_point_on_line(v4d->first->p, (*it)->third->p, next->p) && MathTool::is_point_on_line((*it)->third->p, prev->p, next->p)){prev = (*it)->third;continue;}
+            if(MathTool::is_point_on_line(v4d->first->p, (*it)->third->p, prev->p) && MathTool::is_point_on_line((*it)->third->p, prev->p, next->p)){next = (*it)->third;continue;}
+
+            std::shared_ptr<Vertex> downcast_f = std::dynamic_pointer_cast<Vertex>((*it)->first);
+            //if((*it) == v4d->first)continue;
+            if(IsOverlapped(downcast, downcast_f)){v4d->first->p3 = downcast_f->p3; return;}
+            if(MathTool::is_point_on_line(v4d->first->p, (*it)->first->p, next->p) && MathTool::is_point_on_line((*it)->first->p, prev->p, next->p)){prev = (*it)->first;continue;}
+            if(MathTool::is_point_on_line(v4d->first->p, (*it)->first->p, prev->p) && MathTool::is_point_on_line((*it)->first->p, prev->p, next->p)){next = (*it)->first;continue;}
+        }
+    }
+    for(auto&r: Rulings){
+        if(r->hasCrossPoint)continue;
+        if(IsOverlapped(downcast, r->v)){v4d->first->p3 = r->v->p3; return;}
+        if(IsOverlapped(downcast, r->o)){v4d->first->p3 = r->o->p3; return;}
+        if(MathTool::is_point_on_line(v4d->first->p, r->v->p, prev->p) && MathTool::is_point_on_line(r->v->p, prev->p, next->p))next = r->v;
+        if(MathTool::is_point_on_line(v4d->first->p, r->v->p, next->p) && MathTool::is_point_on_line(r->v->p, prev->p, next->p))prev = r->v;
+        if(MathTool::is_point_on_line(v4d->first->p, r->o->p, prev->p) && MathTool::is_point_on_line(r->o->p, prev->p, next->p))next = r->o;
+        if(MathTool::is_point_on_line(v4d->first->p, r->o->p, next->p) && MathTool::is_point_on_line(r->o->p, prev->p, next->p))prev = r->o;
+    }
+    if(prev == nullptr || next == nullptr)return;
+    auto p_tmp = (prev->p - v4d->first->p).norm()*(next->p3 - prev->p3).normalized() + prev->p3;
+    if(IsupdateEndPt)v4d->first->p3_ori = v4d->first->p3 = (prev->p - v4d->first->p).norm()*(next->p3 - prev->p3).normalized() + prev->p3;
+    v4d->second = next; v4d->third = prev;
+}
+
 //曲面の輪郭がもつ三次元上の頂点を正しい位置に配置する
 //端点の修正は曲面の頂点修正後に行う
 void Model::SetOnVertices_outline(bool IsupdateEndPt){
     auto IsOverlapped = [](std::shared_ptr<Vertex>&p, std::shared_ptr<Vertex>&q)->bool{return ((p->p - q->p).norm() < 1e-8)? true: false;};
-    auto SetEndPoint = [&](std::shared_ptr<Vertex4d>&v4d, const std::vector<std::shared_ptr<Line>>& Surface,
-                           const std::vector<std::shared_ptr<Line>>& Rulings, int ind, bool IsupdateEndPt){
-        int s = Surface.size();
-        std::shared_ptr<Vertex> prev = nullptr, next = nullptr;
-        std::shared_ptr<Vertex> downcast = std::dynamic_pointer_cast<Vertex>(v4d->first);
-        for(int i = 0; i < s; i++){
-            if(IsOverlapped(downcast, Surface[i]->o)){v4d->first->p3 = Surface[i]->o->p3; return;}
-            if(MathTool::is_point_on_line(v4d->first->p, Surface[i]->o->p, Surface[i]->v->p)){prev = Surface[i]->o; next = Surface[i]->v;}
-        }
-
-        for(int i = 0; i < (int)FL.size(); i++){
-            if(FL[i]->FoldingCurve.empty())continue;
-            for(auto it = FL[i]->FoldingCurve.begin() + 1; it != FL[i]->FoldingCurve.end()-1;it++){
-                if(IsOverlapped(downcast, (*it)->second)){v4d->first->p3 = (*it)->second->p3; return;}
-                if(IsOverlapped(downcast, (*it)->third)){v4d->first->p3 = (*it)->third->p3; return;}
-                if(MathTool::is_point_on_line(v4d->first->p, (*it)->second->p, next->p) && MathTool::is_point_on_line((*it)->second->p, prev->p, next->p)){prev = (*it)->second;continue;}
-                if(MathTool::is_point_on_line(v4d->first->p, (*it)->second->p, prev->p) && MathTool::is_point_on_line((*it)->second->p, prev->p, next->p)){next = (*it)->second;continue;}
-                if(MathTool::is_point_on_line(v4d->first->p, (*it)->third->p, next->p) && MathTool::is_point_on_line((*it)->third->p, prev->p, next->p)){prev = (*it)->third;continue;}
-                if(MathTool::is_point_on_line(v4d->first->p, (*it)->third->p, prev->p) && MathTool::is_point_on_line((*it)->third->p, prev->p, next->p)){next = (*it)->third;continue;}
-                if(i == ind)continue;
-                std::shared_ptr<Vertex> downcast_f = std::dynamic_pointer_cast<Vertex>((*it)->first);
-                if(IsOverlapped(downcast, downcast_f)){v4d->first->p3 = downcast_f->p3; return;}
-                if(MathTool::is_point_on_line(v4d->first->p, (*it)->first->p, next->p) && MathTool::is_point_on_line((*it)->first->p, prev->p, next->p)){prev = (*it)->first;continue;}
-                if(MathTool::is_point_on_line(v4d->first->p, (*it)->first->p, prev->p) && MathTool::is_point_on_line((*it)->first->p, prev->p, next->p)){next = (*it)->first;continue;}
-            }
-        }
-        for(auto&r: Rulings){
-            if(r->hasCrossPoint)continue;
-            if(IsOverlapped(downcast, r->v)){v4d->first->p3 = r->v->p3; return;}
-            if(IsOverlapped(downcast, r->o)){v4d->first->p3 = r->o->p3; return;}
-            if(MathTool::is_point_on_line(v4d->first->p, r->v->p, prev->p) && MathTool::is_point_on_line(r->v->p, prev->p, next->p))next = r->v;
-            if(MathTool::is_point_on_line(v4d->first->p, r->v->p, next->p) && MathTool::is_point_on_line(r->v->p, prev->p, next->p))prev = r->v;
-            if(MathTool::is_point_on_line(v4d->first->p, r->o->p, prev->p) && MathTool::is_point_on_line(r->o->p, prev->p, next->p))next = r->o;
-            if(MathTool::is_point_on_line(v4d->first->p, r->o->p, next->p) && MathTool::is_point_on_line(r->o->p, prev->p, next->p))prev = r->o;
-        }
-        if(prev == nullptr || next == nullptr)return;
-        if(IsupdateEndPt)v4d->first->p3 = (prev->p - v4d->first->p).norm()*(next->p3 - prev->p3).normalized() + prev->p3;
-        v4d->second = next; v4d->third = prev;
-    };
     int s = outline->vertices.size();
     initializeSurfaceVertices();
     for(auto&fl:FL)fl->SortCurve();
@@ -281,24 +286,39 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
             for(auto&v4d: fl->FoldingCurve){
                 if(!v4d->IsCalc)continue;
                 std::shared_ptr<Vertex> downcast = std::dynamic_pointer_cast<Vertex>(v4d->first);
-                if(IsOverlapped(downcast, outline->vertices[i])){Isvertexlapped = true; basePt = v4d->first; break;}
-                if(IsOverlapped(v4d->second, outline->vertices[i])){Isvertexlapped = true; basePt = v4d->second; break;}
-                if(IsOverlapped(v4d->third, outline->vertices[i])){Isvertexlapped = true; basePt = v4d->third; break;}
-                if(MathTool::is_point_on_line(v4d->first->p, prev->p, outline->vertices[i]->p) && MathTool::is_point_on_line(v4d->first->p, outline->vertices[i]->p, prev->p)){ prev = v4d->first;}
-                if(MathTool::is_point_on_line(v4d->first->p, next->p, outline->vertices[i]->p) && MathTool::is_point_on_line(v4d->first->p, next->p, outline->vertices[i]->p)){ next = v4d->first;}
-                if(MathTool::is_point_on_line(v4d->second->p, prev->p, outline->vertices[i]->p) && MathTool::is_point_on_line(v4d->second->p, outline->vertices[i]->p, prev->p)){
+                if(IsOverlapped(downcast, outline->vertices[i])){
+                    Isvertexlapped = true; basePt = v4d->first; break;
+                }
+                if(IsOverlapped(v4d->second, outline->vertices[i])){
+                    //Isvertexlapped = true; basePt = v4d->second; break;
+                }
+                if(IsOverlapped(v4d->third, outline->vertices[i])){
+                    //Isvertexlapped = true; basePt = v4d->third; break;
+                    if(fl->FoldingCurve.front() == v4d){
+
+                    }else if(fl->FoldingCurve.back() == v4d){
+
+                    }
+                }
+                if(MathTool::is_point_on_line(v4d->first->p, prev->p, outline->vertices[i]->p)&& !IsOverlapped(downcast, prev) && !IsOverlapped(downcast, outline->vertices[i])){
+                    prev = v4d->first;
+                }
+                if(MathTool::is_point_on_line(v4d->first->p, next->p, outline->vertices[i]->p)&& !IsOverlapped(downcast, next) && !IsOverlapped(downcast, outline->vertices[i])){
+                    next = v4d->first;
+                }
+                if(MathTool::is_point_on_line(v4d->second->p, prev->p, outline->vertices[i]->p) && !IsOverlapped(v4d->second, prev) && !IsOverlapped(v4d->second, outline->vertices[i])){
                     prev = v4d->second;
                     if(!IsOverlapped(downcast, prev) && !IsOverlapped(downcast, next))basePt = v4d->first;
                 }
-                if(MathTool::is_point_on_line(v4d->second->p, next->p, outline->vertices[i]->p) && MathTool::is_point_on_line(v4d->second->p, next->p, outline->vertices[i]->p)){
+                if(MathTool::is_point_on_line(v4d->second->p, next->p, outline->vertices[i]->p) && !IsOverlapped(v4d->second, next) && !IsOverlapped(v4d->second, outline->vertices[i])){
                     next = v4d->second;
                     if(!IsOverlapped(downcast, prev) && !IsOverlapped(downcast, next))basePt = v4d->first;
                 }
-                if(MathTool::is_point_on_line(v4d->third->p, prev->p, outline->vertices[i]->p) && MathTool::is_point_on_line(v4d->third->p, outline->vertices[i]->p, prev->p)){
+                if(MathTool::is_point_on_line(v4d->third->p, prev->p, outline->vertices[i]->p) && !IsOverlapped(v4d->third, prev) && !IsOverlapped(v4d->third, outline->vertices[i])){
                     prev = v4d->third;
                     if(!IsOverlapped(downcast, prev) && !IsOverlapped(downcast, next))basePt = v4d->first;
                 }
-                if(MathTool::is_point_on_line(v4d->third->p, next->p, outline->vertices[i]->p) && MathTool::is_point_on_line(v4d->third->p, next->p, outline->vertices[i]->p)){
+                if(MathTool::is_point_on_line(v4d->third->p, next->p, outline->vertices[i]->p) && !IsOverlapped(v4d->third, next) && !IsOverlapped(v4d->third, outline->vertices[i])){
                     next = v4d->third;
                     if(!IsOverlapped(downcast, prev) && !IsOverlapped(downcast, next))basePt = v4d->first;
                 }
@@ -350,14 +370,12 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
             }
         }
     }
-
-    for(int i = 0; i < (int)FL.size(); i++){
-        if(FL[i]->FoldingCurve.empty())continue;
-        SetEndPoint(FL[i]->FoldingCurve.front(), outline->Lines, Rulings, i, IsupdateEndPt);
-        SetEndPoint(FL[i]->FoldingCurve.back(), outline->Lines, Rulings, i, IsupdateEndPt);
-        FL[i]->SortCurve();
+    for(auto&fl: FL){
+        if(fl->FoldingCurve.empty())continue;
+        SetEndPoint(fl->FoldingCurve.front(), outline->Lines, Rulings, IsupdateEndPt);
+        SetEndPoint(fl->FoldingCurve.back(), outline->Lines, Rulings, IsupdateEndPt);
+        fl->SortCurve();
     }
-
 }
 
 bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank, int alg, bool ConstFunc){
@@ -384,9 +402,8 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
         //cur->data->RevisionCrosPtsPosition();//端点の修正
         if(ConstFunc){
             qDebug() << "trim each iteration";
-            bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, ConstFunc);//正しい第5引数はalgだけど検証用に1
-            bool res_true = res;
-            res = true;
+            bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, alg, ConstFunc);//正しい第5引数はalgだけど検証用に1
+            //bool res_true = res;
             while(!res){
                 bool isroot = (cur == root)? true: false;
                 int validsize = cur->data->validsize - 1;
@@ -395,20 +412,30 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
                 res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, alg, ConstFunc);
                 //if(DebugMode::Singleton::getInstance().isdebug())
                 qDebug() << "optimization result " << res << "  ,  tol = " << tol << ", ruling num = " << cur->data->validsize;
+                int cnt = 0;
+                for(auto&fc: cur->data->FoldingCurve){if(fc->IsCalc)cnt++;}
+                if(cnt <=3)break;
+
             }
             //if(!res_true)cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, ConstFunc);//一応消しておく(flap angleの最適化に制約関数を入れてないため)
             qDebug() <<"bending result : tol = " << cur->data->tol << " valid ruling num = " << cur->data->validsize  << " , a_flap = " << cur->data->a_flap ;
             bool isroot = (root == cur)? true: false;
             cur->data->applyAAAMethod(Poly_V, false, cur->data->a_flap, cur->data->tol, isroot);
-            //cur->data->SimpleSmooothSrf(Poly_V);
+            if(cur->data->FoldingCurve.empty())continue;
+            SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
+            SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
+            SetOnVertices_outline(false);
+            //cur->data->SortCurve();
+            cur->data->SimpleSmooothSrf(Poly_V);
         }else{
             //qDebug() << "remove cross ruling and modify";
             //bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, alg, ConstFunc);
             //cur->data->revisecrossedruling(Poly_V);
         }
-        if(alg == 2) cur->data->Optimization_Vertex(Poly_V);
-
-        SetOnVertices_outline(false);
+        if(alg == 2){
+            cur->data->Optimization_Vertex(Poly_V);
+            SetOnVertices_outline(false);
+        }
         for (const auto& child : cur->children){
             if(child != nullptr){
                 child->data->reassignruling(cur->data, outline->Lines, Rulings);
@@ -445,12 +472,19 @@ bool Model::AssignRuling(int dim, double tol, bool begincenter){
             bool isroot = (root == cur)? true: false;
             //cur->data->RevisionCrosPtsPosition();//端点の修正
             cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap, cur->data->tol, isroot);
+            if(cur->data->FoldingCurve.empty())continue;
+            SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
+            SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
+            cur->data->SortCurve();
             cur->data->SimpleSmooothSrf(Poly_V);
         }
         for (const auto& child : cur->children){
             if(child != nullptr){
                 child->data->reassignruling(cur->data, outline->Lines, Rulings);
-                SetOnVertices_outline(true);
+                if(cur->data->FoldingCurve.empty())continue;
+                //SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
+                //SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
+                cur->data->SortCurve();
                 q.push(child);
             }
         }
@@ -494,7 +528,7 @@ void Model::SimplifyModel(double tol){
     if(!(0 <= FoldCurveIndex && FoldCurveIndex < (int)FL.size()) || FL[FoldCurveIndex]->FoldingCurve.empty())return;
     auto root = NTree_fl.GetRoot();
     bool isroot = (root->data == FL[FoldCurveIndex])? true: false;
-    FL[FoldCurveIndex]->SimplifyModel(tol, isroot);
+    //FL[FoldCurveIndex]->SimplifyModel(tol, isroot);
 }
 
 bool Model::Smoothing(){

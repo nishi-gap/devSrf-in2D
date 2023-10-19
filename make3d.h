@@ -49,6 +49,7 @@ public:
     bool Smoothing();
     bool RevisionCrosPtsPosition();
     void SortFoldingCurve(int dim);
+    void SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::shared_ptr<Line>>& Surface, const std::vector<std::shared_ptr<Line>>& Rulings, bool IsupdateEndPt);
     bool BendingModel(double wb, double wp, int dim, double tol, int bendrank, int alg, bool ConstFunc = true);//alg=0:ruling intersection, alg=1:regression curve
     bool AssignRuling(int dim, double tol, bool begincenter);
     int getLayerNum();

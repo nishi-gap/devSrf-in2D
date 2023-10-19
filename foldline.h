@@ -42,7 +42,7 @@ public:
     std::vector<std::vector<Eigen::Vector3d>> Optimization_PlanaritySrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void ReassignColor();
     void TrimLines(int size);
-    void SimplifyModel(double tol, bool isroot);
+    //void SimplifyModel(double tol, bool isroot);
     void SimplifyModel(int iselim, bool isroot);
     bool SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void SortCurve(bool ascending = false);

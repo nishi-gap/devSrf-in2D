@@ -155,5 +155,5 @@ std::vector<std::shared_ptr<Vertex>> SortPolygon(std::vector<std::shared_ptr<Ver
 std::vector<std::vector<std::shared_ptr<Vertex>>> MakeModel(const std::vector<std::shared_ptr<Line>>& Surface,
                                                             const std::vector<std::shared_ptr<Line>>& Rulings,  const std::vector<std::vector<std::shared_ptr<Vertex4d>>>& FoldingCurves);
 
-Eigen::Vector3d getCenter(const std::vector<Eigen::Vector3d>& vertices);
+Eigen::Vector3d getCenter(const std::vector<Eigen::Vector3d>& vertice, double&sum);
 #endif // SETRULINGS_H

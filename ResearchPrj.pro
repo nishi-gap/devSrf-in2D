@@ -51,14 +51,16 @@ DESTDIR = $$PWD
 
 #QMAKE_RPATHDIR += $$PWD/includes/dlls
 LIBS += $$PWD/libs/nlopt.lib
+        #$$PWD/libs/armadillo.lib\
+        #$$PWD/libs/lapack.lib\
+        #$$PWD/libs/openblas.lib
 
-CONFIG(debug, debug|release) {
-    LIBS += $$PWD/debugs/lib/armaillo.lib \
-            $$PWD/debugs/lib/lapack.lib \
-            $$PWD/debugs/lib/openblas.lib# Debug ビルド用のライブラリを指定
-} else {
-
-} # Release ビルド用のライブラリを指定
+#CONFIG(debug, debug|release) {
+#    LIBS += $$PWD/debugs/lib/armadillo.lib \
+#            $$PWD/debugs/lib/lapack.lib \
+#           $$PWD/debugs/lib/openblas.lib# Debug ビルド用のライブラリを指定
+#} else {
+#} # Release ビルド用のライブラリを指定
 
 #QMAKE_POST_LINK += cp $$PWD/includes/dlls/nlopt.dll $$OUT_PWD/nlopt.dll
 #dllファイルの追加：横メニューバーのプロジェクト→ビルドと実行メニューのうちメニューを選択→環境→PATHを編集してdllが入ったフォルダを追記するとできる

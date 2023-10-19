@@ -674,7 +674,7 @@ std::vector<std::shared_ptr<Vertex>> SortPolygon(std::vector<std::shared_ptr<Ver
     std::vector<std::shared_ptr<Vertex>> poly_sort;
     if(polygon.size() > 3) poly_sort = ConvexHull_polygon(polygon);
     else poly_sort = polygon;
-    if((int)poly_sort.size()< 3){std::cout<<"not enought vertices size"<<std::endl; return{};}
+    if((int)poly_sort.size()< 3){return{};}
     auto N = (poly_sort[0]->p - poly_sort[1]->p).cross(poly_sort[2]->p - poly_sort[1]->p);
     if(N.dot(Eigen::Vector3d::UnitZ()) < 0) std::reverse(poly_sort.begin(), poly_sort.end());
     return poly_sort;
@@ -893,9 +893,11 @@ std::vector<std::vector<std::shared_ptr<Vertex>>> MakeModel(const std::vector<st
     return Polygons;
 }
 
-Eigen::Vector3d getCenter(const std::vector<Eigen::Vector3d>& vertices){
+Eigen::Vector3d getCenter(const std::vector<Eigen::Vector3d>& vertices, double& sum){
     Eigen::Vector3d c(Eigen::Vector3d::Zero());
+    sum = 0.0;
     for(auto&v: vertices)c += v;
     c /= static_cast<double>(vertices.size());
+    for(auto&v: vertices)sum += (c - v).norm();
     return c;
 }
