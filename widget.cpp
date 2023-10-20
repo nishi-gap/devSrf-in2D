@@ -117,8 +117,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 //regression curve
 static bool IsvisibleRegCrv = false;
-
-static bool begin_center = false;
+static bool IsStartEnd = false;
 static int befNum = 0;
 MainWindow::~MainWindow()
 {
@@ -210,12 +209,13 @@ void MainWindow::changeToleranceValue_Spin(double val){
 }
 
 
+
 void MainWindow::StartOptimization(){
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
     double tol = ui->TolValue->value();
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
     int layerNum = ui->glWid2dim->model->getLayerNum();
-    ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, layerNum, true);
+    ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, layerNum, 1, IsStartEnd);
     fold_Sm();
 
 }
@@ -225,7 +225,7 @@ void MainWindow::BendCurve(int num){
     double tol = ui->TolValue->value();
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
     qDebug() << "the number of bend curve is " << num;
-    ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, num, true);
+    ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, num, 1, IsStartEnd);
     fold_Sm();
 }
 
@@ -245,13 +245,13 @@ void MainWindow::changeAngleFromSlider(int val){
     ui->angleA->setValue((double)val/100);
     double a = (double)val/18000.0 * std::numbers::pi;
     double tol =  ui->TolValue->value();
-    emit sendAngle(a, tol, begin_center);
+    emit sendAngle(a, tol, IsStartEnd);
 
     if(IsvisibleRegCrv){
          std::vector<double> color_reg{0.8, 0, 0.}, color_fixreg{0,0,0.8};
          std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model->outline->getVertices();
          std::vector<std::vector<std::shared_ptr<Vertex>>> Tri_fixside;
-         auto Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(static_cast<double>(val)/100.0, Poly_V, false, Tri_fixside);
+         auto Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(static_cast<double>(val)/100.0, Poly_V, false, IsStartEnd, Tri_fixside);
          ui->glWid3dim->ReceiveRegressionCurve({Triangles, Tri_fixside}, {color_reg,color_fixreg});
          ui->glWid2dim->ReceiveRegressionCurve({Triangles, Tri_fixside}, {color_reg,color_fixreg});
     }
@@ -261,12 +261,12 @@ void MainWindow::changeAngleFromSpinBox(double val){
     ui->angleSlider->setValue(val*100);
     double a = (double)val*std::numbers::pi/180.0;
     double tol =  ui->TolValue->value();
-    emit sendAngle(a, tol, begin_center);
+    emit sendAngle(a, tol, IsStartEnd);
     if(IsvisibleRegCrv){
         std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model->outline->getVertices();
         std::vector<std::vector<std::shared_ptr<Vertex>>> Tri_fixside;
         std::vector<double> color_reg{0.8, 0, 0.}, color_fixreg{0,0,0.8};
-        std::vector<std::vector<std::shared_ptr<Vertex>>> Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(val, Poly_V, false, Tri_fixside);
+        std::vector<std::vector<std::shared_ptr<Vertex>>> Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(val, Poly_V, false, IsStartEnd, Tri_fixside);
         ui->glWid3dim->ReceiveRegressionCurve({Triangles}, {color_reg});
         ui->glWid2dim->ReceiveRegressionCurve({Triangles}, {color_reg});
     }
@@ -353,7 +353,6 @@ void MainWindow::ReassinColor(){
 
 
 void MainWindow::keyPressEvent(QKeyEvent *e){
-    static bool optimmethod = true;
     ui->glWid3dim->receiveKeyEvent(e);
     ui->glWid2dim->receiveKeyEvent(e);
     if(e->key() == Qt::Key_M){
@@ -368,9 +367,8 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
         double tol = ui->TolValue->value();
         double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-        qDebug() << "optimmethod = " << optimmethod;
         int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, layerNum, 0, optimmethod);
+        ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, layerNum, 0, IsStartEnd);
         fold_Sm();
         qDebug()<<"/////////////////////////";
     }
@@ -379,20 +377,19 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
         double tol = ui->TolValue->value();
         double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-        qDebug() << "optimmethod = " << optimmethod;
         int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, layerNum, 1, optimmethod);
+        ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, layerNum, 1, IsStartEnd);
         fold_Sm();
         qDebug()<<"/////////////////////////";
     }
     else if(e->key() == Qt::Key_3){
         qDebug()<<"vertices moving";
         int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, 2, optimmethod);
+        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, 2, IsStartEnd);
         fold_Sm();
         qDebug()<<"/////////////////////////";
     }
-    if(e->key() == Qt::Key_O)optimmethod = true;
+    if(e->key() == Qt::Key_Q)IsStartEnd = !IsStartEnd;
     if(e->key() == Qt::Key_D){
         DebugMode::Singleton::getInstance().switchval();
         if(DebugMode::Singleton::getInstance().isdebug())qDebug() << "DebugMode On";
@@ -426,15 +423,12 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     else if(e->modifiers().testFlag(Qt::ControlModifier)){
         if(e->key() == Qt::Key_S)exportobj();
     }
-    else if(e->key() == Qt::Key_K){
-        begin_center = !begin_center;
-        qDebug() << "flap angle start  " << ((!begin_center)? "end point": "center");
-    }
+
     else if(e->key() == Qt::Key_N){
         double a = static_cast<double>(ui->angleSlider->value())/100.0;
         std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model->outline->getVertices();
         std::vector<std::vector<std::shared_ptr<Vertex>>> Tri_fixside;
-        auto Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(a,Poly_V,true, Tri_fixside);
+        auto Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(a,Poly_V,true, IsStartEnd, Tri_fixside);
         qDebug() <<"csv file export";
     }
     else{

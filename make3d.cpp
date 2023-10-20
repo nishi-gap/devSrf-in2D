@@ -161,12 +161,18 @@ void Model::UpdateFLOrder(int dim){
     int i = btm_i;
     std::list<std::shared_ptr<FoldLine>> List_FL;
 
+
     class LineOnFL{
     public:
         std::shared_ptr<FoldLine> FL;
         double t;
+        std::vector<int> indices;
         LineOnFL(std::shared_ptr<FoldLine> _FL, double _t): FL(_FL), t(_t){}
     };
+
+    //各折曲線上と曲面の交点を導出
+    //曲面の各辺と交点があるか探索する
+    //曲線が交差した辺のインデックスを持っておく
 
     for(auto&fl: FL){
         fl->FoldingCurve.clear();
@@ -378,7 +384,7 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
     }
 }
 
-bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank, int alg, bool ConstFunc){
+bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank, int alg, bool IsStartEnd){
     UpdateFLOrder(dim);
     SplitRulings(dim);
     std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>> root = NTree_fl.GetRoot();
@@ -389,6 +395,9 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
     }
     std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>> q;
     std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
+
+    std::string msg = (IsStartEnd)? "center": "End Point"; qDebug() <<"input flap angle start with : " << msg;
+
     q.push(root);
     int rank = 0;
     int bendnum = 0;
@@ -400,16 +409,17 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
         auto cur = q.front(); q.pop();
         cur->data->ReassignColor();
         //cur->data->RevisionCrosPtsPosition();//端点の修正
-        if(ConstFunc){
-            qDebug() << "trim each iteration";
-            bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, alg, ConstFunc);//正しい第5引数はalgだけど検証用に1
-            //bool res_true = res;
+        qDebug() << "trim each iteration";
+        bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd);//正しい第5引数はalgだけど検証用に1
+        //bool res_true = res;
+        if(alg == 1){
+            res = true;
             while(!res){
                 bool isroot = (cur == root)? true: false;
                 int validsize = cur->data->validsize - 1;
                 cur->data->SimplifyModel(validsize, isroot);
                 //cur->data->RevisionCrosPtsPosition();//端点の修正
-                res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, alg, ConstFunc);
+                res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, alg, IsStartEnd);
                 //if(DebugMode::Singleton::getInstance().isdebug())
                 qDebug() << "optimization result " << res << "  ,  tol = " << tol << ", ruling num = " << cur->data->validsize;
                 int cnt = 0;
@@ -420,20 +430,15 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
             //if(!res_true)cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, ConstFunc);//一応消しておく(flap angleの最適化に制約関数を入れてないため)
             qDebug() <<"bending result : tol = " << cur->data->tol << " valid ruling num = " << cur->data->validsize  << " , a_flap = " << cur->data->a_flap ;
             bool isroot = (root == cur)? true: false;
-            cur->data->applyAAAMethod(Poly_V, false, cur->data->a_flap, cur->data->tol, isroot);
+            cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap, cur->data->tol, isroot);
             if(cur->data->FoldingCurve.empty())continue;
             SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
             SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
             SetOnVertices_outline(false);
             //cur->data->SortCurve();
             cur->data->SimpleSmooothSrf(Poly_V);
-        }else{
-            //qDebug() << "remove cross ruling and modify";
-            //bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, alg, ConstFunc);
-            //cur->data->revisecrossedruling(Poly_V);
-        }
-        if(alg == 2){
-            cur->data->Optimization_Vertex(Poly_V);
+        }else if(alg == 2){
+            cur->data->Optimization_Vertex(Poly_V, IsStartEnd);
             SetOnVertices_outline(false);
         }
         for (const auto& child : cur->children){

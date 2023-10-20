@@ -633,8 +633,8 @@ void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
     if(e->key() == Qt::Key_A) visibleCurve = !visibleCurve;
 
     if(e->key() == Qt::Key_Q){
-        res = model->RevisionCrosPtsPosition();
-        if(res) emit foldingSignals();
+        //res = model->RevisionCrosPtsPosition();
+        //if(res) emit foldingSignals();
     }
     if(e->modifiers().testFlag(Qt::ControlModifier)){
         //コントロールキーを押しているときtrueを返す
