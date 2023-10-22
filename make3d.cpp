@@ -289,6 +289,7 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
         std::shared_ptr<Vertex> prev = outline->vertices[(i - 1 + s)  % s], next = outline->vertices[(i + 1) % s];//前後の頂点で作られるlineのうち最も近いものを入れる
         std::shared_ptr<Vertex> basePt = nullptr;
         for(auto&fl: FL){
+            if(fl->FoldingCurve.size() <= 2)continue;
             for(auto&v4d: fl->FoldingCurve){
                 if(!v4d->IsCalc)continue;
                 std::shared_ptr<Vertex> downcast = std::dynamic_pointer_cast<Vertex>(v4d->first);
@@ -396,7 +397,7 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
     std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>> q;
     std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
 
-    std::string msg = (IsStartEnd)? "center": "End Point"; qDebug() <<"input flap angle start with : " << msg;
+    std::string msg = (!IsStartEnd)? "center": "End Point"; qDebug() <<"input flap angle start with : " << msg;
 
     q.push(root);
     int rank = 0;
@@ -482,14 +483,13 @@ bool Model::AssignRuling(int dim, double tol, bool begincenter){
             SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
             cur->data->SortCurve();
             cur->data->SimpleSmooothSrf(Poly_V);
+            SetOnVertices_outline(false);
         }
+
         for (const auto& child : cur->children){
             if(child != nullptr){
                 child->data->reassignruling(cur->data, outline->Lines, Rulings);
                 if(cur->data->FoldingCurve.empty())continue;
-                //SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
-                //SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
-                cur->data->SortCurve();
                 q.push(child);
             }
         }
