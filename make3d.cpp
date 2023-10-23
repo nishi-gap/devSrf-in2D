@@ -412,9 +412,8 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
         //cur->data->RevisionCrosPtsPosition();//端点の修正
         qDebug() << "trim each iteration";
         bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd);//正しい第5引数はalgだけど検証用に1
-        //bool res_true = res;
+        res = true;
         if(alg == 1){
-            res = true;
             while(!res){
                 bool isroot = (cur == root)? true: false;
                 int validsize = cur->data->validsize - 1;
@@ -428,7 +427,6 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
                 if(cnt <=3)break;
 
             }
-            //if(!res_true)cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, ConstFunc);//一応消しておく(flap angleの最適化に制約関数を入れてないため)
             qDebug() <<"bending result : tol = " << cur->data->tol << " valid ruling num = " << cur->data->validsize  << " , a_flap = " << cur->data->a_flap ;
             bool isroot = (root == cur)? true: false;
             cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap, cur->data->tol, isroot);

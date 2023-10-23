@@ -635,7 +635,7 @@ void MainWindow::exportobj(){
         s += "\n";
         WriteList.append(s);
     }
-
+    /*
     Eigen::Vector3d Zaxis(0,0,1);
     std::vector<std::array<Eigen::Vector3d, 3>> TriMeshs;
     auto Triangulation = [](std::vector<std::shared_ptr<Vertex>>&input, std::vector<std::array<Eigen::Vector3d, 3>>&output){
@@ -690,7 +690,7 @@ void MainWindow::exportobj(){
         s += "\n";
         WriteList_tri.append(s);
     }
-
+    */
     const QString DirName = "./OBJ";
     const QDir dir; dir.mkdir(DirName);
     QDir CurDir = QDir::current(); CurDir.cd(DirName);
@@ -709,6 +709,7 @@ void MainWindow::exportobj(){
     foreach (QString item, WriteList) {
         out << item;
     }
+    return;
     // QFileInfoクラスを使用してファイル名を解析
     QFileInfo fileInfo(fileName);
     QString baseName = fileInfo.baseName();
