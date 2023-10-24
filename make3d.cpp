@@ -386,6 +386,8 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
 }
 
 bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank, int alg, bool IsStartEnd){
+    static int OrderConst = 0;
+    static int AlgNum = 0;
     UpdateFLOrder(dim);
     SplitRulings(dim);
     std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>> root = NTree_fl.GetRoot();
@@ -411,7 +413,16 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
         cur->data->ReassignColor();
         //cur->data->RevisionCrosPtsPosition();//端点の修正
         qDebug() << "trim each iteration";
-        bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd);//正しい第5引数はalgだけど検証用に1
+
+        //Optimization Vertexのテスト用
+        if(alg == 2){
+            cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap, cur->data->tol, true);
+            cur->data->Optimization_Vertex(Poly_V, IsStartEnd, OrderConst, AlgNum);
+            OrderConst = (OrderConst + 1) % 3;
+            SetOnVertices_outline(false);
+            return false;
+        }
+        bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum);//正しい第5引数はalgだけど検証用に1
         res = true;
         if(alg == 1){
             while(!res){
@@ -419,7 +430,7 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
                 int validsize = cur->data->validsize - 1;
                 cur->data->SimplifyModel(validsize, isroot);
                 //cur->data->RevisionCrosPtsPosition();//端点の修正
-                res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, alg, IsStartEnd);
+                res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, alg, IsStartEnd, AlgNum);
                 //if(DebugMode::Singleton::getInstance().isdebug())
                 qDebug() << "optimization result " << res << "  ,  tol = " << tol << ", ruling num = " << cur->data->validsize;
                 int cnt = 0;
@@ -437,7 +448,8 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
             //cur->data->SortCurve();
             cur->data->SimpleSmooothSrf(Poly_V);
         }else if(alg == 2){
-            cur->data->Optimization_Vertex(Poly_V, IsStartEnd);
+            cur->data->Optimization_Vertex(Poly_V, IsStartEnd, OrderConst, AlgNum);
+            OrderConst = (OrderConst + 1) % 3;
             SetOnVertices_outline(false);
         }
         for (const auto& child : cur->children){
@@ -449,6 +461,7 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
         }     
         bendnum++;
     }
+    AlgNum = (AlgNum + 1) % 3;
     SetOnVertices_outline(false);
     return true;
 }
