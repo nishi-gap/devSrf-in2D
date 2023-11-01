@@ -279,7 +279,8 @@ void Model::SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::sh
 //曲面の輪郭がもつ三次元上の頂点を正しい位置に配置する
 //端点の修正は曲面の頂点修正後に行う
 void Model::SetOnVertices_outline(bool IsupdateEndPt){
-    auto IsOverlapped = [](std::shared_ptr<Vertex>&p, std::shared_ptr<Vertex>&q)->bool{return ((p->p - q->p).norm() < 1e-8)? true: false;};
+
+    auto IsOverlapped = [&](std::shared_ptr<Vertex>&p, std::shared_ptr<Vertex>&q)->bool{return ((p->p - q->p).norm() < 1e-8)? true: false;};
     int s = outline->vertices.size();
     initializeSurfaceVertices();
     for(auto&fl:FL)fl->SortCurve();
@@ -359,8 +360,33 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
             auto itr = std::find_if(Rulings.begin(), Rulings.end(), [&](const std::shared_ptr<Line>& r){return (prev->p == r->o->p && next->p == r->v->p) || (prev->p == r->v->p && next->p == r->o->p);});
             if(itr != Rulings.end() || basePt == nullptr){}
             else{
+                auto itr_poly_prev = std::find_if(outline->vertices.begin(), outline->vertices.end(), [&](const std::shared_ptr<Vertex>& v){return prev == v;});
+                auto itr_poly_next = std::find_if(outline->vertices.begin(), outline->vertices.end(), [&](const std::shared_ptr<Vertex>& v){return next == v;});
 
-                auto p = outline->vertices[i]->p;
+                if(itr_poly_next == outline->vertices.end() && outline->vertices.end() == itr_poly_prev){
+                }else if(itr_poly_next == outline->vertices.end()){
+                    std::shared_ptr<Vertex> v_clst = outline->vertices[(i + 2) % s];
+                    std::shared_ptr<Vertex4d> v4d = nullptr;
+                    for(auto&fl : FL){
+                        if(!fl->FoldingCurve.empty()){
+                            v_clst = getClosestVertex(next, v_clst, fl->FoldingCurve, false);
+                            auto itr_v4d = std::find_if(fl->FoldingCurve.begin(), fl->FoldingCurve.end(), [&](const std::shared_ptr<Vertex4d>&v)
+                                                        {return (v->second == v_clst || v->third == v_clst || v->first == v_clst);});
+                            if(itr_v4d != fl->FoldingCurve.end())next = (*itr_v4d)->first;
+                        }
+                    } 
+                }else if(itr_poly_prev == outline->vertices.end()){
+                    std::shared_ptr<Vertex> v_clst = outline->vertices[(i - 2 + s) % s];
+                    std::shared_ptr<Vertex4d> v4d = nullptr;
+                    for(auto&fl : FL){
+                        if(!fl->FoldingCurve.empty()){
+                            v_clst =  getClosestVertex(next, v_clst, fl->FoldingCurve, false);
+                            auto itr_v4d = std::find_if(fl->FoldingCurve.begin(), fl->FoldingCurve.end(), [&](const std::shared_ptr<Vertex4d>&v)
+                                                        {return (v->second == v_clst || v->third == v_clst || v->first == v_clst);});
+                            if(itr_v4d != fl->FoldingCurve.end())prev = (*itr_v4d)->first;
+                        }
+                    }
+                }
                 Eigen::Vector3d po = outline->vertices[i]->p - basePt->p, a = prev->p - basePt->p, b = next->p - basePt->p;
                 double s,t;
                 if(abs(a.y()) <  1e-12){
@@ -416,10 +442,23 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
 
         //Optimization Vertexのテスト用
         if(alg == 2){
-            cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap, cur->data->tol, true);
+            cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
             cur->data->Optimization_Vertex(Poly_V, IsStartEnd, OrderConst, AlgNum);
-            OrderConst = (OrderConst + 1) % 3;
             SetOnVertices_outline(false);
+            return false;
+        }
+        if(alg == 3){
+            cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
+            cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, OrderConst, AlgNum);
+            SetOnVertices_outline(false);
+            return false;
+        }
+        if(alg == 4){
+            OrderConst = (OrderConst + 1) % 3;
+            return false;
+        }
+        if(alg == 5){
+            AlgNum = (AlgNum + 1) % 3;
             return false;
         }
         bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum);//正しい第5引数はalgだけど検証用に1
@@ -440,7 +479,7 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
             }
             qDebug() <<"bending result : tol = " << cur->data->tol << " valid ruling num = " << cur->data->validsize  << " , a_flap = " << cur->data->a_flap ;
             bool isroot = (root == cur)? true: false;
-            cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap, cur->data->tol, isroot);
+            cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
             if(cur->data->FoldingCurve.empty())continue;
             SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
             SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
@@ -461,16 +500,13 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
         }     
         bendnum++;
     }
-    AlgNum = (AlgNum + 1) % 3;
     SetOnVertices_outline(false);
     return true;
 }
 
-void Model::applyAAAMethod(double a, double tol, bool begincenter){
+void Model::applyAAAMethod(double a, bool begincenter){
     auto Poly_V = outline->getVertices();
-    auto root = NTree_fl.GetRoot();
-    bool isroot = (root->data == FL[FoldCurveIndex])? true: false;
-    FL[FoldCurveIndex]->applyAAAMethod(Poly_V, begincenter, a, tol, isroot);
+    FL[FoldCurveIndex]->applyAAAMethod(Poly_V, begincenter, a);
 }
 
 bool Model::RevisionCrosPtsPosition(){return FL[FoldCurveIndex]->RevisionCrosPtsPosition();}
@@ -488,7 +524,7 @@ bool Model::AssignRuling(int dim, double tol, bool begincenter){
         if(cur->data->isbend()){
             bool isroot = (root == cur)? true: false;
             //cur->data->RevisionCrosPtsPosition();//端点の修正
-            cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap, cur->data->tol, isroot);
+            cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap);
             if(cur->data->FoldingCurve.empty())continue;
             SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
             SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);

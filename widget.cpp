@@ -244,8 +244,7 @@ void MainWindow::SimpleSmoothing(){
 void MainWindow::changeAngleFromSlider(int val){
     ui->angleA->setValue((double)val/100);
     double a = (double)val/18000.0 * std::numbers::pi;
-    double tol =  ui->TolValue->value();
-    emit sendAngle(a, tol, IsStartEnd);
+    emit sendAngle(a, IsStartEnd);
 
     if(IsvisibleRegCrv){
          std::vector<double> color_reg{0.8, 0, 0.}, color_fixreg{0,0,0.8};
@@ -260,8 +259,7 @@ void MainWindow::changeAngleFromSlider(int val){
 void MainWindow::changeAngleFromSpinBox(double val){
     ui->angleSlider->setValue(val*100);
     double a = (double)val*std::numbers::pi/180.0;
-    double tol =  ui->TolValue->value();
-    emit sendAngle(a, tol, IsStartEnd);
+    emit sendAngle(a, IsStartEnd);
     if(IsvisibleRegCrv){
         std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model->outline->getVertices();
         std::vector<std::vector<std::shared_ptr<Vertex>>> Tri_fixside;
@@ -388,6 +386,22 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, 2, IsStartEnd);
         fold_Sm();
         qDebug()<<"/////////////////////////";
+    }else if(e->key() == Qt::Key_4){
+        qDebug()<<"propagate optimization vertex points from center to end point ";
+        int layerNum = ui->glWid2dim->model->getLayerNum();
+        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, 3, IsStartEnd);
+        fold_Sm();
+        qDebug()<<"/////////////////////////";
+    }
+    else if(e->key() == Qt::Key_5){
+        int layerNum = ui->glWid2dim->model->getLayerNum();
+        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, 4, IsStartEnd);
+        fold_Sm();
+    }
+    else if(e->key() == Qt::Key_6){
+        int layerNum = ui->glWid2dim->model->getLayerNum();
+        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, 5, IsStartEnd);
+        fold_Sm();
     }
     if(e->key() == Qt::Key_Q)IsStartEnd = !IsStartEnd;
     if(e->key() == Qt::Key_D){

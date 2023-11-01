@@ -769,6 +769,22 @@ Eigen::MatrixXd GlobalSplineInterpolation(std::vector<std::shared_ptr<Vertex4d>>
     //CtrlPts_res[n] = glm::f64vec3{_D(n,0), _D(n,1), _D(n,2)};//もしからしたらこれ必要かも
 }
 
+std::shared_ptr<Vertex> getClosestVertex(const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o,  const std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, bool SkipTrimedPoint){
+    std::shared_ptr<Vertex> V_max = nullptr;
+    double t_max = -1;
+    for(auto&fc: FoldingCurve){
+        if(SkipTrimedPoint && !fc->IsCalc)continue;
+        if(((fc->second->p - v->p).norm() < 1e-7|| (fc->second->p - o->p).norm() < 1e-7))continue;
+        if(MathTool::is_point_on_line(fc->second->p, v->p, o->p)){
+            double t = (fc->second->p - o->p).norm()/(v->p - o->p).norm();
+            if(t > t_max){
+                t_max = t; V_max = fc->second;
+            }
+        }
+    }
+    return V_max;
+}
+
 std::vector<std::vector<std::shared_ptr<Vertex>>> MakeModel(const std::vector<std::shared_ptr<Line>>& Surface,
                                                             const std::vector<std::shared_ptr<Line>>& Rulings,  const std::vector<std::vector<std::shared_ptr<Vertex4d>>>& FoldingCurves){
     //firstの頂点(折曲線上の点)と輪郭の頂点が重なる場合輪郭の頂点を取り除く

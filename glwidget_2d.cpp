@@ -281,11 +281,11 @@ void GLWidget_2D::Start4Debug_CF(){
 }
 
 
-void GLWidget_2D::changeflapgnle(double val, double tol, bool begin_center){
+void GLWidget_2D::changeflapgnle(double val, bool begin_center){
     //if(model->Faces.size() < 2 || IsStop4Debug || model->FL.empty())return;
     if(model->FL.empty())return;
     if(model->FL.empty())model->FL.push_back(std::make_shared<FoldLine>(PaintTool::FoldLine_test) );
-    model->applyAAAMethod(val, tol, begin_center);
+    model->applyAAAMethod(val, begin_center);
     emit foldingSignals();
     update();
 }
@@ -893,7 +893,7 @@ void GLWidget_2D::wheelEvent(QWheelEvent *we){
         //emit ColorChangeFrom(0, model->FL[FoldCurveIndex]->getColor());
     }else if(drawtype == PaintTool::NewGradationMode){
         if(refL == nullptr || std::find(model->Rulings.begin(), model->Rulings.end(), refL) == model->Rulings.end()){
-            qDebug()<<"there is no referenced Ruling";
+            //qDebug()<<"there is no referenced Ruling";
             return;
         }
         model->setGradationValue(DiffWheel, refL, InterpolationType, CurvePath);
