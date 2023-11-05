@@ -403,6 +403,11 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, 5, IsStartEnd);
         fold_Sm();
     }
+    else if(e->key() == Qt::Key_7){
+        int layerNum = ui->glWid2dim->model->getLayerNum();
+        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, 6, IsStartEnd);
+        fold_Sm();
+    }
     if(e->key() == Qt::Key_Q)IsStartEnd = !IsStartEnd;
     if(e->key() == Qt::Key_D){
         DebugMode::Singleton::getInstance().switchval();
