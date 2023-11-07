@@ -408,6 +408,12 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, 6, IsStartEnd);
         fold_Sm();
     }
+    else if(e->key() == Qt::Key_8){
+        int layerNum = ui->glWid2dim->model->getLayerNum();
+        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, 7, IsStartEnd);
+        fold_Sm();
+    }
+
     if(e->key() == Qt::Key_Q)IsStartEnd = !IsStartEnd;
     if(e->key() == Qt::Key_D){
         DebugMode::Singleton::getInstance().switchval();
@@ -441,6 +447,11 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     }
     else if(e->modifiers().testFlag(Qt::ControlModifier)){
         if(e->key() == Qt::Key_S)exportobj();
+        if(e->key() == Qt::Key_R){
+             int layerNum = ui->glWid2dim->model->getLayerNum();
+             ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, -1, IsStartEnd);//initialization
+             fold_Sm();
+        }
     }
 
     else if(e->key() == Qt::Key_N){
