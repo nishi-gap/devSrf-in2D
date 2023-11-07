@@ -1186,44 +1186,38 @@ void FullSearch(std::vector<double> &X, RevisionVertices::ObjData_v& od,
         double f = 0.0;
         int mid = FC.size()/2;
         if(mid < s){//左側
-            for(int i = mid + 1; i < s; i++)f += calcCrossPt4Constraint(FC[i],FC[i-1]);
+            for(int i = mid + 1; i <= s; i++)f += calcCrossPt4Constraint(FC[i],FC[i-1]);
         }else{//右側
-            for(int i = mid - 1; i > s; i--)f += calcCrossPt4Constraint(FC[i],FC[i+1]);
+            for(int i = mid - 1; i >= s; i--)f += calcCrossPt4Constraint(FC[i],FC[i+1]);
         }
 
         return f;
     };
+
     for(int i = 0; i < static_cast<int>(X.size()); i++) update_Vertex(X[i], od.FC[i], od.BasePt[i]);
 
     const double step = 1e-4;
-
-    std::vector<double> minf_l{0, 1e+10, 1e+10, 0}, minf_r{0,1e+10, 1e+10,0};//変化量, rulingの交差判定, 凹凸性, 三角形の面積
-    double fl_r, fl_c, fr_r, fr_c, fl_a, fr_a;
-
-    ind_l = std::min((int)od.FC.size()-1, ind_l+1); ind_r = std::min(0, ind_r - 1);
-
-    std::vector<std::shared_ptr<Vertex4d>> subFC_l, subFC_r;
-    int mid = od.FC.size()/2;
-    for(int i = ind_r; i <= mid; i++)subFC_r.push_back(od.FC[i]);
-    for(int i = mid; i <= ind_l; i++)subFC_l.push_back(od.FC[i]);
-
+    std::vector<double> minf_l{0, 1e+10, 1e+10, 1e+10}, minf_r{0,1e+10, 1e+10,1e+10};//変化量, rulingの交差判定, 凹凸性, 三角形の面積
+    double fr, fc, fa;
     if(IsCrossed_l){
-       for(double t = bnd_lower[ind_l]; t <= bnd_upper[ind_l]; t += step){
-            update_Vertex(t, od.FC[ind_l], od.BasePt[ind_l]);
+       for(double t = bnd_lower[ind_l+1]; t <= bnd_upper[ind_l+1]; t += step){
+            update_Vertex(t, od.FC[ind_l+1], od.BasePt[ind_l+1]);
             cb_Folding(od.FC, od.Poly_V, od.a, od.StartingIndex);
-            fl_r = Fruling(od.FC, ind_l); fl_c = Fconv(od.FC, od.BasePt, od.StartingIndex, ind_l-1);
-            fl_a = Fmin_TriangleArea(subFC_l, true);
-            if(fl_r <=  minf_l[1] && fl_c <= minf_l[2]){//0であれば交差していないor凹凸性が失われていない
-                if(fl_a > minf_l[3]){//三角形の面積が大きい方を保持する
-                    minf_l[0] = t; minf_l[1] = fl_r; minf_l[2] = fl_c; minf_l[3] = fl_a;
+            fr = Fruling(od.FC, ind_l); fc = Fconv(od.FC, od.BasePt, od.StartingIndex, ind_l);
+            fa = Fmin_TriangleArea(od.FC, true);
+            if(fr == 0.0 && fc == 0.0){//0であれば交差していないor凹凸性が失われていない
+                IsCrossed_l = false;
+                if(fa < minf_l[3]){//三角形の面積が大きい方を保持する
+                    minf_l[0] = t; minf_l[1] = fr; minf_l[2] = fc; minf_l[3] = fa;
                 }
             }
         }
 
-       qDebug()<<"left side t = " << minf_l[0] << " , ruling = " << minf_l[1] <<
-            " , convesity = " << minf_l[2] << " , Farea = " << minf_l[3];
-       for(int k = ind_l + 1; k < (int)X.size(); k++){
-            double d = minf_l[0] + X[k];
+       qDebug()<<"left side t = " << minf_l[0] << " , ruling = " << minf_l[1] << " , convesity = " << minf_l[2] << " , Farea = " << minf_l[3];
+        double _d = minf_l[0] - X[ind_l+1];
+        update_Vertex(minf_l[0], od.BasePt[ind_l+1], od.BasePt[ind_l+1]);
+       for(int k = ind_l + 2; k < (int)X.size(); k++){
+            double d = _d + X[k];
             d = (d < bnd_lower[k])? bnd_lower[k]: (bnd_upper[k] < d)? bnd_upper[k]: d;
             update_Vertex(d, od.BasePt[k], od.BasePt[k]);
        }
@@ -1231,22 +1225,24 @@ void FullSearch(std::vector<double> &X, RevisionVertices::ObjData_v& od,
     }
 
     if(IsCrossed_r){
-       for(double t = bnd_lower[ind_r]; t <= bnd_upper[ind_r]; t += step){
-            update_Vertex(t, od.FC[ind_r], od.BasePt[ind_r]);
+       for(double t = bnd_lower[ind_r-1]; t <= bnd_upper[ind_r-1]; t += step){
+            update_Vertex(t, od.FC[ind_r-1], od.BasePt[ind_r-1]);
             cb_Folding(od.FC, od.Poly_V, od.a, od.StartingIndex);
-            fr_r = Fruling(od.FC, ind_r); fr_c = Fconv(od.FC, od.BasePt, ind_r+1, od.StartingIndex);
-            fr_a = Fmin_TriangleArea(subFC_r, true);
-            if(fr_r <=  minf_r[1] && fr_c <= minf_r[2]){//0であれば交差していないor凹凸性が失われていない
-                if(fr_a > minf_r[3]){//三角形の面積が大きい方を保持する
-                    minf_r[0] = t; minf_r[1] = fr_r; minf_r[2] = fr_c; minf_r[3] = fr_a;
+            fr = Fruling(od.FC, ind_r); fc = Fconv(od.FC, od.BasePt, ind_r, od.StartingIndex);
+            fa = Fmin_TriangleArea(od.FC, true);
+            if(fr == 0.0 && fc == 0.0){
+                IsCrossed_r = false;
+                if(fa < minf_r[3]){//三角形の面積が大きい方を保持する
+                    minf_r[0] = t; minf_r[1] = fr; minf_r[2] = fc; minf_r[3] = fa;
                 }
             }
        }
 
-       qDebug()<<"right side t = " << minf_r[0] << " , ruling = " << minf_r[1] <<
-           " , convesity = " << minf_r[2] << " , Farea = " << minf_r[3];
-       for(int k = ind_r - 1; k >= 0; k--){
-            double d = minf_r[0] + X[k];
+       qDebug()<<"right side t = " << minf_r[0] << " , ruling = " << minf_r[1] << " , convesity = " << minf_r[2] << " , Farea = " << minf_r[3];
+       double _d = minf_r[0] - X[ind_r-1];
+       update_Vertex(minf_r[0], od.BasePt[ind_r-1], od.BasePt[ind_r-1]);
+       for(int k = ind_r - 2; k >= 0; k--){
+            double d = _d + X[k];
             d = (d < bnd_lower[k])? bnd_lower[k]: (bnd_upper[k] < d)? bnd_upper[k]: d;
             update_Vertex(d, od.BasePt[k], od.BasePt[k]);
        }
@@ -1432,14 +1428,15 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
 
     }else{//逐次的な探索による修正
        bool res;
-       std::string file = "./Optimization/iteration_fullsearch.csv";
+       std::string file = "./Optimization/iteration_";
+       file += (OrderConstFunc == 0)? "FindFirstPoint.csv": "Fullsearch.csv";
        ofs.open(file, std::ios::out);
        do{
         ind_l = FoldingCurve.size() - 1; ind_r = 0;//ind_l, ind_rがこの値から変わらない→片側でrulingの交差が起きていない
         for(int i = mid+1; i < (int)FoldingCurve.size() - 1 && ind_l == (int)FoldingCurve.size() - 1; i++) ind_l = (calcCrossPt4Constraint(FoldingCurve[i], FoldingCurve[i-1]) != 0)? i: ind_l;
         for(int i = mid - 1; i > 0 && ind_r == 0; i--)  ind_r = (calcCrossPt4Constraint(FoldingCurve[i], FoldingCurve[i+1]) != 0)? i: ind_r;
         if(OrderConstFunc == 0)res = ReviseVertexPos(Poly_V, ind_l, ind_r, 0);//全探索ではないほう(最初に条件を満たす場所を見つける)
-        else if(OrderConstFunc == 1)ReviseVertexPos(Poly_V, ind_l, ind_r, 1);//全探索
+        else if(OrderConstFunc == 1)res = ReviseVertexPos(Poly_V, ind_l, ind_r, 1);//全探索
         cb_Folding(FoldingCurve, Poly_V, a_flap, mid);
         qDebug()<<"movement vertex ";
 

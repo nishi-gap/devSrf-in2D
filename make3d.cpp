@@ -522,13 +522,13 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
             //交点位置の修正を全探索で行うやり方(いまはできない)
             //cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum);//正しい第5引数はalgだけど検証用に1
             cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
-            cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 0);
+            cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 1);
             return false;
         }
         //alg = 4: 一番下の曲線に対してのみflap angleの最適化＋交点位置の修正. 5: 各曲線のflap angleの最適化 + 一番下の曲線に対してのみ交点位置の修正. 6:
         if(alg == 4 || alg == 5 || alg == 6 || alg == 7){
             if((alg == 4 && cur == root) || alg != 4){
-                cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum);//正しい第5引数はalgだけど検証用に1
+                //cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum);//正しい第5引数はalgだけど検証用に1
                 cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
                 if(alg != 4 || (alg == 4 && cur == root))cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 0, 1);
                 if(alg == 7){
