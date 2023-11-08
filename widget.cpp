@@ -96,7 +96,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this, &MainWindow::signalNewSelectedCrv, ui->glWid2dim, &GLWidget_2D::changeSelectedCurve);
     connect(this, &MainWindow::swapIndex, ui->glWid2dim, &GLWidget_2D::swapCrvsOnLayer);
 
-
     //planarity
     connect(ui->SimpleSmoothButton, &QPushButton::clicked, this, &MainWindow::SimpleSmoothing);
     connect(ui->PlanarityButton, &QCheckBox::clicked, ui->glWid3dim, &GLWidget_3D::PlanarityDispay);
@@ -214,8 +213,9 @@ void MainWindow::StartOptimization(){
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
     double tol = ui->TolValue->value();
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
+    double bndrange = ui->BoundaryRange->value();
     int layerNum = ui->glWid2dim->model->getLayerNum();
-    ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, layerNum, 1, IsStartEnd);
+    ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, bndrange, layerNum, 1, IsStartEnd);
     fold_Sm();
 
 }
@@ -224,8 +224,9 @@ void MainWindow::BendCurve(int num){
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
     double tol = ui->TolValue->value();
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
+    double bndrange = ui->BoundaryRange->value();
     qDebug() << "the number of bend curve is " << num;
-    ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, num, 1, IsStartEnd);
+    ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, bndrange, num, 1, IsStartEnd);
     fold_Sm();
 }
 
@@ -353,6 +354,7 @@ void MainWindow::ReassinColor(){
 void MainWindow::keyPressEvent(QKeyEvent *e){
     ui->glWid3dim->receiveKeyEvent(e);
     ui->glWid2dim->receiveKeyEvent(e);
+    double bndrange = ui->BoundaryRange->value();
     if(e->key() == Qt::Key_M){
         if(ui->glWid2dim->model->FL.empty())return;
         double tol = ui->TolValue->value();
@@ -366,7 +368,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         double tol = ui->TolValue->value();
         double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
         int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, layerNum, 0, IsStartEnd);
+        ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, bndrange, layerNum, 0, IsStartEnd);
         fold_Sm();
         qDebug()<<"/////////////////////////";
     }
@@ -376,41 +378,41 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         double tol = ui->TolValue->value();
         double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
         int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, layerNum, 1, IsStartEnd);
+        ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, bndrange, layerNum, 1, IsStartEnd);
         fold_Sm();
         qDebug()<<"/////////////////////////";
     }
     else if(e->key() == Qt::Key_3){
         qDebug()<<"vertices moving";
         int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, 2, IsStartEnd);
+        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, bndrange, layerNum, 2, IsStartEnd);
         fold_Sm();
         qDebug()<<"/////////////////////////";
     }else if(e->key() == Qt::Key_4){
         qDebug()<<"propagate optimization vertex points from center to end point ";
         int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, 3, IsStartEnd);
+        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, bndrange, layerNum, 3, IsStartEnd);
         fold_Sm();
         qDebug()<<"/////////////////////////";
     }
     else if(e->key() == Qt::Key_5){
         int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, 4, IsStartEnd);
+        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, bndrange, layerNum, 4, IsStartEnd);
         fold_Sm();
     }
     else if(e->key() == Qt::Key_6){
         int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, 5, IsStartEnd);
+        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, bndrange, layerNum, 5, IsStartEnd);
         fold_Sm();
     }
     else if(e->key() == Qt::Key_7){
         int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, 6, IsStartEnd);
+        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, bndrange, layerNum, 6, IsStartEnd);
         fold_Sm();
     }
     else if(e->key() == Qt::Key_8){
         int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, 7, IsStartEnd);
+        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, bndrange, layerNum, 7, IsStartEnd);
         fold_Sm();
     }
 
@@ -449,7 +451,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         if(e->key() == Qt::Key_S)exportobj();
         if(e->key() == Qt::Key_R){
              int layerNum = ui->glWid2dim->model->getLayerNum();
-             ui->glWid2dim->model->BendingModel(0, 0, 3, 0, layerNum, -1, IsStartEnd);//initialization
+             ui->glWid2dim->model->BendingModel(0, 0, 3, 0, bndrange, layerNum, -1, IsStartEnd);//initialization
              fold_Sm();
         }
     }
@@ -492,6 +494,93 @@ void MainWindow::mouseMoveEvent(QMouseEvent *e){
 
         }
     }
+}
+
+void MainWindow::exportsvg(QString filename){
+    auto getcolor = [](double c, double a, double y)->double{
+        if(y < a)return c/a * y/255.0;
+        return ((255.0 - c)*(y - a)/(std::numbers::pi - a) + c)/255.0;
+    };
+
+    auto filesvg = filename.replace(".obj", ".svg");
+    QStringList WriteList;
+    WriteList.append("<svg xmlns=\"http://www.w3.org/2000/svg\">\n");
+    WriteList.append("<g>");
+
+    std::string strokewidth = "\"0.25\"", str, strokecolor;
+    //折曲線と交点を持たないruling
+    for(auto itr_r = ui->glWid2dim->model->Rulings.begin(); itr_r != ui->glWid2dim->model->Rulings.end(); itr_r++){
+        if((*itr_r)->hasCrossPoint)continue;
+
+        if((*itr_r)->et == EdgeType::r){
+            double color = getcolor(ui->glWid2dim->model->ColorPt.color, ui->glWid2dim->model->ColorPt.angle, (*itr_r)->color/255.0);
+            if(color > 1e-3){//mount
+                strokecolor = "\"red\"";
+            }else if(color < -1e-3){//valley
+                strokecolor = "\"blue\"";
+            }else{
+                strokecolor ="\"black\"";
+            }
+            double x1 = (*itr_r)->o->p.x(), y1 = (*itr_r)->o->p.y(), x2 = (*itr_r)->v->p.x(), y2 = (*itr_r)->v->p.y();
+            str = "<line x1 = \"" + std::to_string(x1) + "\" y1 = \"" + std::to_string(y1) + "\" x2= \"" + std::to_string(x2) + "\" y2= \"" + std::to_string(y2)+
+                  "\" fill = \"none\" stroke=" + strokecolor + " stroke-width=" + strokewidth + "/>\n";
+            WriteList.append(QString::fromStdString(str));
+        }
+    }
+
+    //可展面の輪郭描画
+    {
+        strokecolor ="\"black\"";
+        auto  Vertices = ui->glWid2dim->model->outline->getVertices();
+        int vsize = Vertices.size();
+        for(int i = 0; i < vsize; i++){
+            double x1 = Vertices[i]->p.x(), y1 = Vertices[i]->p.y(), x2 = Vertices[(i + 1) % vsize]->p.x(), y2 = Vertices[(i + 1) % vsize]->p.y();
+            str = "<line x1 = \"" + std::to_string(x1) + "\" y1 = \"" + std::to_string(y1) + "\" x2= \"" + std::to_string(x2) + "\" y2= \"" + std::to_string(y2)+
+                  "\" fill = \"none\" stroke=" + strokecolor + " stroke-width=" + strokewidth + "/>\n";
+            WriteList.append(QString::fromStdString(str));
+        }
+    }
+
+    //折曲線上の4価頂点の描画
+    for(auto& FL: ui->glWid2dim->model->FL){
+        if(FL->FoldingCurve.empty())continue;
+        std::vector<std::shared_ptr<Vertex4d>> ValidFC;
+        for(auto&fc: FL->FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
+
+        //p0:描画するエッジの始点, p1: 描画するエッジの端点, p2: 片側の平面上の点, p3: もう片方の平面上の点
+        auto DrawEdge = [&](const std::shared_ptr<Vertex>& p0, const std::shared_ptr<Vertex>& p1, const std::shared_ptr<Vertex>& p2, const std::shared_ptr<Vertex>& p3){
+            Eigen::Vector3d f_nv = ((p1->p3 - p0->p3).cross(p2->p3 - p0->p3)).normalized(),fp_nv = ((p3->p3 - p0->p3).cross(p1->p3 - p0->p3)).normalized();
+            Eigen::Vector3d SpinAxis = (p1->p3 - p0->p3).normalized();
+            if(SpinAxis.dot(f_nv.cross(fp_nv)) <-1e-5)strokecolor = "\"red\"";//mount
+            else if(SpinAxis.dot(f_nv.cross(fp_nv)) > 1e-5)strokecolor = "\"blue\"";//valley
+            else strokecolor ="\"black\"";
+            double x1 = p1->p.x(), y1 = p1->p.y(), x2 = p0->p.x(), y2 = p0->p.y();
+            str = "<line x1 = \"" + std::to_string(x1) + "\" y1 = \"" + std::to_string(y1) + "\" x2= \"" + std::to_string(x2) + "\" y2= \"" + std::to_string(y2)+
+                  "\" fill = \"none\" stroke=" + strokecolor + " stroke-width=" + strokewidth + "/>\n";
+            WriteList.append(QString::fromStdString(str));
+        };
+
+        for(int i = 1; i < (int)ValidFC.size(); i++)
+            DrawEdge(ValidFC[i]->first, ValidFC[i-1]->first, ValidFC[i]->second, ValidFC[i]->third);
+        for(int i = 1; i < (int)ValidFC.size() - 1; i++){
+            DrawEdge(ValidFC[i]->first, ValidFC[i]->second, ValidFC[i+1]->first, ValidFC[i-1]->first);
+            DrawEdge(ValidFC[i]->first, ValidFC[i]->third, ValidFC[i-1]->first, ValidFC[i+1]->first);
+        }
+    }
+    WriteList.append("</g>\n");
+    WriteList.append("</svg>\n");
+
+    QFile file(filesvg);
+    if (!file.open(QIODevice::WriteOnly)) {
+        QMessageBox::information(this, tr("Unable to open file"), file.errorString());
+        return;
+    }
+
+    QTextStream out(&file);
+    foreach (QString item, WriteList) {
+        out << item;
+    }
+    return;
 }
 
 //https://nprogram.hatenablog.com/entry/2017/08/10/082236
@@ -739,6 +828,7 @@ void MainWindow::exportobj(){
     foreach (QString item, WriteList) {
         out << item;
     }
+    exportsvg(fileName);
     return;
     // QFileInfoクラスを使用してファイル名を解析
     QFileInfo fileInfo(fileName);

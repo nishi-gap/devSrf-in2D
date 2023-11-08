@@ -1182,6 +1182,17 @@ void FullSearch(std::vector<double> &X, RevisionVertices::ObjData_v& od,
         return f;
     };
 
+    auto Farea = [](const std::vector<std::shared_ptr<Vertex4d>>& FC, int i, int j){
+        if(((FC[i]->second->p - FC[i]->first->p).normalized()).dot((FC[j]->second->p - FC[j]->first->p).normalized()) > 1.0 - 1e-13){
+            return 0.0;
+        }else{
+            Eigen::Vector3d e = (FC[j]->first->p - FC[i]->first->p), r = (FC[i]->second->p - FC[i]->first->p).normalized(), r2 = (FC[j]->second->p - FC[j]->first->p).normalized();
+            double phi1 = std::acos(r.dot(e.normalized())), phi2 = std::acos(r2.dot(-e.normalized()));
+            double l = sin(phi2)/sin(phi1+phi2)*(FC[i+1]->first->p - FC[i]->first->p).norm();
+            return abs(2.0/(e.cross(l*r)).norm());
+        }
+    };
+
     auto Fruling = [&](const std::vector<std::shared_ptr<Vertex4d>>& FC, int s){
         double f = 0.0;
         int mid = FC.size()/2;
@@ -1204,7 +1215,7 @@ void FullSearch(std::vector<double> &X, RevisionVertices::ObjData_v& od,
             update_Vertex(t, od.FC[ind_l+1], od.BasePt[ind_l+1]);
             cb_Folding(od.FC, od.Poly_V, od.a, od.StartingIndex);
             fr = Fruling(od.FC, ind_l); fc = Fconv(od.FC, od.BasePt, od.StartingIndex, ind_l);
-            fa = Fmin_TriangleArea(od.FC, true);
+            fa = Farea(od.FC,  ind_l-1, ind_l);
             if(fr == 0.0 && fc == 0.0){//0であれば交差していないor凹凸性が失われていない
                 IsCrossed_l = false;
                 if(fa < minf_l[3]){//三角形の面積が大きい方を保持する
@@ -1229,7 +1240,7 @@ void FullSearch(std::vector<double> &X, RevisionVertices::ObjData_v& od,
             update_Vertex(t, od.FC[ind_r-1], od.BasePt[ind_r-1]);
             cb_Folding(od.FC, od.Poly_V, od.a, od.StartingIndex);
             fr = Fruling(od.FC, ind_r); fc = Fconv(od.FC, od.BasePt, ind_r, od.StartingIndex);
-            fa = Fmin_TriangleArea(od.FC, true);
+            fa = Farea(od.FC, ind_r+1, ind_r);//範囲の与え方要検証
             if(fr == 0.0 && fc == 0.0){
                 IsCrossed_r = false;
                 if(fa < minf_r[3]){//三角形の面積が大きい方を保持する
@@ -1260,23 +1271,23 @@ void SetOptimizationParameter(nlopt::opt& opt, const std::vector<double>&bnd_low
 //片側の全探索による交点位置最適化
 //i番目のrulingが交差した場合、i,i+1番目の交点位置を修正する(すべての交点位置を少しづつ動かして検証するのが正しいのかもしれないが、動かすのはi,i+1番目だけでよいという仮定)
 //全探索により見つからない場合は境界条件を少しずらして再挑戦させる
-bool FoldLine::ReviseVertexPos(const std::vector<std::shared_ptr<Vertex>>& Poly_V, int EndIndex_left, int EndIndex_right, int AlgOptim){
+bool FoldLine::ReviseVertexPos(const std::vector<std::shared_ptr<Vertex>>& Poly_V, int EndIndex_left, int EndIndex_right, int AlgOptim, double range){
     int mid = FoldingCurve.size()/2;
 
     std::vector<double> bnd_lower((int)FoldingCurve.size(), -1), bnd_upper((int)FoldingCurve.size(), 1.0);
     std::vector<double> X(FoldingCurve.size());
     std::vector<std::shared_ptr<Vertex4d>> FC;
-    double init_range = 3.0;
+
     for(int i = 0; i < (int)FoldingCurve.size(); i++){
        std::shared_ptr<Vertex4d> v4d = FoldingCurve[i]->deepCopy(); v4d->addline(FoldingCurve[i]->line_parent); FC.push_back(v4d);
        X[i] = (FoldingCurve[i]->first->p - FoldingCurve[i]->third->p).norm();
-       bnd_lower[i] = std::max(X[i] - init_range, 0.0);
+       bnd_lower[i] = std::max(X[i] - range, 0.0);
        Eigen::Vector3d point;
        for(int k = 0; k < (int)Poly_V.size(); k++){
             point = MathTool::calcCrossPoint_2Vector(v4d->first->p, 1000.0 * (v4d->first->p - v4d->third->p).normalized() + v4d->first->p, Poly_V[k]->p, Poly_V[(k + 1) % (int)Poly_V.size()]->p);
             if(MathTool::is_point_on_line(point, Poly_V[k]->p, Poly_V[(k + 1) % (int)Poly_V.size()]->p) && (v4d->first->p - v4d->third->p).normalized().dot(point - v4d->first->p) > 0)break;
        }
-       bnd_upper[i] = std::min(X[i] + init_range, (point - v4d->third->p).norm());
+       bnd_upper[i] = std::min(X[i] + range, (point - v4d->third->p).norm());
     }
 
     RevisionVertices::ObjData_v od = {a_flap, FC, Poly_V, (int)FoldingCurve.size()/2};
@@ -1302,7 +1313,7 @@ bool FoldLine::ReviseVertexPos(const std::vector<std::shared_ptr<Vertex>>& Poly_
     return false;
 }
 
-bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool IsStartEnd, int OrderConstFunc, int OptimizationAlgorithm){
+bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool IsStartEnd, int VertexMoveAlg, int OptimizationAlgorithm, double range){
     if(IsStartEnd){
        qDebug()<<"this method is applied only starting from center";
        return false;
@@ -1428,15 +1439,16 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
 
     }else{//逐次的な探索による修正
        bool res;
-       std::string file = "./Optimization/iteration_";
-       file += (OrderConstFunc == 0)? "FindFirstPoint.csv": "Fullsearch.csv";
+       std::string type = (VertexMoveAlg == 0)? "FindFirstPoint": "Fullsearch";
+       qDebug()<<type;
+       std::string file = "./Optimization/iteration_" + type + "_range" + std::to_string(range) + ".csv";
        ofs.open(file, std::ios::out);
        do{
         ind_l = FoldingCurve.size() - 1; ind_r = 0;//ind_l, ind_rがこの値から変わらない→片側でrulingの交差が起きていない
         for(int i = mid+1; i < (int)FoldingCurve.size() - 1 && ind_l == (int)FoldingCurve.size() - 1; i++) ind_l = (calcCrossPt4Constraint(FoldingCurve[i], FoldingCurve[i-1]) != 0)? i: ind_l;
         for(int i = mid - 1; i > 0 && ind_r == 0; i--)  ind_r = (calcCrossPt4Constraint(FoldingCurve[i], FoldingCurve[i+1]) != 0)? i: ind_r;
-        if(OrderConstFunc == 0)res = ReviseVertexPos(Poly_V, ind_l, ind_r, 0);//全探索ではないほう(最初に条件を満たす場所を見つける)
-        else if(OrderConstFunc == 1)res = ReviseVertexPos(Poly_V, ind_l, ind_r, 1);//全探索
+        if(VertexMoveAlg == 0)res = ReviseVertexPos(Poly_V, ind_l, ind_r, 0, range);//全探索ではないほう(最初に条件を満たす場所を見つける)
+        else if(VertexMoveAlg == 1)res = ReviseVertexPos(Poly_V, ind_l, ind_r, 1, range);//全探索
         cb_Folding(FoldingCurve, Poly_V, a_flap, mid);
         qDebug()<<"movement vertex ";
 

@@ -468,7 +468,7 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
     }
 }
 
-bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank, int alg, bool IsStartEnd){
+bool Model::BendingModel(double wb, double wp, int dim, double tol, double bndrange, int bendrank, int alg, bool IsStartEnd){
     static int OrderConst = 0;
     static int AlgNum = 0;
     UpdateFLOrder(dim);
@@ -519,10 +519,10 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
             return false;
         }
         if(alg == 3){
-            //交点位置の修正を全探索で行うやり方(いまはできない)
+            //交点位置の修正を全探索で行うやり方
             //cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum);//正しい第5引数はalgだけど検証用に1
             cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
-            cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 1);
+            cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 1, bndrange);
             return false;
         }
         //alg = 4: 一番下の曲線に対してのみflap angleの最適化＋交点位置の修正. 5: 各曲線のflap angleの最適化 + 一番下の曲線に対してのみ交点位置の修正. 6:
@@ -530,7 +530,7 @@ bool Model::BendingModel(double wb, double wp, int dim, double tol, int bendrank
             if((alg == 4 && cur == root) || alg != 4){
                 //cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum);//正しい第5引数はalgだけど検証用に1
                 cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
-                if(alg != 4 || (alg == 4 && cur == root))cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 0, 1);
+                //if(alg != 4 || (alg == 4 && cur == root))cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 0, 1, bndrange);
                 if(alg == 7){
                     cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
                     cur->data->CheckIsCrossedRulings();

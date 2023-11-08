@@ -105,6 +105,7 @@ private:
     int crvPtNum;
     std::vector<std::vector<Eigen::Vector3d>> output;
     void exportobj();
+    void exportsvg(QString filename);
 
     std::vector<std::shared_ptr<Btn4Crv>> LayerList;
 
