@@ -566,7 +566,7 @@
   <widget class="QGroupBox" name="FoldLineBox">
    <property name="geometry">
     <rect>
-     <x>680</x>
+     <x>670</x>
      <y>380</y>
      <width>131</width>
      <height>241</height>
@@ -821,7 +821,7 @@
    <property name="geometry">
     <rect>
      <x>860</x>
-     <y>400</y>
+     <y>380</y>
      <width>62</width>
      <height>22</height>
     </rect>
@@ -836,8 +836,8 @@
   <widget class="QDoubleSpinBox" name="ParalellWeightButton">
    <property name="geometry">
     <rect>
-     <x>980</x>
-     <y>400</y>
+     <x>990</x>
+     <y>380</y>
      <width>62</width>
      <height>22</height>
     </rect>
@@ -853,7 +853,7 @@
    <property name="geometry">
     <rect>
      <x>820</x>
-     <y>400</y>
+     <y>380</y>
      <width>41</width>
      <height>21</height>
     </rect>
@@ -866,7 +866,7 @@
    <property name="geometry">
     <rect>
      <x>940</x>
-     <y>400</y>
+     <y>380</y>
      <width>41</width>
      <height>21</height>
     </rect>
@@ -922,6 +922,70 @@
    </property>
    <property name="text">
     <string>Regression Curve</string>
+   </property>
+  </widget>
+  <widget class="QDoubleSpinBox" name="TriAreaWeight">
+   <property name="geometry">
+    <rect>
+     <x>990</x>
+     <y>410</y>
+     <width>62</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="decimals">
+    <number>1</number>
+   </property>
+   <property name="singleStep">
+    <double>0.100000000000000</double>
+   </property>
+   <property name="value">
+    <double>0.100000000000000</double>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_8">
+   <property name="geometry">
+    <rect>
+     <x>950</x>
+     <y>400</y>
+     <width>41</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>area</string>
+   </property>
+  </widget>
+  <widget class="QDoubleSpinBox" name="NormErrorWeight">
+   <property name="geometry">
+    <rect>
+     <x>860</x>
+     <y>410</y>
+     <width>62</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="decimals">
+    <number>1</number>
+   </property>
+   <property name="singleStep">
+    <double>0.100000000000000</double>
+   </property>
+   <property name="value">
+    <double>0.000000000000000</double>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_7">
+   <property name="geometry">
+    <rect>
+     <x>810</x>
+     <y>400</y>
+     <width>51</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>distance</string>
    </property>
   </widget>
  </widget>

@@ -213,9 +213,10 @@ void MainWindow::StartOptimization(){
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
     double tol = ui->TolValue->value();
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
+    double warea = ui->TriAreaWeight->value(), wsim = ui->NormErrorWeight->value();
     double bndrange = ui->BoundaryRange->value();
     int layerNum = ui->glWid2dim->model->getLayerNum();
-    ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, bndrange, layerNum, 1, IsStartEnd);
+    ui->glWid2dim->model->BendingModel(wb, wp, warea, wsim, 3, tol, bndrange, layerNum, 1, IsStartEnd);
     fold_Sm();
 
 }
@@ -224,9 +225,10 @@ void MainWindow::BendCurve(int num){
     if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
     double tol = ui->TolValue->value();
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
+    double warea = ui->TriAreaWeight->value(), wsim = ui->NormErrorWeight->value();
     double bndrange = ui->BoundaryRange->value();
     qDebug() << "the number of bend curve is " << num;
-    ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, bndrange, num, 1, IsStartEnd);
+    ui->glWid2dim->model->BendingModel(wb, wp,warea, wsim, 3, tol, bndrange, num, 1, IsStartEnd);
     fold_Sm();
 }
 
@@ -355,6 +357,9 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     ui->glWid3dim->receiveKeyEvent(e);
     ui->glWid2dim->receiveKeyEvent(e);
     double bndrange = ui->BoundaryRange->value();
+    double warea = ui->TriAreaWeight->value(), wsim = ui->NormErrorWeight->value();
+    double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
+    int layerNum = ui->glWid2dim->model->getLayerNum();
     if(e->key() == Qt::Key_M){
         if(ui->glWid2dim->model->FL.empty())return;
         double tol = ui->TolValue->value();
@@ -366,9 +371,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         qDebug() <<"use ruling intersection";
         if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
         double tol = ui->TolValue->value();
-        double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-        int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, bndrange, layerNum, 0, IsStartEnd);
+        ui->glWid2dim->model->BendingModel(wb, wp, warea, wsim, 3, tol, bndrange, layerNum, 0, IsStartEnd);
         fold_Sm();
         qDebug()<<"/////////////////////////";
     }
@@ -376,44 +379,36 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         qDebug()<<"use regression curve and triangle area";
         if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
         double tol = ui->TolValue->value();
-        double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-        int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(wb, wp, 3, tol, bndrange, layerNum, 1, IsStartEnd);
+        ui->glWid2dim->model->BendingModel(wb, wp, warea, wsim, 3, tol, bndrange, layerNum, 1, IsStartEnd);
         fold_Sm();
         qDebug()<<"/////////////////////////";
     }
     else if(e->key() == Qt::Key_3){
         qDebug()<<"vertices moving";
-        int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, bndrange, layerNum, 2, IsStartEnd);
-        fold_Sm();
+        ui->glWid2dim->model->BendingModel(0, 0, warea, wsim,  3, 0, bndrange, layerNum, 2, IsStartEnd);
         qDebug()<<"/////////////////////////";
     }else if(e->key() == Qt::Key_4){
         qDebug()<<"propagate optimization vertex points from center to end point ";
-        int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, bndrange, layerNum, 3, IsStartEnd);
-        fold_Sm();
+        if(e->modifiers().testFlag(Qt::ControlModifier)){
+            ui->glWid2dim->model->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 13, IsStartEnd);
+        }
+        else  ui->glWid2dim->model->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 3, IsStartEnd);
         qDebug()<<"/////////////////////////";
     }
     else if(e->key() == Qt::Key_5){
-        int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, bndrange, layerNum, 4, IsStartEnd);
-        fold_Sm();
+        ui->glWid2dim->model->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 4, IsStartEnd);
     }
     else if(e->key() == Qt::Key_6){
-        int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, bndrange, layerNum, 5, IsStartEnd);
-        fold_Sm();
+        ui->glWid2dim->model->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 5, IsStartEnd);
     }
     else if(e->key() == Qt::Key_7){
-        int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, bndrange, layerNum, 6, IsStartEnd);
-        fold_Sm();
+        ui->glWid2dim->model->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 6, IsStartEnd);
     }
     else if(e->key() == Qt::Key_8){
-        int layerNum = ui->glWid2dim->model->getLayerNum();
-        ui->glWid2dim->model->BendingModel(0, 0, 3, 0, bndrange, layerNum, 7, IsStartEnd);
-        fold_Sm();
+        if(e->modifiers().testFlag(Qt::ControlModifier)){
+            ui->glWid2dim->model->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 7, IsStartEnd);
+        }
+        else  ui->glWid2dim->model->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 17, IsStartEnd);
     }
 
     if(e->key() == Qt::Key_Q)IsStartEnd = !IsStartEnd;
@@ -424,7 +419,6 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     }
     else if(e->key() == Qt::Key_Return){emit PressedEnter();}
     else if(e->key() == Qt::Key_C){
-
         if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
         else if(!ui->glWid2dim->model->FL.empty()){
             ui->glWid2dim->model->FL[0]->ReassignColor();
@@ -450,12 +444,12 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     else if(e->modifiers().testFlag(Qt::ControlModifier)){
         if(e->key() == Qt::Key_S)exportobj();
         if(e->key() == Qt::Key_R){
-             int layerNum = ui->glWid2dim->model->getLayerNum();
-             ui->glWid2dim->model->BendingModel(0, 0, 3, 0, bndrange, layerNum, -1, IsStartEnd);//initialization
-             fold_Sm();
+             ui->glWid2dim->model->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, -1, IsStartEnd);//initialization
         }
     }
+    if(e->modifiers().testFlag(Qt::ShiftModifier)){
 
+    }
     else if(e->key() == Qt::Key_N){
         double a = static_cast<double>(ui->angleSlider->value())/100.0;
         std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model->outline->getVertices();
@@ -466,6 +460,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     else{
 
     }
+    fold_Sm();
     update();
 }
 
