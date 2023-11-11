@@ -66,19 +66,44 @@ void Model::Initialize(){
 //将来的にはfoldlineだけでなくほかのオブジェクトも判定して操作できるようにしたい
 void Model::detectClickedObj(const QPointF& curPos){
     refFL = nullptr;
-    const double step = 1e-2;
-    double mindist = 1.0;
+    const double step = 0.002;
+    double mindist = 4.0;
     Eigen::Vector3d pos{curPos.x(), curPos.y(), 0};
     for(auto&fl: FL){
         if(fl->CtrlPts.size() <= 3)continue;
         for(double t = 0.0; t <= 1.0; t += step){
             Eigen::Vector3d p = MathTool::bezier(fl->CtrlPts, t, 3);//三次ベジエ曲線に限定しているため
-            if((p - pos).norm() < mindist){
-                mindist = (p - pos).norm(); refFL = fl;
+            double d = (p - pos).norm();
+            if(d < mindist){
+                mindist = d; refFL = fl;
             }
         }
     }
-    qDebug()<<"clicked fl is " << refFL.get();
+    qDebug()<<"clicked object  " << refFL.get();
+}
+
+void Model::AffinTrans(const QPointF& befPos, const QPointF& curPos){//回転と拡縮においてbefPosは軸として扱う
+    if(refFL == nullptr || std::find(FL.begin(), FL.end(), refFL) == FL.end())return;
+    Eigen::Vector3d move{(curPos - befPos).x(), (curPos - befPos).y(), 0};
+    for(auto&p: refFL->CtrlPts)p += move;
+    refFL->setCurve(3);
+}
+
+//最も遠い位置にある制御点の二点の距離が閾値よりも小さい場合は縮小処理しない
+void Model::AffinScale(const QPointF& basePos, const QPointF& befPos, const QPointF& curPos){
+    double fardist = 0,  mindist = 100;//mindistが閾値
+    for(int i = 0; i < (int)refFL->CtrlPts.size(); i++){
+        for(int j = 0; j < (int)refFL->CtrlPts.size(); j++)fardist = std::max(fardist, (refFL->CtrlPts[i] - refFL->CtrlPts[j]).norm());
+    }
+    if(fardist < mindist)return;
+    Eigen::Vector3d a{(befPos - basePos).x(), (befPos - basePos).y(), 0}, b{(curPos - basePos).x(), (curPos - basePos).y(), 0}, basePt{basePos.x(), basePos.y(),0};
+    double scale = b.norm()/a.norm();
+    for(auto&p: refFL->CtrlPts)p = scale * (p - basePt).normalized() + basePt;
+    refFL->setCurve(3);
+}
+
+void AffinRotate(const QPointF& basePos, const QPointF& befPos, const QPointF& curPos){
+
 }
 
 void Model::SetMaxFold(double val){

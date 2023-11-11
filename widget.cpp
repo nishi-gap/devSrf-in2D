@@ -360,7 +360,6 @@ void MainWindow::ReassinColor(){
 
 void MainWindow::keyPressEvent(QKeyEvent *e){
     ui->glWid3dim->receiveKeyEvent(e);
-    ui->glWid2dim->receiveKeyEvent(e);
     double bndrange = ui->BoundaryRange->value();
     double warea = ui->TriAreaWeight->value(), wsim = ui->NormErrorWeight->value();
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
@@ -385,11 +384,12 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         fold_Sm();
         qDebug()<<"/////////////////////////";
     }
-    else if(e->key() == Qt::Key_3){
+    if(e->key() == Qt::Key_3){
         qDebug()<<"vertices moving";
         ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim,  3, 0, bndrange, layerNum, 2, IsStartEnd);
         qDebug()<<"/////////////////////////";
-    }else if(e->key() == Qt::Key_4){
+    }
+    if(e->key() == Qt::Key_4){
         qDebug()<<"propagate optimization vertex points from center to end point ";
         if(e->modifiers().testFlag(Qt::ControlModifier)){
             ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 13, IsStartEnd);
@@ -397,16 +397,17 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         else  ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 3, IsStartEnd);
         qDebug()<<"/////////////////////////";
     }
-    else if(e->key() == Qt::Key_5){
+
+    if(e->key() == Qt::Key_5){
         ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 4, IsStartEnd);
     }
-    else if(e->key() == Qt::Key_6){
+    if(e->key() == Qt::Key_6){
         ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 5, IsStartEnd);
     }
-    else if(e->key() == Qt::Key_7){
+    if(e->key() == Qt::Key_7){
         ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 6, IsStartEnd);
     }
-    else if(e->key() == Qt::Key_8){
+    if(e->key() == Qt::Key_8){
         if(e->modifiers().testFlag(Qt::ControlModifier)){
             ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 7, IsStartEnd);
         }
@@ -416,18 +417,24 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         ui->glWid2dim->stashcurrentstate();
     }
 
+    if(e->key() == Qt::Key_A){
+        if(!e->modifiers().testFlag(Qt::ControlModifier))ui->glWid2dim->switch2AffinMode();
+        else ui->glWid2dim->switch2VisibleCurve();
+    }
     if(e->key() == Qt::Key_C){
-        if(!ui->glWid2dim->model.back()->outline->IsClosed())ui->glWid3dim->setVertices();
-        else if(!ui->glWid2dim->model.back()->FL.empty()){
-             ui->glWid2dim->model.back()->FL[0]->ReassignColor();
-             ui->glWid2dim->model.back()->deform();
-             ui->glWid2dim->model.back()->modifyFoldingCurvePositionOn3d();
-             ui->glWid2dim->update();
-             ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
-        }
+        if(e->modifiers().testFlag(Qt::ControlModifier))ui->glWid2dim->CopyCurveObj();
         else{
-             ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
+            if(!ui->glWid2dim->model.back()->outline->IsClosed())ui->glWid3dim->setVertices();
+            else if(!ui->glWid2dim->model.back()->FL.empty()){
+                ui->glWid2dim->model.back()->FL[0]->ReassignColor();
+                ui->glWid2dim->model.back()->deform();
+                ui->glWid2dim->model.back()->modifyFoldingCurvePositionOn3d();
+                ui->glWid2dim->update();
+                ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
+            }
+            else ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
         }
+
     }
 
     if(e->key() == Qt::Key_D){
@@ -477,12 +484,17 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         }
     }
 
+    if(e->key() == Qt::Key_V){
+        if(e->modifiers().testFlag(Qt::ControlModifier)) ui->glWid2dim->PasteCurveObj();
+    }
+
     if(e->key() == Qt::Key_Z){
         if(e->modifiers().testFlag(Qt::ControlModifier)) ui->glWid2dim->back2befstate();
     }
 
     fold_Sm();
-    update();
+    ui->glWid2dim->update();
+    ui->glWid3dim->update();
 }
 
 void MainWindow::mouseMoveEvent(QMouseEvent *e){

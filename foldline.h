@@ -36,7 +36,7 @@ public:
     bool addCtrlPt(Eigen::Vector3d& p, int dim);
     bool delCtrlPt(Eigen::Vector3d& p, int dim, std::shared_ptr<OUTLINE>& outline);
     bool moveCtrlPt(Eigen::Vector3d& p, int movePtIndex, int dim);
-
+    bool setCurve(int dim);
     double getColor();
     bool RevisionCrosPtsPosition();
 
@@ -63,7 +63,7 @@ public:
     std::vector<std::vector<std::shared_ptr<Vertex>>> CalclateRegressionCurve(double a, const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool IsWriteCSV, bool IsStartEnd, std::vector<std::vector<std::shared_ptr<Vertex>>>& Tri_fixside);
 private:
     double color;
-    bool setCurve(int dim);
+
     int curveNum;
 
     std::vector<std::shared_ptr<CrvPt_FL>> Points_On_Curve;

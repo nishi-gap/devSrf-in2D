@@ -31,7 +31,9 @@ public:
     std::shared_ptr<Model> stashcurrentstate();
     std::shared_ptr<Model> deepCopy();
     void detectClickedObj(const QPointF& curPos);//将来的にはfoldlineだけでなくほかのオブジェクトも判定して操作できるようにしたい
-    void AffinTrans(const QPointF& befPos, const QPointF& curPos, int transmode);
+    void AffinTrans(const QPointF& befPos, const QPointF& curPos);
+    void AffinScale(const QPointF& basePos, const QPointF& befPos, const QPointF& curPos);
+    void AffinRotate(const QPointF& basePos, const QPointF& befPos, const QPointF& curPos);
     //void deform(std::vector<std::vector<Eigen::Vector3d>>& output, std::vector<ruling*>& Rulings, Eigen::Vector3d& center);
     void deform();
     void Initialize();
