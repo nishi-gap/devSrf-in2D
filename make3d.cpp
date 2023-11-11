@@ -99,7 +99,7 @@ void Model::AffinScale(const QPointF& basePos, const QPointF& befPos, const QPoi
     Eigen::Vector3d a{(befPos - basePos).x(), (befPos - basePos).y(), 0}, b{(curPos - basePos).x(), (curPos - basePos).y(), 0}, basePt{basePos.x(), basePos.y(),0};
     double scale = b.norm()/a.norm();
     qDebug()<<"scale " << scale;
-    for(auto&p: refFL->CtrlPts)p = scale * (p - basePt).normalized() + basePt;
+    for(auto&p: refFL->CtrlPts)p = scale * (p - basePt) + basePt;
     refFL->setCurve(3);
 }
 
