@@ -26,10 +26,12 @@ public:
     std::vector<std::shared_ptr<Vertex4d>> FoldingCurve;
     std::vector<Eigen::Vector3d> CurvePts;
     std::vector<std::array<Eigen::Vector3d, 2>>  AllRulings;
+    PaintTool type;
     double a_flap;
     double tol;
     int validsize;
 
+    std::shared_ptr<FoldLine> deepCopy();
     bool isbend();
     bool addCtrlPt(Eigen::Vector3d& p, int dim);
     bool delCtrlPt(Eigen::Vector3d& p, int dim, std::shared_ptr<OUTLINE>& outline);
@@ -63,7 +65,7 @@ private:
     double color;
     bool setCurve(int dim);
     int curveNum;
-    PaintTool type;
+
     std::vector<std::shared_ptr<CrvPt_FL>> Points_On_Curve;
     bool ReviseVertexPos(const std::vector<std::shared_ptr<Vertex>>& Poly_V, int EndIndex_left, int EndIndex_right, int AlgOptim, double range, double warea, double wsim);
     //Eigen::MatrixXd GlobalSplineInterpolation(std::vector<double>&Knot, bool is3d, int dim);

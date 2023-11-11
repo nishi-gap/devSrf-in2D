@@ -12,9 +12,43 @@ Model::Model(int _crvPtNum){
     clear();
     outline = std::make_shared<OUTLINE>();
     refCrv.clear();
-    refFL.clear();
+    refFL = nullptr;
     FoldCurveIndex = befFaceNum = 0;
     NTree_fl = NTree<std::shared_ptr<FoldLine>>();
+}
+
+std::shared_ptr<Model> Model::deepCopy(){
+    std::shared_ptr<Model> m = std::make_shared<Model>();
+    m->crvPtNum = crvPtNum;  m->befFaceNum =  befFaceNum;  m->FoldCurveIndex =  FoldCurveIndex; m->refCrv = refCrv;
+    m->ColorPt = ColorPt; m->Axis4Const[0] = Axis4Const[0]; m->Axis4Const[1] = Axis4Const[1];
+    m->Rulings.resize(Rulings.size());
+    for(int i = 0; i < (int)Rulings.size(); i++)m->Rulings[i] = Rulings[i]->deepCopy();
+    m->outline = outline->deepCopy();
+    m->crvs.resize(crvs.size());
+    for(int i = 0; i < (int)crvs.size(); i++)m->crvs[i] = crvs[i]->deepCopy();
+    m->FL.resize(FL.size());
+    for(int i = 0; i < (int)FL.size(); i++){
+        m->FL[i] = FL[i]->deepCopy();
+    }
+    return m;
+}
+
+std::shared_ptr<Model> Model::stashcurrentstate(){
+    std::shared_ptr<Model> m = deepCopy();
+    for(auto&fl: m->FL){
+        if(fl->FoldingCurve.empty())continue;
+        for(auto&v4d: fl->FoldingCurve){
+            v4d->first->update(); v4d->second->update(); v4d->third->update();
+        }
+    }
+    for(auto&r: m->Rulings){
+        if(r->hasCrossPoint)continue;
+        r->v->update(); r->o->update();
+    }
+    for(auto&v: m->outline->vertices){
+        v->update();
+    }
+    return m;
 }
 
 void Model::clear(){
@@ -27,6 +61,24 @@ void Model::Initialize(){
     clear();
     outline = std::make_shared<OUTLINE>();
     refCrv.clear();
+}
+
+//将来的にはfoldlineだけでなくほかのオブジェクトも判定して操作できるようにしたい
+void Model::detectClickedObj(const QPointF& curPos){
+    refFL = nullptr;
+    const double step = 1e-2;
+    double mindist = 1.0;
+    Eigen::Vector3d pos{curPos.x(), curPos.y(), 0};
+    for(auto&fl: FL){
+        if(fl->CtrlPts.size() <= 3)continue;
+        for(double t = 0.0; t <= 1.0; t += step){
+            Eigen::Vector3d p = MathTool::bezier(fl->CtrlPts, t, 3);//三次ベジエ曲線に限定しているため
+            if((p - pos).norm() < mindist){
+                mindist = (p - pos).norm(); refFL = fl;
+            }
+        }
+    }
+    qDebug()<<"clicked fl is " << refFL.get();
 }
 
 void Model::SetMaxFold(double val){
@@ -564,6 +616,7 @@ bool Model::BendingModel(double wb, double wp, double warea, double wsim, int di
         }
 
         bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum);//正しい第5引数はalgだけど検証用に1
+        AlgNum = (AlgNum + 1)% 2;
         res = true;
         if(alg % 10 == 1){
             while(!res){

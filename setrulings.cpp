@@ -13,9 +13,19 @@ Vertex::Vertex(Eigen::Vector3d _p2, Eigen::Vector3d _p3, bool _deformed){
     deformed = _deformed;
 }
 
+void Vertex::update(){
+    p2_ori = p; p3_ori = p3;
+}
+
 std::shared_ptr<Vertex> Vertex::deepCopy(){ return std::make_shared<Vertex>(p, p3, deformed);}
 
 std::shared_ptr<CrvPt_FL> CrvPt_FL::deepCopy(){return std::make_shared<CrvPt_FL>(p,p3,s);}
+
+std::shared_ptr<Line> Line::deepCopy(){
+    std::shared_ptr<Line> L = std::make_shared<Line>(o,v,et);
+    L->color = color; L->IsCrossed = IsCrossed; L->hasCrossPoint = hasCrossPoint;
+    return L;
+}
 
 std::shared_ptr<Vertex4d> Vertex4d::deepCopy(){ return std::make_shared<Vertex4d>(first->deepCopy(),second->deepCopy(),third->deepCopy());}
 
@@ -29,6 +39,18 @@ CRV::CRV(int _crvNum, int DivSize){
     curveType = CurveType::none;
     IsInsertNewPoint = false;
     InsertPointSegment = -1;
+}
+
+std::shared_ptr<CRV> CRV::deepCopy(){
+    std::shared_ptr<CRV> c = std::make_shared<CRV>(curveNum, 1);
+    c->isempty = isempty; c->curveType = curveType;
+    c->IsInsertNewPoint = IsInsertNewPoint; c->InsertPointSegment = InsertPointSegment;
+    c->CurvePoints = CurvePoints; c->Rulings.resize(Rulings.size());
+    c->ControllPoints = ControllPoints;
+    for(int i = 0; i < (int)Rulings.size(); i++){
+        c->Rulings[i] = Rulings[i]->deepCopy();
+    }
+    return c;
 }
 
 bool CRV::eraseCtrlPt(int curveDimention, int crvPtNum){
@@ -386,6 +408,19 @@ OUTLINE::OUTLINE(){
     VerticesNum = 3;
     origin = Eigen::Vector2d(-1,-1);
     hasPtNum = 0;
+}
+
+std::shared_ptr<OUTLINE> OUTLINE::deepCopy(){
+    std::shared_ptr<OUTLINE> o = std::make_shared<OUTLINE>();
+    o->VerticesNum = VerticesNum; o->hasPtNum = hasPtNum; o->origin = origin; o->type = type;
+    o->vertices.resize(vertices.size()); o->Lines.resize(Lines.size());
+    for(int i = 0; i < (int)vertices.size(); i++){
+        o->vertices[i] = vertices[i]->deepCopy();
+    }
+    for(int i = 0; i < (int)Lines.size(); i++){
+        o->Lines[i] = Lines[i]->deepCopy();
+    }
+    return o;
 }
 
 void OUTLINE::addVertex(const std::shared_ptr<Vertex>& v, int n){
@@ -822,7 +857,7 @@ std::vector<std::vector<std::shared_ptr<Vertex>>> MakeModel(const std::vector<st
                 if((Poly[i]->p - o->p).norm() < 1e-6)f_ind = i;
                 if((Poly[i]->p - v->p).norm() < 1e-6)s_ind = i;
             }
-            if(f_ind == -1 || s_ind == -1)continue;
+            if(f_ind == -1 || s_ind == -1 || f_ind == s_ind)continue;
             int i_min = std::min(f_ind, s_ind), i_max = std::max(f_ind, s_ind);
             std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
             Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);

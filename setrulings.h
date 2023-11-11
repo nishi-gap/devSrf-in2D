@@ -19,6 +19,7 @@ public:
     Vertex(Eigen::Vector3d _p, bool _deformed = false);
     Vertex(Eigen::Vector3d _p2, Eigen::Vector3d _p3, bool _deformed = false);
     std::shared_ptr<Vertex> deepCopy();
+    void update();
     //~Vertex();
     bool operator != (const Vertex &V)const{return p != V.p || p2_ori != V.p2_ori|| p3 != V.p3 || p3_ori != V.p3_ori || deformed != V.deformed;}
     bool operator == (const Vertex &V)const{return p == V.p && p2_ori == V.p2_ori && p3 == V.p3 && p3_ori == V.p3_ori && deformed == V.deformed;}
@@ -52,6 +53,7 @@ public:
     EdgeType et = EdgeType::none;
     Line(const std::shared_ptr<Vertex>& _o, const std::shared_ptr<Vertex>& _v, EdgeType _et): o(_o), v(_v), et(_et), IsCrossed(-1), color(0), hasCrossPoint(false){}
     Line():o(nullptr),v(nullptr), IsCrossed(-1), color(0), hasCrossPoint(false) {}
+    std::shared_ptr<Line> deepCopy();
     //bool operator !=(const Line& l)const{return IsCrossed != l.IsCrossed || color != l.color || (v[0] != l.v[0] && v[0] != l.v[1]);}
     //bool operator ==(const Line &l)const{return IsCrossed == l.IsCrossed && color == l.color && ((v[0] == l.v[0] && v[1] == l.v[1]) || (v[1] == l.v[0] && v[0] == l.v[1]));}
     bool is_on_line(Eigen::Vector3d p);
@@ -77,9 +79,10 @@ public:
     //void operator = (const Vertex4d &V){first = V.first; second = V.second; third = V.third; IsCalc = V.IsCalc;}
 };
 
-class CRV{
+class CRV: public std::enable_shared_from_this<CRV>{
 public:
     CRV(int _crvNum, int DivSize);
+    std::shared_ptr<CRV> deepCopy();
 
     bool drawBspline(int curveDimention,  int crvPtNum);
     bool drawBezier(int curveDimention, int crvPtNum);
@@ -120,12 +123,12 @@ private:
 
 };
 
-class OUTLINE{
+class OUTLINE: public std::enable_shared_from_this<OUTLINE>{
 public:
 
     OUTLINE();
     QString type;//Rectangle, Polygon, Polyline
-
+    std::shared_ptr<OUTLINE> deepCopy();
     bool IsClosed();
     int VerticesNum;
     std::vector<std::shared_ptr<Vertex>> vertices;

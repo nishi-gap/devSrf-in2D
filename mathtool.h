@@ -40,6 +40,7 @@ enum class PaintTool{
     None,
     Reset,
     deform,
+    AffinTrans,
 
     AddCurve,
     Bezier_r,

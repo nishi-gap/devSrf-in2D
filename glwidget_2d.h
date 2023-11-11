@@ -14,6 +14,7 @@
 #include <QPushButton>
 #include "setrulings.h"
 #include <QDebug>
+#include <list>
 
 class GLWidget_2D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
 {
@@ -28,7 +29,7 @@ public:
     int crvPtNum;
     std::shared_ptr<GToolWnd> gw;
 
-    std::shared_ptr<Model> model;
+    std::list<std::shared_ptr<Model>> model;
     //new gradation mode
     int InterpolationType;//0:直線, 1:spline, 2:B-spline
 
@@ -42,6 +43,8 @@ public:
     bool IsStopAtFF = false, IsStopAtEq = false, IsStopAtCon = false, IsStop4Debug = false;
     double angle = 0.0;
     void EraseNonFoldEdge(bool state);
+    void stashcurrentstate();
+    void back2befstate();
 
     //regression curve
     class drawobj{

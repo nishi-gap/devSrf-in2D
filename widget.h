@@ -100,7 +100,6 @@ public slots:
     void SwitchingVisualization_RegCurve();
 private:
     Ui::MainWindow *ui;
-    std::shared_ptr<Model> model;
     QList<std::tuple<QCheckBox *, PaintTool >> CBoxlist;
     int crvPtNum;
     std::vector<std::vector<Eigen::Vector3d>> output;

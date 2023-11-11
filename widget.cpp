@@ -147,7 +147,7 @@ void MainWindow::FinishColorChange(){
     qDebug()<< "gradation mode finish";
     ui->glWid2dim->InitializeDrawMode();
 }
-void MainWindow::ChangeMaxColor(int val){model->SetMaxFold((double)val);}
+void MainWindow::ChangeMaxColor(int val){ui->glWid2dim->model.back()->SetMaxFold((double)val);}
 
 void MainWindow::addFoldLine_l(){emit signalFLtype(PaintTool::FoldLine_test);}
 void MainWindow::addFoldLine_arc(){emit signalFLtype(PaintTool::FoldLine_arc);}
@@ -158,22 +158,22 @@ void MainWindow::color_FL(){emit signalFLtype(PaintTool::FoldLine_move);}
 
 void MainWindow::ModelBack(){
     ui->glWid2dim->update();
-    ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
+    ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
 }
 
 void MainWindow::changeRulingNum(int n){
     int iselim = (n < befNum)? -1: (n == befNum)? 0: 1;
-    if(iselim == -1 || iselim == 1)ui->glWid2dim->model->SimplifyModel(iselim);
+    if(iselim == -1 || iselim == 1)ui->glWid2dim->model.back()->SimplifyModel(iselim);
     befNum = n;
     ui->glWid2dim->update();
-    ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
+    ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
 }
 
 void MainWindow::EraseNonFoldEdge(bool state){
     ui->glWid2dim->EraseNonFoldEdge(state);
     ui->glWid3dim->EraseNonFoldEdge(state);
-    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
-    ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
+    if(ui->glWid2dim->model.back()->FL.empty() || ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty())return;
+    ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
 }
 
 void MainWindow::sendFoldingParam(double &tol, bool &begincenter){
@@ -183,64 +183,64 @@ void MainWindow::sendFoldingParam(double &tol, bool &begincenter){
 
 void MainWindow::changeToleranceValue_Slider(int val){
     double maxSpin = ui->TolValue->maximum(), maxSlider = ui->ToleranceValue->maximum();
-    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+    if(ui->glWid2dim->model.back()->FL.empty() || ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty())return;
     if(!ui->BinaryMVColor->isChecked())ui->BinaryMVColor->setChecked(true);
     ui->glWid2dim->setNewGradationMode();
     ui->glWid2dim->VisualizeMVColor(true);
     double tol = maxSpin * (double)val/(double)maxSlider;
     ui->TolValue->setValue(tol);
-    ui->glWid2dim->model->SimplifyModel(tol);
-    auto fl = ui->glWid2dim->model->FL[0];
+    ui->glWid2dim->model.back()->SimplifyModel(tol);
+    auto fl = ui->glWid2dim->model.back()->FL[0];
     ui->glWid2dim->update();
-     ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
+     ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
 }
 
 void MainWindow::changeToleranceValue_Spin(double val){
     double maxSpin = ui->TolValue->maximum(), maxSlider = ui->ToleranceValue->maximum();
-    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+    if(ui->glWid2dim->model.back()->FL.empty() || ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty())return;
     if(!ui->BinaryMVColor->isChecked())ui->BinaryMVColor->setChecked(true);
     ui->glWid2dim->setNewGradationMode();
     ui->glWid2dim->VisualizeMVColor(true);
 
     ui->ToleranceValue->setValue(int(val/maxSpin * maxSlider));
-    //ui->glWid2dim->model->SimplifyModel(val);
+    //ui->glWid2dim->model.back()->SimplifyModel(val);
     fold_Sm();
 }
 
 
 
 void MainWindow::StartOptimization(){
-    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+    if(ui->glWid2dim->model.back()->FL.empty() || ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty())return;
     double tol = ui->TolValue->value();
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
     double warea = ui->TriAreaWeight->value(), wsim = ui->NormErrorWeight->value();
     double bndrange = ui->BoundaryRange->value();
-    int layerNum = ui->glWid2dim->model->getLayerNum();
-    ui->glWid2dim->model->BendingModel(wb, wp, warea, wsim, 3, tol, bndrange, layerNum, 1, IsStartEnd);
+    int layerNum = ui->glWid2dim->model.back()->getLayerNum();
+    ui->glWid2dim->model.back()->BendingModel(wb, wp, warea, wsim, 3, tol, bndrange, layerNum, 1, IsStartEnd);
     fold_Sm();
 
 }
 
 void MainWindow::BendCurve(int num){
-    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+    if(ui->glWid2dim->model.back()->FL.empty() || ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty())return;
     double tol = ui->TolValue->value();
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
     double warea = ui->TriAreaWeight->value(), wsim = ui->NormErrorWeight->value();
     double bndrange = ui->BoundaryRange->value();
     qDebug() << "the number of bend curve is " << num;
-    ui->glWid2dim->model->BendingModel(wb, wp,warea, wsim, 3, tol, bndrange, num, 1, IsStartEnd);
+    ui->glWid2dim->model.back()->BendingModel(wb, wp,warea, wsim, 3, tol, bndrange, num, 1, IsStartEnd);
     fold_Sm();
 }
 
 
 void MainWindow::SimpleSmoothing(){
-    auto Poly_V = ui->glWid2dim->model->outline->getVertices();
-    if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
-    bool res = ui->glWid2dim->model->Smoothing();
+    auto Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
+    if(ui->glWid2dim->model.back()->FL.empty() || ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty())return;
+    bool res = ui->glWid2dim->model.back()->Smoothing();
     if(res){
         ui->glWid2dim->update();
-        ui->glWid2dim->model->SetOnVertices_outline(false);
-         ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
+        ui->glWid2dim->model.back()->SetOnVertices_outline(false);
+         ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
     }
 }
 
@@ -251,11 +251,11 @@ void MainWindow::changeAngleFromSlider(int val){
 
     if(IsvisibleRegCrv){
          std::vector<double> color_reg{0.8, 0, 0.}, color_fixreg{0,0,0.8};
-         std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model->outline->getVertices();
+         std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
          std::vector<std::vector<std::shared_ptr<Vertex>>> Tri_fixside;
-         auto Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(static_cast<double>(val)/100.0, Poly_V, false, IsStartEnd, Tri_fixside);
-         ui->glWid3dim->ReceiveRegressionCurve({Triangles, Tri_fixside}, {color_reg,color_fixreg});
-         ui->glWid2dim->ReceiveRegressionCurve({Triangles, Tri_fixside}, {color_reg,color_fixreg});
+         auto Triangles = ui->glWid2dim->model.back()->FL[0]->CalclateRegressionCurve(static_cast<double>(val)/100.0, Poly_V, false, IsStartEnd, Tri_fixside);
+         ui->glWid3dim->ReceiveRegressionCurve({Triangles, {}}, {color_reg,color_fixreg});
+         ui->glWid2dim->ReceiveRegressionCurve({Triangles, {}}, {color_reg,color_fixreg});
     }
 }
 
@@ -264,10 +264,10 @@ void MainWindow::changeAngleFromSpinBox(double val){
     double a = (double)val*std::numbers::pi/180.0;
     emit sendAngle(a, IsStartEnd);
     if(IsvisibleRegCrv){
-        std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model->outline->getVertices();
+        std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
         std::vector<std::vector<std::shared_ptr<Vertex>>> Tri_fixside;
         std::vector<double> color_reg{0.8, 0, 0.}, color_fixreg{0,0,0.8};
-        std::vector<std::vector<std::shared_ptr<Vertex>>> Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(val, Poly_V, false, IsStartEnd, Tri_fixside);
+        std::vector<std::vector<std::shared_ptr<Vertex>>> Triangles = ui->glWid2dim->model.back()->FL[0]->CalclateRegressionCurve(val, Poly_V, false, IsStartEnd, Tri_fixside);
         ui->glWid3dim->ReceiveRegressionCurve({Triangles}, {color_reg});
         ui->glWid2dim->ReceiveRegressionCurve({Triangles}, {color_reg});
     }
@@ -285,11 +285,15 @@ void MainWindow::changeLineWidthFromSpinBox(double d){
 
 void MainWindow::fold_Sm(){
     ui->glWid2dim->update();
-    if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
+    if(!ui->glWid2dim->model.back()->outline->IsClosed())ui->glWid3dim->setVertices();
 
     else{
-        ui->glWid2dim->model->SetOnVertices_outline(false);
-        ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
+        ui->glWid2dim->model.back()->SetOnVertices_outline(false);
+        auto Surface = ui->glWid2dim->model.back()->outline->Lines;
+        auto Rulings = ui->glWid2dim->model.back()->Rulings;
+        auto FL = ui->glWid2dim->model.back()->FL;
+        auto AllRulings = ui->glWid2dim->AllRulings;
+        ui->glWid3dim->setVertices(Surface, Rulings , FL , AllRulings);
     }
 }
 
@@ -339,18 +343,19 @@ void MainWindow::switchActivateCheckBox(PaintTool active){
 
 }
 void MainWindow::ReassinColor(){
-    if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
-    else if(!ui->glWid2dim->model->FL.empty() && !ui->glWid2dim->model->FL[0]->FoldingCurve.empty()){
-        ui->glWid2dim->model->FL[0]->ReassignColor();
-        ui->glWid2dim->model->deform();
+    if(!ui->glWid2dim->model.back()->outline->IsClosed())ui->glWid3dim->setVertices();
+    else if(!ui->glWid2dim->model.back()->FL.empty() && !ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty()){
+        ui->glWid2dim->model.back()->FL[0]->ReassignColor();
+        ui->glWid2dim->model.back()->deform();
         ui->glWid2dim->update();
-        ui->glWid2dim->model->modifyFoldingCurvePositionOn3d();
-         ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
+        ui->glWid2dim->model.back()->modifyFoldingCurvePositionOn3d();
+         ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
     }
     else{
-         ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
+         ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
     }
 }
+
 
 
 void MainWindow::keyPressEvent(QKeyEvent *e){
@@ -359,107 +364,123 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     double bndrange = ui->BoundaryRange->value();
     double warea = ui->TriAreaWeight->value(), wsim = ui->NormErrorWeight->value();
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-    int layerNum = ui->glWid2dim->model->getLayerNum();
-    if(e->key() == Qt::Key_M){
-        if(ui->glWid2dim->model->FL.empty())return;
-        double tol = ui->TolValue->value();
-        ui->glWid2dim->model->AssignRuling(3, tol, false);
-        ui->glWid2dim->update();
-        fold_Sm();
+    int layerNum = ui->glWid2dim->model.back()->getLayerNum();
+    if(e->key() == Qt::Key_0){
+         qDebug()<<"optimization for last adding folding curve";
+         ui->glWid2dim->model.back()->FL.back()->Optimization_FlapAngle(ui->glWid2dim->model.back()->outline->vertices,  wb,  wp,  0,  1,  IsStartEnd, 1);
     }
     if(e->key() == Qt::Key_1){
         qDebug() <<"use ruling intersection";
-        if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+        if(ui->glWid2dim->model.back()->FL.empty() || ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty())return;
         double tol = ui->TolValue->value();
-        ui->glWid2dim->model->BendingModel(wb, wp, warea, wsim, 3, tol, bndrange, layerNum, 0, IsStartEnd);
+        ui->glWid2dim->model.back()->BendingModel(wb, wp, warea, wsim, 3, tol, bndrange, layerNum, 0, IsStartEnd);
         fold_Sm();
         qDebug()<<"/////////////////////////";
     }
     if(e->key() == Qt::Key_2){
         qDebug()<<"use regression curve and triangle area";
-        if(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())return;
+        if(ui->glWid2dim->model.back()->FL.empty() || ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty())return;
         double tol = ui->TolValue->value();
-        ui->glWid2dim->model->BendingModel(wb, wp, warea, wsim, 3, tol, bndrange, layerNum, 1, IsStartEnd);
+        ui->glWid2dim->model.back()->BendingModel(wb, wp, warea, wsim, 3, tol, bndrange, layerNum, 1, IsStartEnd);
         fold_Sm();
         qDebug()<<"/////////////////////////";
     }
     else if(e->key() == Qt::Key_3){
         qDebug()<<"vertices moving";
-        ui->glWid2dim->model->BendingModel(0, 0, warea, wsim,  3, 0, bndrange, layerNum, 2, IsStartEnd);
+        ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim,  3, 0, bndrange, layerNum, 2, IsStartEnd);
         qDebug()<<"/////////////////////////";
     }else if(e->key() == Qt::Key_4){
         qDebug()<<"propagate optimization vertex points from center to end point ";
         if(e->modifiers().testFlag(Qt::ControlModifier)){
-            ui->glWid2dim->model->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 13, IsStartEnd);
+            ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 13, IsStartEnd);
         }
-        else  ui->glWid2dim->model->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 3, IsStartEnd);
+        else  ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 3, IsStartEnd);
         qDebug()<<"/////////////////////////";
     }
     else if(e->key() == Qt::Key_5){
-        ui->glWid2dim->model->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 4, IsStartEnd);
+        ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 4, IsStartEnd);
     }
     else if(e->key() == Qt::Key_6){
-        ui->glWid2dim->model->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 5, IsStartEnd);
+        ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 5, IsStartEnd);
     }
     else if(e->key() == Qt::Key_7){
-        ui->glWid2dim->model->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 6, IsStartEnd);
+        ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 6, IsStartEnd);
     }
     else if(e->key() == Qt::Key_8){
         if(e->modifiers().testFlag(Qt::ControlModifier)){
-            ui->glWid2dim->model->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 7, IsStartEnd);
+            ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 7, IsStartEnd);
         }
-        else  ui->glWid2dim->model->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 17, IsStartEnd);
+        else  ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 17, IsStartEnd);
+    }
+    if(e->key() == Qt::Key_Return){//
+        ui->glWid2dim->stashcurrentstate();
     }
 
-    if(e->key() == Qt::Key_Q)IsStartEnd = !IsStartEnd;
+    if(e->key() == Qt::Key_C){
+        if(!ui->glWid2dim->model.back()->outline->IsClosed())ui->glWid3dim->setVertices();
+        else if(!ui->glWid2dim->model.back()->FL.empty()){
+             ui->glWid2dim->model.back()->FL[0]->ReassignColor();
+             ui->glWid2dim->model.back()->deform();
+             ui->glWid2dim->model.back()->modifyFoldingCurvePositionOn3d();
+             ui->glWid2dim->update();
+             ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
+        }
+        else{
+             ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
+        }
+    }
+
     if(e->key() == Qt::Key_D){
         DebugMode::Singleton::getInstance().switchval();
         if(DebugMode::Singleton::getInstance().isdebug())qDebug() << "DebugMode On";
         else qDebug() << "DebugMode off";
     }
-    else if(e->key() == Qt::Key_Return){emit PressedEnter();}
-    else if(e->key() == Qt::Key_C){
-        if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
-        else if(!ui->glWid2dim->model->FL.empty()){
-            ui->glWid2dim->model->FL[0]->ReassignColor();
-            ui->glWid2dim->model->deform();
-            ui->glWid2dim->model->modifyFoldingCurvePositionOn3d();
-            ui->glWid2dim->update();
-             ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
+
+    if(e->key() == Qt::Key_N){
+        ui->glWid2dim->InitializeDrawMode();
+    }
+
+    if(e->key() == Qt::Key_M){
+        if(ui->glWid2dim->model.back()->FL.empty())return;
+        double tol = ui->TolValue->value();
+        ui->glWid2dim->model.back()->AssignRuling(3, tol, false);
+        ui->glWid2dim->update();
+        fold_Sm();
+    }
+
+    if( e->key() == Qt::Key_P){
+        if(!ui->glWid2dim->model.back()->outline->IsClosed())ui->glWid3dim->setVertices();
+        else if(!ui->glWid2dim->model.back()->FL.empty()){
+             ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
         }
         else{
-             ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
+             ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
         }
     }
-    else if( e->key() == Qt::Key_P){
 
-        if(!ui->glWid2dim->model->outline->IsClosed())ui->glWid3dim->setVertices();
-        else if(!ui->glWid2dim->model->FL.empty()){
-             ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
-        }
+    if(e->key() == Qt::Key_Q)IsStartEnd = !IsStartEnd;
+
+    if(e->key() == Qt::Key_R){
+        if(e->modifiers().testFlag(Qt::ControlModifier))ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, -1, IsStartEnd);//initialization
         else{
-             ui->glWid3dim->setVertices(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, ui->glWid2dim->model->FL, ui->glWid2dim->AllRulings);
+             double a = static_cast<double>(ui->angleSlider->value())/100.0;
+             std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
+             std::vector<std::vector<std::shared_ptr<Vertex>>> Tri_fixside;
+             auto Triangles = ui->glWid2dim->model.back()->FL[0]->CalclateRegressionCurve(a,Poly_V,true, IsStartEnd, Tri_fixside);
+             qDebug() <<"csv file export";
         }
     }
-    else if(e->modifiers().testFlag(Qt::ControlModifier)){
-        if(e->key() == Qt::Key_S)exportobj();
-        if(e->key() == Qt::Key_R){
-             ui->glWid2dim->model->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, -1, IsStartEnd);//initialization
+
+    if(e->key() == Qt::Key_S){
+        if(e->modifiers().testFlag(Qt::ControlModifier)){
+             exportobj();
         }
     }
-    if(e->modifiers().testFlag(Qt::ShiftModifier)){
 
+    if(e->key() == Qt::Key_Z){
+        if(e->modifiers().testFlag(Qt::ControlModifier)) ui->glWid2dim->back2befstate();
     }
-    else if(e->key() == Qt::Key_N){
-        double a = static_cast<double>(ui->angleSlider->value())/100.0;
-        std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model->outline->getVertices();
-        std::vector<std::vector<std::shared_ptr<Vertex>>> Tri_fixside;
-        auto Triangles = ui->glWid2dim->model->FL[0]->CalclateRegressionCurve(a,Poly_V,true, IsStartEnd, Tri_fixside);
-        qDebug() <<"csv file export";
-    }
-    else{
 
-    }
     fold_Sm();
     update();
 }
@@ -502,13 +523,13 @@ void MainWindow::exportsvg(QString filename){
     WriteList.append("<svg xmlns=\"http://www.w3.org/2000/svg\">\n");
     WriteList.append("<g>");
 
-    std::string strokewidth = "\"0.25\"", str, strokecolor;
+    std::string strokewidth = "\"0.5\"", str, strokecolor;
     //折曲線と交点を持たないruling
-    for(auto itr_r = ui->glWid2dim->model->Rulings.begin(); itr_r != ui->glWid2dim->model->Rulings.end(); itr_r++){
+    for(auto itr_r = ui->glWid2dim->model.back()->Rulings.begin(); itr_r != ui->glWid2dim->model.back()->Rulings.end(); itr_r++){
         if((*itr_r)->hasCrossPoint)continue;
 
         if((*itr_r)->et == EdgeType::r){
-            double color = getcolor(ui->glWid2dim->model->ColorPt.color, ui->glWid2dim->model->ColorPt.angle, (*itr_r)->color/255.0);
+            double color = getcolor(ui->glWid2dim->model.back()->ColorPt.color, ui->glWid2dim->model.back()->ColorPt.angle, (*itr_r)->color/255.0);
             if(color > 1e-3){//mount
                 strokecolor = "\"red\"";
             }else if(color < -1e-3){//valley
@@ -526,7 +547,7 @@ void MainWindow::exportsvg(QString filename){
     //可展面の輪郭描画
     {
         strokecolor ="\"black\"";
-        auto  Vertices = ui->glWid2dim->model->outline->getVertices();
+        auto  Vertices = ui->glWid2dim->model.back()->outline->getVertices();
         int vsize = Vertices.size();
         for(int i = 0; i < vsize; i++){
             double x1 = Vertices[i]->p.x(), y1 = Vertices[i]->p.y(), x2 = Vertices[(i + 1) % vsize]->p.x(), y2 = Vertices[(i + 1) % vsize]->p.y();
@@ -537,7 +558,7 @@ void MainWindow::exportsvg(QString filename){
     }
 
     //折曲線上の4価頂点の描画
-    for(auto& FL: ui->glWid2dim->model->FL){
+    for(auto& FL: ui->glWid2dim->model.back()->FL){
         if(FL->FoldingCurve.empty())continue;
         std::vector<std::shared_ptr<Vertex4d>> ValidFC;
         for(auto&fc: FL->FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
@@ -580,7 +601,7 @@ void MainWindow::exportsvg(QString filename){
 
 //https://nprogram.hatenablog.com/entry/2017/08/10/082236
 void MainWindow::exportobj(){
-    if(!ui->glWid2dim->model->outline->IsClosed()){
+    if(!ui->glWid2dim->model.back()->outline->IsClosed()){
         QMessageBox msgBox;
         msgBox.setText("There is no developable surface.");
         msgBox.exec();
@@ -623,12 +644,12 @@ void MainWindow::exportobj(){
        }
    };
     /*
-   for(auto& l: ui->glWid2dim->model->outline->Lines) polygon.push_back(l->v);
+   for(auto& l: ui->glWid2dim->model.back()->outline->Lines) polygon.push_back(l->v);
    Polygons.push_back(polygon);
 
-   if(!ui->glWid2dim->model->FL.empty() && !ui->glWid2dim->model->FL[0]->FoldingCurve.empty()){
+   if(!ui->glWid2dim->model.back()->FL.empty() && !ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty()){
     std::vector<std::vector<std::shared_ptr<Vertex4d>>> FldCrvs;
-       for(auto&FC: ui->glWid2dim->model->FL){
+       for(auto&FC: ui->glWid2dim->model.back()->FL){
             if(FC->FoldingCurve.empty())continue;
            std::vector<std::shared_ptr<Vertex4d>> FldCrv;
            for(auto&fc: FC->FoldingCurve){if(fc->IsCalc)FldCrv.push_back(fc);}
@@ -701,7 +722,7 @@ void MainWindow::exportobj(){
            }
       }
    }else{
-       for(auto itr_r = ui->glWid2dim->model->Rulings.begin(); itr_r != ui->glWid2dim->model->Rulings.end(); itr_r++){
+       for(auto itr_r = ui->glWid2dim->model.back()->Rulings.begin(); itr_r != ui->glWid2dim->model.back()->Rulings.end(); itr_r++){
            for(auto&P: Polygons){
                int vind = -1, oind = -1;
                for(int i = 0; i < (int)P.size(); i++){
@@ -720,15 +741,15 @@ void MainWindow::exportobj(){
    }
    */
    std::vector<std::vector<std::shared_ptr<Vertex4d>>> FoldingCurves;
-    for(auto&FldCrv: ui->glWid2dim->model->FL)FoldingCurves.push_back(FldCrv->FoldingCurve);
-   Polygons = MakeModel(ui->glWid2dim->model->outline->Lines, ui->glWid2dim->model->Rulings, FoldingCurves);
+    for(auto&FldCrv: ui->glWid2dim->model.back()->FL)FoldingCurves.push_back(FldCrv->FoldingCurve);
+   Polygons = MakeModel(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, FoldingCurves);
 
     for(auto&poly: Polygons){
         std::vector<Eigen::Vector3d> V;
         auto poly_sort = SortPolygon(poly);
         for(auto&p: poly_sort)V.push_back(Mirror * p->p3);
         Vertices.push_back(V);
-        planerity_value.push_back(Planerity(poly, ui->glWid2dim->model->outline->Lines));
+        planerity_value.push_back(Planerity(poly, ui->glWid2dim->model.back()->outline->Lines));
     }
 
     for(const auto& mesh: Vertices){
@@ -851,8 +872,8 @@ void MainWindow::exportobj(){
     QuantitativeResult << "Planarity\n" ;
     for(auto&c: planerity_value)QuantitativeResult << c << ", ";
     QuantitativeResult << "\nDevelopability\n" ;
-    if(!(ui->glWid2dim->model->FL.empty() || ui->glWid2dim->model->FL[0]->FoldingCurve.empty())){
-        for(auto&FL: ui->glWid2dim->model->FL){
+    if(!(ui->glWid2dim->model.back()->FL.empty() || ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty())){
+        for(auto&FL: ui->glWid2dim->model.back()->FL){
             if(FL->FoldingCurve.empty())continue;
             for(auto itr = FL->FoldingCurve.begin() + 1; itr != FL->FoldingCurve.end() - 1; itr++){
                 Eigen::Vector3d et = (*itr)->second->p3 - (*itr)->first->p3, er = (*(itr - 1))->first->p3 - (*itr)->first->p3, eb = (*itr)->third->p3 - (*itr)->first->p3, el = (*(itr + 1))->first->p3 - (*itr)->first->p3;
@@ -864,7 +885,7 @@ void MainWindow::exportobj(){
         }
     }
     QuantitativeResult << "\nPlanarity(adjacent ruling)\n" ;
-    for(auto&FL: ui->glWid2dim->model->FL){
+    for(auto&FL: ui->glWid2dim->model.back()->FL){
         if(FL->FoldingCurve.empty())continue;
         for(auto itr = FL->FoldingCurve.begin() + 1; itr != FL->FoldingCurve.end() - 2; itr++){
             double l_avg = (((*itr)->first->p3 - (*(itr+1))->second->p3).norm() + ((*itr)->second->p3 - (*(itr+1))->first->p3).norm())/2.0;
@@ -888,12 +909,12 @@ void MainWindow::addCurveBtn(){
     int pad = 5;
     int btn_w = geo.width() - 2 * pad, btn_h = 25;
     QString text;
-    if(ui->glWid2dim->model->crvs[0]->getCurveType() == CurveType::bezier3)text = "Bezier" + QString::number(++CurvesNum[0]);
-    else if(ui->glWid2dim->model->crvs[0]->getCurveType()  == CurveType::bsp3)text = "Bspline" + QString::number(++CurvesNum[1]);
-    else if(ui->glWid2dim->model->crvs[0]->getCurveType() == CurveType::line)text = "Line" + QString::number(++CurvesNum[2]);
-    else if(ui->glWid2dim->model->crvs[0]->getCurveType() == CurveType::arc)text = "Arc"+QString::number(++CurvesNum[3]);
+    if(ui->glWid2dim->model.back()->crvs[0]->getCurveType() == CurveType::bezier3)text = "Bezier" + QString::number(++CurvesNum[0]);
+    else if(ui->glWid2dim->model.back()->crvs[0]->getCurveType()  == CurveType::bsp3)text = "Bspline" + QString::number(++CurvesNum[1]);
+    else if(ui->glWid2dim->model.back()->crvs[0]->getCurveType() == CurveType::line)text = "Line" + QString::number(++CurvesNum[2]);
+    else if(ui->glWid2dim->model.back()->crvs[0]->getCurveType() == CurveType::arc)text = "Arc"+QString::number(++CurvesNum[3]);
 
-    std::shared_ptr<Btn4Crv> newbtn = std::make_shared<Btn4Crv>(ui->glWid2dim->model->crvs[0],text, ui->LayerListWidget);
+    std::shared_ptr<Btn4Crv> newbtn = std::make_shared<Btn4Crv>(ui->glWid2dim->model.back()->crvs[0],text, ui->LayerListWidget);
     connect(newbtn.get(), &Btn4Crv::clicked, this, &MainWindow::SetHandleCrv);
     for(int i = 0; i < (int)LayerList.size(); i++) LayerList[i]->setGeometry(pad, btn_h + (i + 1) * (btn_h + pad), btn_w, btn_h);
     LayerList.insert(LayerList.begin(), newbtn);

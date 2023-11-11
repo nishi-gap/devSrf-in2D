@@ -8,7 +8,7 @@
 #include "foldline.h"
 #include <Eigen/Core>
 
-class Model{
+class Model: public std::enable_shared_from_this<Model>{
 public:
     std::vector<std::shared_ptr<Line>> Rulings;
     std::shared_ptr<OUTLINE> outline;
@@ -19,8 +19,19 @@ public:
     std::shared_ptr<Vertex> Connect2Vertices[2];
     ColorPoint ColorPt;
 
+    std::vector<int> refCrv;//0:未参照　1:参照
+    std::shared_ptr<FoldLine> refFL;
+    NTree<std::shared_ptr<FoldLine>> NTree_fl;
+    int crvPtNum;
+    int befFaceNum;
+    int FoldCurveIndex;
+
     Model();
     Model(int _crvPtNum);
+    std::shared_ptr<Model> stashcurrentstate();
+    std::shared_ptr<Model> deepCopy();
+    void detectClickedObj(const QPointF& curPos);//将来的にはfoldlineだけでなくほかのオブジェクトも判定して操作できるようにしたい
+    void AffinTrans(const QPointF& befPos, const QPointF& curPos, int transmode);
     //void deform(std::vector<std::vector<Eigen::Vector3d>>& output, std::vector<ruling*>& Rulings, Eigen::Vector3d& center);
     void deform();
     void Initialize();
@@ -37,7 +48,6 @@ public:
 
     //FoldLine
     bool AddControlPoint_FL(Eigen::Vector3d& p, int event, int curveDimention);
-
     void UpdateFLOrder(int dim);
     void modify2Druling();
     void applyFL();
@@ -80,14 +90,6 @@ private:
     inline void clear();
 
     Eigen::Vector3d SetOnGrid(QPointF& cursol, double gridsize, const QSize& S);
-
-    std::vector<int> refCrv;//0:未参照　1:参照
-    std::vector<int> refFL;
-    NTree<std::shared_ptr<FoldLine>> NTree_fl;
-    int crvPtNum;
-    int befFaceNum;
-    int FoldCurveIndex;
-
     std::vector<std::shared_ptr<Line>> GradationPoints;
     //std::vector<Line*> makePath();
 };
