@@ -33,7 +33,6 @@ public:
     //new gradation mode
     int InterpolationType;//0:直線, 1:spline, 2:B-spline
 
-    void receiveKeyEvent(QKeyEvent *e);
     bool eraseVec2d, visibleCurve;
     std::vector<std::array<Eigen::Vector3d, 2>> SingleRuling, AllRulings, NewRuling2d;
     std::vector<bool> RulingColor;
@@ -53,11 +52,17 @@ public:
         std::vector<std::vector<std::shared_ptr<Vertex>>> V;
         drawobj(const std::vector<double>&_c, const std::vector<std::vector<std::shared_ptr<Vertex>>>& _V){c = _c; V= std::move(_V);}
     };
-    std::vector<drawobj> RegressionCurve;
+    std::vector<drawobj> RegressionCurve; 
     void ReceiveRegressionCurve(const std::vector<std::vector<std::vector<std::shared_ptr<Vertex>>>>& RC,const std::vector<std::vector<double>>color);
 
     //初期状態
     void InitializeDrawMode();
+    void switch2AffinMode();
+    void switch2VisibleCurve();
+    void CopyCurveObj();
+    void PasteCurveObj();
+    void switch2None();
+
 protected:
     void initializeGL();
     void paintGL();
@@ -82,8 +87,6 @@ public slots:
     void ChangedDivSizeEdit(int n);
     void setColor();
     void receiveColors();
-
-
 
     //new gradation mode
     void setNewGradationMode();
@@ -137,6 +140,7 @@ private:
     int curveDimention;
     int maxDivSize;
     double standardDist;
+    int affinmode;
 
     //int referencedRuling(QPointF p);
     void addPoints_intplation(QMouseEvent *e, QPointF& p);
@@ -162,9 +166,9 @@ private:
 
     int constType;
     Eigen::Vector3d SetOnGrid(QPointF& cursol, double gridsize);
-    QPointF befCur;
+    QPointF befCur, basePoint;
     double difCursol_x, difCursol_y;
-    bool IsLeftClicked, IsRightClicked;
+    bool IsLeftClicked, IsRightClicked, IsCopied, IsAffinMoved;
 
 signals:
     void foldingSignals();

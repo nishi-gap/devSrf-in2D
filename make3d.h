@@ -49,6 +49,7 @@ public:
     void SetOnVertices_outline(bool IsupdateEndPt);
 
     //FoldLine
+    void RemoveUnable2GenCurve();
     bool AddControlPoint_FL(Eigen::Vector3d& p, int event, int curveDimention);
     void UpdateFLOrder(int dim);
     void modify2Druling();

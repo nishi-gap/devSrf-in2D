@@ -67,7 +67,7 @@ void Model::Initialize(){
 void Model::detectClickedObj(const QPointF& curPos){
     refFL = nullptr;
     const double step = 0.002;
-    double mindist = 4.0;
+    double mindist = 7.0;
     Eigen::Vector3d pos{curPos.x(), curPos.y(), 0};
     for(auto&fl: FL){
         if(fl->CtrlPts.size() <= 3)continue;
@@ -86,6 +86,7 @@ void Model::AffinTrans(const QPointF& befPos, const QPointF& curPos){//回転と
     if(refFL == nullptr || std::find(FL.begin(), FL.end(), refFL) == FL.end())return;
     Eigen::Vector3d move{(curPos - befPos).x(), (curPos - befPos).y(), 0};
     for(auto&p: refFL->CtrlPts)p += move;
+    refFL->a_flap = -1;
     refFL->setCurve(3);
 }
 
@@ -95,16 +96,25 @@ void Model::AffinScale(const QPointF& basePos, const QPointF& befPos, const QPoi
     for(int i = 0; i < (int)refFL->CtrlPts.size(); i++){
         for(int j = 0; j < (int)refFL->CtrlPts.size(); j++)fardist = std::max(fardist, (refFL->CtrlPts[i] - refFL->CtrlPts[j]).norm());
     }
-    if(fardist < mindist)return;
+
     Eigen::Vector3d a{(befPos - basePos).x(), (befPos - basePos).y(), 0}, b{(curPos - basePos).x(), (curPos - basePos).y(), 0}, basePt{basePos.x(), basePos.y(),0};
     double scale = b.norm()/a.norm();
-    qDebug()<<"scale " << scale;
+    if(fardist < mindist && scale < 1.0)return;
     for(auto&p: refFL->CtrlPts)p = scale * (p - basePt) + basePt;
     refFL->setCurve(3);
+    refFL->a_flap = -1;
 }
 
-void AffinRotate(const QPointF& basePos, const QPointF& befPos, const QPointF& curPos){
+void Model::AffinRotate(const QPointF& basePos, const QPointF& befPos, const QPointF& curPos){
+    Eigen::Vector3d basePt{befPos.x(), befPos.y(), 0}, b{befPos.x() - basePos.x(), befPos.y() - basePos.y(), 0}, c{curPos.x() - basePos.x(), curPos.y() - basePos.y(), 0};
+    b = b.normalized(); c = c.normalized();
+    double r = b.dot(c); r = (r < -1)? std::numbers::pi: (r > 1)? 0: std::acos(r);
+    Eigen::Vector3d axis = (b.cross(c)).normalized();
+    Eigen::AngleAxisd R = Eigen::AngleAxisd(r, axis);
+    for(auto&p: refFL->CtrlPts)   p = R * (p - basePt) + basePt;
 
+    refFL->setCurve(3);
+    refFL->a_flap = -1;
 }
 
 void Model::SetMaxFold(double val){
@@ -225,6 +235,13 @@ std::vector<std::shared_ptr<CrvPt_FL>> getCrossPoint(std::vector<Eigen::Vector3d
 
 void Model::initializeSurfaceVertices(){ for(auto&v: outline->vertices)v->p3 = v->p3_ori;}
 
+void Model::RemoveUnable2GenCurve(){
+    for(auto it = FL.begin(); it != FL.end();){
+        if((*it)->CtrlPts.size() <= 3)it = FL.erase(it);
+        else it++;
+    }
+}
+
 void Model::UpdateFLOrder(int dim){
     Eigen::Vector3d UpVec(0,-1,0);
     std::vector<std::shared_ptr<FoldLine>> hasFoldingCurve;
@@ -251,7 +268,7 @@ void Model::UpdateFLOrder(int dim){
     //各折曲線上と曲面の交点を導出
     //曲面の各辺と交点があるか探索する
     //曲線が交差した辺のインデックスを持っておく
-
+    RemoveUnable2GenCurve();
     for(auto&fl: FL){
         fl->FoldingCurve.clear();
         if((int)fl->CtrlPts.size() > dim){
@@ -591,15 +608,26 @@ bool Model::BendingModel(double wb, double wp, double warea, double wsim, int di
 
         //Optimization Vertexのテスト用
         if(alg % 10 == 2){
+            //cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
+            //cur->data->Optimization_Vertex(Poly_V, IsStartEnd, OrderConst, AlgNum);
+            //SetOnVertices_outline(false);
+            //return false;
+            cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum);//正しい第5引数はalgだけど検証用に1
             cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
-            cur->data->Optimization_Vertex(Poly_V, IsStartEnd, OrderConst, AlgNum);
-            SetOnVertices_outline(false);
-            return false;
+            cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 1, bndrange, warea, wsim);
+            if(alg / 10 == 1){//shift key + 3のとき
+                cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
+                cur->data->CheckIsCrossedRulings();
+                SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
+                SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
+                SetOnVertices_outline(false);
+                cur->data->SimpleSmooothSrf(Poly_V);
+            }
         }
         if(alg % 10 == 3){
             //交点位置の修正を全探索で行うやり方
             //cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum);//正しい第5引数はalgだけど検証用に1
-            cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
+            cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap); 
             cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 1, bndrange, warea, wsim);
             if(alg / 10 == 1){//shift key + 4のとき
                 cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
@@ -614,9 +642,11 @@ bool Model::BendingModel(double wb, double wp, double warea, double wsim, int di
         //alg = 4: 一番下の曲線に対してのみflap angleの最適化＋交点位置の修正. 5: 各曲線のflap angleの最適化 + 一番下の曲線に対してのみ交点位置の修正. 6:
         if(alg % 10 == 4 || alg % 10 == 5 || alg % 10 == 6 || alg % 10 == 7){
             if((alg % 10 == 4 && cur == root) || alg % 10 != 4){
-                //cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum);//正しい第5引数はalgだけど検証用に1
+                cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum);//正しい第5引数はalgだけど検証用に1
                 cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
-                if(alg % 10 != 4 || (alg % 10 == 4 && cur == root))cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 0, 1, bndrange, warea, wsim);
+                if(alg % 10 != 4 || (alg % 10 == 4 && cur == root)){
+                    cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 0, 1, bndrange, warea, wsim);
+                }
                 if(alg % 10 == 7 && alg / 10 == 1){//shift key + 8のとき
                     cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
                     cur->data->CheckIsCrossedRulings();
@@ -642,7 +672,7 @@ bool Model::BendingModel(double wb, double wp, double warea, double wsim, int di
         }
 
         bool res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum);//正しい第5引数はalgだけど検証用に1
-        AlgNum = (AlgNum + 1)% 2;
+        //AlgNum = (AlgNum + 1)% 2;
         res = true;
         if(alg % 10 == 1){
             while(!res){
@@ -662,9 +692,9 @@ bool Model::BendingModel(double wb, double wp, double warea, double wsim, int di
             if(cur->data->FoldingCurve.empty())continue;
 
         }else if(alg % 10 == 2){
-            cur->data->Optimization_Vertex(Poly_V, IsStartEnd, OrderConst, AlgNum);
-            OrderConst = (OrderConst + 1) % 3;
-            SetOnVertices_outline(false);
+            //cur->data->Optimization_Vertex(Poly_V, IsStartEnd, OrderConst, AlgNum);
+            //OrderConst = (OrderConst + 1) % 3;
+            //SetOnVertices_outline(false);
         }
         for (const auto& child : cur->children){
             if(child != nullptr){
@@ -681,7 +711,7 @@ bool Model::BendingModel(double wb, double wp, double warea, double wsim, int di
 
 void Model::applyAAAMethod(double a, bool begincenter){
     auto Poly_V = outline->getVertices();
-    FL[FoldCurveIndex]->applyAAAMethod(Poly_V, begincenter, a);
+    FL.back()->applyAAAMethod(Poly_V, begincenter, a);
 }
 
 bool Model::RevisionCrosPtsPosition(){return FL[FoldCurveIndex]->RevisionCrosPtsPosition();}

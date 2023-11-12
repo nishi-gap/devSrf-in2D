@@ -253,7 +253,7 @@ void MainWindow::changeAngleFromSlider(int val){
          std::vector<double> color_reg{0.8, 0, 0.}, color_fixreg{0,0,0.8};
          std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
          std::vector<std::vector<std::shared_ptr<Vertex>>> Tri_fixside;
-         auto Triangles = ui->glWid2dim->model.back()->FL[0]->CalclateRegressionCurve(static_cast<double>(val)/100.0, Poly_V, false, IsStartEnd, Tri_fixside);
+         auto Triangles = ui->glWid2dim->model.back()->FL.back()->CalclateRegressionCurve(static_cast<double>(val)/100.0, Poly_V, false, IsStartEnd, Tri_fixside);
          ui->glWid3dim->ReceiveRegressionCurve({Triangles, {}}, {color_reg,color_fixreg});
          ui->glWid2dim->ReceiveRegressionCurve({Triangles, {}}, {color_reg,color_fixreg});
     }
@@ -267,7 +267,7 @@ void MainWindow::changeAngleFromSpinBox(double val){
         std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
         std::vector<std::vector<std::shared_ptr<Vertex>>> Tri_fixside;
         std::vector<double> color_reg{0.8, 0, 0.}, color_fixreg{0,0,0.8};
-        std::vector<std::vector<std::shared_ptr<Vertex>>> Triangles = ui->glWid2dim->model.back()->FL[0]->CalclateRegressionCurve(val, Poly_V, false, IsStartEnd, Tri_fixside);
+        std::vector<std::vector<std::shared_ptr<Vertex>>> Triangles = ui->glWid2dim->model.back()->FL.back()->CalclateRegressionCurve(val, Poly_V, false, IsStartEnd, Tri_fixside);
         ui->glWid3dim->ReceiveRegressionCurve({Triangles}, {color_reg});
         ui->glWid2dim->ReceiveRegressionCurve({Triangles}, {color_reg});
     }
@@ -344,8 +344,8 @@ void MainWindow::switchActivateCheckBox(PaintTool active){
 }
 void MainWindow::ReassinColor(){
     if(!ui->glWid2dim->model.back()->outline->IsClosed())ui->glWid3dim->setVertices();
-    else if(!ui->glWid2dim->model.back()->FL.empty() && !ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty()){
-        ui->glWid2dim->model.back()->FL[0]->ReassignColor();
+    else if(!ui->glWid2dim->model.back()->FL.empty() && !ui->glWid2dim->model.back()->FL.back()->FoldingCurve.empty()){
+        ui->glWid2dim->model.back()->FL.back()->ReassignColor();
         ui->glWid2dim->model.back()->deform();
         ui->glWid2dim->update();
         ui->glWid2dim->model.back()->modifyFoldingCurvePositionOn3d();
@@ -386,7 +386,10 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     }
     if(e->key() == Qt::Key_3){
         qDebug()<<"vertices moving";
-        ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim,  3, 0, bndrange, layerNum, 2, IsStartEnd);
+        if(e->modifiers().testFlag(Qt::ControlModifier)){
+            ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 2, 0, bndrange, layerNum, 13, IsStartEnd);
+        }
+        else  ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 12, 0, bndrange, layerNum, 3, IsStartEnd);
         qDebug()<<"/////////////////////////";
     }
     if(e->key() == Qt::Key_4){
@@ -473,7 +476,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
              double a = static_cast<double>(ui->angleSlider->value())/100.0;
              std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
              std::vector<std::vector<std::shared_ptr<Vertex>>> Tri_fixside;
-             auto Triangles = ui->glWid2dim->model.back()->FL[0]->CalclateRegressionCurve(a,Poly_V,true, IsStartEnd, Tri_fixside);
+             auto Triangles = ui->glWid2dim->model.back()->FL.back()->CalclateRegressionCurve(a,Poly_V,true, IsStartEnd, Tri_fixside);
              qDebug() <<"csv file export";
         }
     }

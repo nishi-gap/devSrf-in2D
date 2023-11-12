@@ -27,22 +27,47 @@ GLWidget_2D::GLWidget_2D(QWidget *parent):QOpenGLWidget(parent)
     refL = std::shared_ptr<Line>(nullptr);
     KeyEvent = -1;
     curvetype = CurveType::none;
-
+    basePoint = QPointF(-1,-1);
     gridsize = 10;
     visibleGrid = 1;
     IsMVcolor_binary = false;
     IsEraseNonFoldEdge = false;
+    IsAffinMoved = false;
     visibleCurve = true;
     model.push_back(std::make_shared<Model>(crvPtNum));
     difCursol_x = difCursol_y = 0.0; camscale = -1;
     RegressionCurve.clear();
 }
+
 GLWidget_2D::~GLWidget_2D(){}
 
 void GLWidget_2D::InitializeDrawMode(){
-    drawtype = PaintTool::None; MoveCrvIndex = {-1, -1}; emit SendNewActiveCheckBox(PaintTool::None);
+    drawtype = PaintTool::None; MoveCrvIndex = {-1, -1};
+    emit SendNewActiveCheckBox(PaintTool::None);
 }
 void GLWidget_2D::VisualizeMVColor(bool state){IsMVcolor_binary = state;update();}
+
+void GLWidget_2D::switch2AffinMode(){ drawtype = PaintTool::AffinTrans;}
+
+void GLWidget_2D::switch2VisibleCurve(){
+    visibleCurve = !visibleCurve;
+    update();}
+
+void GLWidget_2D::CopyCurveObj(){
+    if(model.back()->refFL == nullptr || std::find(model.back()->FL.begin(), model.back()->FL.end(), model.back()->refFL) == model.back()->FL.end())IsCopied = false;
+    IsCopied = true;
+}
+
+void GLWidget_2D::PasteCurveObj(){
+    if(!IsCopied || std::find(model.back()->FL.begin(), model.back()->FL.end(), model.back()->refFL) == model.back()->FL.end())return;
+    auto newfl = model.back()->refFL->deepCopy();
+    //上方向に10移動させる
+    double y = -30;
+    for(auto&p: newfl->CtrlPts)p.y() += y;
+    newfl->setCurve(3);
+    newfl->FoldingCurve.clear(); newfl->a_flap = -1;
+    model.back()->FL.push_back(newfl);
+}
 
 void GLWidget_2D::AddCurve(){
     std::vector<int>deleteIndex;
@@ -180,6 +205,8 @@ void GLWidget_2D::DeleteCurve(){
 void GLWidget_2D::changeFoldType(PaintTool state){
     drawtype = state;
     IsMVcolor_binary = true;
+    model.back()->RemoveUnable2GenCurve();
+
     if(state != PaintTool::FoldlineColor){
         std::shared_ptr<FoldLine> fl = std::make_shared<FoldLine>(state);
         model.back()->FL.push_back(fl);
@@ -341,7 +368,7 @@ void GLWidget_2D::paintGL(){
 
     //折曲線の描画
     {
-        if(visibleCurve || drawtype == PaintTool::DeleteCtrlPt || drawtype == PaintTool::MoveCtrlPt){
+        if(visibleCurve || drawtype == PaintTool::DeleteCtrlPt || drawtype == PaintTool::MoveCtrlPt || drawtype == PaintTool::None){
             for(auto&fl: model.back()->FL){
                 glColor3d(0,0.3,0.3);
                 glPointSize(5);
@@ -372,10 +399,18 @@ void GLWidget_2D::paintGL(){
                     glVertex3d(h->first->p.x(), h->first->p.y(),0);
                     glEnd();
                 }
-
             }
         }
 
+    }
+
+    if(drawtype == PaintTool::AffinTrans){
+        if(affinmode != 0){
+            glPointSize(5);
+            glBegin(GL_POINTS);
+            glVertex2d(basePoint.x(), basePoint.y());
+            glEnd();
+        }
     }
 
     //regression curve
@@ -626,23 +661,6 @@ void GLWidget_2D::DrawGrid(){
     }
 }
 
-void GLWidget_2D::receiveKeyEvent(QKeyEvent *e){
-    auto Poly_v = model.back()->outline->getVertices();
-    bool res;
-    if(e->key() == Qt::Key_V)drawtype = PaintTool::AffinTrans;
-    if(e->key() == Qt::Key_A) visibleCurve = !visibleCurve;
-
-    if(e->key() == Qt::Key_Q){
-        //res = model.back()->RevisionCrosPtsPosition();
-        //if(res) emit foldingSignals();
-    }
-    if(e->modifiers().testFlag(Qt::ControlModifier)){
-        //コントロールキーを押しているときtrueを返す
-    }
-    update();
-}
-
-
 void GLWidget_2D::mousePressEvent(QMouseEvent *e){
     QPointF p = mapFromGlobal(QCursor::pos());
     Eigen::Vector3d p_ongrid = SetOnGrid(p, gridsize);
@@ -656,15 +674,16 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
         update();
         return;
     }if(drawtype == PaintTool::AffinTrans){
-        if(e->button() == Qt::LeftButton){//カーソルを動かした方向への平行移動
-
+        if(e->button() == Qt::LeftButton)affinmode = 0;//カーソルを動かした方向への平行移動
+        if(e->button() == Qt::RightButton) affinmode = 1;//比率を維持した拡縮
+        if(e->button() == Qt::MiddleButton)affinmode = 2;//回転
+        if(e->button() == Qt::RightButton || e->button() == Qt::MiddleButton){
+            if(basePoint == QPointF(-1,-1) && !IsAffinMoved){
+                qDebug() << "select second point to determine base axis,  base point is (" << p.x() << ", " << p.y() << ")";
+                basePoint = p;
+            }
         }
-        if(e->button() == Qt::RightButton){//グリッドの辺→比率を維持しない拡縮、グリッドの頂点→比率を維持した拡縮
-
-        }
-        if(e->button() == Qt::MiddleButton){//回転
-
-        }
+        befCur = p;
     }
     if(e->button() ==Qt::LeftButton){
         if(drawtype == PaintTool::Rectangle_ol)model.back()->drawOutline(p, 0, gridsize, size());
@@ -776,8 +795,15 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
             difCursol_x += 0.5*(p.x() - befCur.x()); difCursol_y += 0.5*(p.y() - befCur.y());
         }
         update();
+        befCur = p; return;
+    }
+
+    if(drawtype == PaintTool::AffinTrans){
+        IsAffinMoved = true;
+        if(affinmode == 0)model.back()->AffinTrans(befCur, p);
+        if(affinmode == 1 && basePoint != befCur)model.back()->AffinScale(basePoint, befCur, p);
+        if(affinmode == 2 && basePoint != befCur)model.back()->AffinRotate(basePoint, befCur, p);
         befCur = p;
-        return;
     }
 
     Eigen::Vector3d p_ongrid = SetOnGrid(p, gridsize);
@@ -832,7 +858,8 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
 }
 
 void GLWidget_2D::mouseReleaseEvent(QMouseEvent * e){
-    movePt = -1;
+    movePt = -1; affinmode = -1;
+    if(IsAffinMoved){basePoint = QPointF(-1,-1); IsAffinMoved = false;}
     QPointF p = mapFromGlobal(QCursor::pos());
     if(drawtype == PaintTool::None){
         IsLeftClicked = IsRightClicked = false;

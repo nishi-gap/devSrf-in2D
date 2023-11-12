@@ -1317,7 +1317,7 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
        qDebug()<<"this method is applied only starting from center";
        return false;
     }
-      
+    if(isbend())return true;
     int bef_l = -1, bef_r = -1;
     int mid = FoldingCurve.size()/2;
     int ind_l = FoldingCurve.size() - 1, ind_r = 1;
@@ -1571,6 +1571,8 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     };
 
     if(FoldingCurve.empty())return false;
+    //if(isbend())return true;
+
     std::vector<std::shared_ptr<Vertex4d>> ValidFC;
     for(auto&fc: FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
     double a = 0, a_min, a_max;
