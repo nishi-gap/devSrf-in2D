@@ -63,8 +63,9 @@ public:
     bool RevisionCrosPtsPosition();
     void SortFoldingCurve(int dim);
     void SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::shared_ptr<Line>>& Surface, const std::vector<std::shared_ptr<Line>>& Rulings, bool IsupdateEndPt);
-    bool BendingModel(double wb, double wp, double warea, double wsim, int dim, double tol, double bndrange, int bendrank, int alg, bool IsStartEnd);//alg=0:ruling intersection, alg=1:regression curve
+    bool BendingModel(double wb, double wp, double warea, double wsim, int dim, double tol, double bndrange, int bendrank, int alg, bool IsStartEnd, bool );//alg=0:ruling intersection, alg=1:regression curve
     bool AssignRuling(int dim, double tol, bool begincenter);
+    bool AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL);
     int getLayerNum();
     std::vector<Eigen::Vector3d> resPts;
 

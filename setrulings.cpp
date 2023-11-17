@@ -311,9 +311,11 @@ void CRV::ArcRulings(std::shared_ptr<OUTLINE>& outline, int DivSize){
     std::vector<std::shared_ptr<Vertex>> vertices = outline->getVertices();
     Eigen::Vector3d V, N;
     for(int i = 0; i < curveNum; i++){
-        if(i == 0)V = (CurvePoints[1] - CurvePoints[0]).normalized();
-        else V = (CurvePoints[i] - CurvePoints[i - 1]).normalized();
+
+        //if(i == 0)V = (CurvePoints[1] - CurvePoints[0]).normalized();
+        //else V = (CurvePoints[i] - CurvePoints[i - 1]).normalized();
         N = l * Eigen::Vector3d(-V.y(), V.x(), 0);
+        N = l * (ControllPoints[0] - CurvePoints[i]).normalized();
         bool IsIntersected = setPoint(vertices, N, CurvePoints[i], crossPoint);
         CrossPoints.push_back(crossPoint);
         if(sind == -1 && IsIntersected)sind = i;

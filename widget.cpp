@@ -118,6 +118,8 @@ MainWindow::MainWindow(QWidget *parent)
 static bool IsvisibleRegCrv = false;
 static bool IsStartEnd = false;
 static int befNum = 0;
+static bool OptimizeAngleFor3Rulings = false;
+
 MainWindow::~MainWindow()
 {
     delete ui;
@@ -216,7 +218,7 @@ void MainWindow::StartOptimization(){
     double warea = ui->TriAreaWeight->value(), wsim = ui->NormErrorWeight->value();
     double bndrange = ui->BoundaryRange->value();
     int layerNum = ui->glWid2dim->model.back()->getLayerNum();
-    ui->glWid2dim->model.back()->BendingModel(wb, wp, warea, wsim, 3, tol, bndrange, layerNum, 1, IsStartEnd);
+    ui->glWid2dim->model.back()->BendingModel(wb, wp, warea, wsim, 3, tol, bndrange, layerNum, 1, IsStartEnd, OptimizeAngleFor3Rulings);
     fold_Sm();
 
 }
@@ -228,7 +230,7 @@ void MainWindow::BendCurve(int num){
     double warea = ui->TriAreaWeight->value(), wsim = ui->NormErrorWeight->value();
     double bndrange = ui->BoundaryRange->value();
     qDebug() << "the number of bend curve is " << num;
-    ui->glWid2dim->model.back()->BendingModel(wb, wp,warea, wsim, 3, tol, bndrange, num, 1, IsStartEnd);
+    ui->glWid2dim->model.back()->BendingModel(wb, wp,warea, wsim, 3, tol, bndrange, num, 1, IsStartEnd ,OptimizeAngleFor3Rulings);
     fold_Sm();
 }
 
@@ -364,15 +366,17 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     double warea = ui->TriAreaWeight->value(), wsim = ui->NormErrorWeight->value();
     double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
     int layerNum = ui->glWid2dim->model.back()->getLayerNum();
+    int dim = 3;
+
     if(e->key() == Qt::Key_0){
          qDebug()<<"optimization for last adding folding curve";
-         ui->glWid2dim->model.back()->FL.back()->Optimization_FlapAngle(ui->glWid2dim->model.back()->outline->vertices,  wb,  wp,  0,  1,  IsStartEnd, 1);
+         ui->glWid2dim->model.back()->FL.back()->Optimization_FlapAngle(ui->glWid2dim->model.back()->outline->vertices,  wb,  wp,  0,  1,  IsStartEnd, 0, OptimizeAngleFor3Rulings);
     }
     if(e->key() == Qt::Key_1){
         qDebug() <<"use ruling intersection";
         if(ui->glWid2dim->model.back()->FL.empty() || ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty())return;
         double tol = ui->TolValue->value();
-        ui->glWid2dim->model.back()->BendingModel(wb, wp, warea, wsim, 3, tol, bndrange, layerNum, 0, IsStartEnd);
+        ui->glWid2dim->model.back()->BendingModel(wb, wp, warea, wsim, dim, tol, bndrange, layerNum, 0, IsStartEnd, OptimizeAngleFor3Rulings);
         fold_Sm();
         qDebug()<<"/////////////////////////";
     }
@@ -380,41 +384,41 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         qDebug()<<"use regression curve and triangle area";
         if(ui->glWid2dim->model.back()->FL.empty() || ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty())return;
         double tol = ui->TolValue->value();
-        ui->glWid2dim->model.back()->BendingModel(wb, wp, warea, wsim, 3, tol, bndrange, layerNum, 1, IsStartEnd);
+        ui->glWid2dim->model.back()->BendingModel(wb, wp, warea, wsim, dim, tol, bndrange, layerNum, 1, IsStartEnd, OptimizeAngleFor3Rulings);
         fold_Sm();
         qDebug()<<"/////////////////////////";
     }
     if(e->key() == Qt::Key_3){
         qDebug()<<"vertices moving";
         if(e->modifiers().testFlag(Qt::ControlModifier)){
-            ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 2, 0, bndrange, layerNum, 13, IsStartEnd);
+            ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 12, IsStartEnd, OptimizeAngleFor3Rulings);
         }
-        else  ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 12, 0, bndrange, layerNum, 3, IsStartEnd);
+        else  ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 2, IsStartEnd, OptimizeAngleFor3Rulings) ;
         qDebug()<<"/////////////////////////";
     }
     if(e->key() == Qt::Key_4){
         qDebug()<<"propagate optimization vertex points from center to end point ";
         if(e->modifiers().testFlag(Qt::ControlModifier)){
-            ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 13, IsStartEnd);
+            ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 13, IsStartEnd, OptimizeAngleFor3Rulings);
         }
-        else  ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 3, IsStartEnd);
+        else  ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 3, IsStartEnd, OptimizeAngleFor3Rulings);
         qDebug()<<"/////////////////////////";
     }
 
     if(e->key() == Qt::Key_5){
-        ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 4, IsStartEnd);
+        ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 4, IsStartEnd, OptimizeAngleFor3Rulings);
     }
     if(e->key() == Qt::Key_6){
-        ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 5, IsStartEnd);
+        ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 5, IsStartEnd, OptimizeAngleFor3Rulings);
     }
     if(e->key() == Qt::Key_7){
-        ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 6, IsStartEnd);
+        ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 6, IsStartEnd, OptimizeAngleFor3Rulings);
     }
     if(e->key() == Qt::Key_8){
         if(e->modifiers().testFlag(Qt::ControlModifier)){
-            ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 7, IsStartEnd);
+            ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 7, IsStartEnd, OptimizeAngleFor3Rulings);
         }
-        else  ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, 17, IsStartEnd);
+        else  ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 17, IsStartEnd, OptimizeAngleFor3Rulings);
     }
     if(e->key() == Qt::Key_Return){//
         ui->glWid2dim->stashcurrentstate();
@@ -423,6 +427,10 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     if(e->key() == Qt::Key_A){
         if(!e->modifiers().testFlag(Qt::ControlModifier))ui->glWid2dim->switch2AffinMode();
         else ui->glWid2dim->switch2VisibleCurve();
+    }
+    if(e->key() == Qt::Key_B){
+        qDebug()<<"if optimization of flap angle failed, optimize only 3 rulings and flap angle";
+        OptimizeAngleFor3Rulings = !OptimizeAngleFor3Rulings;
     }
     if(e->key() == Qt::Key_C){
         if(e->modifiers().testFlag(Qt::ControlModifier))ui->glWid2dim->CopyCurveObj();
@@ -453,7 +461,11 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     if(e->key() == Qt::Key_M){
         if(ui->glWid2dim->model.back()->FL.empty())return;
         double tol = ui->TolValue->value();
-        ui->glWid2dim->model.back()->AssignRuling(3, tol, false);
+        if(e->modifiers().testFlag(Qt::ControlModifier)){
+            auto NewFL = ui->glWid2dim->model.back()->FL.back();
+            ui->glWid2dim->model.back()->AddNewFoldLine(NewFL);
+        }
+        else ui->glWid2dim->model.back()->AssignRuling(3, tol, false);
         ui->glWid2dim->update();
         fold_Sm();
     }
@@ -471,7 +483,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     if(e->key() == Qt::Key_Q)IsStartEnd = !IsStartEnd;
 
     if(e->key() == Qt::Key_R){
-        if(e->modifiers().testFlag(Qt::ControlModifier))ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, -1, IsStartEnd);//initialization
+        if(e->modifiers().testFlag(Qt::ControlModifier))ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, -1, IsStartEnd, OptimizeAngleFor3Rulings);//initialization
         else{
              double a = static_cast<double>(ui->angleSlider->value())/100.0;
              std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
@@ -485,6 +497,13 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         if(e->modifiers().testFlag(Qt::ControlModifier)){
              exportobj();
         }
+    }
+
+    if(e->key() == Qt::Key_T){
+        static int AlgType = 0;
+        std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
+        ui->glWid2dim->model.back()->FL.back()->ReviseCenterFlapAngle(Poly_V, IsStartEnd, AlgType);
+        AlgType = (AlgType + 1) % 2;
     }
 
     if(e->key() == Qt::Key_V){
@@ -658,106 +677,10 @@ void MainWindow::exportobj(){
            return d/l_avg;
        }
    };
-    /*
-   for(auto& l: ui->glWid2dim->model.back()->outline->Lines) polygon.push_back(l->v);
-   Polygons.push_back(polygon);
 
-   if(!ui->glWid2dim->model.back()->FL.empty() && !ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty()){
-    std::vector<std::vector<std::shared_ptr<Vertex4d>>> FldCrvs;
-       for(auto&FC: ui->glWid2dim->model.back()->FL){
-            if(FC->FoldingCurve.empty())continue;
-           std::vector<std::shared_ptr<Vertex4d>> FldCrv;
-           for(auto&fc: FC->FoldingCurve){if(fc->IsCalc)FldCrv.push_back(fc);}
-           FldCrvs.push_back(FldCrv);
-           Eigen::Vector3d CrvDir = (FldCrv.back()->first->p - FldCrv.front()->first->p).normalized();
-           for(auto&P: Polygons){
-               int ind_fr = -1, ind_bc = -1;
-               for(int i = 0; i < (int)P.size(); i++){
-                   if(MathTool::is_point_on_line(FldCrv.front()->first->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))ind_fr = i;
-                   if(MathTool::is_point_on_line(FldCrv.back()->first->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))ind_bc = i;
-               }
-               if(ind_fr != -1 && ind_bc != -1){
-                   std::vector<std::shared_ptr<Vertex>> InsertedV, InsertedV_inv;
-                   for(auto&v: FldCrv){InsertedV.push_back(v->first);InsertedV_inv.insert(InsertedV_inv.begin(), v->first);}
-
-                   int i_min = std::min(ind_fr, ind_bc) + 1, i_max = std::max(ind_fr, ind_bc) + 1;
-                   Eigen::Vector3d Dir_prev = (P[i_min]->p - P[(i_min - 1) % (int)P.size()]->p).normalized();
-                   std::vector<std::shared_ptr<Vertex>> poly2 = {P.begin() + i_min, P.begin() + i_max};
-                   P.erase(P.begin() + i_min, P.begin() + i_max);
-                   if(Eigen::Vector3d(0,0,1).dot(CrvDir.cross(Dir_prev)) < 0){
-                       P.insert(P.begin() + i_min, InsertedV.begin(), InsertedV.end());
-                       poly2.insert(poly2.end(), InsertedV_inv.begin(), InsertedV_inv.end());
-                   }else{
-                       P.insert(P.begin() + i_min, InsertedV_inv.begin(), InsertedV_inv.end());
-                       poly2.insert(poly2.end(), InsertedV.begin(), InsertedV.end());
-                   }
-                   Polygons.push_back(poly2);
-                   break;
-               }
-           }
-       }
-
-       auto SplitPolygon = [&](std::vector<std::vector<std::shared_ptr<Vertex>>>& Polygons, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& v){//v:新たに挿入したいvertex, o:基本的にfirstを与える
-           for(auto& Poly :Polygons){
-               int IsOnLine_v = -1, ind_o = -1, ind_v = -1;
-               for(int j = 0; j < (int)Poly.size(); j++){
-                   if(MathTool::is_point_on_line(v->p, Poly[j]->p, Poly[(j + 1) % (int)Poly.size()]->p))IsOnLine_v = j;
-                   if((o->p - Poly[j]->p).norm() < 1e-6)ind_o = j;
-                   if((v->p - Poly[j]->p).norm() < 1e-6)ind_v = j;
-               }
-               if(ind_v != -1 && ind_o != -1){
-                   int i_min = std::min(ind_v, ind_o), i_max = std::max(ind_v, ind_o);
-                   std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
-                   if((i_max + 1 - i_min) < 3 || ((int)Poly.size() - (i_max - i_min - 1)) < 3)return;
-                   Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
-                   Polygons.push_back(poly2);
-                   return;
-               }
-               if(IsOnLine_v == -1)continue;
-               Poly.insert(Poly.begin() + IsOnLine_v + 1, v);
-               int f_ind = -1, s_ind = -1;
-               for(int i = 0; i < (int)Poly.size(); i++){
-                   if((Poly[i]->p - o->p).norm() < 1e-6)f_ind = i;
-                   if((Poly[i]->p - v->p).norm() < 1e-6)s_ind = i;
-               }
-               if(f_ind == -1 || s_ind == -1)continue;
-               int i_min = std::min(f_ind, s_ind), i_max = std::max(f_ind, s_ind);
-               std::vector<std::shared_ptr<Vertex>> poly2(Poly.begin() + i_min, Poly.begin() + i_max +1);
-               Poly.erase(Poly.begin() + i_min + 1, Poly.begin() + i_max);
-               Polygons.push_back(poly2);
-               return;
-           }
-       };
-
-
-       for(auto&FC: FldCrvs){
-           for(auto it = FC.begin() + 1; it != FC.end() - 1; it++ ){
-               SplitPolygon(Polygons, (*it)->first, (*it)->second);
-               SplitPolygon(Polygons, (*it)->first, (*it)->third);
-           }
-      }
-   }else{
-       for(auto itr_r = ui->glWid2dim->model.back()->Rulings.begin(); itr_r != ui->glWid2dim->model.back()->Rulings.end(); itr_r++){
-           for(auto&P: Polygons){
-               int vind = -1, oind = -1;
-               for(int i = 0; i < (int)P.size(); i++){
-                   if(MathTool::is_point_on_line((*itr_r)->o->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))oind = i;
-                   if(MathTool::is_point_on_line((*itr_r)->v->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))vind = i;
-               }
-               if(vind == -1 || oind == -1)continue;
-               int i_min = std::min(vind, oind) + 1, i_max = std::max(vind, oind) + 1;
-               std::vector<std::shared_ptr<Vertex>> poly2 = {P.begin() + i_min, P.begin() + i_max};
-               P.erase(P.begin() + i_min, P.begin() + i_max);
-               P.push_back((*itr_r)->o); P.push_back((*itr_r)->v); P = SortPolygon(P);
-               poly2.push_back((*itr_r)->o); poly2.push_back((*itr_r)->v); poly2 = SortPolygon(poly2);
-               Polygons.push_back(poly2);
-           }
-       }
-   }
-   */
-   std::vector<std::vector<std::shared_ptr<Vertex4d>>> FoldingCurves;
+    std::vector<std::vector<std::shared_ptr<Vertex4d>>> FoldingCurves;
     for(auto&FldCrv: ui->glWid2dim->model.back()->FL)FoldingCurves.push_back(FldCrv->FoldingCurve);
-   Polygons = MakeModel(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, FoldingCurves);
+    Polygons = MakeModel(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, FoldingCurves);
 
     for(auto&poly: Polygons){
         std::vector<Eigen::Vector3d> V;
@@ -860,20 +783,6 @@ void MainWindow::exportobj(){
         out << item;
     }
     exportsvg(fileName);
-    return;
-    // QFileInfoクラスを使用してファイル名を解析
-    QFileInfo fileInfo(fileName);
-    QString baseName = fileInfo.baseName();
-    QString dirPath = fileInfo.dir().path();
-    QString originalExtension = fileInfo.suffix();
-    QString fileName_tri = dirPath + "/" + baseName + "_tri." + originalExtension;
-    QFile file_tri(fileName_tri);
-    if (!file_tri.open(QIODevice::WriteOnly)) {
-        QMessageBox::information(this, tr("Unable to open file"), file.errorString());
-        return;
-    }
-    QTextStream out2(&file_tri);
-    foreach(QString item, WriteList_tri)out2 << item;
 
     CurDir.cd(CSVDir);
     //平面性の結果
