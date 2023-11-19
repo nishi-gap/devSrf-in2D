@@ -330,7 +330,7 @@ int Model::getLayerNum(){return NTree_fl.getLayerNum();}
 template <typename T>
 bool IsOverlapped(std::shared_ptr<T>&p, std::shared_ptr<T>&q){return ((p->p - q->p).norm() < 1e-8)? true: false;};
 
-void Model::SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::shared_ptr<Line>>& Surface, const std::vector<std::shared_ptr<Line>>& Rulings, bool IsupdateEndPt){ 
+void Model::SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::shared_ptr<Line>>& Surface, const std::vector<std::shared_ptr<Line>>& Rulings, bool IsupdateEndPt){
     int s = Surface.size();
     std::shared_ptr<Vertex> prev = nullptr, next = nullptr;
     std::shared_ptr<Vertex> downcast = std::dynamic_pointer_cast<Vertex>(v4d->first);
@@ -433,7 +433,7 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
     auto EdgeSplit = [&VerticesInfo](const std::shared_ptr<Vertex>& v, int vtype, const std::shared_ptr<Vertex>&basePt){
         int s = VerticesInfo.size();
         for(int i = 0; i < s; i++){
-            if((v->p - VerticesInfo[i].v->p).norm() < 1e-10)return;
+            //if((v->p - VerticesInfo[i].v->p).norm() < 1e-10)return;
             if(MathTool::is_point_on_line(v->p, VerticesInfo[i].v->p, VerticesInfo[(i+1) % s].v->p)){
                 VerticesInfo.insert(VerticesInfo.begin() + (i+1) % s, vertexinfo(v, vtype, basePt));
                 return;
@@ -443,8 +443,8 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
 
     for(auto&fl:FL){
         if((int)fl->FoldingCurve.size() <= 2)continue;
-        EdgeSplit(fl->FoldingCurve.front()->first, 1, nullptr);
-        EdgeSplit(fl->FoldingCurve.back()->first, 1, nullptr);
+        EdgeSplit(fl->FoldingCurve.front()->first, 1, fl->FoldingCurve[1]->first);
+        EdgeSplit(fl->FoldingCurve.back()->first, 1, fl->FoldingCurve.end()[-2]->first);
         for(auto itr = fl->FoldingCurve.begin()+1; itr != fl->FoldingCurve.end()-1; itr++){
             EdgeSplit((*itr)->second, 2, (*itr)->first);
             EdgeSplit((*itr)->third, 3, (*itr)->first);
@@ -468,7 +468,12 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
         else if(VerticesInfo[i_prev].vtype == 3 && VerticesInfo[i_next].vtype == 2){
 
         }else{
-            prev = VerticesInfo[i_prev].v; next = VerticesInfo[i_next].v; basePt = VerticesInfo[i_prev].basePt;
+            auto itr_overlapped = std::find_if(VerticesInfo.begin(), VerticesInfo.end(), [&](const vertexinfo& v){return (p != v.v && (p->p - v.v->p).norm() < 1e-9);});
+            if(itr_overlapped != VerticesInfo.end()){
+                p->p3 = (*itr_overlapped).v->p3;
+                continue;
+            }
+            prev = VerticesInfo[i_prev].v; next = VerticesInfo[i_next].v; basePt = (VerticesInfo[i_prev].basePt != nullptr)? VerticesInfo[i_prev].basePt: VerticesInfo[i_next].basePt;
             if(basePt == nullptr)continue;
             Eigen::Vector3d po = p->p - basePt->p, a = prev->p - basePt->p, b = next->p - basePt->p;
             double s,t;
@@ -499,8 +504,8 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
     }
     for(auto&fl: FL){
         if(fl->FoldingCurve.empty())continue;
-        SetEndPoint(fl->FoldingCurve.front(), outline->Lines, Rulings, IsupdateEndPt);
-        SetEndPoint(fl->FoldingCurve.back(), outline->Lines, Rulings, IsupdateEndPt);
+        //SetEndPoint(fl->FoldingCurve.front(), outline->Lines, Rulings, IsupdateEndPt);
+        //SetEndPoint(fl->FoldingCurve.back(), outline->Lines, Rulings, IsupdateEndPt);
         fl->SortCurve();
     }
     return;
@@ -617,10 +622,23 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
     }
     for(auto&fl: FL){
         if(fl->FoldingCurve.empty())continue;
-        SetEndPoint(fl->FoldingCurve.front(), outline->Lines, Rulings, IsupdateEndPt);
-        SetEndPoint(fl->FoldingCurve.back(), outline->Lines, Rulings, IsupdateEndPt);
+        //SetEndPoint(fl->FoldingCurve.front(), outline->Lines, Rulings, IsupdateEndPt);
+        //SetEndPoint(fl->FoldingCurve.back(), outline->Lines, Rulings, IsupdateEndPt);
         fl->SortCurve();
     }
+}
+
+bool Model::Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double warea, double wsim, double bndrange, bool IsStartEnd){
+    std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
+    if(tar->isbend())return true;
+
+    tar->applyAAAMethod(Poly_V, IsStartEnd, tar->a_flap);
+    tar->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 1, bndrange, warea, wsim);
+    tar->applyAAAMethod(Poly_V, IsStartEnd, tar->a_flap);
+    tar->CheckIsCrossedRulings();
+    SetOnVertices_outline(false);
+    tar->SimpleSmooothSrf(Poly_V);
+    return true;
 }
 
 bool Model::BendingModel(double wb, double wp, double warea, double wsim, int dim, double tol, double bndrange, int bendrank, int alg, bool IsStartEnd, bool OptimizeAngleFor3Rulings){
@@ -678,8 +696,8 @@ bool Model::BendingModel(double wb, double wp, double warea, double wsim, int di
             if(alg / 10 == 1){//shift key + 3のとき
                 cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
                 cur->data->CheckIsCrossedRulings();
-                SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
-                SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
+                //SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
+                //SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
                 SetOnVertices_outline(false);
                 cur->data->SimpleSmooothSrf(Poly_V);
             }
@@ -692,8 +710,8 @@ bool Model::BendingModel(double wb, double wp, double warea, double wsim, int di
                 cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 1, bndrange, warea, wsim);
                 cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
                 cur->data->CheckIsCrossedRulings();
-                SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
-                SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
+                //SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
+                //SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
                 SetOnVertices_outline(false);
                 cur->data->SimpleSmooothSrf(Poly_V);
             }
@@ -704,8 +722,8 @@ bool Model::BendingModel(double wb, double wp, double warea, double wsim, int di
                 cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 0, 1, bndrange, warea, wsim);
                 cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
                 cur->data->CheckIsCrossedRulings();
-                SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
-                SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
+                ////SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
+                ////SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
                 SetOnVertices_outline(false);
                 cur->data->SimpleSmooothSrf(Poly_V);
             }
@@ -718,14 +736,14 @@ bool Model::BendingModel(double wb, double wp, double warea, double wsim, int di
             if(alg % 10 == 7 && alg / 10 == 1){//shift key + 8のとき
                 cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
                 cur->data->CheckIsCrossedRulings();
-                SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
-                SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
+                //SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
+                //SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
                 SetOnVertices_outline(false);
                 cur->data->SimpleSmooothSrf(Poly_V);
             }
             if(cur->data->FoldingCurve.empty())continue;
-            SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
-            SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
+            //SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
+            //SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
             SetOnVertices_outline(false);
             for (const auto& child : cur->children){
                 if(child != nullptr){
@@ -796,6 +814,67 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
         itr--;
         NewFL->reassignruling((*itr), outline->Lines, Rulings);
     }
+
+    //端点が頂点と重なっている場合のsecondとthird, line_parentを適切にする
+    class vertexinfo{
+    public:
+        std::shared_ptr<Vertex> v;
+        int vtype;//0:頂点,1:first,2:second, 3:third, 4:ruling
+        vertexinfo(const std::shared_ptr<Vertex>&_v, int t){v = _v; vtype=t; }
+    };
+    std::vector<vertexinfo> VerticesInfo;
+    for(auto&v: outline->vertices)VerticesInfo.push_back(vertexinfo(v, 0));
+    auto EdgeSplit = [&VerticesInfo](const std::shared_ptr<Vertex>& v, int vtype){
+        int s = VerticesInfo.size();
+        for(int i = 0; i < s; i++){
+            if((v->p - VerticesInfo[i].v->p).norm() < 1e-10){//頂点が重なる場合
+                VerticesInfo[i].v = v; VerticesInfo[i].vtype = vtype;
+                return;
+            }
+            if(MathTool::is_point_on_line(v->p, VerticesInfo[i].v->p, VerticesInfo[(i+1) % s].v->p)){
+                VerticesInfo.insert(VerticesInfo.begin() + (i+1) % s, vertexinfo(v, vtype));
+                return;
+            }
+        }
+    };
+
+    for(auto&fl:FL){
+        if((int)fl->FoldingCurve.size() <= 2)continue;
+        EdgeSplit(fl->FoldingCurve.front()->first, 1);EdgeSplit(fl->FoldingCurve.back()->first, 1);
+
+        for(auto itr = fl->FoldingCurve.begin()+1; itr != fl->FoldingCurve.end()-1; itr++){
+            EdgeSplit((*itr)->second, 2); EdgeSplit((*itr)->third, 3);
+        }
+    }
+    for(auto&r: Rulings){
+        if(r->hasCrossPoint)continue;
+        EdgeSplit(r->v, 4); EdgeSplit(r->o, 4);
+    }
+    int visize = VerticesInfo.size();
+    auto modifyEndPoint = [&](std::shared_ptr<Vertex4d>& v4d){
+        auto itr = std::find_if(VerticesInfo.begin(), VerticesInfo.end(), [&v4d](const vertexinfo& v){return v.v == v4d->first;});
+        int i = std::distance(VerticesInfo.begin(), itr);
+        int i_prev = (i - 1 + visize) % visize, i_next = (i + 1) % visize;
+        std::shared_ptr<Vertex> prev = VerticesInfo[i_prev].v, next = VerticesInfo[i_next].v;
+        if(VerticesInfo[i_prev].vtype == 2){
+            if(MathTool::is_point_on_line(VerticesInfo[i].v->p, VerticesInfo[i_prev].v->p, VerticesInfo[i_next].v->p)){
+            }else{}
+            v4d->second = VerticesInfo[i].v; v4d->third = VerticesInfo[i_next].v;
+        }
+        else if(VerticesInfo[i_next].vtype == 2){
+            v4d->second = VerticesInfo[i].v; v4d->third = VerticesInfo[i_prev].v;
+        }else{
+            v4d->second = prev; v4d->third = next;
+        }
+    };
+    modifyEndPoint(NewFL->FoldingCurve.front());
+    auto VecPrev = (NewFL->FoldingCurve[1]->first->p - NewFL->FoldingCurve[1]->third->p).normalized(), Vec = (NewFL->FoldingCurve[0]->first->p - NewFL->FoldingCurve[0]->third->p).normalized();
+    if(VecPrev.dot(Vec) < 0){std::swap(NewFL->FoldingCurve.front()->second, NewFL->FoldingCurve.front()->third);}
+
+    modifyEndPoint(NewFL->FoldingCurve.back());
+    VecPrev = (NewFL->FoldingCurve.end()[-2]->first->p - NewFL->FoldingCurve.end()[-2]->third->p).normalized(), Vec = (NewFL->FoldingCurve.back()->first->p - NewFL->FoldingCurve.back()->third->p).normalized();
+    if(VecPrev.dot(Vec) < 0){std::swap(NewFL->FoldingCurve.front()->second, NewFL->FoldingCurve.front()->third);}
+
     return true;
 }
 
@@ -814,8 +893,8 @@ bool Model::AssignRuling(int dim, double tol, bool begincenter){
             //cur->data->RevisionCrosPtsPosition();//端点の修正
             cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap);
             if(cur->data->FoldingCurve.empty())continue;
-            SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
-            SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
+            //SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
+            //SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
             cur->data->SortCurve();
             cur->data->SimpleSmooothSrf(Poly_V);
             SetOnVertices_outline(false);

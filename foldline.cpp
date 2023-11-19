@@ -1200,6 +1200,8 @@ void FullSearch(std::vector<double> &X, RevisionVertices::ObjData_v& od,
        for(int k = ind_l + 2; k < (int)X.size(); k++){
             double d = _d + X[k];
             d = (d < bnd_lower[k])? bnd_lower[k]: (bnd_upper[k] < d)? bnd_upper[k]: d;
+            //od.BasePt[k]->first->p = d * (src->first->p - src->third->p).normalized() + src->third->p;
+            //od.BasePt[k]->first->p3 = d * (src->first->p3 - src->third->p3).normalized() + src->third->p3;
             update_Vertex(d, od.BasePt[k], od.BasePt[k]);
        }
 
@@ -1226,6 +1228,8 @@ void FullSearch(std::vector<double> &X, RevisionVertices::ObjData_v& od,
        for(int k = ind_r - 2; k >= 0; k--){
             double d = _d + X[k];
             d = (d < bnd_lower[k])? bnd_lower[k]: (bnd_upper[k] < d)? bnd_upper[k]: d;
+            //tar->first->p = t * (src->first->p - src->third->p).normalized() + src->third->p;
+            //tar->first->p3 = t * (src->first->p3 - src->third->p3).normalized() + src->third->p3;
             update_Vertex(d, od.BasePt[k], od.BasePt[k]);
        }
     }
@@ -2120,7 +2124,9 @@ void FoldLine::reassignruling(std::shared_ptr<FoldLine>& parent, const std::vect
             (*it)->second = p;
         }
     }
+    if(!MathTool::is_point_on_line(FoldingCurve.front()->first->p, FoldingCurve.front()->line_parent->v->p, FoldingCurve.front()->line_parent->o->p)){
 
+    }
     validsize = FoldingCurve.size();
     SortCurve();
     AlignmentVertex4dDirection();

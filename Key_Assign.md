@@ -16,7 +16,9 @@ B: flap angleの最適化でrulingの交差があった場合、中心のruling�
 C:色の不適切な割り当てを修正
 C + Ctrl: 折曲線のコピー
 D:debugモードon off切り替え
- 
+E: 新しく追加した折曲線に対してflap angle最適化
+E + Ctrl: rulingが交差している場合交差修正
+
 M:折曲線とrulingの交点導出
 N:PaintToll::Noneへの切り替え
 O:三次元のウィンドウで面の削除(エッジのみでの描画)

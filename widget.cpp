@@ -454,6 +454,11 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         else qDebug() << "DebugMode off";
     }
 
+    if(e->key() == Qt::Key_E){
+        if(e->modifiers().testFlag(Qt::ControlModifier))ui->glWid2dim->model.back()->Modify4LastFoldLine(ui->glWid2dim->model.back()->FL.back(), warea, wsim, bndrange, IsStartEnd);
+        else ui->glWid2dim->model.back()->FL.back()->Optimization_FlapAngle(ui->glWid2dim->model.back()->outline->vertices,  wb,  wp,  0,  1,  IsStartEnd, 0, OptimizeAngleFor3Rulings);
+    }
+
     if(e->key() == Qt::Key_N){
         ui->glWid2dim->InitializeDrawMode();
     }
@@ -466,6 +471,8 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
             ui->glWid2dim->model.back()->AddNewFoldLine(NewFL);
         }
         else ui->glWid2dim->model.back()->AssignRuling(3, tol, false);
+        auto NewFL = ui->glWid2dim->model.back()->FL.back();
+        ui->glWid2dim->model.back()->AddNewFoldLine(NewFL);
         ui->glWid2dim->update();
         fold_Sm();
     }
