@@ -628,12 +628,12 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
     }
 }
 
-bool Model::Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double warea, double wsim, double bndrange, bool IsStartEnd){
+bool Model::Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double warea, double wsim, double bndrange, int alg, bool IsStartEnd){
     std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
     if(tar->isbend())return true;
 
     tar->applyAAAMethod(Poly_V, IsStartEnd, tar->a_flap);
-    tar->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 1, bndrange, warea, wsim);
+    tar->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, alg, bndrange, warea, wsim);
     tar->applyAAAMethod(Poly_V, IsStartEnd, tar->a_flap);
     tar->CheckIsCrossedRulings();
     SetOnVertices_outline(false);
@@ -869,11 +869,11 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
     };
     modifyEndPoint(NewFL->FoldingCurve.front());
     auto VecPrev = (NewFL->FoldingCurve[1]->first->p - NewFL->FoldingCurve[1]->third->p).normalized(), Vec = (NewFL->FoldingCurve[0]->first->p - NewFL->FoldingCurve[0]->third->p).normalized();
-    if(VecPrev.dot(Vec) < 0){std::swap(NewFL->FoldingCurve.front()->second, NewFL->FoldingCurve.front()->third);}
+    if(VecPrev.dot(Vec) > 0){std::swap(NewFL->FoldingCurve.front()->second, NewFL->FoldingCurve.front()->third);}
 
     modifyEndPoint(NewFL->FoldingCurve.back());
     VecPrev = (NewFL->FoldingCurve.end()[-2]->first->p - NewFL->FoldingCurve.end()[-2]->third->p).normalized(), Vec = (NewFL->FoldingCurve.back()->first->p - NewFL->FoldingCurve.back()->third->p).normalized();
-    if(VecPrev.dot(Vec) < 0){std::swap(NewFL->FoldingCurve.front()->second, NewFL->FoldingCurve.front()->third);}
+    if(VecPrev.dot(Vec) > 0){std::swap(NewFL->FoldingCurve.front()->second, NewFL->FoldingCurve.front()->third);}
 
     return true;
 }

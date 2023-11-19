@@ -455,8 +455,14 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     }
 
     if(e->key() == Qt::Key_E){
-        if(e->modifiers().testFlag(Qt::ControlModifier))ui->glWid2dim->model.back()->Modify4LastFoldLine(ui->glWid2dim->model.back()->FL.back(), warea, wsim, bndrange, IsStartEnd);
-        else ui->glWid2dim->model.back()->FL.back()->Optimization_FlapAngle(ui->glWid2dim->model.back()->outline->vertices,  wb,  wp,  0,  1,  IsStartEnd, 0, OptimizeAngleFor3Rulings);
+        if(e->modifiers().testFlag(Qt::ControlModifier)){
+            qDebug()<<"optimization base";
+            ui->glWid2dim->model.back()->Modify4LastFoldLine(ui->glWid2dim->model.back()->FL.back(), warea, wsim, bndrange, 0, IsStartEnd);
+        }
+        else{
+            qDebug()<<"fullsearch";
+            ui->glWid2dim->model.back()->Modify4LastFoldLine(ui->glWid2dim->model.back()->FL.back(), warea, wsim, bndrange, 1, IsStartEnd);
+        }
     }
 
     if(e->key() == Qt::Key_N){
