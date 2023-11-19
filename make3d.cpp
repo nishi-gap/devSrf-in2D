@@ -635,9 +635,9 @@ bool Model::Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double warea, do
     tar->applyAAAMethod(Poly_V, IsStartEnd, tar->a_flap);
     tar->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, alg, bndrange, warea, wsim);
     tar->applyAAAMethod(Poly_V, IsStartEnd, tar->a_flap);
-    tar->CheckIsCrossedRulings();
+    //tar->CheckIsCrossedRulings();
     SetOnVertices_outline(false);
-    tar->SimpleSmooothSrf(Poly_V);
+    //tar->SimpleSmooothSrf(Poly_V);
     return true;
 }
 

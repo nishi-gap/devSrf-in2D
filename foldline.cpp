@@ -639,15 +639,15 @@ double Fconst_mixed(const std::vector<double> &X, std::vector<double> &grad, voi
     };
     double fc = 0.0, fr = 0.0;
 
-    if(od->ind_l < (int)od->FC.size() - 1){
+    if(od->ind_l <= (int)od->FC.size() - 1){
         update_Vertex(X[0], od->FC[od->ind_l], od->BasePt[od->ind_l]);
         cb_Folding(od->FC, od->Poly_V, od->a, od->StartingIndex);
         fr += Fruling(od->FC, od->ind_l-1); fc += Fconv(od->FC, od->BasePt, od->StartingIndex, od->ind_l-1);
     }
-    if(od->ind_r > 0){
+    if(od->ind_r >= 0){
         update_Vertex(X[1], od->FC[od->ind_r], od->BasePt[od->ind_r]);
         cb_Folding(od->FC, od->Poly_V, od->a, od->StartingIndex);
-        fr = Fruling(od->FC, od->ind_r+1); fc = Fconv(od->FC, od->BasePt, od->ind_r+1, od->StartingIndex);
+        fr += Fruling(od->FC, od->ind_r+1); fc += Fconv(od->FC, od->BasePt, od->ind_r+1, od->StartingIndex);
     }
     return fc + fr;
 }
@@ -862,13 +862,13 @@ double ObjFunc_Vertex(const std::vector<double> &X, std::vector<double> &grad, v
 
     RevisionVertices::ObjData_v *od = (RevisionVertices::ObjData_v *)f_data;
     std::vector<std::shared_ptr<Vertex>> Poly_V = od->Poly_V;
-    if(od->ind_l < (int)od->FC.size() - 1){//左側
+    if(od->ind_l <= (int)od->FC.size() - 1){//左側
        update_Vertex(X[0], od->FC[od->ind_l], od->BasePt[od->ind_l]);
        cb_Folding(od->FC, od->Poly_V, od->a, od->StartingIndex);
        farea += od->wb * Farea(od->FC,  od->ind_l - 2, od->ind_l-1);
        fsim += od->wp* (od->FC[od->ind_l]->first->p - od->BasePt[od->ind_l]->first->p).norm();
     }
-    if(od->ind_r > 0){
+    if(od->ind_r >= 0){
        update_Vertex(X[1], od->FC[od->ind_r], od->BasePt[od->ind_r]);
        cb_Folding(od->FC, od->Poly_V, od->a, od->StartingIndex);
        farea += od->wb * Farea(od->FC, od->ind_r + 1, od->ind_r+2);//範囲の与え方要検証
@@ -1173,6 +1173,7 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
     int mid = ValidFC.size()/2;
     int ind_l = ValidFC.size() - 1, ind_r = 1;
     
+    /*
     //交点を動かしたときの制約関数の値の変化をcsvファイルへ書き出し
     {
        int StartingIndex = ValidFC.size()/2;
@@ -1215,6 +1216,7 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
        std::thread th_csv(WriteCSV);
        th_csv.join();
     }
+    */
     
     std::vector<Eigen::Vector3d> initX(ValidFC.size());
     for(int i = 0; i < (int)initX.size(); i++)initX[i] = ValidFC[i]->first->p;
@@ -1224,14 +1226,14 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
     if(OptimizationAlgorithm == 0){//最適化による交点修正
 
        auto SetParam = [&](const std::shared_ptr<Vertex4d>& v4d, double&x, double&lower, double& upper, const double region[2]){
-           x = (v4d->first->p - v4d->third->p).norm();
-           lower = std::max(x + region[0], 0.0);
+           x = (v4d->first->p - v4d->third->p).norm() + 0.5*(region[0] + region[1]);
+           lower = std::max((v4d->first->p - v4d->third->p).norm() + region[0], 0.0);
            Eigen::Vector3d point;
            for(int k = 0; k < (int)Poly_V.size(); k++){
                point = MathTool::calcCrossPoint_2Vector(v4d->first->p, 1000.0 * (v4d->first->p - v4d->third->p).normalized() + v4d->first->p, Poly_V[k]->p, Poly_V[(k + 1) % (int)Poly_V.size()]->p);
                if(MathTool::is_point_on_line(point, Poly_V[k]->p, Poly_V[(k + 1) % (int)Poly_V.size()]->p) && (v4d->first->p - v4d->third->p).normalized().dot(point - v4d->first->p) > 0)break;
            }
-           upper = std::min(x + region[1], (point - v4d->third->p).norm());
+           upper = std::min((v4d->first->p - v4d->third->p).norm() + region[1], (point - v4d->third->p).norm());
        };
 
        std::vector<std::shared_ptr<Vertex4d>> FC(ValidFC.size());
@@ -1239,12 +1241,14 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
        std::string type = (VertexMoveAlg == 0)? "FindFirstPoint": "Fullsearch";
        std::string file = "./Optimization/iteration_" + type + "_range" + std::to_string(range) + "_warea" + std::to_string(warea) + "_wsim" + std::to_string(wsim) + ".csv";
        ofs.open(file, std::ios::out);
-       ind_l = mid+2; ind_r = mid-2;
+       ind_l = std::min(mid+2, (int)ValidFC.size()-1); ind_r = std::max(mid-2, 0);
        do{
         std::vector<double> X(2), bnd_lower(2), bnd_upper(2);
-        double step = 0.1;
+        double step = 0.05;
         nlopt::opt opt;
-
+        for(int i = 0; i < (int)FC.size(); i++){
+            FC[i] = ValidFC[i]->deepCopy();
+        }
         RevisionVertices::ObjData_v od = {a_flap, FC, Poly_V, mid};
         od.SetCrossedIndex(ind_l, ind_r);
         od.AddBasePt(ValidFC);
