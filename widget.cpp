@@ -523,6 +523,11 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         if(e->modifiers().testFlag(Qt::ControlModifier)) ui->glWid2dim->PasteCurveObj();
     }
 
+    if(e->key() == Qt::Key_W){
+        auto NewFL = ui->glWid2dim->model.back()->FL.back();
+        ui->glWid2dim->model.back()->Interpolation(NewFL);
+    }
+
     if(e->key() == Qt::Key_Z){
         if(e->modifiers().testFlag(Qt::ControlModifier)) ui->glWid2dim->back2befstate();
     }
@@ -611,11 +616,13 @@ void MainWindow::exportsvg(QString filename){
         for(auto&fc: FL->FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
 
         //p0:描画するエッジの始点, p1: 描画するエッジの端点, p2: 片側の平面上の点, p3: もう片方の平面上の点
-        auto DrawEdge = [&](const std::shared_ptr<Vertex>& p0, const std::shared_ptr<Vertex>& p1, const std::shared_ptr<Vertex>& p2, const std::shared_ptr<Vertex>& p3){
-            Eigen::Vector3d f_nv = ((p1->p3 - p0->p3).cross(p2->p3 - p0->p3)).normalized(),fp_nv = ((p3->p3 - p0->p3).cross(p1->p3 - p0->p3)).normalized();
+        auto DrawEdge = [&](const std::shared_ptr<Vertex>& p0, const std::shared_ptr<Vertex>& p1, const std::shared_ptr<Vertex>& p2, const std::shared_ptr<Vertex>& p3, bool IsReverse){
             Eigen::Vector3d SpinAxis = (p1->p3 - p0->p3).normalized();
-            if(SpinAxis.dot(f_nv.cross(fp_nv)) <-1e-5)strokecolor = "\"red\"";//mount
-            else if(SpinAxis.dot(f_nv.cross(fp_nv)) > 1e-5)strokecolor = "\"blue\"";//valley
+            Eigen::Vector3d f_nv = (SpinAxis.cross(p2->p3 - p0->p3)).normalized(),fp_nv = ((p3->p3 - p0->p3).cross(SpinAxis)).normalized();
+            double f = (!IsReverse)?SpinAxis.dot(f_nv.cross(fp_nv)) :-SpinAxis.dot(f_nv.cross(fp_nv));
+            double th = -1e-5;
+            if(f <th)strokecolor = "\"red\"";//mount
+            else if(f > -th)strokecolor = "\"blue\"";//valley
             else strokecolor ="\"black\"";
             double x1 = p1->p.x(), y1 = p1->p.y(), x2 = p0->p.x(), y2 = p0->p.y();
             str = "<line x1 = \"" + std::to_string(x1) + "\" y1 = \"" + std::to_string(y1) + "\" x2= \"" + std::to_string(x2) + "\" y2= \"" + std::to_string(y2)+
@@ -623,11 +630,12 @@ void MainWindow::exportsvg(QString filename){
             WriteList.append(QString::fromStdString(str));
         };
 
-        for(int i = 1; i < (int)ValidFC.size(); i++)
-            DrawEdge(ValidFC[i]->first, ValidFC[i-1]->first, ValidFC[i]->second, ValidFC[i]->third);
+        for(int i = 1; i < (int)ValidFC.size()-1; i++)
+            DrawEdge(ValidFC[i]->first, ValidFC[i-1]->first, ValidFC[i]->second, ValidFC[i]->third, false);
+        DrawEdge(ValidFC.end()[-2]->first, ValidFC.back()->first, ValidFC.end()[-2]->second, ValidFC.end()[-2]->third, true);
         for(int i = 1; i < (int)ValidFC.size() - 1; i++){
-            DrawEdge(ValidFC[i]->first, ValidFC[i]->second, ValidFC[i+1]->first, ValidFC[i-1]->first);
-            DrawEdge(ValidFC[i]->first, ValidFC[i]->third, ValidFC[i-1]->first, ValidFC[i+1]->first);
+            DrawEdge(ValidFC[i]->first, ValidFC[i]->second, ValidFC[i+1]->first, ValidFC[i-1]->first, false);
+            DrawEdge(ValidFC[i]->first, ValidFC[i]->third, ValidFC[i-1]->first, ValidFC[i+1]->first, false);
         }
     }
     WriteList.append("</g>\n");
