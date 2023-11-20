@@ -66,6 +66,7 @@ public:
     bool BendingModel(double wb, double wp, double warea, double wsim, int dim, double tol, double bndrange, int bendrank, int alg, bool IsStartEnd, bool OptimizeAngleFor3Rulings);//alg=0:ruling intersection, alg=1:regression curve
     bool Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double warea, double wsim, double bndrange, int alg, bool IsStartEnd);
     bool AssignRuling(int dim, double tol, bool begincenter);
+    void Interpolation(std::shared_ptr<FoldLine>& FldLine);
     bool AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL);
     int getLayerNum();
     std::vector<Eigen::Vector3d> resPts;

@@ -458,16 +458,19 @@ void GLWidget_2D::paintGL(){
             glEnd();
         }
         //p0:描画するエッジの始点, p1: 描画するエッジの端点, p2: 片側の平面上の点, p3: もう片方の平面上の点
-        auto DrawEdge = [&](const std::shared_ptr<Vertex>& p0, const std::shared_ptr<Vertex>& p1, const std::shared_ptr<Vertex>& p2, const std::shared_ptr<Vertex>& p3, double LineWidth, bool IsGradation, bool IsRuling, bool DashedLine = false){
+        auto DrawEdge = [&](const std::shared_ptr<Vertex>& p0, const std::shared_ptr<Vertex>& p1, const std::shared_ptr<Vertex>& p2, const std::shared_ptr<Vertex>& p3, double LineWidth, bool IsGradation, bool IsRuling, bool IsReverse, bool DashedLine){
             glLineWidth(LineWidth);
-            Eigen::Vector3d f_nv = ((p1->p3 - p0->p3).cross(p2->p3 - p0->p3)).normalized(),fp_nv = ((p3->p3 - p0->p3).cross(p1->p3 - p0->p3)).normalized();
             Eigen::Vector3d SpinAxis = (p1->p3 - p0->p3).normalized();
+            Eigen::Vector3d f_nv = (SpinAxis.cross(p2->p3 - p0->p3)).normalized(),fp_nv = ((p3->p3 - p0->p3).cross(SpinAxis)).normalized();
             if(IsGradation){
                 double color = getcolor(model.back()->ColorPt.color, model.back()->ColorPt.angle, std::acos(f_nv.dot(fp_nv)));
-                if(SpinAxis.dot(f_nv.cross(fp_nv)) <-1e-5){//mount
+                double th = -1e-5;
+                double f = SpinAxis.dot(f_nv.cross(fp_nv));
+                if(IsReverse) f *= -1;
+                if(f <th){//mount
                     if(!IsMVcolor_binary)glColor3d(1, 1.0 - color, 1.0 - color);
                     else glColor3d(1,0,0);
-                }else if(SpinAxis.dot(f_nv.cross(fp_nv)) > 1e-5){//valley
+                }else if(f > -th){//valley
                     if(!IsMVcolor_binary)glColor3d(1.0 - color,1.0 - color,1);
                     else glColor3d(0,0,1);
                 }else{
@@ -491,13 +494,15 @@ void GLWidget_2D::paintGL(){
         };
         bool IsGradation = (drawtype == PaintTool::NewGradationMode || drawtype == PaintTool::FoldLine_bezier)?true: false;
 
-        for(int i = 1; i < (int)FL->FoldingCurve.size(); i++)
-            DrawEdge(FL->FoldingCurve[i]->first, FL->FoldingCurve[i-1]->first, FL->FoldingCurve[i]->second, FL->FoldingCurve[i]->third, rulingWidth, IsGradation, false);
+        for(int i = 1; i < (int)FL->FoldingCurve.size()-1; i++)
+            DrawEdge(FL->FoldingCurve[i]->first, FL->FoldingCurve[i-1]->first, FL->FoldingCurve[i]->second, FL->FoldingCurve[i]->third, rulingWidth, IsGradation, false, false, false);
+        DrawEdge(FL->FoldingCurve.end()[-2]->first, FL->FoldingCurve.back()->first, FL->FoldingCurve.end()[-2]->second, FL->FoldingCurve.end()[-2]->third, rulingWidth, IsGradation, true, true, false);
         for(int i = 1; i < (int)FL->FoldingCurve.size() - 1; i++){
             bool DashedLine = (FL->FoldingCurve[i]->IsCalc)? false: true;
-            DrawEdge(FL->FoldingCurve[i]->first, FL->FoldingCurve[i]->second, FL->FoldingCurve[i+1]->first, FL->FoldingCurve[i-1]->first, rulingWidth, IsGradation, true, DashedLine);
-            DrawEdge(FL->FoldingCurve[i]->first, FL->FoldingCurve[i]->third, FL->FoldingCurve[i-1]->first, FL->FoldingCurve[i+1]->first, rulingWidth, IsGradation, true, DashedLine);
+            DrawEdge(FL->FoldingCurve[i]->first, FL->FoldingCurve[i]->second, FL->FoldingCurve[i+1]->first, FL->FoldingCurve[i-1]->first, rulingWidth, IsGradation, true, false, DashedLine);
+            DrawEdge(FL->FoldingCurve[i]->first, FL->FoldingCurve[i]->third, FL->FoldingCurve[i-1]->first, FL->FoldingCurve[i+1]->first, rulingWidth, IsGradation, true, false, DashedLine);
         }
+
 
 
         glColor3d(0,0,0);

@@ -638,17 +638,23 @@ double Fconst_mixed(const std::vector<double> &X, std::vector<double> &grad, voi
         return f;
     };
     double fc = 0.0, fr = 0.0;
+    int mid = od->FC.size()/2;
+    if(od->ind_l > mid){
+        if(od->ind_l <= (int)od->FC.size() - 1){
+            update_Vertex(X[0], od->FC[od->ind_l], od->BasePt[od->ind_l]);
+            cb_Folding(od->FC, od->Poly_V, od->a, od->StartingIndex);
+            fr += Fruling(od->FC, od->ind_l-1); fc += Fconv(od->FC, od->BasePt, od->StartingIndex, od->ind_l-1);
+        }
+    }
+    else{
+        if(od->ind_r >= 0){
+            update_Vertex(X[1], od->FC[od->ind_r], od->BasePt[od->ind_r]);
+            cb_Folding(od->FC, od->Poly_V, od->a, od->StartingIndex);
+            fr += Fruling(od->FC, od->ind_r+1); fc += Fconv(od->FC, od->BasePt, od->ind_r+1, od->StartingIndex);
+        }
+    }
 
-    if(od->ind_l <= (int)od->FC.size() - 1){
-        update_Vertex(X[0], od->FC[od->ind_l], od->BasePt[od->ind_l]);
-        cb_Folding(od->FC, od->Poly_V, od->a, od->StartingIndex);
-        fr += Fruling(od->FC, od->ind_l-1); fc += Fconv(od->FC, od->BasePt, od->StartingIndex, od->ind_l-1);
-    }
-    if(od->ind_r >= 0){
-        update_Vertex(X[1], od->FC[od->ind_r], od->BasePt[od->ind_r]);
-        cb_Folding(od->FC, od->Poly_V, od->a, od->StartingIndex);
-        fr += Fruling(od->FC, od->ind_r+1); fc += Fconv(od->FC, od->BasePt, od->ind_r+1, od->StartingIndex);
-    }
+
     return fc + fr;
 }
 
@@ -862,19 +868,55 @@ double ObjFunc_Vertex(const std::vector<double> &X, std::vector<double> &grad, v
 
     RevisionVertices::ObjData_v *od = (RevisionVertices::ObjData_v *)f_data;
     std::vector<std::shared_ptr<Vertex>> Poly_V = od->Poly_V;
-    if(od->ind_l <= (int)od->FC.size() - 1){//左側
-       update_Vertex(X[0], od->FC[od->ind_l], od->BasePt[od->ind_l]);
-       cb_Folding(od->FC, od->Poly_V, od->a, od->StartingIndex);
-       farea += od->wb * Farea(od->FC,  od->ind_l - 2, od->ind_l-1);
-       fsim += od->wp* (od->FC[od->ind_l]->first->p - od->BasePt[od->ind_l]->first->p).norm();
+    int mid = od->FC.size()/2;
+    if(od->ind_l > mid){
+       if(od->ind_l <= (int)od->FC.size() - 1){//左側
+        update_Vertex(X[0], od->FC[od->ind_l], od->BasePt[od->ind_l]);
+        cb_Folding(od->FC, od->Poly_V, od->a, od->StartingIndex);
+        farea += od->wb * Farea(od->FC,  od->ind_l - 2, od->ind_l-1);
+        fsim += od->wp* (od->FC[od->ind_l]->first->p - od->BasePt[od->ind_l]->first->p).norm();
+       }
     }
-    if(od->ind_r >= 0){
-       update_Vertex(X[1], od->FC[od->ind_r], od->BasePt[od->ind_r]);
-       cb_Folding(od->FC, od->Poly_V, od->a, od->StartingIndex);
-       farea += od->wb * Farea(od->FC, od->ind_r + 1, od->ind_r+2);//範囲の与え方要検証
-       fsim += od->wp* (od->FC[od->ind_r]->first->p - od->BasePt[od->ind_r]->first->p).norm();
+    else{
+       if(od->ind_r >= 0){
+        update_Vertex(X[0], od->FC[od->ind_r], od->BasePt[od->ind_r]);
+        cb_Folding(od->FC, od->Poly_V, od->a, od->StartingIndex);
+        farea += od->wb * Farea(od->FC, od->ind_r + 1, od->ind_r+2);//範囲の与え方要検証
+        fsim += od->wp* (od->FC[od->ind_r]->first->p - od->BasePt[od->ind_r]->first->p).norm();
+       }
     }
-    return  farea + fsim ;
+
+    auto Fruling = [&](const std::vector<std::shared_ptr<Vertex4d>>& FC, int s){
+        double f = 0.0;
+        int mid = FC.size()/2;
+        if(mid < s){//左側
+            for(int i = mid + 1; i <= s; i++)f += calcCrossPt4Constraint(FC[i],FC[i-1]);
+        }else{//右側
+            for(int i = mid - 1; i >= s; i--)f += calcCrossPt4Constraint(FC[i],FC[i+1]);
+        }
+        return f;
+    };
+
+    //制約項
+    double fc = 0.0, fr = 0.0;
+    double w = 0.5;
+    if(od->ind_l > mid){
+       if(od->ind_l <= (int)od->FC.size() - 1){
+        update_Vertex(X[0], od->FC[od->ind_l], od->BasePt[od->ind_l]);
+        cb_Folding(od->FC, od->Poly_V, od->a, od->StartingIndex);
+        fr += Fruling(od->FC, od->ind_l-1); fc += Fconv(od->FC, od->BasePt, od->StartingIndex, od->ind_l-1);
+       }
+    }
+    else{
+       if(od->ind_r >= 0){
+        update_Vertex(X[1], od->FC[od->ind_r], od->BasePt[od->ind_r]);
+        cb_Folding(od->FC, od->Poly_V, od->a, od->StartingIndex);
+        fr += Fruling(od->FC, od->ind_r+1); fc += Fconv(od->FC, od->BasePt, od->ind_r+1, od->StartingIndex);
+       }
+    }
+
+
+    return  farea + fsim + w * (fr + fc);
 }
 
 double ObjFunc_3Rulings(const std::vector<double> &X, std::vector<double> &grad, void* f_data){
@@ -1045,6 +1087,13 @@ void FullSearch(std::vector<double> &X, RevisionVertices::ObjData_v& od,
 
     for(int i = 0; i < static_cast<int>(X.size()); i++) update_Vertex(X[i], od.FC[i], od.BasePt[i]);
 
+    std::ofstream ofs;
+    if(od.FC.size() <= 5){
+       std::string file = "./Optimization/OptimizationVertex" + std::to_string(ind_l+1) +".csv";
+       ofs.open(file, std::ios::out); ofs << "index ,t ,fruling,fconv, farea, fsimlarity, \n";
+    }
+
+
     const double step = 1e-4;
     std::vector<double> minf_l{X[ind_l+1], 1e+10, 1e+10, 1e+10, 1e+10, 1e+10}, minf_r{X[ind_r-1],1e+10, 1e+10,1e+10, 1e+10, 1e+10};//変化量, rulingの交差判定, 凹凸性, 三角形の面積, 元の点からの距離, 目的関数の線形和
     double fr, fc, fa, fsim;
@@ -1055,6 +1104,7 @@ void FullSearch(std::vector<double> &X, RevisionVertices::ObjData_v& od,
             fr = Fruling(od.FC, ind_l); fc = Fconv(od.FC, od.BasePt, od.StartingIndex, ind_l);
             fa = warea * Farea(od.FC,  ind_l-1, ind_l);
             fsim = wsim* (od.FC[ind_l+1]->first->p - od.BasePt[ind_l+1]->first->p).norm();
+            if(od.FC.size() <= 5)ofs << ind_l+1 << "," << t << "," << fr << "," << fc <<"," << fa<< "," << fsim << std::endl;
             if(fr == 0.0 && fc == 0.0){//0であれば交差していないor凹凸性が失われていない
                 IsCrossed_l = false;
                 if(fsim + fa < minf_l[5]){
@@ -1063,19 +1113,23 @@ void FullSearch(std::vector<double> &X, RevisionVertices::ObjData_v& od,
             }
         }
 
-       qDebug()<<"left side t = " << minf_l[0] << " , ruling = " << minf_l[1] << " , convesity = " << minf_l[2] << " , Farea = " << minf_l[3] << " , norm error = " << minf_l[4] <<" , sum = " << minf_l[5] ;
-        double _d = minf_l[0] - X[ind_l+1];
-        update_Vertex(minf_l[0], od.BasePt[ind_l+1], od.BasePt[ind_l+1]);
-       for(int k = ind_l + 2; k < (int)X.size(); k++){
-            double d = _d + X[k];
-            d = (d < bnd_lower[k])? bnd_lower[k]: (bnd_upper[k] < d)? bnd_upper[k]: d;
-            //od.BasePt[k]->first->p = d * (src->first->p - src->third->p).normalized() + src->third->p;
-            //od.BasePt[k]->first->p3 = d * (src->first->p3 - src->third->p3).normalized() + src->third->p3;
-            update_Vertex(d, od.BasePt[k], od.BasePt[k]);
+       qDebug()<<"left side init = " << X[ind_l+1] <<" , t = " << minf_l[0] << " , ruling = " << minf_l[1] << " , convesity = " << minf_l[2] << " , Farea = " << minf_l[3] << " , norm error = " << minf_l[4] <<" , sum = " << minf_l[5] ;
+       if(!IsCrossed_l){
+            double _d = minf_l[0] - X[ind_l+1];
+            update_Vertex(minf_l[0], od.BasePt[ind_l+1], od.BasePt[ind_l+1]);
+            for(int k = ind_l + 2; k < (int)X.size(); k++){
+                double d = _d + X[k];
+                d = (d < bnd_lower[k])? bnd_lower[k]: (bnd_upper[k] < d)? bnd_upper[k]: d;
+                //od.BasePt[k]->first->p = d * (src->first->p - src->third->p).normalized() + src->third->p;
+                //od.BasePt[k]->first->p3 = d * (src->first->p3 - src->third->p3).normalized() + src->third->p3;
+                update_Vertex(d, od.BasePt[k], od.BasePt[k]);
+            }
        }
-
     }
+    ofs.close();
 
+    std::string file = "./Optimization/OptimizationVertex" + std::to_string(ind_r-1) +".csv";
+    ofs.open(file, std::ios::out); ofs << "index ,t ,fruling,fconv, farea, fsimlarity, \n";
     if(IsCrossed_r){
        for(double t = bnd_lower[ind_r-1]; t <= bnd_upper[ind_r-1]; t += step){
             update_Vertex(t, od.FC[ind_r-1], od.BasePt[ind_r-1]);
@@ -1083,6 +1137,7 @@ void FullSearch(std::vector<double> &X, RevisionVertices::ObjData_v& od,
             fr = Fruling(od.FC, ind_r); fc = Fconv(od.FC, od.BasePt, ind_r, od.StartingIndex);
             fa = warea * Farea(od.FC, ind_r+1, ind_r);//範囲の与え方要検証
             fsim = wsim* (od.FC[ind_r-1]->first->p - od.BasePt[ind_r-1]->first->p).norm();
+            if(od.FC.size() <= 5)ofs << ind_r -1 << "," << t << "," << fr << "," << fc <<"," << fa<< "," << fsim << std::endl;
             if(fr == 0.0 && fc == 0.0){
                 IsCrossed_r = false;
                 if(fa + fsim < minf_r[5]){
@@ -1091,17 +1146,20 @@ void FullSearch(std::vector<double> &X, RevisionVertices::ObjData_v& od,
             }
        }
 
-       qDebug()<<"right side t = " << minf_r[0] << " , ruling = " << minf_r[1] << " , convesity = " << minf_r[2] << " , Farea = " << minf_r[3] << " , norm error = " << minf_r[4] << " , sum = " << minf_r[5];
-       double _d = minf_r[0] - X[ind_r-1];
-       update_Vertex(minf_r[0], od.BasePt[ind_r-1], od.BasePt[ind_r-1]);
-       for(int k = ind_r - 2; k >= 0; k--){
-            double d = _d + X[k];
-            d = (d < bnd_lower[k])? bnd_lower[k]: (bnd_upper[k] < d)? bnd_upper[k]: d;
-            //tar->first->p = t * (src->first->p - src->third->p).normalized() + src->third->p;
-            //tar->first->p3 = t * (src->first->p3 - src->third->p3).normalized() + src->third->p3;
-            update_Vertex(d, od.BasePt[k], od.BasePt[k]);
+       qDebug()<<"right side init " << X[ind_r-1] <<"  t = " << minf_r[0] << " , ruling = " << minf_r[1] << " , convesity = " << minf_r[2] << " , Farea = " << minf_r[3] << " , norm error = " << minf_r[4] << " , sum = " << minf_r[5];
+       if(!IsCrossed_r){
+            double _d = minf_r[0] - X[ind_r-1];
+            update_Vertex(minf_r[0], od.BasePt[ind_r-1], od.BasePt[ind_r-1]);
+            for(int k = ind_r - 2; k >= 0; k--){
+                double d = _d + X[k];
+                d = (d < bnd_lower[k])? bnd_lower[k]: (bnd_upper[k] < d)? bnd_upper[k]: d;
+                //tar->first->p = t * (src->first->p - src->third->p).normalized() + src->third->p;
+                //tar->first->p3 = t * (src->first->p3 - src->third->p3).normalized() + src->third->p3;
+                update_Vertex(d, od.BasePt[k], od.BasePt[k]);
+            }
        }
     }
+    if(od.FC.size() <=5)ofs.close();
 }
 
 void SetOptimizationParameter(nlopt::opt& opt, const std::vector<double>&bnd_lower, const std::vector<double>&bnd_upper, double ftol, double xtol, double maxtime){
@@ -1167,7 +1225,7 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
        return false;
     }
     if(isbend())return true;
-    std::vector<std::shared_ptr<Vertex4d>> ValidFC;
+    std::vector<std::shared_ptr<Vertex4d>> ValidFC, FC;
     for(auto&fc: FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
     int bef_l = -1, bef_r = -1;
     int mid = ValidFC.size()/2;
@@ -1236,51 +1294,78 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
            upper = std::min((v4d->first->p - v4d->third->p).norm() + region[1], (point - v4d->third->p).norm());
        };
 
-       std::vector<std::shared_ptr<Vertex4d>> FC(ValidFC.size());
+       auto apply_optimization = [&](nlopt::opt& opt, int ind, const double step)->double{
+           int mid = ValidFC.size()/2;
+           int SplitSize = 2*range/step;
+           double ftol = 1e-5, xtol = 1e-5, maxtime = 1;
+
+           std::vector<double> X(1), bnd_lower(1), bnd_upper(1);//ind_lに左右関係なくパラメータを定義→左右の交点位置の最適化は別々に行う
+           double minf = 1e+10, minX = (ValidFC[ind]->first->p - ValidFC[ind]->third->p).norm();
+           qDebug()<<"init X = " << minX;
+           for(int i = 0; i < SplitSize; i++){
+               double region[2] = {-range + i*step, -range + (i + 1)*step};
+               SetParam(ValidFC[ind], X[0], bnd_lower[0], bnd_upper[0], region);
+               SetOptimizationParameter(opt, bnd_lower, bnd_upper, ftol, xtol, maxtime);
+               std::string file = "./Optimization/iteration_optimizer.csv";
+               ofs.open(file, std::ios::out);
+               double _minf;
+               try {
+                   nlopt::result result = opt.optimize(X, _minf);
+                   //qDebug() <<"result :  lower bound" <<result ;
+               }catch (std::exception& e) { qDebug() << "nlopt failed: " << e.what() ; }
+               update_Vertex(X[0], FC[ind], ValidFC[ind]);
+               cb_Folding(FC, Poly_V, a_flap, mid);
+               if(ind > mid){//左側
+                   double fr = calcCrossPt4Constraint(FC[ind - 2], FC[ind - 1]);
+                   if((fr == 0) && _minf <= minf){
+                       minX = X[0];
+                       minf = _minf;
+                   }
+               }else {//右側
+                   double fr = calcCrossPt4Constraint(FC[ind + 2], FC[ind + 1]);
+                   if((fr == 0) && _minf <= minf){
+                       minX = X[0];
+                       minf = _minf;
+                   }
+               }
+           }
+
+           //update_Vertex(minX, ValidFC[ind], ValidFC[ind]);
+           //cb_Folding(ValidFC, Poly_V, a_flap, mid);
+           qDebug()<<"ind " << ind << " , minf = " << minf << " , X = " << minX;
+           return minX;
+       };
+
+
        bool res;
        std::string type = (VertexMoveAlg == 0)? "FindFirstPoint": "Fullsearch";
        std::string file = "./Optimization/iteration_" + type + "_range" + std::to_string(range) + "_warea" + std::to_string(warea) + "_wsim" + std::to_string(wsim) + ".csv";
        ofs.open(file, std::ios::out);
        ind_l = std::min(mid+2, (int)ValidFC.size()-1); ind_r = std::max(mid-2, 0);
+       FC.resize(ValidFC.size());
        do{
-        std::vector<double> X(2), bnd_lower(2), bnd_upper(2);
-        double step = 0.05;
+
+        double step = 0.02;
         nlopt::opt opt;
         for(int i = 0; i < (int)FC.size(); i++){
             FC[i] = ValidFC[i]->deepCopy();
         }
         RevisionVertices::ObjData_v od = {a_flap, FC, Poly_V, mid};
-        od.SetCrossedIndex(ind_l, ind_r);
+
         od.AddBasePt(ValidFC);
         od.AddWeight(warea, wsim,0,0);
-        opt = nlopt::opt(nlopt::LN_COBYLA, 2);
-        opt.add_inequality_constraint(Fconst_mixed, &od);
+        opt = nlopt::opt(nlopt::LN_COBYLA, 1);
+        //opt.add_inequality_constraint(Fconst_mixed, &od);
         opt.set_min_objective(ObjFunc_Vertex, &od);
-        double ftol = 1e-9, xtol = 1e-9, maxtime = 1;
-        int SplitSize = 2*range/step;
-        double minf = 1e+10, minX_left = (ValidFC[ind_l]->first->p - ValidFC[ind_l]->third->p).norm(), minX_right = (ValidFC[ind_r]->first->p - ValidFC[ind_r]->third->p).norm();
-        for(int i = 0; i < SplitSize; i++){
-            double region[2] = {-range + i*step, -range + (i + 1)*step};
-            SetParam(ValidFC[ind_l], X[0], bnd_lower[0], bnd_upper[0], region);
-            SetParam(ValidFC[ind_r], X[1], bnd_lower[1], bnd_upper[1], region);
 
-            SetOptimizationParameter(opt, bnd_lower, bnd_upper, ftol, xtol, maxtime);
-            std::string file = "./Optimization/iteration_optimizer.csv";
-            ofs.open(file, std::ios::out);
-            double _minf;
-            try {
-                nlopt::result result = opt.optimize(X, _minf);
-                qDebug() <<"result :  lower bound" <<result ;
-            }catch (std::exception& e) { qDebug() << "nlopt failed: " << e.what() ; }
-            if((calcCrossPt4Constraint(ValidFC[ind_l - 2], ValidFC[ind_l - 1]) != 0) && _minf <= minf){
-                minf = _minf; minX_left = X[0];
-            }
-            if((calcCrossPt4Constraint(ValidFC[ind_r + 2], ValidFC[ind_r + 1]) != 0) && _minf <= minf){
-                minf = _minf; minX_right = X[1];
-            }
-        }
-        update_Vertex(minX_left, ValidFC[ind_l], ValidFC[ind_l]);
-        update_Vertex(minX_right, ValidFC[ind_r], ValidFC[ind_r]);
+        od.SetCrossedIndex(ind_l, ind_l);
+        double update_l = apply_optimization(opt, ind_l, step);
+        update_Vertex(update_l, ValidFC[ind_l], ValidFC[ind_l]);
+
+        od.SetCrossedIndex(ind_r, ind_r);
+        double update_r = apply_optimization(opt, ind_r, step);
+        update_Vertex(update_r, ValidFC[ind_r], ValidFC[ind_r]);
+        cb_Folding(ValidFC, Poly_V, a_flap, mid);
 
         for(int i = 0; i < (int)initX.size(); i++){
                 double sgn = (MathTool::is_point_on_line(initX[i], ValidFC[i]->first->p, ValidFC[i]->third->p))?1: -1;
@@ -1300,6 +1385,7 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
         //交差していようがひとまず無視するやり方(最後に交差した箇所のrulingの向きを強制的に書き換える)
         if(ind_l < (int)ValidFC.size() - 1)ind_l++;
         if(ind_r > 0)ind_r--;
+        if(ind_r == 0 && ind_l == (int)ValidFC.size()-1)break;
        }while(fr != 0.0 && res);
 
     }else{//逐次的な探索による修正
@@ -1332,10 +1418,10 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
         //bef_l = ind_l; bef_r = ind_r;
         //if(ind_l < (int)ValidFC.size() - 1)ind_l = (calcCrossPt4Constraint(ValidFC[ind_l], ValidFC[ind_l - 1]) != 0)? ind_l: ind_l+1;
         //if(ind_r > 0)ind_r = (calcCrossPt4Constraint(ValidFC[ind_r], ValidFC[ind_r + 1]) != 0)? ind_r: ind_r-1;
-
         //交差していようがひとまず無視するやり方(最後に交差した箇所のrulingの向きを強制的に書き換える)
         if(ind_l < (int)ValidFC.size() - 1)ind_l++;
         if(ind_r > 0)ind_r--;
+        if(ind_r == 0 && ind_l == (int)ValidFC.size()-1)break;
        }while(fr != 0.0 && res);
     }
     

@@ -28,6 +28,7 @@ R:Regression Curveの計算+描画
 R + Ctrl:展開図と可展面を折り曲げる前の状態に戻す
 S + Ctrl:objとして保存
 T: rulingが交差している場合中心のflap angleを変える(phi1 = phi4 or phi1 = phi2 = k/2)
+W:交差しているrulingがあるか判定し補間して修正
 V + Ctrl: コピーした折曲線があれば張り付け
 Z + Ctrl：スタックしたひとつ前の状態に戻す(データ構造やもろもろの実装が悪く変なことになるので使えない)
 Enter: オブジェクトの状態をスタック

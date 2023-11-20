@@ -630,7 +630,7 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
 
 bool Model::Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double warea, double wsim, double bndrange, int alg, bool IsStartEnd){
     std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
-    if(tar->isbend())return true;
+    //if(tar->isbend())return true;
 
     tar->applyAAAMethod(Poly_V, IsStartEnd, tar->a_flap);
     tar->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, alg, bndrange, warea, wsim);
@@ -639,6 +639,14 @@ bool Model::Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double warea, do
     SetOnVertices_outline(false);
     //tar->SimpleSmooothSrf(Poly_V);
     return true;
+}
+
+void Model::Interpolation(std::shared_ptr<FoldLine>& FldLine){
+    std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
+
+    FldLine->CheckIsCrossedRulings();
+    SetOnVertices_outline(false);
+    FldLine->SimpleSmooothSrf(Poly_V);
 }
 
 bool Model::BendingModel(double wb, double wp, double warea, double wsim, int dim, double tol, double bndrange, int bendrank, int alg, bool IsStartEnd, bool OptimizeAngleFor3Rulings){
