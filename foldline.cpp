@@ -1124,6 +1124,12 @@ void FullSearch(std::vector<double> &X, RevisionVertices::ObjData_v& od,
                 //od.BasePt[k]->first->p3 = d * (src->first->p3 - src->third->p3).normalized() + src->third->p3;
                 update_Vertex(d, od.BasePt[k], od.BasePt[k]);
             }
+            cb_Folding(od.BasePt, od.Poly_V, od.a, od.StartingIndex);
+            Eigen::Vector3d e = (od.BasePt[ind_l-1]->first->p3 - od.BasePt[ind_l]->first->p3).normalized(), e2 = (od.BasePt[ind_l+1]->first->p3 - od.BasePt[ind_l]->first->p3).normalized();
+            Eigen::Vector3d axis = (od.BasePt[ind_l]->third->p3 - od.BasePt[ind_l]->first->p3).normalized();
+            Eigen::Vector3d r = (od.BasePt[ind_l]->second->p3 - od.BasePt[ind_l]->first->p3).normalized();
+            double phi1 = std::acos(r.dot(e)), phi2 = std::acos(r.dot(e2)), phi3 = std::acos(axis.dot(e2)), phi4 = std::acos(e.dot(axis));
+            if(DebugMode::Singleton::getInstance().isdebug())qDebug()<<"sum = " <<2*std::numbers::pi - phi1 - phi2 - phi3 - phi4 << ", phi1 = " << MathTool::rad2deg(phi1) <<", phi2 = " << MathTool::rad2deg(phi2) << ", phi3 = " << MathTool::rad2deg(phi3) << " , phi4 = " << MathTool::rad2deg(phi4);
        }
     }
     ofs.close();
@@ -1157,6 +1163,12 @@ void FullSearch(std::vector<double> &X, RevisionVertices::ObjData_v& od,
                 //tar->first->p3 = t * (src->first->p3 - src->third->p3).normalized() + src->third->p3;
                 update_Vertex(d, od.BasePt[k], od.BasePt[k]);
             }
+            cb_Folding(od.BasePt, od.Poly_V, od.a, od.StartingIndex);
+            Eigen::Vector3d e = (od.BasePt[ind_r-1]->first->p3 - od.BasePt[ind_r]->first->p3).normalized(), e2 = (od.BasePt[ind_r+1]->first->p3 - od.BasePt[ind_r]->first->p3).normalized();
+            Eigen::Vector3d axis = (od.BasePt[ind_r]->third->p3 - od.BasePt[ind_r]->first->p3).normalized();
+            Eigen::Vector3d r = (od.BasePt[ind_r]->second->p3 - od.BasePt[ind_r]->first->p3).normalized();
+            double phi1 = std::acos(r.dot(e)), phi2 = std::acos(r.dot(e2)), phi3 = std::acos(axis.dot(e2)), phi4 = std::acos(e.dot(axis));
+            if(DebugMode::Singleton::getInstance().isdebug())qDebug()<<"sum = " <<2*std::numbers::pi - phi1 - phi2 - phi3 - phi4 << ", phi1 = " << MathTool::rad2deg(phi1) <<", phi2 = " << MathTool::rad2deg(phi2) << ", phi3 = " << MathTool::rad2deg(phi3) << " , phi4 = " << MathTool::rad2deg(phi4);
        }
     }
     if(od.FC.size() <=5)ofs.close();
@@ -2099,9 +2111,7 @@ void FoldLine::reassignruling(std::shared_ptr<FoldLine>& parent, const std::vect
             (*it)->second = p;
         }
     }
-    if(!MathTool::is_point_on_line(FoldingCurve.front()->first->p, FoldingCurve.front()->line_parent->v->p, FoldingCurve.front()->line_parent->o->p)){
-
-    }
+    //if(!MathTool::is_point_on_line(FoldingCurve.front()->first->p, FoldingCurve.front()->line_parent->v->p, FoldingCurve.front()->line_parent->o->p)){ }
     validsize = FoldingCurve.size();
     SortCurve();
     AlignmentVertex4dDirection();

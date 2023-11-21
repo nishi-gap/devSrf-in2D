@@ -472,11 +472,11 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     if(e->key() == Qt::Key_M){
         if(ui->glWid2dim->model.back()->FL.empty())return;
         double tol = ui->TolValue->value();
-        if(e->modifiers().testFlag(Qt::ControlModifier)){
-            auto NewFL = ui->glWid2dim->model.back()->FL.back();
-            ui->glWid2dim->model.back()->AddNewFoldLine(NewFL);
-        }
-        else ui->glWid2dim->model.back()->AssignRuling(3, tol, false);
+        //if(e->modifiers().testFlag(Qt::ControlModifier)){
+        //    auto NewFL = ui->glWid2dim->model.back()->FL.back();
+        //    ui->glWid2dim->model.back()->AddNewFoldLine(NewFL);
+        //}
+        //else ui->glWid2dim->model.back()->AssignRuling(3, tol, false);
         auto NewFL = ui->glWid2dim->model.back()->FL.back();
         ui->glWid2dim->model.back()->AddNewFoldLine(NewFL);
         ui->glWid2dim->update();

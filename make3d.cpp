@@ -864,16 +864,23 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
         int i = std::distance(VerticesInfo.begin(), itr);
         int i_prev = (i - 1 + visize) % visize, i_next = (i + 1) % visize;
         std::shared_ptr<Vertex> prev = VerticesInfo[i_prev].v, next = VerticesInfo[i_next].v;
-        if(VerticesInfo[i_prev].vtype == 2){
-            if(MathTool::is_point_on_line(VerticesInfo[i].v->p, VerticesInfo[i_prev].v->p, VerticesInfo[i_next].v->p)){
-            }else{}
-            v4d->second = VerticesInfo[i].v; v4d->third = VerticesInfo[i_next].v;
-        }
-        else if(VerticesInfo[i_next].vtype == 2){
-            v4d->second = VerticesInfo[i].v; v4d->third = VerticesInfo[i_prev].v;
-        }else{
+        if(VerticesInfo[i_prev].vtype == 4 || VerticesInfo[i_next].vtype == 4){
             v4d->second = prev; v4d->third = next;
+        }else{
+            if(VerticesInfo[i_prev].vtype == 2){
+                if(MathTool::is_point_on_line(VerticesInfo[i].v->p, VerticesInfo[i_prev].v->p, VerticesInfo[i_next].v->p)){
+                }else{}
+                v4d->second = VerticesInfo[i].v; v4d->third = VerticesInfo[i_next].v;
+            }
+            else if(VerticesInfo[i_next].vtype == 2){
+                v4d->second = VerticesInfo[i].v; v4d->third = VerticesInfo[i_prev].v;
+            }else{
+                v4d->second = prev; v4d->third = next;
+            }
         }
+
+        double t = (v4d->first->p - v4d->third->p).norm();
+        v4d->first->p3 = t*(v4d->second->p3 - v4d->third->p3).normalized() + v4d->third->p3;
     };
     modifyEndPoint(NewFL->FoldingCurve.front());
     auto VecPrev = (NewFL->FoldingCurve[1]->first->p - NewFL->FoldingCurve[1]->third->p).normalized(), Vec = (NewFL->FoldingCurve[0]->first->p - NewFL->FoldingCurve[0]->third->p).normalized();
@@ -882,7 +889,7 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
     modifyEndPoint(NewFL->FoldingCurve.back());
     VecPrev = (NewFL->FoldingCurve.end()[-2]->first->p - NewFL->FoldingCurve.end()[-2]->third->p).normalized(), Vec = (NewFL->FoldingCurve.back()->first->p - NewFL->FoldingCurve.back()->third->p).normalized();
     if(VecPrev.dot(Vec) > 0){std::swap(NewFL->FoldingCurve.front()->second, NewFL->FoldingCurve.front()->third);}
-
+    SetOnVertices_outline(false);
     return true;
 }
 
@@ -944,6 +951,24 @@ bool Model::SplitRulings(int dim){
     return true;
 }
 
+void Model::FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine){
+    if((int)FldLine->FoldingCurve.size() <= 3)return;
+    std::vector<std::shared_ptr<Vertex4d>> ValidFC;
+    for(auto&fc: FldLine->FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
+    int mid = ValidFC.size()/2;
+    Eigen::Vector3d e = (ValidFC[mid+1]->first->p3 - ValidFC[mid]->first->p3).normalized(), e2 = (ValidFC[mid-1]->first->p3 - ValidFC[mid]->first->p3).normalized();
+    Eigen::Vector3d N_ref = e.cross(e2);
+    double maxError = 0.0;//rulingの端点を超えた場合の距離の最大値(最後にエラー分下げてすべての曲線がruling、辺上にあるようにする)
+    //左側
+    N_ref = e2.cross(e);
+    for(int i = mid-1; i > 0; i--){
+        (ValidFC[i+1]->first->p3 - ValidFC[i]->first->p3).normalized(), e2 = (ValidFC[i-1]->first->p3 - ValidFC[i]->first->p3).normalized();
+        Eigen::Vector3d N = e.cross(e2);
+
+    }
+}
+
+
 void Model::SimplifyModel(int iselim){
     if(!(0 <= FoldCurveIndex && FoldCurveIndex < (int)FL.size()) || FL[FoldCurveIndex]->FoldingCurve.empty())return;
     auto root = NTree_fl.GetRoot();
@@ -951,6 +976,7 @@ void Model::SimplifyModel(int iselim){
     int validsize = FL[FoldCurveIndex]->validsize - iselim;
     FL[FoldCurveIndex]->SimplifyModel(validsize, isroot);
 }
+
 
 void Model::SimplifyModel(double tol){
     if(!(0 <= FoldCurveIndex && FoldCurveIndex < (int)FL.size()) || FL[FoldCurveIndex]->FoldingCurve.empty())return;
@@ -1042,12 +1068,24 @@ void Model:: addConstraint(QPointF& cursol, int type, int gridsize, Eigen::Vecto
     }
 }
 
+//曲面の輪郭が凹型でないと仮定
 void Model::drawOutline(QPointF& cursol, int drawtype, double gridsize, const QSize& S, bool IsClicked){
     Eigen::Vector3d p = SetOnGrid(cursol, gridsize, S);
     if(drawtype == 0 || drawtype == 1){
         if(outline->hasPtNum != 2)outline->addVertex(p);
     }else if(drawtype == 2) outline->drawPolygon(p, IsClicked);
 
+    //頂点の順番を時計回りに修正する
+    if(outline->IsClosed()){
+        Eigen::Vector3d center(0,0,0);
+        for(auto&p: outline->vertices)center += p->p;
+        center /= static_cast<double>(outline->vertices.size());
+        Eigen::Vector3d N = (outline->vertices[0]->p - center).cross(outline->vertices[1]->p - center);
+        if(N.dot(Eigen::Vector3d(0,0,1)) < 0){
+            std::reverse(outline->vertices.begin(), outline->vertices.end());
+            for(auto&l: outline->Lines) std::swap(l->o, l->v);
+        }
+    }
 }
 
 void Model::editOutlineVertex(QPointF& cursol, double gridsize, const QSize& S, int event){

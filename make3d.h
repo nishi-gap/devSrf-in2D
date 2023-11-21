@@ -51,24 +51,26 @@ public:
     //FoldLine
     void RemoveUnable2GenCurve();
     bool AddControlPoint_FL(Eigen::Vector3d& p, int event, int curveDimention);
-    void UpdateFLOrder(int dim);
-    void modify2Druling();
-    void applyFL();
-    void modifyFoldingCurvePositionOn3d();
-    void ChangeFoldLineState();
+    bool AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL);
+    bool AssignRuling(int dim, double tol, bool begincenter);
     void applyAAAMethod(double a, bool begincenter);
+    void applyFL();
+    bool BendingModel(double wb, double wp, double warea, double wsim, int dim, double tol, double bndrange, int bendrank, int alg, bool IsStartEnd, bool OptimizeAngleFor3Rulings);//alg=0:ruling intersection, alg=1:regression curve
+    void ChangeFoldLineState();
+    void FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine);
+    int getLayerNum();
+    void Interpolation(std::shared_ptr<FoldLine>& FldLine);
+    void modify2Druling();
+    bool Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double warea, double wsim, double bndrange, int alg, bool IsStartEnd);
+    void modifyFoldingCurvePositionOn3d();
+
+    void SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::shared_ptr<Line>>& Surface, const std::vector<std::shared_ptr<Line>>& Rulings, bool IsupdateEndPt);
     void SimplifyModel(double tol);
     void SimplifyModel(int iselim);
     bool Smoothing();
-    bool RevisionCrosPtsPosition();
     void SortFoldingCurve(int dim);
-    void SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::shared_ptr<Line>>& Surface, const std::vector<std::shared_ptr<Line>>& Rulings, bool IsupdateEndPt);
-    bool BendingModel(double wb, double wp, double warea, double wsim, int dim, double tol, double bndrange, int bendrank, int alg, bool IsStartEnd, bool OptimizeAngleFor3Rulings);//alg=0:ruling intersection, alg=1:regression curve
-    bool Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double warea, double wsim, double bndrange, int alg, bool IsStartEnd);
-    bool AssignRuling(int dim, double tol, bool begincenter);
-    void Interpolation(std::shared_ptr<FoldLine>& FldLine);
-    bool AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL);
-    int getLayerNum();
+    bool RevisionCrosPtsPosition();
+    void UpdateFLOrder(int dim);
     std::vector<Eigen::Vector3d> resPts;
 
     //Smooth Surface
