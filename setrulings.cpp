@@ -202,7 +202,6 @@ void CRV::BsplineRulings(std::shared_ptr<OUTLINE>& outline, int& DivSize, int cr
     std::vector<Eigen::Vector3d> crossPoint;
     std::vector<std::vector<Eigen::Vector3d>> CrossPoints;
     double t = 0.0;
-    std::vector<std::shared_ptr<Vertex>> vertices = outline->getVertices();
     int knotSize = (int)ControllPoints.size() + curveDimention + 1;
     std::vector<double>Knot(knotSize);
     for(int j = 0; j < knotSize; j++)Knot[j] = (double)j/(double)knotSize;
@@ -220,7 +219,7 @@ void CRV::BsplineRulings(std::shared_ptr<OUTLINE>& outline, int& DivSize, int cr
         T = T.normalized();
         N = l * Eigen::Vector3d(-T.y(), T.x(), 0);
         if (N.dot(Eigen::Vector3d(0,1,0)) < 0) N *= -1;
-        bool IsIntersected = setPoint(vertices, N, CurvePoints[i], crossPoint);
+        bool IsIntersected = setPoint(outline->vertices, N, CurvePoints[i], crossPoint);
         CrossPoints.push_back(crossPoint);
         if(sind == -1 && IsIntersected)sind = i;
         if(!IsIntersected && sind != -1)eind = std::min(eind, i);
@@ -265,10 +264,9 @@ void CRV::LineRulings(std::shared_ptr<OUTLINE>& outline, int DivSize){
     Eigen::Vector3d N = l * Eigen::Vector3d(-V.y(), V.x(), 0);
     int i = 0;
     int sind = -1, eind = curveNum - 1;
-    std::vector<std::shared_ptr<Vertex>> vertices = outline->getVertices();
 
     for(i = 0; i < curveNum; i++){
-        bool IsIntersected = setPoint(vertices, N, CurvePoints[i], crossPoint);
+        bool IsIntersected = setPoint(outline->vertices, N, CurvePoints[i], crossPoint);
         CrossPoints.push_back(crossPoint);
         if(sind == -1 && IsIntersected)sind = i;
         if(!IsIntersected && sind != -1)eind = std::min(eind, i);
@@ -308,7 +306,6 @@ void CRV::ArcRulings(std::shared_ptr<OUTLINE>& outline, int DivSize){
     std::vector<Eigen::Vector3d> crossPoint;
     std::vector<std::vector<Eigen::Vector3d>> CrossPoints;
     int sind = -1, eind = curveNum - 1;
-    std::vector<std::shared_ptr<Vertex>> vertices = outline->getVertices();
     Eigen::Vector3d V, N;
     for(int i = 0; i < curveNum; i++){
 
@@ -316,7 +313,7 @@ void CRV::ArcRulings(std::shared_ptr<OUTLINE>& outline, int DivSize){
         //else V = (CurvePoints[i] - CurvePoints[i - 1]).normalized();
         N = l * Eigen::Vector3d(-V.y(), V.x(), 0);
         N = l * (ControllPoints[0] - CurvePoints[i]).normalized();
-        bool IsIntersected = setPoint(vertices, N, CurvePoints[i], crossPoint);
+        bool IsIntersected = setPoint(outline->vertices, N, CurvePoints[i], crossPoint);
         CrossPoints.push_back(crossPoint);
         if(sind == -1 && IsIntersected)sind = i;
         if(!IsIntersected && sind != -1)eind = std::min(eind, i);
@@ -509,7 +506,7 @@ void OUTLINE::drawPolygon(Eigen::Vector3d& p, bool IsClicked){
         Eigen::Vector3d x;
         for(int n = 0; n < VerticesNum - 1; n++){
             x = Eigen::Vector3d(vertices[n]->p.x(), vertices[n]->p.y(), 1);
-            x = T * R * invT * x;
+            x = T * R * invT * x; x.z() = 0.0;
             vertices.push_back(std::make_shared<Vertex>(x));
         }
         ConnectEdges();
@@ -931,6 +928,7 @@ std::vector<std::vector<std::shared_ptr<Vertex>>> MakeModel(const std::vector<st
         for(auto&P: Polygons){
             int vind = -1, oind = -1;
             for(int i = 0; i < (int)P.size(); i++){
+                double dif = (P[i]->p - P[(i + 1) % (int)P.size()]->p).norm() - (P[i]->p - (*itr_r)->o->p).norm() + (P[(i + 1) % (int)P.size()]->p - (*itr_r)->o->p).norm();
                 if(MathTool::is_point_on_line((*itr_r)->o->p, P[i]->p, P[(i + 1) % (int)P.size()]->p))oind = i;
                 if(MathTool::is_point_on_line((*itr_r)->v->p, P[i]->p, P[(i + 1)  % (int)P.size()]->p))vind = i;
             }
@@ -954,3 +952,4 @@ Eigen::Vector3d getCenter(const std::vector<Eigen::Vector3d>& vertices, double& 
     for(auto&v: vertices)sum += (c - v).norm();
     return c;
 }
+

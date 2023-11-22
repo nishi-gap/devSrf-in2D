@@ -2332,7 +2332,7 @@ void FoldLine::applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V
 
 inline double update_flapangle(double a, const Eigen::Vector3d& befN, const Eigen::Vector3d& SrfN, const Eigen::Vector3d& e){
     double dir = (-e).dot(befN.cross(SrfN));
-    double tau = std::acos(SrfN.dot(befN));
+    double tau = (SrfN.dot(befN) < -1)? std::numbers::pi: (SrfN.dot(befN) > 1)? 0: std::acos(SrfN.dot(befN));
     if(dir <= 0)tau = 2.0*std::numbers::pi - tau;
     if(a - tau <= 0)return a - tau + 2.0 * std::numbers::pi;
     return a - tau;
@@ -2465,7 +2465,7 @@ void _FoldingAAAMethod_center(std::vector<std::shared_ptr<Vertex4d>>& FoldingCur
         SrfN = MathTool::ProjectionVector(e.cross(e2), -e, true);
         if(ind != StartingIndex-1){
             dir = e.dot(befN.cross(SrfN));
-            tau = std::acos(SrfN.dot(befN));
+            tau = (SrfN.dot(befN) < -1)? std::numbers::pi: (SrfN.dot(befN) > 1)? 0: std::acos(SrfN.dot(befN));
             if(dir <= 0)tau = 2.0*std::numbers::pi - tau;
             if(a2 - tau <= 0)a= a2 - tau + 2.0 * std::numbers::pi;  else a = a2 - tau;
         }

@@ -18,7 +18,6 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <utility>
-#include "make3d.h"
 #include "originalbutton.h"
 
 

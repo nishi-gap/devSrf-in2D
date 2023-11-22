@@ -1,12 +1,15 @@
 #ifndef MAKE3D_H
 #define MAKE3D_H
 
-#include <list>
-#include <numeric>
-#include <QPointF>
-#include <QSize>
 #include "foldline.h"
-#include <Eigen/Core>
+#include <QPointF>
+
+class vertexinfo{
+public:
+    std::shared_ptr<Vertex> v;
+    int vtype;//0:頂点,1:first,2:second, 3:third, 4:ruling
+    vertexinfo(const std::shared_ptr<Vertex>&_v, int t){v = _v; vtype=t; }
+};
 
 class Model: public std::enable_shared_from_this<Model>{
 public:
@@ -89,6 +92,9 @@ public:
     void SelectCurve(QPointF pt);
     int DeleteCurve();
 private:
+
+
+    std::vector<vertexinfo> MappingVertex(bool IsRemoveOverlapping);
 
     void initializeSurfaceVertices();
     bool SplitRulings(int dim);

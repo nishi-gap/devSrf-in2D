@@ -8,7 +8,7 @@
 #include <vector>
 #include <tuple>
 #include "ui_gtoolwnd.h"
-#include "setrulings.h"
+
 namespace Ui {
 class GToolWnd;
 }

@@ -13,6 +13,19 @@ namespace MathTool{
     double rad2deg(double a){return a * 180.0/std::numbers::pi;}
     double deg2rad(double a){return a * std::numbers::pi/180.0;}
 
+
+    Eigen::Vector3d CrossPointLineAndPlane(Eigen::Vector3d e, Eigen::Vector3d e2, Eigen::Vector3d o, Eigen::Vector3d p, Eigen::Vector3d v){
+        e = e.normalized(); e2 = e2.normalized(); v = (v - p).normalized();
+        //Eigen::Vector3d e = (ValidFC[i]->first->p3 - ValidFC[i-1]->first->p3).normalized(), e2 = (ValidFC[i-2]->first->p3 - ValidFC[i-1]->first->p3).normalized();
+        //Eigen::Vector3d v = (ValidFC[i+1]->first->p3 - ValidFC[i+1]->third->p3).normalized();
+        Eigen::Matrix3d A;
+        A.col(0) = e; A.col(1) = e2; A.col(2) = -v;
+        Eigen::Vector3d b = p - o;
+        //Eigen::Vector3d b = ValidFC[i+1]->third->p3 - ValidFC[i-1]->first->p3;
+        Eigen::Vector3d x = A.colPivHouseholderQr().solve(b);
+        return x(2)*v + p;
+    }
+
     Eigen::Vector3d bspline(std::vector<Eigen::Vector3d>&CtrlPts, double t, int dim, std::vector<double>Knot){
         Eigen::Vector3d vec(0,0,0);
         for(int j = 0; j < (int)CtrlPts.size(); j++){

@@ -465,6 +465,11 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         }
     }
 
+    if(e->key() == Qt::Key_F){
+        auto NewFL = ui->glWid2dim->model.back()->FL.back();
+        ui->glWid2dim->model.back()->FlattenSpaceCurve(NewFL);
+    }
+
     if(e->key() == Qt::Key_N){
         ui->glWid2dim->InitializeDrawMode();
     }

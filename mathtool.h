@@ -5,12 +5,13 @@
 #include <vector>
 #include <iostream>
 #include <tuple>
-#include <Eigen/Dense>
 #include <utility>
 #include <algorithm>
 #include <numbers>
 #include <queue>
 #include <memory>
+#include <Eigen/Dense>
+
 
 enum class EdgeType{
     none,
@@ -94,6 +95,7 @@ namespace DebugMode{
 namespace MathTool{
 double rad2deg(double a);
 double deg2rad(double a);
+Eigen::Vector3d CrossPointLineAndPlane(Eigen::Vector3d e, Eigen::Vector3d e2, Eigen::Vector3d o, Eigen::Vector3d p, Eigen::Vector3d v);
 double distP2L(const Eigen::Vector3d& la, const Eigen::Vector3d& lb, const Eigen::Vector3d& p, Eigen::Vector3d& q);//点と線分の距離, s:laからlbへの比率(垂線が内部にあれば0 ~ 1)
 template <typename T>
 T getVector(double l, T v, T o){return l * v + o;}

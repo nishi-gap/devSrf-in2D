@@ -1,6 +1,4 @@
 #include "make3d.h"
-#include <QDebug>
-using namespace MathTool;
 
 Model::Model(){
     clear();
@@ -809,37 +807,19 @@ void Model::applyAAAMethod(double a, bool begincenter){
 
 bool Model::RevisionCrosPtsPosition(){return FL[FoldCurveIndex]->RevisionCrosPtsPosition();}
 
-bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
-    if(FL.empty())return false;
-    int dim = 3;
-    if((int)FL.size() == 1){
-        UpdateFLOrder(dim);
-        SplitRulings(dim);
-    }else{
-        NewFL->FoldingCurve.clear();
-        std::vector<std::shared_ptr<FoldLine>>::iterator itr = std::find(FL.begin(), FL.end(), NewFL);
-        if(itr == FL.end())return false;
-        itr--;
-        NewFL->reassignruling((*itr), outline->Lines, Rulings);
-    }
-
-    //端点が頂点と重なっている場合のsecondとthird, line_parentを適切にする
-    class vertexinfo{
-    public:
-        std::shared_ptr<Vertex> v;
-        int vtype;//0:頂点,1:first,2:second, 3:third, 4:ruling
-        vertexinfo(const std::shared_ptr<Vertex>&_v, int t){v = _v; vtype=t; }
-    };
+std::vector<vertexinfo> Model::MappingVertex(bool IsRemovingOverlapping){
     std::vector<vertexinfo> VerticesInfo;
     for(auto&v: outline->vertices)VerticesInfo.push_back(vertexinfo(v, 0));
-    auto EdgeSplit = [&VerticesInfo](const std::shared_ptr<Vertex>& v, int vtype){
+    auto EdgeSplit = [&](const std::shared_ptr<Vertex>& v, int vtype){
         int s = VerticesInfo.size();
         for(int i = 0; i < s; i++){
             if((v->p - VerticesInfo[i].v->p).norm() < 1e-10){//頂点が重なる場合
+                if(IsRemovingOverlapping)return;
                 VerticesInfo[i].v = v; VerticesInfo[i].vtype = vtype;
                 return;
             }
             if(MathTool::is_point_on_line(v->p, VerticesInfo[i].v->p, VerticesInfo[(i+1) % s].v->p)){
+                if((v->p - VerticesInfo[(i+1)%s].v->p).norm() < 1e-10 && IsRemovingOverlapping)return;
                 VerticesInfo.insert(VerticesInfo.begin() + (i+1) % s, vertexinfo(v, vtype));
                 return;
             }
@@ -858,6 +838,27 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
         if(r->hasCrossPoint)continue;
         EdgeSplit(r->v, 4); EdgeSplit(r->o, 4);
     }
+    return VerticesInfo;
+}
+
+bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
+    if(FL.empty())return false;
+    int dim = 3;
+    if((int)FL.size() == 1){
+        UpdateFLOrder(dim);
+        SplitRulings(dim);
+    }else{
+        NewFL->FoldingCurve.clear();
+        std::vector<std::shared_ptr<FoldLine>>::iterator itr = std::find(FL.begin(), FL.end(), NewFL);
+        if(itr == FL.end())return false;
+        itr--;
+        NewFL->reassignruling((*itr), outline->Lines, Rulings);
+    }
+
+    //端点が頂点と重なっている場合のsecondとthird, line_parentを適切にする
+
+    std::vector<vertexinfo> VerticesInfo = MappingVertex(false);
+
     int visize = VerticesInfo.size();
     auto modifyEndPoint = [&](std::shared_ptr<Vertex4d>& v4d){
         auto itr = std::find_if(VerticesInfo.begin(), VerticesInfo.end(), [&v4d](const vertexinfo& v){return v.v == v4d->first;});
@@ -952,20 +953,45 @@ bool Model::SplitRulings(int dim){
 }
 
 void Model::FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine){
+    //隣接する頂点のうちthirdあるいはrulingのものを返す
+    auto findPoint = [&](const std::shared_ptr<Vertex>& v){
+        std::vector<vertexinfo> VerticesInfo = MappingVertex(true);
+        //重なる場所があればどれか削除
+        auto itr = std::find_if(VerticesInfo.begin(), VerticesInfo.end(), [&v](const vertexinfo& vi){return (vi.v->p - v->p).norm() < 1e-9;});
+        int visize = VerticesInfo.size() , i = std::distance(VerticesInfo.begin(), itr);
+        if(VerticesInfo[(i + 1) % visize].vtype != 2 && (VerticesInfo[(i + 1) % visize].v->p - v->p).norm() > 1e-3)return VerticesInfo[(i + 1) % visize].v;
+        else return VerticesInfo[(i - 1 + visize) % visize].v;
+    };
+
     if((int)FldLine->FoldingCurve.size() <= 3)return;
     std::vector<std::shared_ptr<Vertex4d>> ValidFC;
     for(auto&fc: FldLine->FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
     int mid = ValidFC.size()/2;
-    Eigen::Vector3d e = (ValidFC[mid+1]->first->p3 - ValidFC[mid]->first->p3).normalized(), e2 = (ValidFC[mid-1]->first->p3 - ValidFC[mid]->first->p3).normalized();
-    Eigen::Vector3d N_ref = e.cross(e2);
+    Eigen::Vector3d e, e2, o;
+    std::shared_ptr<Vertex>p, v;
     double maxError = 0.0;//rulingの端点を超えた場合の距離の最大値(最後にエラー分下げてすべての曲線がruling、辺上にあるようにする)
-    //左側
-    N_ref = e2.cross(e);
-    for(int i = mid-1; i > 0; i--){
-        (ValidFC[i+1]->first->p3 - ValidFC[i]->first->p3).normalized(), e2 = (ValidFC[i-1]->first->p3 - ValidFC[i]->first->p3).normalized();
-        Eigen::Vector3d N = e.cross(e2);
 
+    //右側
+    for(int i = mid-1; i > 0; i--){
+        v = ValidFC[i-1]->first;
+        p = (i == 1)? findPoint(v): ValidFC[i-1]->third;
+        o = ValidFC[i+1]->first->p3; e = (ValidFC[i]->first->p3 - o), e2 = (ValidFC[i+2]->first->p3 - o);
+        Eigen::Vector3d PointOnPlane = MathTool::CrossPointLineAndPlane(e, e2, o , p->p3, v->p3);
+        maxError = std::max(maxError, (ValidFC[i-1]->first->p3 - PointOnPlane).norm());
+        ValidFC[i-1]->first->p3 = PointOnPlane;
+        ValidFC[i-1]->first->p = (PointOnPlane - p->p3).norm()*(v->p - p->p).normalized() + p->p;
     }
+
+    //左側
+    for(int i = mid+1; i < (int)ValidFC.size()-1; i++){
+        v = ValidFC[i+1]->first; p = (i == (int)ValidFC.size()-2)? findPoint(v): ValidFC[i+1]->third;
+        o = ValidFC[i-1]->first->p3; e = (ValidFC[i]->first->p3 - o).normalized(), e2 = (ValidFC[i-2]->first->p3 - o).normalized();
+        Eigen::Vector3d PointOnPlane = MathTool::CrossPointLineAndPlane(e, e2, o , p->p3, v->p3);
+        maxError = std::max(maxError, (ValidFC[i-1]->first->p3 - PointOnPlane).norm());
+        ValidFC[i+1]->first->p3 = PointOnPlane;
+        ValidFC[i+1]->first->p = (PointOnPlane - p->p3).norm()*(v->p - p->p).normalized() + p->p;
+    }
+
 }
 
 
@@ -1083,7 +1109,10 @@ void Model::drawOutline(QPointF& cursol, int drawtype, double gridsize, const QS
         Eigen::Vector3d N = (outline->vertices[0]->p - center).cross(outline->vertices[1]->p - center);
         if(N.dot(Eigen::Vector3d(0,0,1)) < 0){
             std::reverse(outline->vertices.begin(), outline->vertices.end());
-            for(auto&l: outline->Lines) std::swap(l->o, l->v);
+            for(auto&l: outline->Lines){
+                std::swap(l->o, l->v);
+            }
+            std::reverse(outline->Lines.begin(), outline->Lines.end());
         }
     }
 }
@@ -1455,7 +1484,7 @@ bool Model::MoveCurvePoint(Eigen::Vector3d& p, int MoveIndex, int ptInd, int cur
         if(crvs[MoveIndex]->getCurveType() == CurveType::arc && ptInd == 0){
             bool PointOnLines = false;
             bool PointInFace = outline->IsPointInFace(p);
-            for(auto&l : outline->Lines){if(is_point_on_line(p, l->o->p, l->v->p))PointOnLines = true;}
+            for(auto&l : outline->Lines){if(MathTool::is_point_on_line(p, l->o->p, l->v->p))PointOnLines = true;}
             if(!PointInFace || PointOnLines) crvs[MoveIndex]->ControllPoints[ptInd] = p;
         }
         else crvs[MoveIndex]->ControllPoints[ptInd] = p;
@@ -1495,7 +1524,7 @@ bool Model::CrossDection4AllCurve(){
             if(c2->isempty)continue;
             for(auto& r1: c1->Rulings){
                 for(auto& r2: c2->Rulings){
-                    if(IsIntersect(r1->v->p, r1->o->p, r2->v->p, r2->o->p)){
+                    if(MathTool::IsIntersect(r1->v->p, r1->o->p, r2->v->p, r2->o->p)){
                         r2->IsCrossed = 1;
                     }
                 }
