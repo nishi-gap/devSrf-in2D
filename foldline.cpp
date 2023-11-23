@@ -2452,7 +2452,7 @@ void _FoldingAAAMethod_center(std::vector<std::shared_ptr<Vertex4d>>& FoldingCur
     Eigen::Vector3d SrfN = MathTool::ProjectionVector(-e_next.cross(e_cmn), e_cmn, true);
     befN = MathTool::ProjectionVector(-e_cmn.cross(e_prev), -e_cmn, true);
     double dir = e_cmn.dot(befN.cross(SrfN));
-    double tau = std::acos(SrfN.dot(befN));
+    double tau = tau = (SrfN.dot(befN) < -1)? std::numbers::pi: (SrfN.dot(befN) > 1)? 0: std::acos(SrfN.dot(befN));
     if(dir < 0)tau = 2*std::numbers::pi - tau;
     a = 2.0*std::numbers::pi  - (a + tau);
     if(a > 2*std::numbers::pi)a -= 2*std::numbers::pi;
