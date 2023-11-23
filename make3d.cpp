@@ -240,6 +240,86 @@ void Model::RemoveUnable2GenCurve(){
     }
 }
 
+void Model::MakeTree(){
+    int dim = 3;
+    Eigen::Vector3d UpVec(0,-1,0);
+    std::vector<std::shared_ptr<FoldLine>> hasFoldingCurve;
+    std::shared_ptr<Line> btm = outline->Lines.front();//一番下の辺を探索
+
+    for(auto&l: outline->Lines){
+        if(((l->v->p + l->o->p)/2.0).y() > ((btm->v->p + btm->o->p)/2.0).y())btm = l;
+    }
+    int btm_i = std::distance(outline->Lines.begin(), std::find(outline->Lines.begin(), outline->Lines.end(),btm));
+    int i = btm_i;
+    std::list<std::shared_ptr<FoldLine>> List_FL;
+
+    class LineOnFL{
+    public:
+        std::shared_ptr<FoldLine> FL;
+        double t;
+        std::vector<int> indices;
+        LineOnFL(std::shared_ptr<FoldLine> _FL, double _t): FL(_FL), t(_t){}
+    };
+
+    //各折曲線上と曲面の交点を導出
+    //曲面の各辺と交点があるか探索する
+    //曲線が交差した辺のインデックスを持っておく
+    RemoveUnable2GenCurve();
+    NTree_fl.clear();
+    for(auto&fl: FL){
+        if(fl->FoldingCurve.empty()){
+            if((int)fl->CtrlPts.size() > dim){
+                hasFoldingCurve.push_back(fl);
+                for(auto& l: outline->Lines){
+                    std::vector<std::shared_ptr<CrvPt_FL>> P = getCrossPoint(fl->CtrlPts, l->v, l->o, dim);
+                    if(!P.empty()){
+                        for(auto&p: P){
+                            std::shared_ptr<Vertex> sec, thi;
+                            if(UpVec.dot((l->v->p - l->o->p).normalized()) > 0){sec = l->v->deepCopy(); thi = l->o->deepCopy();}
+                            else{sec = l->o->deepCopy(); thi = l->v->deepCopy();}
+                            std::shared_ptr<Vertex4d> v4d = std::make_shared<Vertex4d>(p, sec, thi); v4d->addline(l);
+                            fl->FoldingCurve.push_back(v4d);
+                        }
+                    }
+                }
+                fl->SortCurve();
+            }
+        }else hasFoldingCurve.push_back(fl);
+    }
+
+
+    do{
+        std::vector<LineOnFL> LoF;
+        for(auto&fl: hasFoldingCurve){
+            if(outline->Lines[i]->is_on_line(fl->FoldingCurve.front()->first->p))
+                LoF.push_back(LineOnFL(fl, (fl->FoldingCurve.front()->first->p - outline->Lines[i]->o->p).norm()/(outline->Lines[i]->v->p - outline->Lines[i]->o->p).norm()));
+            if(outline->Lines[i]->is_on_line(fl->FoldingCurve.back()->first->p))
+                LoF.push_back(LineOnFL(fl, (fl->FoldingCurve.back()->first->p - outline->Lines[i]->o->p).norm()/(outline->Lines[i]->v->p - outline->Lines[i]->o->p).norm()));
+        }
+        if(!LoF.empty()){
+            std::sort(LoF.begin(), LoF.end(), [](const LineOnFL& a, const LineOnFL& b){return a.t < b.t;});
+            for(auto&x: LoF){
+                if(List_FL.empty()){
+                    List_FL.push_back(x.FL);
+                    if(NTree_fl.empty())NTree_fl = NTree(x.FL);
+                }else{
+                    auto res = NTree_fl.find(x.FL);
+                    if(res == nullptr){
+                        NTree_fl.insert(List_FL.front(), x.FL);
+                        List_FL.push_front(x.FL);
+                    }else{
+                        auto it = std::find(List_FL.begin(), List_FL.end(), x.FL);
+                        if(it != List_FL.end()) List_FL.erase(it);
+                    }
+                }
+            }
+        }
+        i = (i + 1) % (int)outline->Lines.size();
+    }while(i != btm_i);
+    NTree_fl.print();
+    return;
+}
+
 void Model::UpdateFLOrder(int dim){
     Eigen::Vector3d UpVec(0,-1,0);
     std::vector<std::shared_ptr<FoldLine>> hasFoldingCurve;
@@ -844,15 +924,14 @@ std::vector<vertexinfo> Model::MappingVertex(bool IsRemovingOverlapping){
 bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
     if(FL.empty())return false;
     int dim = 3;
+    MakeTree();
     if((int)FL.size() == 1){
         UpdateFLOrder(dim);
         SplitRulings(dim);
     }else{
         NewFL->FoldingCurve.clear();
-        std::vector<std::shared_ptr<FoldLine>>::iterator itr = std::find(FL.begin(), FL.end(), NewFL);
-        if(itr == FL.end())return false;
-        itr--;
-        NewFL->reassignruling((*itr), outline->Lines, Rulings);
+        auto par = NTree_fl.getParent(NewFL);
+        NewFL->reassignruling(par->data, outline->Lines, Rulings);
     }
 
     //端点が頂点と重なっている場合のsecondとthird, line_parentを適切にする

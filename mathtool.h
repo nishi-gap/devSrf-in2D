@@ -161,8 +161,10 @@ public:
         q.push(root);
         while (!q.empty()) {
             std::shared_ptr<NTreeNode<T>> cur = q.front(); q.pop();
-            if(cur->data == val)return cur;
-            for (std::shared_ptr<NTreeNode<T>> child : cur->children)  q.push(child);
+            for (std::shared_ptr<NTreeNode<T>> child : cur->children){
+                if(child->data == val)return cur;
+                q.push(child);
+            }
         }
         return std::shared_ptr<NTreeNode<T>>(nullptr);
     }

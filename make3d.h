@@ -77,7 +77,6 @@ public:
     std::vector<Eigen::Vector3d> resPts;
 
     //Smooth Surface
-
     bool AddControlPoint(Eigen::Vector3d& p, int curveDimention, int DivSize);
     int AddNewCurve(CurveType curveType, int DivSize);
     void DeleteControlPoint(QPointF pt, int curveDimention, int DivSize);
@@ -93,7 +92,7 @@ public:
     int DeleteCurve();
 private:
 
-
+    void MakeTree();
     std::vector<vertexinfo> MappingVertex(bool IsRemoveOverlapping);
 
     void initializeSurfaceVertices();
