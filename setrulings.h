@@ -58,6 +58,7 @@ public:
     //bool operator ==(const Line &l)const{return IsCrossed == l.IsCrossed && color == l.color && ((v[0] == l.v[0] && v[1] == l.v[1]) || (v[1] == l.v[0] && v[0] == l.v[1]));}
     bool is_on_line(Eigen::Vector3d p);
 };
+
 class Vertex4d{
 public:
     bool IsCalc;
@@ -77,6 +78,13 @@ public:
     bool operator == (const std::shared_ptr<Vertex> &V)const{return first == V; }
     bool operator != (const std::shared_ptr<Vertex> &V)const{return first != V; }
     //void operator = (const Vertex4d &V){first = V.first; second = V.second; third = V.third; IsCalc = V.IsCalc;}
+};
+
+class vertexinfo{
+public:
+    std::shared_ptr<Vertex> v;
+    int vtype;//0:頂点,1:first,2:second, 3:third, 4:ruling
+    vertexinfo(const std::shared_ptr<Vertex>&_v, int t){v = _v; vtype=t; }
 };
 
 class CRV: public std::enable_shared_from_this<CRV>{

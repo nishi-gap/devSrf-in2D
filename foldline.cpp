@@ -83,6 +83,13 @@ namespace RevisionVertices{
     private:
     };
     
+    class OptimizeEndPt{
+    public:
+        FoldLine3d FC;
+        std::vector<Eigen::Vector3d> EndPt;
+        OptimizeEndPt() = delete;
+        OptimizeEndPt(FoldLine3d& _FC, const std::vector<Eigen::Vector3d>& _EndPt): FC(_FC), EndPt(_EndPt){}
+    };
     
     class SmoothingArea{
     public:
@@ -167,6 +174,7 @@ namespace RevisionVertices{
         }
     };
 
+    using ObjData_ep = OptimizeEndPt;
     using ObjData = OptimizeParam;
     using ObjData_v = OptimizeParam_v;
     using ObjData_smooth = SmoothSurface;
@@ -1439,6 +1447,102 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
     
     ofs.close();
     return (fr == 0.0) ? true: false;
+}
+
+void FlattenSpaceCurve(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, int StartPoint){
+    std::vector<std::shared_ptr<Vertex4d>> ValidFC;
+    for(auto&fc: FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
+    int mid = ValidFC.size()/2;
+    Eigen::Vector3d e, e2, o;
+    std::shared_ptr<Vertex>p, v;
+    double maxError = 0.0;//rulingの端点を超えた場合の距離の最大値(最後にエラー分下げてすべての曲線がruling、辺上にあるようにする)
+
+    if(StartPoint == 0){
+       //右端の交点を基準に回転させるやり方
+       for(int i = 2; i < (int)ValidFC.size()-1; i++){
+        v = ValidFC[i+1]->first; p = ValidFC[i+1]->third;
+        o = ValidFC[i-1]->first->p3; e = (ValidFC[i]->first->p3 - o).normalized(), e2 = (ValidFC[i-2]->first->p3 - o).normalized();
+        Eigen::Vector3d PointOnPlane = MathTool::CrossPointLineAndPlane(e, e2, o , p->p3, v->p3);
+        maxError = std::max(maxError, (ValidFC[i-1]->first->p3 - PointOnPlane).norm());
+        ValidFC[i+1]->first->p3 = PointOnPlane;
+        ValidFC[i+1]->first->p = (PointOnPlane - p->p3).norm()*(v->p - p->p).normalized() + p->p;
+       }
+    }
+
+    else if(StartPoint == 1){
+       //右側
+       for(int i = mid-1; i > 0; i--){
+        v = ValidFC[i-1]->first; p = ValidFC[i-1]->third;
+        o = ValidFC[i+1]->first->p3; e = (ValidFC[i]->first->p3 - o), e2 = (ValidFC[i+2]->first->p3 - o);
+        Eigen::Vector3d PointOnPlane = MathTool::CrossPointLineAndPlane(e, e2, o , p->p3, v->p3);
+        maxError = std::max(maxError, (ValidFC[i-1]->first->p3 - PointOnPlane).norm());
+        ValidFC[i-1]->first->p3 = PointOnPlane;
+        ValidFC[i-1]->first->p = (PointOnPlane - p->p3).norm()*(v->p - p->p).normalized() + p->p;
+       }
+
+       //左側
+       for(int i = mid+1; i < (int)ValidFC.size()-1; i++){
+        v = ValidFC[i+1]->first; p = ValidFC[i+1]->third;
+        o = ValidFC[i-1]->first->p3; e = (ValidFC[i]->first->p3 - o).normalized(), e2 = (ValidFC[i-2]->first->p3 - o).normalized();
+        Eigen::Vector3d PointOnPlane = MathTool::CrossPointLineAndPlane(e, e2, o , p->p3, v->p3);
+        maxError = std::max(maxError, (ValidFC[i-1]->first->p3 - PointOnPlane).norm());
+        ValidFC[i+1]->first->p3 = PointOnPlane;
+        ValidFC[i+1]->first->p = (PointOnPlane - p->p3).norm()*(v->p - p->p).normalized() + p->p;
+       }
+    }
+}
+
+double ObjFunc_EndPoint(const std::vector<double> &X, std::vector<double> &grad, void* f_data){
+    std::vector<double> w = {0.01, 0.01};
+    RevisionVertices::ObjData_ep *od = (RevisionVertices::ObjData_ep *)f_data;
+    update_Vertex(X[0], od->FC[1], od->FC[1]); update_Vertex(X[1], od->FC[2], od->FC[2]);
+    FlattenSpaceCurve(od->FC, 0);
+    double f = (od->EndPt[0] - od->FC.back()->first->p).norm();
+    if(!grad.empty()){
+       for(int i = 0; i < 2; i++){
+        update_Vertex(X[i] + eps, od->FC[i+1], od->FC[i+1]); FlattenSpaceCurve(od->FC, 0);
+        double fp = (od->EndPt[0] - od->FC.back()->first->p).norm();
+        update_Vertex(X[i] - eps, od->FC[i+1], od->FC[i+1]); FlattenSpaceCurve(od->FC, 0);
+        double fm = (od->EndPt[0] - od->FC.back()->first->p).norm();
+        grad[i] = w[i]*(fp - fm)/(2.0*eps);
+       }
+    }
+    return f;
+}
+
+bool FoldLine::Optimization_EndPoint(const std::vector<std::shared_ptr<Vertex>>& Poly_V){
+    nlopt::opt opt;
+    std::vector<double> X(2), bnd_lower(2,0), bnd_upper(2);
+
+    std::vector<std::shared_ptr<Vertex4d>> FC;
+    for(auto&fc: FoldingCurve){
+       if(fc->IsCalc){FC.push_back(fc);}
+    }
+
+    for(int i = 0; i < 2; i++){
+       Eigen::Vector3d crossPoint;
+       for(int k = 0; k < (int)Poly_V.size(); k++){
+        crossPoint = MathTool::calcCrossPoint_2Vector(FC[i+1]->first->p, 1000.0 * (FC[i+1]->first->p - FC[i+1]->third->p).normalized() + FC[i+1]->first->p, Poly_V[k]->p, Poly_V[(k + 1) % (int)Poly_V.size()]->p);
+        if(MathTool::is_point_on_line(crossPoint, Poly_V[k]->p, Poly_V[(k + 1) % (int)Poly_V.size()]->p) && (FC[i+1]->first->p - FC[i+1]->third->p).normalized().dot(crossPoint - FC[i+1]->first->p) > 0)break;
+       }
+       X[i] = (FC[i+1]->first->p - FC[i+1]->third->p).norm(); bnd_upper[i] = (crossPoint - FC[i+1]->third->p).norm();
+    }
+    Eigen::Vector3d ep = FC.back()->first->p;
+    FlattenSpaceCurve(FC, 0);
+    RevisionVertices::ObjData_ep od = {FC, {ep}};
+    opt = nlopt::opt(nlopt::GD_STOGO, 2);
+    opt.set_min_objective(ObjFunc_EndPoint, &od);
+    opt.set_lower_bounds(bnd_lower);
+    opt.set_upper_bounds(bnd_upper);
+
+    double ftol = 1e-6, xtol = 1e-6, maxtime = 3;
+    SetOptimizationParameter(opt, bnd_lower, bnd_upper, ftol, xtol, maxtime);
+    double minf;
+    try {
+       nlopt::result result = opt.optimize(X, minf);
+    }catch (std::exception& e) { qDebug() << "nlopt failed: " << e.what() ; }
+    update_Vertex(X[0], FC[1], FC[1]); update_Vertex(X[1], FC[2], FC[2]);
+    FlattenSpaceCurve(FC, 0);
 }
 
 bool FoldLine::Optimization_Vertex(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool IsStartEnd, int OrderConstFunc, int OptimizationAlgorithm){

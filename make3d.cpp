@@ -942,18 +942,20 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
     auto modifyEndPoint = [&](std::shared_ptr<Vertex4d>& v4d){
         auto itr = std::find_if(VerticesInfo.begin(), VerticesInfo.end(), [&v4d](const vertexinfo& v){return v.v == v4d->first;});
         int i = std::distance(VerticesInfo.begin(), itr);
-        int i_prev = (i - 1 + visize) % visize, i_next = (i + 1) % visize;
+        int i_prev = i, i_next = i;
+        while((VerticesInfo[i_prev].v->p - v4d->first->p).norm() < 1e-3){i_prev = (i_prev - 1 + visize) % visize;}
+        while((VerticesInfo[i_next].v->p - v4d->first->p).norm() < 1e-3){i_next = (i_next + 1) % visize;}
         std::shared_ptr<Vertex> prev = VerticesInfo[i_prev].v, next = VerticesInfo[i_next].v;
         if(VerticesInfo[i_prev].vtype == 4 || VerticesInfo[i_next].vtype == 4){
             v4d->second = prev; v4d->third = next;
         }else{
             if(VerticesInfo[i_prev].vtype == 2){
-                if(MathTool::is_point_on_line(VerticesInfo[i].v->p, VerticesInfo[i_prev].v->p, VerticesInfo[i_next].v->p)){
+                if(MathTool::is_point_on_line(VerticesInfo[i].v->p, prev->p, next->p)){
                 }else{}
-                v4d->second = VerticesInfo[i].v; v4d->third = VerticesInfo[i_next].v;
+                v4d->second = VerticesInfo[i].v; v4d->third = next;
             }
             else if(VerticesInfo[i_next].vtype == 2){
-                v4d->second = VerticesInfo[i].v; v4d->third = VerticesInfo[i_prev].v;
+                v4d->second = VerticesInfo[i].v; v4d->third = prev;
             }else{
                 v4d->second = prev; v4d->third = next;
             }
@@ -964,11 +966,11 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
     };
     modifyEndPoint(NewFL->FoldingCurve.front());
     auto VecPrev = (NewFL->FoldingCurve[1]->first->p - NewFL->FoldingCurve[1]->third->p).normalized(), Vec = (NewFL->FoldingCurve[0]->first->p - NewFL->FoldingCurve[0]->third->p).normalized();
-    if(VecPrev.dot(Vec) > 0){std::swap(NewFL->FoldingCurve.front()->second, NewFL->FoldingCurve.front()->third);}
+    if(VecPrev.dot(Vec) < 0){std::swap(NewFL->FoldingCurve.front()->second, NewFL->FoldingCurve.front()->third);}
 
     modifyEndPoint(NewFL->FoldingCurve.back());
     VecPrev = (NewFL->FoldingCurve.end()[-2]->first->p - NewFL->FoldingCurve.end()[-2]->third->p).normalized(), Vec = (NewFL->FoldingCurve.back()->first->p - NewFL->FoldingCurve.back()->third->p).normalized();
-    if(VecPrev.dot(Vec) > 0){std::swap(NewFL->FoldingCurve.front()->second, NewFL->FoldingCurve.front()->third);}
+    if(VecPrev.dot(Vec) < 0){std::swap(NewFL->FoldingCurve.front()->second, NewFL->FoldingCurve.front()->third);}
     SetOnVertices_outline(false);
     return true;
 }
@@ -1031,7 +1033,7 @@ bool Model::SplitRulings(int dim){
     return true;
 }
 
-void Model::FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine){
+void Model::FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine, int alg){
     //隣接する頂点のうちthirdあるいはrulingのものを返す
     auto findPoint = [&](const std::shared_ptr<Vertex>& v){
         std::vector<vertexinfo> VerticesInfo = MappingVertex(true);
@@ -1049,28 +1051,76 @@ void Model::FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine){
     Eigen::Vector3d e, e2, o;
     std::shared_ptr<Vertex>p, v;
     double maxError = 0.0;//rulingの端点を超えた場合の距離の最大値(最後にエラー分下げてすべての曲線がruling、辺上にあるようにする)
-
-    //右側
-    for(int i = mid-1; i > 0; i--){
-        v = ValidFC[i-1]->first;
-        p = (i == 1)? findPoint(v): ValidFC[i-1]->third;
-        o = ValidFC[i+1]->first->p3; e = (ValidFC[i]->first->p3 - o), e2 = (ValidFC[i+2]->first->p3 - o);
-        Eigen::Vector3d PointOnPlane = MathTool::CrossPointLineAndPlane(e, e2, o , p->p3, v->p3);
-        maxError = std::max(maxError, (ValidFC[i-1]->first->p3 - PointOnPlane).norm());
-        ValidFC[i-1]->first->p3 = PointOnPlane;
-        ValidFC[i-1]->first->p = (PointOnPlane - p->p3).norm()*(v->p - p->p).normalized() + p->p;
+    Eigen::Vector3d initRight = ValidFC[0]->first->p, initLeft = ValidFC.back()->first->p;
+    if(alg == 0){
+        //右端の交点を基準に回転させるやり方
+        for(int i = 2; i < (int)ValidFC.size()-1; i++){
+            v = ValidFC[i+1]->first; p = (i == (int)ValidFC.size()-2)? findPoint(v): ValidFC[i+1]->third;
+            o = ValidFC[i-1]->first->p3; e = (ValidFC[i]->first->p3 - o).normalized(), e2 = (ValidFC[i-2]->first->p3 - o).normalized();
+            Eigen::Vector3d PointOnPlane = MathTool::CrossPointLineAndPlane(e, e2, o , p->p3, v->p3);
+            maxError = std::max(maxError, (ValidFC[i-1]->first->p3 - PointOnPlane).norm());
+            ValidFC[i+1]->first->p3 = PointOnPlane;
+            ValidFC[i+1]->first->p = (PointOnPlane - p->p3).norm()*(v->p - p->p).normalized() + p->p;
+        }
     }
 
-    //左側
-    for(int i = mid+1; i < (int)ValidFC.size()-1; i++){
-        v = ValidFC[i+1]->first; p = (i == (int)ValidFC.size()-2)? findPoint(v): ValidFC[i+1]->third;
-        o = ValidFC[i-1]->first->p3; e = (ValidFC[i]->first->p3 - o).normalized(), e2 = (ValidFC[i-2]->first->p3 - o).normalized();
-        Eigen::Vector3d PointOnPlane = MathTool::CrossPointLineAndPlane(e, e2, o , p->p3, v->p3);
-        maxError = std::max(maxError, (ValidFC[i-1]->first->p3 - PointOnPlane).norm());
-        ValidFC[i+1]->first->p3 = PointOnPlane;
-        ValidFC[i+1]->first->p = (PointOnPlane - p->p3).norm()*(v->p - p->p).normalized() + p->p;
+    else{
+        //右側
+        for(int i = mid-1; i > 0; i--){
+            v = ValidFC[i-1]->first;
+            p = (i == 1)? findPoint(v): ValidFC[i-1]->third;
+            o = ValidFC[i+1]->first->p3; e = (ValidFC[i]->first->p3 - o), e2 = (ValidFC[i+2]->first->p3 - o);
+            Eigen::Vector3d PointOnPlane = MathTool::CrossPointLineAndPlane(e, e2, o , p->p3, v->p3);
+            maxError = std::max(maxError, (ValidFC[i-1]->first->p3 - PointOnPlane).norm());
+            ValidFC[i-1]->first->p3 = PointOnPlane;
+            ValidFC[i-1]->first->p = (PointOnPlane - p->p3).norm()*(v->p - p->p).normalized() + p->p;
+        }
+
+        //左側
+        for(int i = mid+1; i < (int)ValidFC.size()-1; i++){
+            v = ValidFC[i+1]->first; p = (i == (int)ValidFC.size()-2)? findPoint(v): ValidFC[i+1]->third;
+            o = ValidFC[i-1]->first->p3; e = (ValidFC[i]->first->p3 - o).normalized(), e2 = (ValidFC[i-2]->first->p3 - o).normalized();
+            Eigen::Vector3d PointOnPlane = MathTool::CrossPointLineAndPlane(e, e2, o , p->p3, v->p3);
+            maxError = std::max(maxError, (ValidFC[i-1]->first->p3 - PointOnPlane).norm());
+            ValidFC[i+1]->first->p3 = PointOnPlane;
+            ValidFC[i+1]->first->p = (PointOnPlane - p->p3).norm()*(v->p - p->p).normalized() + p->p;
+        }
     }
 
+    if(alg == 2){
+        double phi = 0.0; Eigen::Vector3d axis = Eigen::Vector3d(0,0,1);
+        for(int j = 0; j < 2; j++){
+            Eigen::AngleAxisd R = Eigen::AngleAxisd(phi, axis);
+            Eigen::Vector3d v2d = R * (ValidFC[1]->first->p - ValidFC[0]->first->p);
+            std::vector<double> Phis(static_cast<int>(ValidFC.size())-2);
+            for(int i = 1; i < (int)ValidFC.size()-1; i++){
+                e = (ValidFC[i-1]->first->p - ValidFC[i]->first->p).normalized(); e2 =  (ValidFC[i+1]->first->p - ValidFC[i]->first->p).normalized();
+                Eigen::Vector3d axis = (ValidFC[i]->third->p - ValidFC[i]->first->p).normalized();
+                double phi4 = (e.dot(axis) < -1)? std::numbers::pi: (e.dot(axis) > 1)? 0: std::acos(e.dot(axis));
+                double phi3 = (e2.dot(axis) < -1)? std::numbers::pi: (e2.dot(axis) > 1)? 0: std::acos(e2.dot(axis));
+                Phis[i-1] = 2.0*std::numbers::pi - phi3 - phi4;
+            }
+
+            ValidFC[0]->first->p = initRight;
+            Eigen::Vector3d p2 = 100.0*(ValidFC[1]->first->p - ValidFC[1]->third->p) + ValidFC[1]->third->p;
+            Eigen::Vector3d q1 = 1000.0* v2d + initRight;
+            ValidFC[1]->first->p = MathTool::calcCrossPoint_2Vector(initRight, q1, p2, ValidFC[1]->third->p);
+            for(int i = 1; i <= (int)Phis.size(); i++){
+                Eigen::AngleAxisd R = Eigen::AngleAxisd(Phis[i-1], Eigen::Vector3d(0,0,-1));
+                v2d = R * (ValidFC[i-1]->first->p - ValidFC[i]->first->p);
+                p2 = 100.0 * (ValidFC[i+1]->first->p - ValidFC[i+1]->third->p) + ValidFC[i+1]->third->p;
+                q1 = 1000.0 * v2d + ValidFC[i]->first->p;
+                ValidFC[i+1]->first->p = MathTool::calcCrossPoint_2Vector(ValidFC[i]->first->p, q1, p2, ValidFC[i+1]->third->p);
+            }
+            e = (initLeft - initRight).normalized(); e2 = (ValidFC.back()->first->p - initRight).normalized();
+            phi = (e.dot(e2) < -1)? std::numbers::pi: (e.dot(e2) > 1)? 0: std::acos(e.dot(e2)); axis = (e2.cross(e)).normalized();
+        }
+    }
+    for(auto&v4d: ValidFC){
+        double t = (v4d->first->p - v4d->third->p).norm();
+        v4d->first->p3 = t*(v4d->first->p3 - v4d->third->p3).normalized() + v4d->third->p3;
+    }
+    qDebug()<<"left error = " << (initLeft - ValidFC.back()->first->p).norm();
 }
 
 
@@ -1081,7 +1131,6 @@ void Model::SimplifyModel(int iselim){
     int validsize = FL[FoldCurveIndex]->validsize - iselim;
     FL[FoldCurveIndex]->SimplifyModel(validsize, isroot);
 }
-
 
 void Model::SimplifyModel(double tol){
     if(!(0 <= FoldCurveIndex && FoldCurveIndex < (int)FL.size()) || FL[FoldCurveIndex]->FoldingCurve.empty())return;

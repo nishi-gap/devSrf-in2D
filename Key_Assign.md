@@ -19,6 +19,7 @@ D:debugモードon off切り替え
 E: 新しく追加した折曲線に対してflap angle最適化
 E + Ctrl: rulingが交差している場合交差修正
 F: 折曲線を平面曲線となるように交点位置を修正
+G: gridの描画On Off
 M:折曲線とrulingの交点導出
 N:PaintToll::Noneへの切り替え
 O:三次元のウィンドウで面の削除(エッジのみでの描画)

@@ -169,7 +169,7 @@ namespace MathTool{
         return S;
     }
 
-    Eigen::Vector3d calcCrossPoint_2Vector(const Eigen::Vector3d& p1, const Eigen::Vector3d& q1, const Eigen::Vector3d& p2, const Eigen::Vector3d& q2){
+    Eigen::Vector3d calcCrossPoint_2Vector(Eigen::Vector3d p1, Eigen::Vector3d q1, Eigen::Vector3d p2, Eigen::Vector3d q2){
         double t = ((p2.x() - p1.x())*(p2.y() - q2.y()) - (p2.x() - q2.x())*(p2.y() - p1.y()))/((q1.x() - p1.x()) * (p2.y() - q2.y()) - (p2.x() - q2.x())*(q1.y() - p1.y()));
         return Eigen::Vector3d(t * (q1.x() - p1.x()) + p1.x(), t * (q1.y() - p1.y()) + p1.y(), 0);
     }

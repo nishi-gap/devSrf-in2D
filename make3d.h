@@ -4,13 +4,6 @@
 #include "foldline.h"
 #include <QPointF>
 
-class vertexinfo{
-public:
-    std::shared_ptr<Vertex> v;
-    int vtype;//0:頂点,1:first,2:second, 3:third, 4:ruling
-    vertexinfo(const std::shared_ptr<Vertex>&_v, int t){v = _v; vtype=t; }
-};
-
 class Model: public std::enable_shared_from_this<Model>{
 public:
     std::vector<std::shared_ptr<Line>> Rulings;
@@ -60,7 +53,7 @@ public:
     void applyFL();
     bool BendingModel(double wb, double wp, double warea, double wsim, int dim, double tol, double bndrange, int bendrank, int alg, bool IsStartEnd, bool OptimizeAngleFor3Rulings);//alg=0:ruling intersection, alg=1:regression curve
     void ChangeFoldLineState();
-    void FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine);
+    void FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine, int alg);
     int getLayerNum();
     void Interpolation(std::shared_ptr<FoldLine>& FldLine);
     void modify2Druling();

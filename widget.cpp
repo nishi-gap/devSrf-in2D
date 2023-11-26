@@ -467,7 +467,24 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
 
     if(e->key() == Qt::Key_F){
         auto NewFL = ui->glWid2dim->model.back()->FL.back();
-        ui->glWid2dim->model.back()->FlattenSpaceCurve(NewFL);
+        if(e->modifiers().testFlag(Qt::ControlModifier)){
+            qDebug()<<"plane curve right";
+            ui->glWid2dim->model.back()->FlattenSpaceCurve(NewFL, 0);
+        }
+        else if(e->modifiers().testFlag(Qt::ShiftModifier)){
+            qDebug()<<"plane curve center";
+            ui->glWid2dim->model.back()->FlattenSpaceCurve(NewFL, 1);
+        }
+        else {
+            std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
+            //NewFL->Optimization_EndPoint(Poly_V);
+            ui->glWid2dim->model.back()->FlattenSpaceCurve(NewFL, 2);
+        }
+    }
+
+
+    if(e->key() == Qt::Key_G){
+        ui->glWid2dim->switchGrid();
     }
 
     if(e->key() == Qt::Key_N){
@@ -734,62 +751,7 @@ void MainWindow::exportobj(){
         s += "\n";
         WriteList.append(s);
     }
-    /*
-    Eigen::Vector3d Zaxis(0,0,1);
-    std::vector<std::array<Eigen::Vector3d, 3>> TriMeshs;
-    auto Triangulation = [](std::vector<std::shared_ptr<Vertex>>&input, std::vector<std::array<Eigen::Vector3d, 3>>&output){
-        output.clear();
-        std::vector<std::shared_ptr<Vertex>> Edges;
-        std::copy(input.begin(), input.end(), back_inserter(Edges) );
-        int n = Edges.size();
-        while(Edges.size() >= 3){
-            n = Edges.size();
-            for(int i = 0; i < n; i++){
-               int prev = (n + i - 1) % n;
-               int next = (n + i + 1) % n;
-               std::array<std::shared_ptr<Vertex>, 3> tri = {Edges[prev], Edges[i], Edges[next]};
-               bool elimTriMesh = true;
-               for(int j = 0; j < n - 3; j++){
-                   Eigen::Vector3d p = Edges[(next + 1 + j) % n]->p;
-                   auto _tri = std::array{tri[0]->p, tri[1]->p, tri[2]->p};
-                   bool check1 = MathTool::hasPointInTriangle3D(p, _tri);
-                   bool check2 = MathTool::IsAngleLessThan180(tri[1]->p, tri[0]->p, tri[2]->p);
-                   if(check1 || !check2){
-                       elimTriMesh = false;
-                       break;
-                   }
-               }
-               if(elimTriMesh){
-                   Edges.erase(Edges.begin() + i);
-                   Eigen::Vector3d N = ((tri[1]->p3 - tri[0]->p3).cross(tri[2]->p3 -tri[0]->p3)).normalized();
-                   if(N.dot(Eigen::Vector3d::UnitZ()) < 0){ std::swap(tri[0], tri[2]);}
-                   output.push_back({tri[0]->p3, tri[1]->p3, tri[2]->p3});
-                   break;
-               }
-            }
 
-        }
-    };
-
-    for(auto&poly: Polygons){
-        std::vector<std::array<Eigen::Vector3d, 3>> trimesh;
-        Triangulation(poly, trimesh);
-        TriMeshs.insert(TriMeshs.end(), trimesh.begin(), trimesh.end());
-    }
-    for(auto& mesh: TriMeshs){
-        for(const auto&v: mesh)WriteList_tri.append("v " + QString::number(v.x()) + " " + QString::number(v.y()) + " " + QString::number(v.z()) + "\n");
-        N = ((mesh[1] - mesh[0]).cross(mesh[2] - mesh[0])).normalized();
-        Normals.push_back(N);
-    }
-    for(const auto&n : Normals) WriteList_tri.append("vn " + QString::number(n.x()) + " " + QString::number(n.y()) + " " + QString::number(n.z()) + "\n");
-    cnt = 1;
-    for(int i = 0; i < (int)TriMeshs.size(); i++){
-        QString s = "f ";
-        for(int j = 0; j < 3; j++)s += QString::number(cnt++) + "//" + QString::number(i+1) + " ";
-        s += "\n";
-        WriteList_tri.append(s);
-    }
-    */
     const QString DirName = "./OBJ";
     const QDir dir; dir.mkdir(DirName);
     QDir CurDir = QDir::current(); CurDir.cd(DirName);
@@ -851,7 +813,23 @@ void MainWindow::exportobj(){
             QuantitativeResult << d/l_avg << ", ";
         }
     }
-
+    
+    QuantitativeResult << "\n Planarity of FoldingCurve\n" ;
+    for(auto&FL: ui->glWid2dim->model.back()->FL){
+        if(FL->FoldingCurve.empty())continue;
+        Eigen::Vector3d e, e2, N;
+        for(auto itr = FL->FoldingCurve.begin() + 1; itr != FL->FoldingCurve.end() - 1; itr++){
+            e = ((*(itr - 1))->first->p3 - (*itr)->first->p3).normalized();
+            e2 = ((*(itr + 1))->first->p3 - (*itr)->first->p3).normalized();
+            if(itr == FL->FoldingCurve.begin() + 1){
+                N = (e.cross(e2)).normalized();
+                continue;
+            }
+            Eigen::Vector3d N2 = (e.cross(e2)).normalized();
+            QuantitativeResult << 1.0 - N.dot(N2) << ", ";
+            N = N2;
+        }
+    }
 }
 
 void MainWindow::addCurveBtn(){
