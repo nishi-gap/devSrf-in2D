@@ -40,6 +40,7 @@ public:
     double getColor();
     bool RevisionCrosPtsPosition();
 
+    bool Optimization_EndPoint(const std::vector<std::shared_ptr<Vertex>>& Poly_V);
     bool Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double wb, double wp, int rank, int alg, bool IsStartEnd, int OptimizationAlgorithm, bool OptimizeAngleFor3Rulings);
     bool Optimization_Vertex(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool IsStartEnd, int OrderConstFunc, int OptimizationAlgorithm);
     bool PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool IsStartEnd, int VertexMoveAlg, int OptimizationAlgorithm, double range, double warea, double wsim);

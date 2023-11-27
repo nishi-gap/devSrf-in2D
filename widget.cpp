@@ -597,7 +597,7 @@ void MainWindow::exportsvg(QString filename){
     WriteList.append("<svg xmlns=\"http://www.w3.org/2000/svg\">\n");
     WriteList.append("<g>");
 
-    std::string strokewidth = "\"0.5\"", str, strokecolor;
+    std::string strokewidth = "\"1\"", str, strokecolor;
     //折曲線と交点を持たないruling
     for(auto itr_r = ui->glWid2dim->model.back()->Rulings.begin(); itr_r != ui->glWid2dim->model.back()->Rulings.end(); itr_r++){
         if((*itr_r)->hasCrossPoint)continue;
