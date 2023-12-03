@@ -1251,7 +1251,7 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
     int mid = ValidFC.size()/2;
     int ind_l = ValidFC.size() - 1, ind_r = 1;
     
-    /*
+
     //交点を動かしたときの制約関数の値の変化をcsvファイルへ書き出し
     {
        int StartingIndex = ValidFC.size()/2;
@@ -1294,7 +1294,7 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
        std::thread th_csv(WriteCSV);
        th_csv.join();
     }
-    */
+
     
     std::vector<Eigen::Vector3d> initX(ValidFC.size());
     for(int i = 0; i < (int)initX.size(); i++)initX[i] = ValidFC[i]->first->p;
@@ -1543,6 +1543,7 @@ bool FoldLine::Optimization_EndPoint(const std::vector<std::shared_ptr<Vertex>>&
     }catch (std::exception& e) { qDebug() << "nlopt failed: " << e.what() ; }
     update_Vertex(X[0], FC[1], FC[1]); update_Vertex(X[1], FC[2], FC[2]);
     FlattenSpaceCurve(FC, 0);
+    return true;
 }
 
 bool FoldLine::Optimization_Vertex(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool IsStartEnd, int OrderConstFunc, int OptimizationAlgorithm){
@@ -1698,7 +1699,7 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
         AngleFile = "./Optimization/OptimArea_" + std::to_string(rank) + "_" + std::to_string(validsize) + ".csv";
         ofs2.open(AngleFile, std::ios::out);
         ofs2 << "a(radian),a(degree) ,Eruling ,Ebend ,Eruling(N ooutline) ,Earea(same weight), Earea(different weight)\n";
-        for(double _a = a_min; _a <= a_max; _a+= 1e-3){
+        for(double _a = 0; _a <= 2.0*std::numbers::pi; _a+= 1e-3){
             cb_Folding(ValidFC, Poly_V, _a, StartingPoint);
             double f = RulingsCrossed(ValidFC);
             double fb = Fbend2(ValidFC);
@@ -2122,9 +2123,15 @@ void FoldLine::ReassignColor(){
     }else{
         for(auto& IS: InitState){
             if(MV[1] + MV[4] > MV[2] + MV[3] ){
-                if(IS.type_mvk == 1 || IS.type_mvk == 2){IS.v->IsCalc = false;}
+                if(IS.type_mvk == 1 || IS.type_mvk == 2){
+                    //IS.v->IsCalc = false;
+                    IS.v->line_parent->color = -IS.v->line_parent->color;
+                }
             }else{
-                if(IS.type_mvk == 0 || IS.type_mvk == 3){IS.v->IsCalc = false;}
+                if(IS.type_mvk == 0 || IS.type_mvk == 3){
+                    IS.v->line_parent->color = -IS.v->line_parent->color;
+                    //IS.v->IsCalc = false;
+                }
             }
         }
     }

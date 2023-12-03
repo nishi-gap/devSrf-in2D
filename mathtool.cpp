@@ -13,7 +13,30 @@ namespace MathTool{
     double rad2deg(double a){return a * 180.0/std::numbers::pi;}
     double deg2rad(double a){return a * std::numbers::pi/180.0;}
 
+    Eigen::Vector3d PCA(std::vector<Eigen::Vector3d>& X, Eigen::Vector3d& o) {
 
+
+        o = Eigen::Vector3d(0, 0, 0);
+        for (auto& x : X)o += x;
+        o /= static_cast<double>(X.size());
+
+        Eigen::MatrixXd M(3, static_cast<int>(X.size()));
+        for (int i = 0; i < (int)X.size(); i++)M.col(i) = X[i] - o;
+        Eigen::MatrixXd S = (M * (M.transpose()))/(double)X.size();//共分散行列
+        Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> ES(S);
+        Eigen::Vector3d e,v0,v1,v2;
+        //hoge
+        //e = ES.eigenvalues(); Eigen::MatrixXd U = ES.eigenvectors();
+        //Eigen::Vector3d v0 = Eigen::Vector3d(U.col(0).x(), U.col(0).y(), U.col(0).z()), v1 = Eigen::Vector3d(U.col(1).x(), U.col(1).y(), U.col(1).z()), v2 = Eigen::Vector3d(U.col(2).x(), U.col(2).y(), U.col(2).z());
+        double minelem = std::min({e(0), e(1), e(2)});
+        if(minelem == e(0)){
+            return (v1.cross(v2)).normalized();
+        }else if(minelem == e(1)){
+            return (v1.cross(v2)).normalized();
+        }else{
+            return (v1.cross(v2)).normalized();
+        }
+    }
     Eigen::Vector3d CrossPointLineAndPlane(Eigen::Vector3d e, Eigen::Vector3d e2, Eigen::Vector3d o, Eigen::Vector3d p, Eigen::Vector3d v){
         e = e.normalized(); e2 = e2.normalized(); v = (v - p).normalized();
         //Eigen::Vector3d e = (ValidFC[i]->first->p3 - ValidFC[i-1]->first->p3).normalized(), e2 = (ValidFC[i-2]->first->p3 - ValidFC[i-1]->first->p3).normalized();

@@ -125,6 +125,7 @@ Eigen::Vector3d bezier(std::vector<Eigen::Vector3d>& CtrlPts, double t, int dim)
 double basis(int n, int i, int p, double u, std::vector<double>& U);
 
 Eigen::Vector3d ProjectionVector(const Eigen::Vector3d& v, Eigen::Vector3d n, bool Isnormalize = false);
+Eigen::Vector3d fitting(const std::vector<Eigen::Vector3d>& X);
 
 template<typename T>
 void swap(T &a, T& b){ T c = a; a = b; b = c;}

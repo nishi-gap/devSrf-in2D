@@ -194,7 +194,8 @@ void MainWindow::changeToleranceValue_Slider(int val){
     ui->glWid2dim->model.back()->SimplifyModel(tol);
     auto fl = ui->glWid2dim->model.back()->FL[0];
     ui->glWid2dim->update();
-     ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
+    ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
+
 }
 
 void MainWindow::changeToleranceValue_Spin(double val){
@@ -297,6 +298,7 @@ void MainWindow::fold_Sm(){
         auto AllRulings = ui->glWid2dim->AllRulings;
         ui->glWid3dim->setVertices(Surface, Rulings , FL , AllRulings);
     }
+    ui->glWid3dim->update();
 }
 
 void MainWindow::ChangedDivSizeEdit(){
@@ -504,7 +506,11 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         ui->glWid2dim->update();
         fold_Sm();
     }
-
+    if(e->key() == Qt::Key_O){
+        ui->glWid3dim->eraseMesh = (ui->glWid3dim->eraseMesh + 1) % 3;
+        ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
+        ui->glWid3dim->update();
+    }
     if( e->key() == Qt::Key_P){
         if(!ui->glWid2dim->model.back()->outline->IsClosed())ui->glWid3dim->setVertices();
         else if(!ui->glWid2dim->model.back()->FL.empty()){

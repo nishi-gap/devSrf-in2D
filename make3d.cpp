@@ -935,7 +935,6 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
     }
 
     //端点が頂点と重なっている場合のsecondとthird, line_parentを適切にする
-
     std::vector<vertexinfo> VerticesInfo = MappingVertex(false);
 
     int visize = VerticesInfo.size();
@@ -943,8 +942,8 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
         auto itr = std::find_if(VerticesInfo.begin(), VerticesInfo.end(), [&v4d](const vertexinfo& v){return v.v == v4d->first;});
         int i = std::distance(VerticesInfo.begin(), itr);
         int i_prev = i, i_next = i;
-        while((VerticesInfo[i_prev].v->p - v4d->first->p).norm() < 1e-3){i_prev = (i_prev - 1 + visize) % visize;}
-        while((VerticesInfo[i_next].v->p - v4d->first->p).norm() < 1e-3){i_next = (i_next + 1) % visize;}
+        while((VerticesInfo[i_prev].v->p - v4d->first->p).norm() < 1e-9){i_prev = (i_prev - 1 + visize) % visize;}
+        while((VerticesInfo[i_next].v->p - v4d->first->p).norm() < 1e-9){i_next = (i_next + 1) % visize;}
         std::shared_ptr<Vertex> prev = VerticesInfo[i_prev].v, next = VerticesInfo[i_next].v;
         if(VerticesInfo[i_prev].vtype == 4 || VerticesInfo[i_next].vtype == 4){
             v4d->second = prev; v4d->third = next;
@@ -955,7 +954,8 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
                 v4d->second = VerticesInfo[i].v; v4d->third = next;
             }
             else if(VerticesInfo[i_next].vtype == 2){
-                v4d->second = VerticesInfo[i].v; v4d->third = prev;
+                //v4d->second = VerticesInfo[i].v;
+                v4d->third = prev; v4d->second = next;
             }else{
                 v4d->second = prev; v4d->third = next;
             }
@@ -966,11 +966,13 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
     };
     modifyEndPoint(NewFL->FoldingCurve.front());
     auto VecPrev = (NewFL->FoldingCurve[1]->first->p - NewFL->FoldingCurve[1]->third->p).normalized(), Vec = (NewFL->FoldingCurve[0]->first->p - NewFL->FoldingCurve[0]->third->p).normalized();
+    double tmp = VecPrev.dot(Vec);
     if(VecPrev.dot(Vec) < 0){std::swap(NewFL->FoldingCurve.front()->second, NewFL->FoldingCurve.front()->third);}
 
     modifyEndPoint(NewFL->FoldingCurve.back());
     VecPrev = (NewFL->FoldingCurve.end()[-2]->first->p - NewFL->FoldingCurve.end()[-2]->third->p).normalized(), Vec = (NewFL->FoldingCurve.back()->first->p - NewFL->FoldingCurve.back()->third->p).normalized();
-    if(VecPrev.dot(Vec) < 0){std::swap(NewFL->FoldingCurve.front()->second, NewFL->FoldingCurve.front()->third);}
+    tmp = VecPrev.dot(Vec);
+    if(VecPrev.dot(Vec) < 0){std::swap(NewFL->FoldingCurve.back()->second, NewFL->FoldingCurve.back()->third);}
     SetOnVertices_outline(false);
     return true;
 }
@@ -1028,7 +1030,7 @@ bool Model::SplitRulings(int dim){
     }
     root->data->SortCurve();
     root->data->AlignmentVertex4dDirection();
-    SetOnVertices_outline(true);
+    //SetOnVertices_outline(true);
     root->data->validsize = root->data->FoldingCurve.size();
     return true;
 }
@@ -1078,7 +1080,8 @@ void Model::FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine, int alg){
 
         //左側
         for(int i = mid+1; i < (int)ValidFC.size()-1; i++){
-            v = ValidFC[i+1]->first; p = (i == (int)ValidFC.size()-2)? findPoint(v): ValidFC[i+1]->third;
+            v = ValidFC[i+1]->first;
+            p = (i == (int)ValidFC.size()-2)? findPoint(v): ValidFC[i+1]->third;
             o = ValidFC[i-1]->first->p3; e = (ValidFC[i]->first->p3 - o).normalized(), e2 = (ValidFC[i-2]->first->p3 - o).normalized();
             Eigen::Vector3d PointOnPlane = MathTool::CrossPointLineAndPlane(e, e2, o , p->p3, v->p3);
             maxError = std::max(maxError, (ValidFC[i-1]->first->p3 - PointOnPlane).norm());
@@ -1662,41 +1665,3 @@ bool Model::CrossDection4AllCurve(){
     return true;
 }
 
-/*
-std::vector<Line*> Model::makePath(){
-    std::vector<HalfEdge*> path;
-       if(GradationPoints.empty())return path;
-       path.push_back(GradationPoints[0]);
-       for(int i = 0; i < (int)GradationPoints.size() - 1; i++){
-           Face *f = GradationPoints[i]->face;
-           HalfEdge *he, *nextHE;
-           Eigen::Vector3d nextPos = (std::get<0>(GradationPoints[i+1]->r->r)->p + std::get<1>(GradationPoints[i+1]->r->r)->p)/2.0;
-           do{
-               he = f->halfedge;
-               double dist = 1000;
-               nextHE = nullptr;
-               do{
-                   if(he->pair != nullptr){
-                       double d = ((nextPos - he->vertex->p).cross((he->vertex->p - he->pair->vertex->p))).norm()/(he->vertex->p - he->pair->vertex->p).norm();
-                       if(d < dist){
-                           dist = d;
-                           nextHE = he;
-                       }
-                   }
-                   he = he->next;
-               }while(he != f->halfedge);
-               if(nextHE != nullptr && std::find(Rulings.begin(), Edges.end(), nextHE) != Edges.end()){
-                   bool haspath = false;
-                   for(auto& he: path){
-                       if(he->r == nextHE->r){
-                           haspath = true;
-                           break;
-                       }
-                   }
-                   if(!haspath)path.push_back(nextHE);
-               }
-               f = nextHE->pair->face;
-           }while(nextHE->r != GradationPoints[i+1]->r);
-       }
-       return path;
-}*/

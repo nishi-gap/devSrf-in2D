@@ -9,7 +9,8 @@ GLWidget_3D::GLWidget_3D(QWidget *parent):QOpenGLWidget(parent)
     this->firstRotate = true;
     actionType = 0;
     center = Eigen::Vector3d(0,0,0);
-    eraseMesh = eraseCtrlPt = eraseCrossPt = eraseVec = eraseCurve = false;
+    eraseCtrlPt = eraseCrossPt = eraseVec = eraseCurve = false;
+    eraseMesh = 0;
     VisiblePlanarity = false;
     drawEdgePlane = -1;
     IsEraseNonFoldEdge = false;
@@ -90,6 +91,30 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
         AllRulings.push_back(tmpV);
     }
 
+    if(eraseMesh != 0){
+        for(auto&FldCrv: FldCrvs){
+            for(auto itr= FldCrv->FoldingCurve.begin() + 1; itr != FldCrv->FoldingCurve.end() - eraseMesh;itr++){
+                FoldLineVertices.push_back({(*itr)->first->p3, (*(itr+1))->first->p3});
+                FoldLineVertices.push_back({(*itr)->first->p3, (*(itr-1))->first->p3});
+                FoldLineVertices.push_back({(*itr)->first->p3, (*itr)->second->p3});
+                FoldLineVertices.push_back({(*itr)->first->p3, (*itr)->third->p3});
+            }
+        }
+        for(auto& l: FoldLineVertices){
+            for(auto&p: l)p = Scale * Mirror * p;
+        }
+        for(auto&FldCrv: FldCrvs){
+            for(auto itr= FldCrv->FoldingCurve.begin(); itr != FldCrv->FoldingCurve.end() - eraseMesh;itr++){
+                Eigen::Vector3d vf = (*itr)->first->p3, vt = (*itr)->third->p3, vt2 = (*(itr+1))->third->p3, vf2 = (*(itr+1))->first->p3;
+                Vertices.push_back({vf, vt, vt2, vf2});
+            }
+        }
+        for(auto& l: Vertices){
+            for(auto&p: l)p = Scale * Mirror * p;
+        }
+        return;
+    }
+
     std::vector<std::vector<std::shared_ptr<Vertex4d>>> FoldingCurves;
     for(auto&FldCrv: FldCrvs)FoldingCurves.push_back(FldCrv->FoldingCurve);
     std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons = MakeModel(Surface, Rulings, FoldingCurves);
@@ -154,6 +179,27 @@ void GLWidget_3D::paintGL(){
     glTranslated(-TransX, -TransY, TransZ);
     glRotated(0.2 * angleX, 0.0, 1.0, 0.0);
     glRotated(0.2 * angleY, 1.0, 0.0, 0.0);
+
+    if(eraseMesh){
+        glColor3d(0,0,0);
+        for(auto&l: FoldLineVertices){
+            glBegin(GL_LINES);
+            glVertex3d(l[0].x(), l[0].y(), l[0].z());
+            glVertex3d(l[1].x(), l[1].y(), l[1].z());
+            glEnd();
+        }
+        glPointSize(5);
+        for(auto&l: FoldLineVertices){
+            glBegin(GL_POINTS);
+            glVertex3d(l[0].x(), l[0].y(), l[0].z());
+            glEnd();
+            glBegin(GL_POINTS);
+            glVertex3d(l[1].x(), l[1].y(), l[1].z());
+            glEnd();
+        }
+
+    }
+
     glColor3d(0,0,0);
     glBegin(GL_LINE_STRIP);
     for(const auto&c: Points) glVertex3d(c.x(), c.y(), c.z());
@@ -172,11 +218,11 @@ void GLWidget_3D::paintGL(){
     glEnd();
 
     DrawMeshLines();
-    if(!eraseMesh){
+    //if(!eraseMesh){
 
         DrawMesh(true);
         DrawMesh(false);
-    }
+    //}
     //
 
     glPolygonOffset(0.5f,1.f);
@@ -274,6 +320,7 @@ void GLWidget_3D::DrawMesh(bool isFront){
             glColor3d(0.9,0.9,0.9);
 
         }
+        //glColor4d(0.9,0.9,0.9, 0.3);
         for(int i = 0; i < (int)Vertices.size(); i++){
             if(drawEdgePlane == i)continue;
             glBegin(GL_POLYGON);
@@ -365,7 +412,7 @@ void GLWidget_3D::receiveKeyEvent(QKeyEvent *e){
     if(e->key() == Qt::Key_C)eraseCtrlPt = !eraseCtrlPt;
     if(e->key() == Qt::Key_X)eraseCrossPt = !eraseCrossPt;
     if(e->key() == Qt::Key_D)eraseCurve = !eraseCurve;
-    if(e->key() == Qt::Key_O)eraseMesh = !eraseMesh;
+    //if(e->key() == Qt::Key_O)eraseMesh = !eraseMesh;
 
 
     update();

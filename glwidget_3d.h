@@ -50,12 +50,13 @@ public:
     explicit GLWidget_3D(QWidget *parent = 0);
     ~GLWidget_3D();
 
-    std::vector<Eigen::Vector3d> FoldLineVertices;
+    std::vector<std::vector<Eigen::Vector3d>> FoldLineVertices;
 
     //regression curve
     std::vector<drawobj> RegCurve;
 
     Ruling3d AllRulings;
+    int eraseMesh;
 protected:
     void initializeGL();
     void paintGL(); 
@@ -90,7 +91,7 @@ private:
     Eigen::Vector3d getVec(double x, double y);
 
     QPointF befPos;
-    bool eraseMesh, eraseCtrlPt, eraseCrossPt, eraseVec, eraseCurve;
+    bool eraseCtrlPt, eraseCrossPt, eraseVec, eraseCurve;
     bool VisiblePlanarity;
 
     double th_planarity = 1e-3;
