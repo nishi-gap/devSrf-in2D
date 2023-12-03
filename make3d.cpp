@@ -758,6 +758,7 @@ bool Model::BendingModel(double wb, double wp, double warea, double wsim, int di
 
         if(alg == -1){
             //initialization
+            AddNewFoldLine(cur->data);
             cur->data->initialize_foldstate(IsStartEnd, Poly_V);
             for (const auto& child : cur->children){
                 if(child != nullptr){
@@ -939,6 +940,12 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
 
     int visize = VerticesInfo.size();
     auto modifyEndPoint = [&](std::shared_ptr<Vertex4d>& v4d){
+        for(int j = 0; j < (int)VerticesInfo.size(); j++){
+            if(VerticesInfo[j].v != v4d->first && (VerticesInfo[j].v->p - v4d->first->p).norm() < 1e-9){
+                v4d->first->p3 = VerticesInfo[j].v->p3;
+                return;
+            }
+        }
         auto itr = std::find_if(VerticesInfo.begin(), VerticesInfo.end(), [&v4d](const vertexinfo& v){return v.v == v4d->first;});
         int i = std::distance(VerticesInfo.begin(), itr);
         int i_prev = i, i_next = i;
