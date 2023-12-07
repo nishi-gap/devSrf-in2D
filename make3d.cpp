@@ -1101,7 +1101,7 @@ void Model::FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine, int alg){
         double phi = 0.0; Eigen::Vector3d axis = Eigen::Vector3d(0,0,1);
         for(int j = 0; j < 2; j++){
             Eigen::AngleAxisd R = Eigen::AngleAxisd(phi, axis);
-            Eigen::Vector3d v2d = R * (ValidFC[1]->first->p - ValidFC[0]->first->p);
+            Eigen::Vector3d v2d = (ValidFC[1]->first->p - ValidFC[0]->first->p);
             std::vector<double> Phis(static_cast<int>(ValidFC.size())-2);
             for(int i = 1; i < (int)ValidFC.size()-1; i++){
                 e = (ValidFC[i-1]->first->p - ValidFC[i]->first->p).normalized(); e2 =  (ValidFC[i+1]->first->p - ValidFC[i]->first->p).normalized();

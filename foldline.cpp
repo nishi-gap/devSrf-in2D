@@ -1699,7 +1699,7 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
         AngleFile = "./Optimization/OptimArea_" + std::to_string(rank) + "_" + std::to_string(validsize) + ".csv";
         ofs2.open(AngleFile, std::ios::out);
         ofs2 << "a(radian),a(degree) ,Eruling ,Ebend ,Eruling(N ooutline) ,Earea(same weight), Earea(different weight)\n";
-        for(double _a = 0; _a <= 2.0*std::numbers::pi; _a+= 1e-3){
+        for(double _a = a_min; _a <= a_max; _a+= 1e-3){
             cb_Folding(ValidFC, Poly_V, _a, StartingPoint);
             double f = RulingsCrossed(ValidFC);
             double fb = Fbend2(ValidFC);
