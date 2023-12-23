@@ -408,7 +408,16 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     }
 
     if(e->key() == Qt::Key_5){
-        ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 4, IsStartEnd, OptimizeAngleFor3Rulings);
+        std::shared_ptr<FoldLine> FldLine = ui->glWid2dim->model.back()->FL.back();
+        std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
+
+        FldLine->applyAAAMethod(Poly_V, IsStartEnd, FldLine->a_flap);
+        FldLine->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 1, bndrange, warea, wsim);
+        FldLine->applyAAAMethod(Poly_V, IsStartEnd, FldLine->a_flap);
+        FldLine->CheckIsCrossedRulings();
+        ui->glWid2dim->model.back()->SetOnVertices_outline(false);
+        FldLine->SimpleSmooothSrf(Poly_V);
+        //ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 4, IsStartEnd, OptimizeAngleFor3Rulings);
     }
     if(e->key() == Qt::Key_6){
         ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 5, IsStartEnd, OptimizeAngleFor3Rulings);
@@ -417,12 +426,33 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 6, IsStartEnd, OptimizeAngleFor3Rulings);
     }
     if(e->key() == Qt::Key_8){
-        if(e->modifiers().testFlag(Qt::ControlModifier)){
-            ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 7, IsStartEnd, OptimizeAngleFor3Rulings);
+        std::shared_ptr<FoldLine> FldLine = ui->glWid2dim->model.back()->FL.back();
+        std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
+
+        bool res = res = FldLine->Optimization_FlapAngle(Poly_V, wb, wp, 0, 1, IsStartEnd, 0, OptimizeAngleFor3Rulings);
+        while(!res){
+            int validsize = FldLine->validsize - 1;
+            bool isroot = (ui->glWid2dim->model.back()->NTree_fl.GetRoot()->data == FldLine)? true: false;
+            FldLine->SimplifyModel(validsize, isroot);
+            res = FldLine->Optimization_FlapAngle(Poly_V, wb, wp, 0, 1, IsStartEnd, 0, OptimizeAngleFor3Rulings);
+            int cnt = 0;
+            for(auto&fc: FldLine->FoldingCurve){if(fc->IsCalc)cnt++;}
+            if(cnt <=3)break;
+
         }
-        else  ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 17, IsStartEnd, OptimizeAngleFor3Rulings);
+        //if(e->modifiers().testFlag(Qt::ControlModifier)){
+            //ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 7, IsStartEnd, OptimizeAngleFor3Rulings);
+        //}
+        //else  ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 17, IsStartEnd, OptimizeAngleFor3Rulings);
+    }
+    if(e->key() == Qt::Key_9){
+        if(e->modifiers().testFlag(Qt::ControlModifier)){
+            ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 8, IsStartEnd, OptimizeAngleFor3Rulings);
+        }
+        else  ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 18, IsStartEnd, OptimizeAngleFor3Rulings);
     }
     if(e->key() == Qt::Key_Return){//
+        qDebug()<<"can't available"; return;
         ui->glWid2dim->stashcurrentstate();
     }
 
@@ -441,6 +471,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
             else if(!ui->glWid2dim->model.back()->FL.empty()){
                 ui->glWid2dim->model.back()->FL[0]->ReassignColor();
                 ui->glWid2dim->model.back()->deform();
+                ui->glWid2dim->model.back()->AddNewFoldLine(ui->glWid2dim->model.back()->FL[0]);
                 ui->glWid2dim->model.back()->modifyFoldingCurvePositionOn3d();
                 ui->glWid2dim->update();
                 ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
@@ -489,6 +520,15 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         ui->glWid2dim->switchGrid();
     }
 
+    if(e->key() == Qt::Key_H){
+        ui->glWid2dim->model.back()->InterpolationTNB();
+    }
+    if(e->key() == Qt::Key_I){
+        qDebug()<<"simple smooth surface for last added folding curve.";
+        auto Poly_V = ui->glWid2dim->model.back()->outline->vertices;
+        ui->glWid2dim->model.back()->FL.back()->SimpleSmooothSrf(Poly_V);
+    }
+
     if(e->key() == Qt::Key_N){
         ui->glWid2dim->InitializeDrawMode();
     }
@@ -521,16 +561,22 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         }
     }
 
-    if(e->key() == Qt::Key_Q)IsStartEnd = !IsStartEnd;
-
-    if(e->key() == Qt::Key_R){
-        if(e->modifiers().testFlag(Qt::ControlModifier))ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, -1, IsStartEnd, OptimizeAngleFor3Rulings);//initialization
-        else{
+    if(e->key() == Qt::Key_Q){
+        if(e->modifiers().testFlag(Qt::ControlModifier)){
              double a = static_cast<double>(ui->angleSlider->value())/100.0;
              std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
              std::vector<std::vector<std::shared_ptr<Vertex>>> Tri_fixside;
              auto Triangles = ui->glWid2dim->model.back()->FL.back()->CalclateRegressionCurve(a,Poly_V,true, IsStartEnd, Tri_fixside);
              qDebug() <<"csv file export";
+        }
+        else IsStartEnd = !IsStartEnd;
+    }
+
+    if(e->key() == Qt::Key_R){
+        if(e->modifiers().testFlag(Qt::ControlModifier))ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, -1, IsStartEnd, OptimizeAngleFor3Rulings);//initialization
+        else{
+             std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
+             ui->glWid2dim->model.back()->FL.back()->initialize_foldstate(IsStartEnd, Poly_V);
         }
     }
 

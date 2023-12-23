@@ -2,7 +2,6 @@
 #define MAKE3D_H
 
 #include "foldline.h"
-#include <QPointF>
 
 class Model: public std::enable_shared_from_this<Model>{
 public:
@@ -59,6 +58,8 @@ public:
     void modify2Druling();
     bool Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double warea, double wsim, double bndrange, int alg, bool IsStartEnd);
     void modifyFoldingCurvePositionOn3d();
+
+    void InterpolationTNB();
 
     void SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::shared_ptr<Line>>& Surface, const std::vector<std::shared_ptr<Line>>& Rulings, bool IsupdateEndPt);
     void SimplifyModel(double tol);

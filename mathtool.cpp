@@ -267,4 +267,5 @@ namespace MathTool{
         return (Isnormalized)? V/V.norm(): V;
     }
 
+
 }

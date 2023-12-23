@@ -529,7 +529,9 @@ double Fmin_simularity(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, std
 }
 
 bool FoldLine::isbend(){
-    double fr = RulingsCrossed(FoldingCurve);
+    std::vector<std::shared_ptr<Vertex4d>> ValidFC;
+    for(auto&fc: FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
+    double fr = RulingsCrossed(ValidFC);
     return (fr < 1e-9 && a_flap != -1)? true: false;
 }
 
@@ -552,7 +554,7 @@ double Fruling(const std::vector<double> &X, std::vector<double> &grad, void* f_
         }
     }
 
-    if(DebugMode::Singleton::getInstance().isdebug())qDebug() <<"constraint function = " << MathTool::rad2deg(a[0]) << "(" << a[0] << ")  , " << f ;
+    //if(DebugMode::Singleton::getInstance().isdebug())qDebug() <<"constraint function = " << MathTool::rad2deg(a[0]) << "(" << a[0] << ")  , " << f ;
     return f;
  }
 
@@ -867,7 +869,7 @@ double ObjFunc_RegressionCurve(const std::vector<double> &a, std::vector<double>
        }
 
     }
-    if(DebugMode::Singleton::getInstance().isdebug())qDebug() <<"Triangle Area(" << MathTool::rad2deg(a[0]) << "(" << a[0] << ")  =  " <<  fb  << ", Area = "<< fr;
+    //if(DebugMode::Singleton::getInstance().isdebug())qDebug() <<"Triangle Area(" << MathTool::rad2deg(a[0]) << "(" << a[0] << ")  =  " <<  fb  << ", Area = "<< fr;
     return 0.0 * fb + 0 * fp + 1.0 * fr;
 }
 
@@ -1635,15 +1637,15 @@ bool FoldLine::Optimization_Vertex(const std::vector<std::shared_ptr<Vertex>>& P
 
 bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double wb, double wp, int rank, int alg, bool IsStartEnd, int OptimizationAlgorithm, bool OptimizeAngleFor3Rulings){
 
-    auto apply_optimization = [&](nlopt::opt& opt, std::vector<double>& X, std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, const std::vector<std::shared_ptr<Vertex>>& Poly_V,
+    auto apply_optimization = [&](nlopt::opt& opt, std::vector<double>& X, std::vector<std::shared_ptr<Vertex4d>>& ValidFC, const std::vector<std::shared_ptr<Vertex>>& Poly_V,
                             int StartingIndex,  double& minf, double& fruling){
         try {
             qDebug() <<"small a" ;
             nlopt::result result = opt.optimize(X, minf);
 
-            cb_Folding(FoldingCurve, Poly_V, X[0], StartingIndex);
+            cb_Folding(ValidFC, Poly_V, X[0], StartingIndex);
             qDebug() <<"result :  lower bound" <<result ;
-            fruling = RulingsCrossed(FoldingCurve);
+            fruling = RulingsCrossed(ValidFC);
             qDebug() << "found minimum at f(" << MathTool::rad2deg(X[0]) << ") = " << minf << "  , fruling = " << fruling;
         }catch (std::exception& e) { qDebug() << "nlopt failed: " << e.what() ; }
     };
@@ -1698,15 +1700,14 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
         std::string AngleFile;
         AngleFile = "./Optimization/OptimArea_" + std::to_string(rank) + "_" + std::to_string(validsize) + ".csv";
         ofs2.open(AngleFile, std::ios::out);
-        ofs2 << "a(radian),a(degree) ,Eruling ,Ebend ,Eruling(N ooutline) ,Earea(same weight), Earea(different weight)\n";
-        for(double _a = a_min; _a <= a_max; _a+= 1e-3){
+        ofs2 << "a(radian),a(degree) ,Eruling ,Eruling(is in range) ,Earea(same weight), Earea(different weight)\n";
+        for(double _a = 0; _a <= 2*std::numbers::pi; _a+= 1e-3){
             cb_Folding(ValidFC, Poly_V, _a, StartingPoint);
             double f = RulingsCrossed(ValidFC);
-            double fb = Fbend2(ValidFC);
-            double fr = RulingsCrossed_NoOutline(ValidFC);
+            std::string fr = (a_min <= _a && _a <= a_max)? std::to_string(RulingsCrossed(ValidFC)): "";
             double fa = Fmin_TriangleArea(ValidFC, true);
             double fa2 = Fmin_TriangleArea(ValidFC, false);
-            ofs2 << _a << ", " << MathTool::rad2deg(_a) << " , " << f << ", " << fb << ", "<< fr  << ", " << fa << " , " << fa2<< std::endl ;
+            ofs2 << _a << ", " << MathTool::rad2deg(_a) << " , " << f << ", "<< fr  << ", " << fa << " , " << fa2<< std::endl ;
         }ofs2.close();
     }
 
@@ -1753,10 +1754,26 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
         return true;
 
     }else if(alg == 1){//maximize triangle area
+        /*
+        if(DebugMode::Singleton::getInstance().isdebug()){
+            std::ofstream ofs;
+            std::filesystem::create_directory("./Optimization");
+            std::string File= "./Optimization/Optimization_TriAreaFor3Rulings.csv";
+            ofs.open(File, std::ios::out);
+            ofs << "a(radian),a(degree) ,Earea(same weight), Earea(different weight) ,E_ruling\n";
+            for(double _a = a_min; _a <= a_max; _a+= 1e-3){
+                cb_Folding(ValidFC, Poly_V, _a, 2);
+                double f = RulingsCrossed(ValidFC);
+                double fa = Fmin_TriangleArea(ValidFC, true);
+                double fa2 = Fmin_TriangleArea(ValidFC, false);
+                ofs << _a << ", " << MathTool::rad2deg(_a) << " , " << fa << " , " << fa2<< "," << f << std::endl ;
+            }ofs.close();
+        }*/
         nlopt::opt opt;
         X.push_back((a_min + a_max)/2.0); minf.push_back(0); fruling.push_back(0);
 
         opt = nlopt::opt(nlopt::GN_ISRES, 1);
+        //opt = nlopt::opt(nlopt::LD_MMA,1);
         opt.set_min_objective(ObjFunc_RegressionCurve, &od);
         opt.add_inequality_constraint(Fruling, &od);
         SetOptimizationParameter(opt, bnd_lower, bnd_upper, ftol, xtol, maxtime);
@@ -1772,19 +1789,7 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
                 std::vector<std::shared_ptr<Vertex4d>> FC3ruling(5);
                 for(int i = 0; i < 5; i++)FC3ruling[i] = ValidFC[StartingPoint - 2 + i];
                 RevisionVertices::ObjData_v od_a = {a_flap, FC3ruling, Poly_V, 2};
-                if(DebugMode::Singleton::getInstance().isdebug()){
-                    std::ofstream ofs;
-                    std::filesystem::create_directory("./Optimization");
-                    std::string File= "./Optimization/Optimization_TriAreaFor3Rulings.csv";
-                    ofs.open(File, std::ios::out);
-                    ofs << "a(radian),a(degree) ,Earea(same weight), Earea(different weight)\n";
-                    for(double _a = a_min; _a <= a_max; _a+= 1e-3){
-                        cb_Folding(FC3ruling, Poly_V, _a, 2);
-                        double fa = Fmin_TriangleArea(FC3ruling, true);
-                        double fa2 = Fmin_TriangleArea(FC3ruling, false);
-                        ofs << _a << ", " << MathTool::rad2deg(_a) << " , " << fa << " , " << fa2<< std::endl ;
-                    }ofs.close();
-                }
+
                 opt.set_min_objective(ObjFunc_3Rulings, &od_a);
                 SetOptimizationParameter(opt, bnd_lower, bnd_upper, ftol, xtol, maxtime);
                 //apply_optimization(opt, X, FC3ruling, Poly_V, 2, minf[0], fruling[0]);
@@ -2167,6 +2172,7 @@ void FoldLine::reassignruling(std::shared_ptr<FoldLine>& parent, const std::vect
         }
     };
 
+    if(parent == nullptr)return;
     if(parent->FoldingCurve.empty())return;
     int dim = CtrlPts.size() - 1;
     dim = 3;
@@ -2220,6 +2226,13 @@ void FoldLine::reassignruling(std::shared_ptr<FoldLine>& parent, const std::vect
             v4d->addline((*it));
             FoldingCurve.push_back(v4d);
             (*it)->second = p;
+        }
+        if(type == PaintTool::FoldLine_bezier)p = getCrossPoint(CtrlPts, (*it)->first, (*it)->third, dim);
+        if(p != nullptr){
+            std::shared_ptr<Vertex4d> v4d = std::make_shared<Vertex4d>(p, (*it)->first, (*it)->third);
+            v4d->addline((*it));
+            FoldingCurve.push_back(v4d);
+            (*it)->third = p;
         }
     }
     //if(!MathTool::is_point_on_line(FoldingCurve.front()->first->p, FoldingCurve.front()->line_parent->v->p, FoldingCurve.front()->line_parent->o->p)){ }
@@ -2742,5 +2755,102 @@ void Douglas_Peucker_algorithm(std::vector<std::shared_ptr<Vertex4d>>& FoldingCu
         res.push_back(FoldingCurve[0]);
         res.push_back(FoldingCurve.back());
     }
+}
+
+struct PolyCurveOn2D
+{
+    std::vector<std::shared_ptr<Vertex4d>> ValidFC;
+    std::vector<double> Phi;
+    Eigen::Vector3d v, tip;
+    Eigen::Vector3d tar;
+    PolyCurveOn2D(const std::vector<std::shared_ptr<Vertex4d>>& _ValidFC, const std::vector<double>& _Phi,
+                  const Eigen::Vector3d& _v, const Eigen::Vector3d& _tip, const Eigen::Vector3d& _tar):
+        ValidFC(_ValidFC), Phi(_Phi), v(_v), tip(_tip), tar(_tar) {}
+};
+
+std::vector<Eigen::Vector3d> RotatePolyCurve(double ro, const Eigen::Vector3d v, const std::vector<std::shared_ptr<Vertex4d>>& ValidFC, const std::vector<double>& Phi,
+                          const Eigen::Vector3d& tip, const Eigen::Vector3d& tar, double& error){
+    auto crosspoint_2vec = [&](const Eigen::Vector3d& v1, const Eigen::Vector3d& p1, const Eigen::Vector3d& v2, const Eigen::Vector3d& p2){
+        Eigen::Matrix2d A; A(0,0) = v1.x(); A(0,1) = -v2.x(); A(1,0) = v1.y(); A(1,1) = -v2.y();
+        Eigen::Vector2d b; b(0) = (p2.x() - p1.x()); b(1) = (p2.y() - p1.y());
+        Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
+        return x(0)*v1 + p1;
+    };
+    std::vector<Eigen::Vector3d> Vertices(ValidFC.size());  Vertices[0] = tip;
+    Eigen::Vector3d v2d = Eigen::AngleAxisd(ro, Eigen::Vector3d(0,0,-1))*v;
+    Vertices[1] = crosspoint_2vec(v2d, tip, (ValidFC[1]->first->p - ValidFC[1]->third->p), ValidFC[1]->third->p);
+    for(int i = 1; i <= (int)Phi.size(); i++){
+        Eigen::AngleAxisd R = Eigen::AngleAxisd(Phi[i-1], Eigen::Vector3d(0,0,-1));
+        v2d = R * (Vertices[i-1] - Vertices[i]);
+        Vertices[i+1] = crosspoint_2vec(v2d, Vertices[i], (ValidFC[i+1]->first->p - ValidFC[i+1]->third->p), ValidFC[i+1]->third->p);
+    }
+    error = (tar - Vertices.back()).norm();
+    return Vertices;
+};
+
+double ObjFunc_FittingPoint(const std::vector<double> &X, std::vector<double> &grad, void* f_data){
+    PolyCurveOn2D *data = (PolyCurveOn2D *)f_data;
+    double w = 1e-4, fp = 0, fm = 0, f = 0;
+    if(!grad.empty()){
+        RotatePolyCurve(X[0] + eps, data->v, data->ValidFC, data->Phi, data->tip, data->tar, fp);
+        RotatePolyCurve(X[0] - eps, data->v, data->ValidFC, data->Phi, data->tip, data->tar, fm);
+        grad[0] = w*(fp - fm)/(2.0*eps);
+    }
+    RotatePolyCurve(X[0], data->v, data->ValidFC, data->Phi, data->tip, data->tar, f);
+    qDebug()<<"f = " << f;
+    return w*f;
+}
+
+void FoldLine::FittingEndPoint_flattencurve(const Eigen::Vector3d& initRight, const Eigen::Vector3d& initLeft){
+    std::vector<std::shared_ptr<Vertex4d>> ValidFC;
+    for(auto&fc: FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
+    if((int)ValidFC.size() <= 3)return;
+    Eigen::Vector3d e, e2;
+
+    //初期ベクトルv0と折れ線の角度を保持
+    Eigen::Vector3d v2d = (ValidFC[1]->first->p - ValidFC[0]->first->p);
+    std::vector<double> Phis(static_cast<int>(ValidFC.size())-2);
+    for(int i = 1; i < (int)ValidFC.size()-1; i++){
+        e = (ValidFC[i-1]->first->p - ValidFC[i]->first->p).normalized(); e2 =  (ValidFC[i+1]->first->p - ValidFC[i]->first->p).normalized();
+        Eigen::Vector3d axis = (ValidFC[i]->third->p - ValidFC[i]->first->p).normalized();
+        double phi4 = (e.dot(axis) < -1)? std::numbers::pi: (e.dot(axis) > 1)? 0: std::acos(e.dot(axis));
+        double phi3 = (e2.dot(axis) < -1)? std::numbers::pi: (e2.dot(axis) > 1)? 0: std::acos(e2.dot(axis));
+        Phis[i-1] = 2.0*std::numbers::pi - phi3 - phi4;
+    }
+    std::ofstream ofs;
+    std::string file = "./Optimization/angle_validation.csv";
+    ofs.open(file, std::ios::out); ofs << "ro(rad) , ro(deg) ,err\n";
+    for(double p = -180; p <= 180; p += 1e-2){
+        double err = -1;
+        RotatePolyCurve(MathTool::deg2rad(p), v2d, ValidFC, Phis, initRight, initLeft, err);
+        ofs << MathTool::deg2rad(p) << ", " << p << " ," << err << std::endl;
+    }ofs.close();
+
+    ValidFC[0]->first->p = initRight;
+    static double ro = 0 ,err = -1;
+    auto vertices = RotatePolyCurve(ro, v2d, ValidFC, Phis, initRight, initLeft, err);
+    for(int i = 0; i < (int)ValidFC.size(); i++) ValidFC[i]->first->p = vertices[i];
+    PolyCurveOn2D data = {ValidFC, Phis, v2d, initRight, initLeft};
+    nlopt::opt opt;
+    opt = nlopt::opt(nlopt::LD_AUGLAG, 1);
+    opt.set_min_objective(ObjFunc_FittingPoint, &data);
+    opt.set_lower_bounds(-std::numbers::pi); opt.set_upper_bounds(std::numbers::pi);
+    opt.set_maxtime(3.0); opt.set_ftol_rel(1e-8);
+    e = (initLeft - initRight).normalized(); e2 = (ValidFC.back()->first->p - initRight).normalized();
+    double phi = std::acos((e.dot(e2) < -1)? -1: (e.dot(e2) > 1)? 1: e.dot(e2));
+    qDebug()<< "init ro = " << MathTool::rad2deg(phi) << " , error = " << err;
+
+    std::vector<double> X(1); X[0] = phi;
+    double minf;
+    try {
+
+        nlopt::result result = opt.optimize(X, minf);
+        qDebug()<<"result : " << minf;
+
+    }catch (std::exception& e) { qDebug() << "nlopt failed: " << e.what() ; }
+    err = -1;
+    vertices = RotatePolyCurve(X[0], v2d, ValidFC, Phis, initRight, initLeft, err);
+    qDebug()<< "final ro = " << MathTool::rad2deg(X[0]);
+    for(int i = 0; i < (int)ValidFC.size(); i++) ValidFC[i]->first->p = vertices[i];
 }
 
