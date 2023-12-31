@@ -805,9 +805,8 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
 
     if(drawtype == PaintTool::AffinTrans){
         IsAffinMoved = true;
-        if(affinmode == 0)model.back()->AffinTrans(befCur, p);
-        if(affinmode == 1 && basePoint != befCur)model.back()->AffinScale(basePoint, befCur, p);
-        if(affinmode == 2 && basePoint != befCur)model.back()->AffinRotate(basePoint, befCur, p);
+        model.back()->AffinTranse_Crease(affinmode, befCur, p, basePoint);
+
         befCur = p;
     }
 

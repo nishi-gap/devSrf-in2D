@@ -132,13 +132,26 @@ void swap(T &a, T& b){ T c = a; a = b; b = c;}
 
 }
 
+/*
 template <typename T>
 class NTreeNode{
 public:
   T data;
   std::vector<std::shared_ptr<NTreeNode<T>>> children;
   NTreeNode(const T& val): data(val){}
+  bool IsChild(const T& val){
+      std::queue<std::shared_ptr<NTreeNode<T>>> q; q.push(std::shared_ptr<NTreeNode<T>>(this));
+      while (!q.empty()) {
+          std::shared_ptr<NTreeNode<T>> cur = q.front(); q.pop();
+          for (std::shared_ptr<NTreeNode<T>> child : cur->children){
+              if(child->data == val)return true;
+              q.push(child);
+          }
+      }
+      return false;
+  }
 };
+
 
 template <typename T>
 class NTree {
@@ -246,5 +259,6 @@ public:
         return rank;
     }
 };
+*/
 
 #endif // MATHTOOL_H

@@ -12,7 +12,7 @@ Model::Model(int _crvPtNum){
     refCrv.clear();
     refFL = nullptr;
     FoldCurveIndex = befFaceNum = 0;
-    NTree_fl = NTree<std::shared_ptr<FoldLine>>();
+    NTree_fl = NTree();
 }
 
 std::shared_ptr<Model> Model::deepCopy(){
@@ -80,48 +80,19 @@ void Model::detectClickedObj(const QPointF& curPos){
     qDebug()<<"clicked object  " << refFL.get();
 }
 
-void Model::InterpolationTNB(){
-    //int dim = 3;
-    //std::vector<double>Knot;
-    //bool is3d = true;
-    //std::vector<std::shared_ptr<Vertex4d>> FLCurve;
-    //GlobalSplineInterpolation(FLCurve, Knot, is3d, dim);
-
-}
-
-void Model::AffinTrans(const QPointF& befPos, const QPointF& curPos){//回転と拡縮においてbefPosは軸として扱う
+void Model::AffinTranse_Crease(int type, const QPointF& befPos, const QPointF& curPos, const QPointF& basePos){
     if(refFL == nullptr || std::find(FL.begin(), FL.end(), refFL) == FL.end())return;
-    Eigen::Vector3d move{(curPos - befPos).x(), (curPos - befPos).y(), 0};
-    for(auto&p: refFL->CtrlPts)p += move;
-    refFL->a_flap = -1;
-    refFL->setCurve(3);
-}
-
-//最も遠い位置にある制御点の二点の距離が閾値よりも小さい場合は縮小処理しない
-void Model::AffinScale(const QPointF& basePos, const QPointF& befPos, const QPointF& curPos){
-    double fardist = 0,  mindist = 100;//mindistが閾値
-    for(int i = 0; i < (int)refFL->CtrlPts.size(); i++){
-        for(int j = 0; j < (int)refFL->CtrlPts.size(); j++)fardist = std::max(fardist, (refFL->CtrlPts[i] - refFL->CtrlPts[j]).norm());
+    switch (type) {
+    case 0:
+        AffinTrans(refFL, befPos, curPos);
+        break;
+    case 1:
+        AffinScale(refFL, basePos, befPos, curPos);
+    default:
+    case 2:
+        AffinRotate(refFL, basePos, befPos, curPos);
+        break;
     }
-
-    Eigen::Vector3d a{(befPos - basePos).x(), (befPos - basePos).y(), 0}, b{(curPos - basePos).x(), (curPos - basePos).y(), 0}, basePt{basePos.x(), basePos.y(),0};
-    double scale = b.norm()/a.norm();
-    if(fardist < mindist && scale < 1.0)return;
-    for(auto&p: refFL->CtrlPts)p = scale * (p - basePt) + basePt;
-    refFL->setCurve(3);
-    refFL->a_flap = -1;
-}
-
-void Model::AffinRotate(const QPointF& basePos, const QPointF& befPos, const QPointF& curPos){
-    Eigen::Vector3d basePt{befPos.x(), befPos.y(), 0}, b{befPos.x() - basePos.x(), befPos.y() - basePos.y(), 0}, c{curPos.x() - basePos.x(), curPos.y() - basePos.y(), 0};
-    b = b.normalized(); c = c.normalized();
-    double r = b.dot(c); r = (r < -1)? std::numbers::pi: (r > 1)? 0: std::acos(r);
-    Eigen::Vector3d axis = (b.cross(c)).normalized();
-    Eigen::AngleAxisd R = Eigen::AngleAxisd(r, axis);
-    for(auto&p: refFL->CtrlPts)   p = R * (p - basePt) + basePt;
-
-    refFL->setCurve(3);
-    refFL->a_flap = -1;
 }
 
 void Model::SetMaxFold(double val){
@@ -531,9 +502,11 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
 
     for(auto&fl:FL){
         if((int)fl->FoldingCurve.size() <= 2)continue;
-        EdgeSplit(fl->FoldingCurve.front()->first, 1, fl->FoldingCurve[1]->first);
-        EdgeSplit(fl->FoldingCurve.back()->first, 1, fl->FoldingCurve.end()[-2]->first);
-        for(auto itr = fl->FoldingCurve.begin()+1; itr != fl->FoldingCurve.end()-1; itr++){
+        std::vector<std::shared_ptr<Vertex4d>> ValidFC;
+        for(auto&fc: fl->FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
+        EdgeSplit(ValidFC.front()->first, 1, ValidFC[1]->first);
+        EdgeSplit(ValidFC.back()->first, 1, ValidFC.end()[-2]->first);
+        for(auto itr = ValidFC.begin()+1; itr != ValidFC.end()-1; itr++){
             if(!(*itr)->IsCalc)continue;
             EdgeSplit((*itr)->second, 2, (*itr)->first);
             EdgeSplit((*itr)->third, 3, (*itr)->first);
@@ -739,17 +712,16 @@ void Model::Interpolation(std::shared_ptr<FoldLine>& FldLine){
 }
 
 bool Model::BendingModel(double wb, double wp, double warea, double wsim, int dim, double tol, double bndrange, int bendrank, int alg, bool IsStartEnd, bool OptimizeAngleFor3Rulings){
-    static int OrderConst = 0;
     static int AlgNum = 0;
     UpdateFLOrder(dim);
     SplitRulings(dim);
-    std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>> root = NTree_fl.GetRoot();
+    std::shared_ptr<NTreeNode> root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
     if(bendrank == 0){
         AssignRuling(dim, tol, false);
         return true;
     }
-    std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>> q;
+    std::queue<std::shared_ptr<NTreeNode>> q;
     std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
 
     std::string msg = (!IsStartEnd)? "center": "End Point"; qDebug() <<"input flap angle start with : " << msg;
@@ -762,7 +734,7 @@ bool Model::BendingModel(double wb, double wp, double warea, double wsim, int di
             AssignRuling(dim, tol, false);
             return true;
         }
-        auto cur = q.front(); q.pop();
+        std::shared_ptr<NTreeNode> cur = q.front(); q.pop();
         cur->data->ReassignColor();
         //cur->data->RevisionCrosPtsPosition();//端点の修正
         qDebug() << "trim each iteration";
@@ -937,7 +909,7 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
         UpdateFLOrder(dim);
         SplitRulings(dim);
     }else if(par == nullptr){
-        std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>> root = NTree_fl.GetRoot();
+        std::shared_ptr<NTreeNode> root = NTree_fl.GetRoot();
         for(const auto&child: root->children){
             NewFL->reassignruling(child->data, outline->Lines, Rulings);
             break;
@@ -958,8 +930,10 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
                 return;
             }
         }
-        auto itr = std::find_if(VerticesInfo.begin(), VerticesInfo.end(), [&v4d](const vertexinfo& v){return v.v == v4d->first;});
+        std::vector<vertexinfo>::iterator itr = std::find_if(VerticesInfo.begin(), VerticesInfo.end(), [&v4d](const vertexinfo& v){return v.v == v4d->first;});
+
         int i = std::distance(VerticesInfo.begin(), itr);
+        if(i == (int)VerticesInfo.size())return;
         int i_prev = i, i_next = i;
         while((VerticesInfo[i_prev].v->p - v4d->first->p).norm() < 1e-9){i_prev = (i_prev - 1 + visize) % visize;}
         while((VerticesInfo[i_next].v->p - v4d->first->p).norm() < 1e-9){i_next = (i_next + 1) % visize;}
@@ -985,14 +959,30 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
     };
     modifyEndPoint(NewFL->FoldingCurve.front());
     auto VecPrev = (NewFL->FoldingCurve[1]->first->p - NewFL->FoldingCurve[1]->third->p).normalized(), Vec = (NewFL->FoldingCurve[0]->first->p - NewFL->FoldingCurve[0]->third->p).normalized();
-    double tmp = VecPrev.dot(Vec);
-    if(VecPrev.dot(Vec) < 0){std::swap(NewFL->FoldingCurve.front()->second, NewFL->FoldingCurve.front()->third);}
 
+    if(VecPrev.dot(Vec) < 0){std::swap(NewFL->FoldingCurve.front()->second, NewFL->FoldingCurve.front()->third);}
     modifyEndPoint(NewFL->FoldingCurve.back());
     VecPrev = (NewFL->FoldingCurve.end()[-2]->first->p - NewFL->FoldingCurve.end()[-2]->third->p).normalized(), Vec = (NewFL->FoldingCurve.back()->first->p - NewFL->FoldingCurve.back()->third->p).normalized();
-    tmp = VecPrev.dot(Vec);
     if(VecPrev.dot(Vec) < 0){std::swap(NewFL->FoldingCurve.back()->second, NewFL->FoldingCurve.back()->third);}
     SetOnVertices_outline(false);
+    refFL = NewFL;
+
+    /*
+    std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>> q;
+    std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>> root = NTree_fl.GetRoot(), NewFL_node = NTree_fl.find(NewFL);
+    q.push(root);
+    std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
+    while(!q.empty()){
+        std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>> cur = q.front(); q.pop();
+        for (const auto& child : cur->children){
+            if(child != nullptr) q.push(child);
+            else{
+                if(NewFL_node->IsChild(child->data)){
+                    //child->data->initialize_foldstate(false, Poly_V);
+                }
+            }
+        }
+    }*/
     return true;
 }
 
@@ -1002,12 +992,11 @@ bool Model::AssignRuling(int dim, double tol, bool begincenter){
     auto Poly_V = outline->getVertices();
     auto root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
-    std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>>q;
+    std::queue<std::shared_ptr<NTreeNode>>q;
     q.push(root);
     while (!q.empty()) {
         auto cur = q.front(); q.pop();
         if(cur->data->isbend()){
-            bool isroot = (root == cur)? true: false;
             //cur->data->RevisionCrosPtsPosition();//端点の修正
             cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap);
             if(cur->data->FoldingCurve.empty())continue;
@@ -1110,7 +1099,7 @@ void Model::FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine, int alg){
     }
 
     if(alg == 2){
-        /*
+
         double phi = 0.0; Eigen::Vector3d axis = Eigen::Vector3d(0,0,1);
         for(int j = 0; j < 1; j++){
             Eigen::AngleAxisd R = Eigen::AngleAxisd(phi, axis);
@@ -1138,8 +1127,8 @@ void Model::FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine, int alg){
             e = (initLeft - initRight).normalized(); e2 = (ValidFC.back()->first->p - initRight).normalized();
             phi = (e.dot(e2) < -1)? std::numbers::pi: (e.dot(e2) > 1)? 0: std::acos(e.dot(e2)); axis = (e2.cross(e)).normalized();
             qDebug()<<"phi = " << MathTool::rad2deg(phi);
-        }*/
-        FldLine->FittingEndPoint_flattencurve(initRight, initLeft);
+        }
+        //FldLine->FittingEndPoint_flattencurve(initRight, initLeft);
     }
     for(auto&v4d: ValidFC){
         double t = (v4d->first->p - v4d->third->p).norm();
@@ -1167,7 +1156,7 @@ void Model::SimplifyModel(double tol){
 bool Model::Smoothing(){
     auto root = NTree_fl.GetRoot();
     if(root == nullptr)return false;
-    std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>>q;
+    std::queue<std::shared_ptr<NTreeNode>>q;
     q.push(root);
     auto Poly_V = outline->getVertices();
     while (!q.empty()) {
@@ -1329,6 +1318,7 @@ void Model::LinearInterPolation(const std::vector<std::shared_ptr<Line>>& path){
     }
 }
 
+/*
 void Model::SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, std::vector<Eigen::Vector2d>& CurvePath){//凹型に関してはとりあえず虫
     if((int)GradationPoints.size() < 2)return;
     CurvePath.clear();
@@ -1404,6 +1394,7 @@ void Model::SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, 
         }
     }
 }
+*/
 
 void Model::setGradationValue(int val, const std::shared_ptr<Line>& refL, int InterpolationType, std::vector<Eigen::Vector2d>& CurvePath){
     if(Rulings.empty() || std::find(Rulings.begin(), Rulings.end(), refL) == Rulings.end()){qDebug()<<"no selected"; return;}
@@ -1428,7 +1419,7 @@ void Model::setGradationValue(int val, const std::shared_ptr<Line>& refL, int In
         //if(GradationPoints.size() == 0)GradationPoints.push_back(refL);
         //if(std::find(GradationPoints.begin(), GradationPoints.end(), refL) == GradationPoints.end())GradationPoints.push_back(refHE);
         //std::vector<Line*> path = makePath();
-        SplineInterPolation(Rulings, CurvePath);
+        //SplineInterPolation(Rulings, CurvePath);
     }
     return;
 }

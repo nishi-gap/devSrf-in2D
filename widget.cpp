@@ -408,7 +408,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     }
 
     if(e->key() == Qt::Key_5){
-        std::shared_ptr<FoldLine> FldLine = ui->glWid2dim->model.back()->FL.back();
+        std::shared_ptr<FoldLine> FldLine = ui->glWid2dim->model.back()->refFL;
         std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
 
         FldLine->applyAAAMethod(Poly_V, IsStartEnd, FldLine->a_flap);
@@ -426,7 +426,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 6, IsStartEnd, OptimizeAngleFor3Rulings);
     }
     if(e->key() == Qt::Key_8){
-        std::shared_ptr<FoldLine> FldLine = ui->glWid2dim->model.back()->FL.back();
+        std::shared_ptr<FoldLine> FldLine = ui->glWid2dim->model.back()->refFL;
         std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
 
         bool res = res = FldLine->Optimization_FlapAngle(Poly_V, wb, wp, 0, 1, IsStartEnd, 0, OptimizeAngleFor3Rulings);
@@ -521,7 +521,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     }
 
     if(e->key() == Qt::Key_H){
-        ui->glWid2dim->model.back()->InterpolationTNB();
+        //ui->glWid2dim->model.back()->InterpolationTNB();
     }
     if(e->key() == Qt::Key_I){
         qDebug()<<"simple smooth surface for last added folding curve.";
@@ -839,7 +839,9 @@ void MainWindow::exportobj(){
     if(!(ui->glWid2dim->model.back()->FL.empty() || ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty())){
         for(auto&FL: ui->glWid2dim->model.back()->FL){
             if(FL->FoldingCurve.empty())continue;
-            for(auto itr = FL->FoldingCurve.begin() + 1; itr != FL->FoldingCurve.end() - 1; itr++){
+            std::vector<std::shared_ptr<Vertex4d>> ValidFC;
+            for(auto&fc: FL->FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
+            for(auto itr = ValidFC.begin() + 1; itr != ValidFC.end() - 1; itr++){
                 Eigen::Vector3d et = (*itr)->second->p3 - (*itr)->first->p3, er = (*(itr - 1))->first->p3 - (*itr)->first->p3, eb = (*itr)->third->p3 - (*itr)->first->p3, el = (*(itr + 1))->first->p3 - (*itr)->first->p3;
                 et = et.normalized(); er = er.normalized(); eb = eb.normalized(); el = el.normalized();
                 double phi1 = std::acos(et.dot(er)), phi2 = std::acos(et.dot(el)), phi3 = std::acos(eb.dot(el)), phi4 = std::acos(eb.dot(er));
@@ -851,7 +853,9 @@ void MainWindow::exportobj(){
     QuantitativeResult << "\nPlanarity(adjacent ruling)\n" ;
     for(auto&FL: ui->glWid2dim->model.back()->FL){
         if(FL->FoldingCurve.empty())continue;
-        for(auto itr = FL->FoldingCurve.begin() + 1; itr != FL->FoldingCurve.end() - 2; itr++){
+        std::vector<std::shared_ptr<Vertex4d>> ValidFC;
+        for(auto&fc: FL->FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
+        for(auto itr = ValidFC.begin() + 1; itr != ValidFC.end() - 2; itr++){
             double l_avg = (((*itr)->first->p3 - (*(itr+1))->second->p3).norm() + ((*itr)->second->p3 - (*(itr+1))->first->p3).norm())/2.0;
             double d;
             Eigen::Vector3d u1 = ((*itr)->first->p3 - (*(itr+1))->second->p3).normalized(), u2 = ((*itr)->second->p3-  (*(itr+1))->first->p3).normalized();
@@ -862,15 +866,17 @@ void MainWindow::exportobj(){
                 auto u = u1.cross(u2);
                 d = (u.dot((*(itr+1))->second->p3 - (*(itr+1))->first->p3))/(u1.cross(u2)).norm();
             }
-            QuantitativeResult << d/l_avg << ", ";
+            QuantitativeResult << std::abs(d/l_avg) << ", ";
         }
     }
     
     QuantitativeResult << "\n Planarity of FoldingCurve\n" ;
     for(auto&FL: ui->glWid2dim->model.back()->FL){
         if(FL->FoldingCurve.empty())continue;
+        std::vector<std::shared_ptr<Vertex4d>> ValidFC;
+        for(auto&fc: FL->FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
         Eigen::Vector3d e, e2, N;
-        for(auto itr = FL->FoldingCurve.begin() + 1; itr != FL->FoldingCurve.end() - 1; itr++){
+        for(auto itr = ValidFC.begin() + 1; itr != ValidFC.end() - 1; itr++){
             e = ((*(itr - 1))->first->p3 - (*itr)->first->p3).normalized();
             e2 = ((*(itr + 1))->first->p3 - (*itr)->first->p3).normalized();
             if(itr == FL->FoldingCurve.begin() + 1){

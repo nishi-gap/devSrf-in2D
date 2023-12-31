@@ -2,6 +2,7 @@
 #define MAKE3D_H
 
 #include "foldline.h"
+#include "transform.h"
 
 class Model: public std::enable_shared_from_this<Model>{
 public:
@@ -16,7 +17,7 @@ public:
 
     std::vector<int> refCrv;//0:未参照　1:参照
     std::shared_ptr<FoldLine> refFL;
-    NTree<std::shared_ptr<FoldLine>> NTree_fl;
+    NTree NTree_fl;
     int crvPtNum;
     int befFaceNum;
     int FoldCurveIndex;
@@ -26,10 +27,9 @@ public:
     std::shared_ptr<Model> stashcurrentstate();
     std::shared_ptr<Model> deepCopy();
     void detectClickedObj(const QPointF& curPos);//将来的にはfoldlineだけでなくほかのオブジェクトも判定して操作できるようにしたい
-    void AffinTrans(const QPointF& befPos, const QPointF& curPos);
-    void AffinScale(const QPointF& basePos, const QPointF& befPos, const QPointF& curPos);
-    void AffinRotate(const QPointF& basePos, const QPointF& befPos, const QPointF& curPos);
-    //void deform(std::vector<std::vector<Eigen::Vector3d>>& output, std::vector<ruling*>& Rulings, Eigen::Vector3d& center);
+
+    void AffinTranse_Crease(int type, const QPointF& befPos, const QPointF& curPos, const QPointF& basePos);
+
     void deform();
     void Initialize();
 
@@ -59,7 +59,7 @@ public:
     bool Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double warea, double wsim, double bndrange, int alg, bool IsStartEnd);
     void modifyFoldingCurvePositionOn3d();
 
-    void InterpolationTNB();
+    //void InterpolationTNB();
 
     void SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::shared_ptr<Line>>& Surface, const std::vector<std::shared_ptr<Line>>& Rulings, bool IsupdateEndPt);
     void SimplifyModel(double tol);
@@ -92,7 +92,7 @@ private:
     void initializeSurfaceVertices();
     bool SplitRulings(int dim);
     void LinearInterPolation(const std::vector<std::shared_ptr<Line>>& path);
-    void SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, std::vector<Eigen::Vector2d>& CurvePath);
+    //void SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, std::vector<Eigen::Vector2d>& CurvePath);
 
     inline void clear();
 
