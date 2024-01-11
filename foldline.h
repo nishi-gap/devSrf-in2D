@@ -63,6 +63,7 @@ public:
     void revisecrossedruling(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void drawRulingInAllAngles(std::vector<std::array<Eigen::Vector3d, 2>>& _Rulings);
 
+    void test_rotate(double a);
     void FittingEndPoint_flattencurve(const Eigen::Vector3d& initRight, const Eigen::Vector3d& initLeft);
     std::vector<std::vector<std::shared_ptr<Vertex>>> CalclateRegressionCurve(double a, const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool IsWriteCSV, bool IsStartEnd, std::vector<std::vector<std::shared_ptr<Vertex>>>& Tri_fixside);
 private:

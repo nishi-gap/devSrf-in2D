@@ -2770,35 +2770,58 @@ struct PolyCurveOn2D
 
 std::vector<Eigen::Vector3d> RotatePolyCurve(double ro, const Eigen::Vector3d v, const std::vector<std::shared_ptr<Vertex4d>>& ValidFC, const std::vector<double>& Phi,
                           const Eigen::Vector3d& tip, const Eigen::Vector3d& tar, double& error){
-    auto crosspoint_2vec = [&](const Eigen::Vector3d& v1, const Eigen::Vector3d& p1, const Eigen::Vector3d& v2, const Eigen::Vector3d& p2){
+    auto crosspoint_2vec = [&](const Eigen::Vector3d& v1, const Eigen::Vector3d& p1, const Eigen::Vector3d& v2, const Eigen::Vector3d& p2)->Eigen::Vector3d{
         Eigen::Matrix2d A; A(0,0) = v1.x(); A(0,1) = -v2.x(); A(1,0) = v1.y(); A(1,1) = -v2.y();
         Eigen::Vector2d b; b(0) = (p2.x() - p1.x()); b(1) = (p2.y() - p1.y());
         Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
+        if(x(0) < 0)return Eigen::Vector3d(0,0,-1);//x(0) < 0の時はcrease上のベクトルの向きと反対→ありえない
         return x(0)*v1 + p1;
     };
-    std::vector<Eigen::Vector3d> Vertices(ValidFC.size());  Vertices[0] = tip;
-    Eigen::Vector3d v2d = Eigen::AngleAxisd(ro, Eigen::Vector3d(0,0,-1))*v;
-    Vertices[1] = crosspoint_2vec(v2d, tip, (ValidFC[1]->first->p - ValidFC[1]->third->p), ValidFC[1]->third->p);
+    error = 1e+3;
+    std::vector<Eigen::Vector3d> Vertices(ValidFC.size());
+    for(int i = 0; i < (int)Vertices.size(); i++)Vertices[i] = ValidFC[i]->first->p;
+    Vertices[0] = tip;
+    Eigen::Vector3d v2d = Eigen::AngleAxisd(ro, Eigen::Vector3d(0,0,1))*v;
+    Eigen::Vector3d res = crosspoint_2vec(v2d, tip, (ValidFC[1]->first->p - ValidFC[1]->third->p), ValidFC[1]->third->p);
+    if(res.z() == -1)return Vertices;
+    Vertices[1] = res;
     for(int i = 1; i <= (int)Phi.size(); i++){
-        Eigen::AngleAxisd R = Eigen::AngleAxisd(Phi[i-1], Eigen::Vector3d(0,0,-1));
+        Eigen::AngleAxisd R = Eigen::AngleAxisd(Phi[i-1], Eigen::Vector3d(0,0,1));
         v2d = R * (Vertices[i-1] - Vertices[i]);
-        Vertices[i+1] = crosspoint_2vec(v2d, Vertices[i], (ValidFC[i+1]->first->p - ValidFC[i+1]->third->p), ValidFC[i+1]->third->p);
+        res = crosspoint_2vec(v2d, Vertices[i], (ValidFC[i+1]->first->p - ValidFC[i+1]->third->p), ValidFC[i+1]->third->p);
+        if(res.z() == -1)return Vertices;
+        Vertices[i+1] = res;
     }
     error = (tar - Vertices.back()).norm();
+
     return Vertices;
 };
 
 double ObjFunc_FittingPoint(const std::vector<double> &X, std::vector<double> &grad, void* f_data){
     PolyCurveOn2D *data = (PolyCurveOn2D *)f_data;
     double w = 1e-4, fp = 0, fm = 0, f = 0;
+    //シグモイド関数とReLUの線形和で定義したコスト関数(端点が探索範囲を超えないようにするため)
+    //探索の許容範囲の評価を内積で判定, 上限下限の許容はthで定義
+    auto CostFunc = [](const Eigen::Vector3d& tar, const Eigen::Vector3d& p, const Eigen::Vector3d& top,
+                       const Eigen::Vector3d& btm, const Eigen::Vector3d& tip)->double{
+        Eigen::Vector3d e_top = (top - tip).normalized(), e_btm = (btm - tip).normalized(), e_tar = (tar - tip).normalized();
+        double x = e_tar.dot((p - tip).normalized()),th_top = e_top.dot(e_tar),th_btm = e_btm.dot(e_tar);
+        double f_top = 1.0/(1 + std::exp(-(th_top - x))); f_top += (x < th_top)? th_top - x: 0;
+        double f_btm = 1.0/(1 + std::exp(-(th_btm - x))); f_btm += (x < th_top)? th_btm - x: 0;
+        return f_top + f_btm;
+    };
+    std::vector<Eigen::Vector3d> v;
     if(!grad.empty()){
-        RotatePolyCurve(X[0] + eps, data->v, data->ValidFC, data->Phi, data->tip, data->tar, fp);
-        RotatePolyCurve(X[0] - eps, data->v, data->ValidFC, data->Phi, data->tip, data->tar, fm);
-        grad[0] = w*(fp - fm)/(2.0*eps);
+        v = RotatePolyCurve(X[0] + eps, data->v, data->ValidFC, data->Phi, data->tip, data->tar, fp);
+        double hp = CostFunc(data->tar, v.back(), data->ValidFC.back()->second->p, data->ValidFC.back()->third->p, data->tip);
+        v = RotatePolyCurve(X[0] - eps, data->v, data->ValidFC, data->Phi, data->tip, data->tar, fm);
+        double hm = CostFunc(data->tar, v.back(), data->ValidFC.back()->second->p, data->ValidFC.back()->third->p, data->tip);
+        grad[0] = (w*fp + hp - w*fm - hm)/(2.0*eps);
     }
-    RotatePolyCurve(X[0], data->v, data->ValidFC, data->Phi, data->tip, data->tar, f);
-    qDebug()<<"f = " << f;
-    return w*f;
+    v = RotatePolyCurve(X[0], data->v, data->ValidFC, data->Phi, data->tip, data->tar, f);
+    double h = CostFunc(data->tar, v.back(), data->ValidFC.back()->second->p, data->ValidFC.back()->third->p, data->tip);
+    qDebug()<<"f = " << f << " , h = " << h;
+    return (w*f + h);
 }
 
 void FoldLine::FittingEndPoint_flattencurve(const Eigen::Vector3d& initRight, const Eigen::Vector3d& initLeft){
@@ -2815,7 +2838,7 @@ void FoldLine::FittingEndPoint_flattencurve(const Eigen::Vector3d& initRight, co
         Eigen::Vector3d axis = (ValidFC[i]->third->p - ValidFC[i]->first->p).normalized();
         double phi4 = (e.dot(axis) < -1)? std::numbers::pi: (e.dot(axis) > 1)? 0: std::acos(e.dot(axis));
         double phi3 = (e2.dot(axis) < -1)? std::numbers::pi: (e2.dot(axis) > 1)? 0: std::acos(e2.dot(axis));
-        Phis[i-1] = 2.0*std::numbers::pi - phi3 - phi4;
+        Phis[i-1] =  phi3 + phi4;
     }
     std::ofstream ofs;
     std::string file = "./Optimization/angle_validation.csv";
@@ -2823,7 +2846,8 @@ void FoldLine::FittingEndPoint_flattencurve(const Eigen::Vector3d& initRight, co
     for(double p = -180; p <= 180; p += 1e-2){
         double err = -1;
         RotatePolyCurve(MathTool::deg2rad(p), v2d, ValidFC, Phis, initRight, initLeft, err);
-        ofs << MathTool::deg2rad(p) << ", " << p << " ," << err << std::endl;
+        std::string err_str = (err == -1)? "": std::to_string(err);
+        ofs << MathTool::deg2rad(p) << ", " << p << " ," << err << "," <<err_str << std::endl;
     }ofs.close();
 
     ValidFC[0]->first->p = initRight;
@@ -2832,7 +2856,7 @@ void FoldLine::FittingEndPoint_flattencurve(const Eigen::Vector3d& initRight, co
     for(int i = 0; i < (int)ValidFC.size(); i++) ValidFC[i]->first->p = vertices[i];
     PolyCurveOn2D data = {ValidFC, Phis, v2d, initRight, initLeft};
     nlopt::opt opt;
-    opt = nlopt::opt(nlopt::LD_AUGLAG, 1);
+    opt = nlopt::opt(nlopt::LD_LBFGS, 1);
     opt.set_min_objective(ObjFunc_FittingPoint, &data);
     opt.set_lower_bounds(-std::numbers::pi); opt.set_upper_bounds(std::numbers::pi);
     opt.set_maxtime(3.0); opt.set_ftol_rel(1e-8);
@@ -2852,5 +2876,29 @@ void FoldLine::FittingEndPoint_flattencurve(const Eigen::Vector3d& initRight, co
     vertices = RotatePolyCurve(X[0], v2d, ValidFC, Phis, initRight, initLeft, err);
     qDebug()<< "final ro = " << MathTool::rad2deg(X[0]);
     for(int i = 0; i < (int)ValidFC.size(); i++) ValidFC[i]->first->p = vertices[i];
+}
+
+void FoldLine::test_rotate(double a){
+    Eigen::Vector3d e, e2;
+    for(auto&v: FoldingCurve)v->first->p = v->first->p2_ori;
+    //初期ベクトルv0と折れ線の角度を保持
+    Eigen::Vector3d v2d = (FoldingCurve[1]->first->p - FoldingCurve[0]->first->p);
+    std::vector<double> Phis(static_cast<int>(FoldingCurve.size())-2);
+    for(int i = 1; i < (int)FoldingCurve.size()-1; i++){
+        e = (FoldingCurve[i-1]->first->p - FoldingCurve[i]->first->p).normalized(); e2 =  (FoldingCurve[i+1]->first->p - FoldingCurve[i]->first->p).normalized();
+        Eigen::Vector3d axis = (FoldingCurve[i]->third->p - FoldingCurve[i]->first->p).normalized();
+        double phi4 = (e.dot(axis) < -1)? std::numbers::pi: (e.dot(axis) > 1)? 0: std::acos(e.dot(axis));
+        double phi3 = (e2.dot(axis) < -1)? std::numbers::pi: (e2.dot(axis) > 1)? 0: std::acos(e2.dot(axis));
+        Phis[i-1] = phi3 + phi4;
+    }
+    FoldingCurve[0]->first->p = FoldingCurve[0]->first->p2_ori;
+    double err = -1;
+    auto vertices = RotatePolyCurve(a, v2d, FoldingCurve, Phis, FoldingCurve[0]->first->p2_ori, FoldingCurve.back()->first->p2_ori, err);
+    e = (vertices.back() - FoldingCurve.front()->first->p).normalized();
+    e2 = (FoldingCurve.back()->first->p - FoldingCurve.front()->first->p).normalized();
+    double res = std::acos(e.dot(e2));
+    for(int i = 0; i < (int)FoldingCurve.size(); i++) FoldingCurve[i]->first->p = vertices[i];
+
+    qDebug() << "input " << MathTool::rad2deg(a) << " , result " << MathTool::rad2deg(res) << " , error " << err;
 }
 

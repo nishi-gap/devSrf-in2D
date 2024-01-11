@@ -17,6 +17,7 @@ CONFIG(release, debug|release) {
 
 SOURCES += \
     cbox.cpp \
+    fitting_plane.cpp \
     foldline.cpp \
     glwidget_2d.cpp \
     glwidget_3d.cpp \
@@ -32,6 +33,7 @@ SOURCES += \
 
 HEADERS += \
     cbox.h \
+    fitting_plane.h \
     foldline.h \
     glwidget_2d.h \
     glwidget_3d.h \

@@ -328,7 +328,8 @@ void GLWidget_2D::changeflapgnle(double val, bool begin_center){
     //if(model.back()->Faces.size() < 2 || IsStop4Debug || model.back()->FL.empty())return;
     if(model.back()->FL.empty())return;
     if(model.back()->FL.empty())model.back()->FL.push_back(std::make_shared<FoldLine>(PaintTool::FoldLine_test) );
-    model.back()->applyAAAMethod(val, begin_center);
+    //model.back()->applyAAAMethod(val, begin_center);
+    model.back()->FL[0]->test_rotate(val);
     emit foldingSignals();
     update();
 }
@@ -525,10 +526,10 @@ void GLWidget_2D::paintGL(){
                 glLineWidth(rulingWidth);
                 double color = getcolor(model.back()->ColorPt.color, model.back()->ColorPt.angle, (*itr_r)->color/255.0);
                 if(color > 1e-3){//mount
-                    if(!IsMVcolor_binary)glColor3d(1,1.0 - color,1.0 - color);
+                    if(!IsMVcolor_binary)glColor4d(1, 0, 0, color);
                     else glColor3d(1,0,0);
                 }else if(color < -1e-3){//valley
-                    if(!IsMVcolor_binary)glColor3d(1.0 - color,1.0 - color,1);
+                    if(!IsMVcolor_binary)glColor4d(0, 0, 1, -color);
                     else glColor3d(0,0,1);
                 }else{
                     if(IsEraseNonFoldEdge && (*itr_r)->et == EdgeType::r)continue;

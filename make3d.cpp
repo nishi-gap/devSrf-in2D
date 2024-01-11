@@ -1043,6 +1043,11 @@ bool Model::SplitRulings(int dim){
     return true;
 }
 
+void Model::flatten_lsp(std::shared_ptr<FoldLine>& FldLine){
+    flatten_lsp(FldLine);
+}
+
+
 void Model::FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine, int alg){
     //隣接する頂点のうちthirdあるいはrulingのものを返す
     auto findPoint = [&](const std::shared_ptr<Vertex>& v){
@@ -1099,7 +1104,7 @@ void Model::FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine, int alg){
     }
 
     if(alg == 2){
-
+        /*
         double phi = 0.0; Eigen::Vector3d axis = Eigen::Vector3d(0,0,1);
         for(int j = 0; j < 1; j++){
             Eigen::AngleAxisd R = Eigen::AngleAxisd(phi, axis);
@@ -1127,8 +1132,8 @@ void Model::FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine, int alg){
             e = (initLeft - initRight).normalized(); e2 = (ValidFC.back()->first->p - initRight).normalized();
             phi = (e.dot(e2) < -1)? std::numbers::pi: (e.dot(e2) > 1)? 0: std::acos(e.dot(e2)); axis = (e2.cross(e)).normalized();
             qDebug()<<"phi = " << MathTool::rad2deg(phi);
-        }
-        //FldLine->FittingEndPoint_flattencurve(initRight, initLeft);
+        }*/
+        FldLine->FittingEndPoint_flattencurve(initRight, initLeft);
     }
     for(auto&v4d: ValidFC){
         double t = (v4d->first->p - v4d->third->p).norm();
@@ -1489,7 +1494,8 @@ std::array<int, 2> Model::searchPointIndex(QPointF pt, int& ptInd, int type){
     }
     for(int i = 0; i < (int)FL.size(); i++){
         for(int j = 0; j < (int)FL[i]->CtrlPts.size(); j++){
-            if(dist > (FL[i]->CtrlPts[j] - p).norm()){
+            double d = (FL[i]->CtrlPts[j] - p).norm();
+            if(dist > d){
                 dist = (FL[i]->CtrlPts[j] - p).norm();
                 ptInd = j; FoldCurveIndex = i;
             }

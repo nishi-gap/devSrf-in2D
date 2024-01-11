@@ -3,6 +3,7 @@
 
 #include "foldline.h"
 #include "transform.h"
+#include "fitting_plane.h"
 
 class Model: public std::enable_shared_from_this<Model>{
 public:
@@ -52,13 +53,14 @@ public:
     void applyFL();
     bool BendingModel(double wb, double wp, double warea, double wsim, int dim, double tol, double bndrange, int bendrank, int alg, bool IsStartEnd, bool OptimizeAngleFor3Rulings);//alg=0:ruling intersection, alg=1:regression curve
     void ChangeFoldLineState();
-    void FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine, int alg);
+
     int getLayerNum();
     void Interpolation(std::shared_ptr<FoldLine>& FldLine);
     void modify2Druling();
     bool Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double warea, double wsim, double bndrange, int alg, bool IsStartEnd);
     void modifyFoldingCurvePositionOn3d();
-
+    void FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine, int alg);
+    void flatten_lsp(std::shared_ptr<FoldLine>& FldLine);
     //void InterpolationTNB();
 
     void SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::shared_ptr<Line>>& Surface, const std::vector<std::shared_ptr<Line>>& Rulings, bool IsupdateEndPt);

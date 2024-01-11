@@ -521,6 +521,8 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     }
 
     if(e->key() == Qt::Key_H){
+        auto NewFL = ui->glWid2dim->model.back()->FL.back();
+        ui->glWid2dim->model.back()->flatten_lsp(NewFL);
         //ui->glWid2dim->model.back()->InterpolationTNB();
     }
     if(e->key() == Qt::Key_I){
