@@ -659,12 +659,12 @@ double Fconst_mixed(const std::vector<double> &X, std::vector<double> &grad, voi
         cb_Folding(FC, Poly_V, a, s);
         if(n > mid){
             if(n <= (int)FC.size() - 1){
-                fr += std::exp(fruling(FC[n - 1], FC[n - 2])); fc += Fconv(FC, BasePt, s, n - 1) - 1.0;
+                fr += std::exp(fruling(FC[n - 1], FC[n - 2])) - 1.0; fc += Fconv(FC, BasePt, s, n - 1);
             }
         }
         else{
             if(n >= 0){
-                fr += std::exp(calcCrossPt4Constraint(FC[n + 1], FC[n + 2])); fc += Fconv(FC, BasePt, n + 1, s) - 1.0;
+                fr += std::exp(fruling(FC[n + 1], FC[n + 2])) - 1.0; fc += Fconv(FC, BasePt, n + 1, s);
             }
         }
         return fr + fc;
@@ -676,10 +676,9 @@ double Fconst_mixed(const std::vector<double> &X, std::vector<double> &grad, voi
         double fp = func(X[0] + eps, od->FC, od->BasePt, od->Poly_V, od->a, od->ind_l, od->StartingIndex);
         double fm = func(X[0] - eps, od->FC, od->BasePt, od->Poly_V, od->a, od->ind_l, od->StartingIndex);
         grad[0] = (fp - fm)/(2.0*eps);
-        qDebug()<<"x + h = " << fp << " , x - h = " << fm;
     }
     update_Vertex(X[0], od->FC[od->ind_r], od->BasePt[od->ind_r]);
-    qDebug() <<"constraint = " << f  << " , " << grad[0];
+    qDebug() <<"constraint = " << f;
     return f;
 }
 
@@ -1247,46 +1246,41 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
                std::shared_ptr<Vertex4d> v4d = writeFC[i]->deepCopy(); v4d->addline(writeFC[i]->line_parent); FC4csv.push_back(v4d);
                X.push_back((writeFC[i]->first->p - writeFC[i]->third->p).norm());
            }
-           auto calcCrossPt4Constraint2 =[](const std::shared_ptr<Vertex4d>& x, const std::shared_ptr<Vertex4d>& x2){
-               Eigen::Vector3d e = (x->first->p3 - x2->first->p3).normalized();
-               double phi2 = std::acos((-e).dot((x->second->p3 - x->first->p3).normalized()));
-               double phi1 = std::acos(e.dot((x2->second->p3 - x2->first->p3).normalized()));
-               double d = (x->first->p3 - x2->first->p3).norm();
-               Eigen::Vector3d v = (x->second->p - x->first->p).normalized(), v2 = (x2->second->p - x2->first->p).normalized();
-               return v.dot(v2);
-               return std::sin(phi1)/(std::sin(phi1 + phi2)) * d;
+           auto calcCrossPt4Constraint2 = [](const std::shared_ptr<Vertex4d>& Vmove, const std::shared_ptr<Vertex4d>& Vfix){
+               Eigen::Matrix2d A; Eigen::Vector2d b;
+               A(0,0) = Vmove->first->p.x() - Vmove->second->p.x(); A(0,1) = -(Vfix->first->p.x() - Vfix->second->p.x());
+               A(1,0) = Vmove->first->p.y() - Vmove->second->p.y(); A(1,1) = -(Vfix->first->p.y() - Vfix->second->p.y());
+               b(0) = Vmove->first->p.x() - Vfix->first->p.x(); b(1) = Vmove->first->p.y() - Vfix->first->p.y();
+               Eigen::Vector2d ts = A.colPivHouseholderQr().solve(b);
+               return (ts(1) >= 1 || ts(1) <= 0)? 0.0: 1.0/std::abs(ts(1));
            };
            if(OptimizationAlgorithm == 0){
-                Eigen::Vector3d x1 = FC4csv[3]->first->p3, x2 = FC4csv[2]->first->p3, x3 = FC4csv[4]->first->p3;
-                Eigen::Vector3d p1 = FC4csv[3]->third->p3, p2 = FC4csv[2]->third->p3, p3 = FC4csv[4]->third->p3;
+               int back = FC4csv.size() - 1;
+                Eigen::Vector3d x1 = FC4csv[back-1]->first->p3, x2 = FC4csv[back-2]->first->p3, x3 = FC4csv[back]->first->p3;
+                Eigen::Vector3d p1 = FC4csv[back-1]->third->p3, p2 = FC4csv[back-2]->third->p3, p3 = FC4csv[back]->third->p3;
                 Eigen::Vector3d l1 = (x1 - p1).normalized(),l2 = (x2 - p2).normalized(),l3 = (x3 - p3).normalized();
-                Eigen::Vector3d e2d = (FC4csv[2]->first->p - FC4csv[3]->first->p).normalized(), v2d = (FC4csv[2]->second->p - FC4csv[2]->first->p).normalized();
+                Eigen::Vector3d e2d = (FC4csv[back-2]->first->p - FC4csv[back-1]->first->p).normalized(), v2d = (FC4csv[back-2]->second->p - FC4csv[back-2]->first->p).normalized();
                Eigen::Vector3d e = (x2 - x1).normalized(),e2 = (x3 - x1).normalized();
                double beta = std::acos(e.dot(e2)), k = 2.0*std::numbers::pi - std::acos(e.dot(-l1)) - std::acos(e2.dot(-l1));
-
-               double phi2 = std::acos(((FC4csv[2]->second->p3 - FC4csv[2]->first->p3).normalized()).dot(-e));
-
+               double phi2 = std::acos(((FC4csv[back-2]->second->p3 - FC4csv[back-2]->first->p3).normalized()).dot(-e));
                qDebug()<<"geometory parameter : s = " << X.back() << "; a = " << a_flap << "; beta = " << beta << "; k = " << k << "; phi2 = " << phi2 << ";";
                qDebug()<<"l1 = {" << l1.x() <<" , " << l1.y() <<" , " << l1.z() << "}; l2 = {" << l2.x() << " , " << l2.y() << " , " << l2.z() << "}; l3 = {" << l3.x() << ", " << l3.y() << " , " << l3.z() << "}";
                qDebug()<<"p1 = {" << p1.x() <<" , " << p1.y() <<" , " << p1.z() << "}; p2 = {" << p2.x() << " , " << p2.y() << " , " << p2.z() << "}; p3 = {" << p3.x() << ", " << p3.y() << " , " << p3.z() << "}";
                qDebug()<<"x1 = {" << x1.x() <<" , " << x1.y() <<" , " << x1.z() << "}; x2 = {" << x2.x() << " , " << x2.y() << " , " << x2.z() << "}; x3 = {" << x3.x() << ", " << x3.y() << " , " << x3.z() << "}";
                qDebug()<<"e2d = {" << e2d.x() <<", " << e2d.y() << "};  v2d = {" << v2d.x() << ", " << v2d.y() <<"}";
-               std::ofstream ofs;
-               std::string file = "./Optimization/OptimizationVertex.csv";
-               ofs.open(file, std::ios::out); ofs << "t, t - x0, Erulig(no outline),Eruling,fconv,df \n";
+               std::ofstream ofs; std::string file = "./Optimization/OptimizationVertex.csv";
+               ofs.open(file, std::ios::out); ofs << "t, t - x0, Erulig(no outline),Eruling,df \n";
                double fr = 0.0;
-
                double t = X.back() - range;
                while(t <= X.back() + range){
                    update_Vertex(t, FC4csv.back(), FC4csv.back());
                    cb_Folding(FC4csv, Poly_V, a_flap, StartingIndex);
-                   double f = std::exp(calcCrossPt4Constraint(FC4csv[2],FC4csv[3]));
-                   double fr2 = calcCrossPt4Constraint2(FC4csv[2],FC4csv[3]);
-                   double k = RevisionVertices::getK(FC4csv[1]->first, FC4csv[2], FC4csv[3]->first),_k = RevisionVertices::getK(writeFC[0]->first, writeFC[1], writeFC[2]->first);
-                   double tmp = (k - std::numbers::pi)*(_k - std::numbers::pi);
-                   double fconv = (tmp < 0)? abs(tmp): 0;
+                   double f = std::exp(calcCrossPt4Constraint(FC4csv[back-2],FC4csv[back-1]));
+                   double fr2 = std::exp(calcCrossPt4Constraint2(FC4csv[back-1],FC4csv[back-2])) - 1;
+
                    double df = (t == X.back() - range)? 0: (f - fr);
-                   ofs << std::fixed << std::setprecision(15) << t  << "," << t - X.back() <<" , " << fr2 << ", " << f << " , " << fconv <<  " ," << df << std::endl;
+                   df = (t >= X.back())? f - fr: fr - f;
+                   ofs << std::fixed << std::setprecision(15) << t  << "," << t - X.back() <<" , " << fr2 << ", " << f <<  " ," << df << std::endl;
                    fr = f;
                    t += 1e-4;
                }
@@ -1297,8 +1291,8 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
 
        //マルチスレッドのためにvoid関数でまとめておく
        std::mutex mtx_; // 排他制御用ミューテックス
-       //std::thread th_csv(WriteCSV);
-       //th_csv.join();
+       std::thread th_csv(WriteCSV);
+       th_csv.join();
     }
 
     std::vector<Eigen::Vector3d> initX(ValidFC.size());
@@ -1367,15 +1361,14 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
         RevisionVertices::ObjData_v od = {a_flap, FC, Poly_V, mid};
         od.AddBasePt(ValidFC);
         od.AddWeight(warea, wsim,0,0);
-        opt = nlopt::opt(nlopt::LD_MMA, 1);
+        opt = nlopt::opt(nlopt::LD_SLSQP, 1);
         opt.add_inequality_constraint(Fconst_mixed, &od);
         opt.set_min_objective(ObjFunc_Vertex, &od);
-
         od.SetCrossedIndex(ind_l, ind_l);
         double update_l = apply_optimization(opt, ind_l, step);
         update_Vertex(update_l, ValidFC[ind_l], ValidFC[ind_l]);
 
-        opt = nlopt::opt(nlopt::LD_MMA, 1);
+        opt = nlopt::opt(nlopt::LN_COBYLA, 1);
         opt.add_inequality_constraint(Fconst_mixed, &od);
         opt.set_min_objective(ObjFunc_Vertex, &od);
         od.SetCrossedIndex(ind_r, ind_r);
