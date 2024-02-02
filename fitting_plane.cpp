@@ -17,7 +17,7 @@ Eigen::Vector3d find_plane(const std::vector<Eigen::Vector3d>& X, Eigen::Vector3
     return N;
 }
 
-void flatten_lsp(std::shared_ptr<FoldLine>& FldLine){
+void _flatten_lsp(std::shared_ptr<FoldLine>& FldLine){
     std::vector<Eigen::Vector3d> data;
     std::vector<std::shared_ptr<Vertex4d>> ValidFC;
     for(auto&v: FldLine->FoldingCurve){
@@ -26,26 +26,38 @@ void flatten_lsp(std::shared_ptr<FoldLine>& FldLine){
             ValidFC.push_back(v);
         }
     }
-    Eigen::Vector3d com, o, e, e2;
-    Eigen::Vector3d N = find_plane(data, com);
-    std::shared_ptr<Vertex> v, p;
+    //N,o: 面の法線ベクトルと点、V,p:rulingのベクトルと通る点
+    auto PointOnPlaneAndLine = [](Eigen::Vector3d N, const Eigen::Vector3d& o, Eigen::Vector3d V, const Eigen::Vector3d& p){
+        N = N.normalized(); V = V.normalized();
+        double t = N.dot(o - p)/N.dot(V);
+        return t*V + p;
+    };
     int mid = data.size()/2;
-    for(int i = mid-1; i > 0; i--){
-        v = ValidFC[i-1]->first;
-        p = ValidFC[i-1]->third;
-        o = ValidFC[i+1]->first->p3; e = (ValidFC[i]->first->p3 - o), e2 = (ValidFC[i+2]->first->p3 - o);
-        Eigen::Vector3d PointOnPlane = MathTool::CrossPointLineAndPlane(e, e2, o , p->p3, v->p3);
-        ValidFC[i-1]->first->p3 = PointOnPlane;
-        ValidFC[i-1]->first->p = (PointOnPlane - p->p3).norm()*(v->p - p->p).normalized() + p->p;
+    Eigen::Vector3d com, o = ValidFC[mid]->first->p3;
+    Eigen::Vector3d N = find_plane(data, com);
+    Eigen::Vector3d V, p;
+    for(int i = 0; i < (int)ValidFC.size(); i++){
+        V = ValidFC[i]->first->p3 - ValidFC[i]->third->p3;
+        p = ValidFC[i]->third->p3;
+        Eigen::Vector3d PointOnPlane = PointOnPlaneAndLine(N, com, V, p);
+        ValidFC[i]->first->p3 = PointOnPlane;
+        ValidFC[i]->first->p = (PointOnPlane - p).norm()*(ValidFC[i]->first->p - ValidFC[i]->third->p).normalized() + ValidFC[i]->third->p;
+    }
+    return;
+    for(int i = mid-1; i >= 0; i--){
+        V = ValidFC[i]->first->p3 - ValidFC[i]->third->p3;
+        p = ValidFC[i]->third->p3;
+        Eigen::Vector3d PointOnPlane = PointOnPlaneAndLine(N, o, V, p);
+        ValidFC[i]->first->p3 = PointOnPlane;
+        ValidFC[i]->first->p = (PointOnPlane - p).norm()*(ValidFC[i]->first->p - ValidFC[i]->third->p).normalized() + ValidFC[i]->third->p;
     }
 
     //左側
-    for(int i = mid+1; i < (int)ValidFC.size()-1; i++){
-        v = ValidFC[i+1]->first;
-        p = ValidFC[i+1]->third;
-        o = ValidFC[i-1]->first->p3; e = (ValidFC[i]->first->p3 - o).normalized(), e2 = (ValidFC[i-2]->first->p3 - o).normalized();
-        Eigen::Vector3d PointOnPlane = MathTool::CrossPointLineAndPlane(e, e2, o , p->p3, v->p3);
-        ValidFC[i+1]->first->p3 = PointOnPlane;
-        ValidFC[i+1]->first->p = (PointOnPlane - p->p3).norm()*(v->p - p->p).normalized() + p->p;
+    for(int i = mid+1; i < (int)ValidFC.size(); i++){
+        V = ValidFC[i]->first->p3 - ValidFC[i]->third->p3;
+        p = ValidFC[i]->third->p3;
+        Eigen::Vector3d PointOnPlane = PointOnPlaneAndLine(N, o, V, p);
+        ValidFC[i]->first->p3 = PointOnPlane;
+        ValidFC[i]->first->p = (PointOnPlane - p).norm()*(ValidFC[i]->first->p - ValidFC[i]->third->p).normalized() + ValidFC[i]->third->p;
     }
 }

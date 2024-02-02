@@ -184,6 +184,14 @@ void MainWindow::sendFoldingParam(double &tol, bool &begincenter){
 }
 
 void MainWindow::changeToleranceValue_Slider(int val){
+    double t = (double)val/100.0;
+    ui->glWid2dim->model.front()->movevertex(ui->glWid2dim->model.back()->FL[0], t);
+    ui->TolValue->setValue(t);
+
+    ui->glWid2dim->update();
+    ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
+    ui->glWid3dim->update();
+    return;
     double maxSpin = ui->TolValue->maximum(), maxSlider = ui->ToleranceValue->maximum();
     if(ui->glWid2dim->model.back()->FL.empty() || ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty())return;
     if(!ui->BinaryMVColor->isChecked())ui->BinaryMVColor->setChecked(true);

@@ -257,7 +257,7 @@ void Model::MakeTree(){
                             std::shared_ptr<Vertex> sec, thi;
                             if(UpVec.dot((l->v->p - l->o->p).normalized()) > 0){sec = l->v->deepCopy(); thi = l->o->deepCopy();}
                             else{sec = l->o->deepCopy(); thi = l->v->deepCopy();}
-                            std::shared_ptr<Vertex4d> v4d = std::make_shared<Vertex4d>(p, sec, thi); v4d->addline(l);
+                            std::shared_ptr<Vertex4d> v4d = std::make_shared<Vertex4d>(p, sec, thi); v4d->addline(thi, sec);
                             fl->FoldingCurve.push_back(v4d);
                         }
                     }
@@ -338,7 +338,7 @@ void Model::UpdateFLOrder(int dim){
                         std::shared_ptr<Vertex> sec, thi;
                         if(UpVec.dot((l->v->p - l->o->p).normalized()) > 0){sec = l->v->deepCopy(); thi = l->o->deepCopy();}
                         else{sec = l->o->deepCopy(); thi = l->v->deepCopy();}
-                        std::shared_ptr<Vertex4d> v4d = std::make_shared<Vertex4d>(p, sec, thi); v4d->addline(l);
+                        std::shared_ptr<Vertex4d> v4d = std::make_shared<Vertex4d>(p, sec, thi); v4d->addline(thi, sec);
                         fl->FoldingCurve.push_back(v4d);
                     }
 
@@ -711,6 +711,11 @@ void Model::Interpolation(std::shared_ptr<FoldLine>& FldLine){
     FldLine->SimpleSmooothSrf(Poly_V);
 }
 
+void Model::movevertex(std::shared_ptr<FoldLine>& FldLine, double t){
+    std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
+    FldLine->_movevertex(t, Poly_V);
+}
+
 bool Model::BendingModel(double wb, double wp, double warea, double wsim, int dim, double tol, double bndrange, int bendrank, int alg, bool IsStartEnd, bool OptimizeAngleFor3Rulings){
     static int AlgNum = 0;
     UpdateFLOrder(dim);
@@ -762,7 +767,7 @@ bool Model::BendingModel(double wb, double wp, double warea, double wsim, int di
             //return false;
             //cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum, OptimizeAngleFor3Rulings);//正しい第5引数はalgだけど検証用に1
             cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
-            cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 1, bndrange, warea, wsim);
+            cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 0, bndrange, warea, wsim);
             if(alg / 10 == 1){//shift key + 3のとき
                 cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
                 cur->data->CheckIsCrossedRulings();
@@ -1031,7 +1036,7 @@ bool Model::SplitRulings(int dim){
                 std::shared_ptr<Vertex> sec, thi;
                 if(UpVec.dot((r->v->p - r->o->p).normalized()) > 0){ sec = r->v->deepCopy(); thi = r->o->deepCopy();}
                 else{sec = r->o->deepCopy(); thi = r->v->deepCopy(); }
-                std::shared_ptr<Vertex4d> v4d = std::make_shared<Vertex4d>(p, sec, thi); v4d->addline(r);
+                std::shared_ptr<Vertex4d> v4d = std::make_shared<Vertex4d>(p, sec, thi); v4d->addline(thi, sec);
                 root->data->FoldingCurve.push_back(v4d);
             }
         }
@@ -1044,7 +1049,7 @@ bool Model::SplitRulings(int dim){
 }
 
 void Model::flatten_lsp(std::shared_ptr<FoldLine>& FldLine){
-    flatten_lsp(FldLine);
+    _flatten_lsp(FldLine);
 }
 
 
@@ -1437,7 +1442,7 @@ void Model::addRulings(){
     CrossDection4AllCurve();
     for(auto&c: crvs){
         for(auto&r: c->Rulings){
-            if(r->IsCrossed == -1){
+            if(r->IsCrossed == -1 || r->IsCrossed == 0){
                 this->Rulings.push_back(r);
             }
         }

@@ -601,8 +601,11 @@
      </item>
      <item>
       <widget class="QSlider" name="ToleranceValue">
+       <property name="minimum">
+        <number>-4000</number>
+       </property>
        <property name="maximum">
-        <number>10000</number>
+        <number>4000</number>
        </property>
        <property name="singleStep">
         <number>1</number>
@@ -617,8 +620,11 @@
        <property name="decimals">
         <number>4</number>
        </property>
+       <property name="minimum">
+        <double>-40.000000000000000</double>
+       </property>
        <property name="maximum">
-        <double>10.000000000000000</double>
+        <double>40.000000000000000</double>
        </property>
        <property name="singleStep">
         <double>0.010000000000000</double>
@@ -679,7 +685,7 @@
      <double>0.500000000000000</double>
     </property>
     <property name="maximum">
-     <double>10.000000000000000</double>
+     <double>40.000000000000000</double>
     </property>
     <property name="singleStep">
      <double>0.100000000000000</double>

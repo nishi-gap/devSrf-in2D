@@ -67,6 +67,7 @@ public:
     std::shared_ptr<Vertex> third;
     std::shared_ptr<Line> line_parent;
     void addline(std::shared_ptr<Vertex4d>& parent){line_parent = std::make_shared<Line>(parent->third, parent->second, EdgeType::r);};
+    void addline(std::shared_ptr<Vertex>& tip, std::shared_ptr<Vertex>& end){line_parent = std::make_shared<Line>(tip, end, EdgeType::r);}
     void addline(std::shared_ptr<Line>& L){line_parent = L;}
     Vertex4d(): first{nullptr}, second{nullptr}, third{nullptr} {}
     Vertex4d(CrvPt_FL v, Vertex v2, Vertex v3): first(std::make_shared<CrvPt_FL>(v)), second(std::make_shared<Vertex>(v2)), third(std::make_shared<Vertex>(v3)){}

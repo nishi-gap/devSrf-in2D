@@ -328,8 +328,8 @@ void GLWidget_2D::changeflapgnle(double val, bool begin_center){
     //if(model.back()->Faces.size() < 2 || IsStop4Debug || model.back()->FL.empty())return;
     if(model.back()->FL.empty())return;
     if(model.back()->FL.empty())model.back()->FL.push_back(std::make_shared<FoldLine>(PaintTool::FoldLine_test) );
-    //model.back()->applyAAAMethod(val, begin_center);
-    model.back()->FL[0]->test_rotate(val);
+    model.back()->applyAAAMethod(val, begin_center);
+    //model.back()->FL[0]->test_rotate(val);
     emit foldingSignals();
     update();
 }
@@ -536,6 +536,7 @@ void GLWidget_2D::paintGL(){
                     glColor3d(0,0,0);
                 }
             }else{ glLineWidth(1.f); glColor3d(0,0,0); }
+            if((*itr_r)->IsCrossed == 0)glColor3d(0,1,0);
             glBegin(GL_LINES);
             glVertex3d((*itr_r)->o->p.x(), (*itr_r)->o->p.y(),0);
             glVertex3d((*itr_r)->v->p.x(), (*itr_r)->v->p.y(),0);

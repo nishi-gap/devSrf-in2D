@@ -97,6 +97,8 @@ public:
     QDoubleSpinBox *TolValue;
     QPushButton *ReassinColorButton;
     QSpinBox *elimRuling;
+    QLabel *label_6;
+    QDoubleSpinBox *BoundaryRange;
     QLabel *label_2;
     QPushButton *startButton;
     QPushButton *switchDraw;
@@ -113,6 +115,10 @@ public:
     QCheckBox *developablityButton;
     QSpinBox *spinBox_bendcurve;
     QCheckBox *VisualizeRegCrv;
+    QDoubleSpinBox *TriAreaWeight;
+    QLabel *label_8;
+    QDoubleSpinBox *NormErrorWeight;
+    QLabel *label_7;
 
     void setupUi(QWidget *MainWindow)
     {
@@ -368,7 +374,7 @@ public:
         symmetryButton->setGeometry(QRect(10, 30, 111, 21));
         FoldLineBox = new QGroupBox(MainWindow);
         FoldLineBox->setObjectName("FoldLineBox");
-        FoldLineBox->setGeometry(QRect(680, 390, 131, 211));
+        FoldLineBox->setGeometry(QRect(670, 380, 131, 241));
         verticalLayoutWidget_5 = new QWidget(FoldLineBox);
         verticalLayoutWidget_5->setObjectName("verticalLayoutWidget_5");
         verticalLayoutWidget_5->setGeometry(QRect(10, 30, 114, 111));
@@ -387,7 +393,8 @@ public:
 
         ToleranceValue = new QSlider(verticalLayoutWidget_5);
         ToleranceValue->setObjectName("ToleranceValue");
-        ToleranceValue->setMaximum(10000);
+        ToleranceValue->setMinimum(-4000);
+        ToleranceValue->setMaximum(4000);
         ToleranceValue->setSingleStep(1);
         ToleranceValue->setOrientation(Qt::Horizontal);
 
@@ -396,7 +403,8 @@ public:
         TolValue = new QDoubleSpinBox(verticalLayoutWidget_5);
         TolValue->setObjectName("TolValue");
         TolValue->setDecimals(4);
-        TolValue->setMaximum(10.000000000000000);
+        TolValue->setMinimum(-40.000000000000000);
+        TolValue->setMaximum(40.000000000000000);
         TolValue->setSingleStep(0.010000000000000);
 
         verticalLayout_5->addWidget(TolValue);
@@ -406,7 +414,18 @@ public:
         ReassinColorButton->setGeometry(QRect(20, 150, 80, 18));
         elimRuling = new QSpinBox(FoldLineBox);
         elimRuling->setObjectName("elimRuling");
-        elimRuling->setGeometry(QRect(40, 180, 42, 25));
+        elimRuling->setGeometry(QRect(40, 170, 42, 25));
+        label_6 = new QLabel(FoldLineBox);
+        label_6->setObjectName("label_6");
+        label_6->setGeometry(QRect(10, 190, 101, 31));
+        BoundaryRange = new QDoubleSpinBox(FoldLineBox);
+        BoundaryRange->setObjectName("BoundaryRange");
+        BoundaryRange->setGeometry(QRect(30, 210, 62, 25));
+        BoundaryRange->setDecimals(1);
+        BoundaryRange->setMinimum(0.500000000000000);
+        BoundaryRange->setMaximum(40.000000000000000);
+        BoundaryRange->setSingleStep(0.100000000000000);
+        BoundaryRange->setValue(1.000000000000000);
         label_2 = new QLabel(MainWindow);
         label_2->setObjectName("label_2");
         label_2->setGeometry(QRect(1030, 490, 31, 16));
@@ -445,23 +464,23 @@ public:
         SimpleSmoothButton->setGeometry(QRect(1050, 550, 91, 21));
         BendWeightButton = new QDoubleSpinBox(MainWindow);
         BendWeightButton->setObjectName("BendWeightButton");
-        BendWeightButton->setGeometry(QRect(860, 400, 62, 22));
+        BendWeightButton->setGeometry(QRect(860, 380, 62, 22));
         BendWeightButton->setSingleStep(0.100000000000000);
-        BendWeightButton->setValue(0.100000000000000);
+        BendWeightButton->setValue(0.000000000000000);
         ParalellWeightButton = new QDoubleSpinBox(MainWindow);
         ParalellWeightButton->setObjectName("ParalellWeightButton");
-        ParalellWeightButton->setGeometry(QRect(980, 400, 62, 22));
+        ParalellWeightButton->setGeometry(QRect(990, 380, 62, 22));
         ParalellWeightButton->setSingleStep(0.100000000000000);
         ParalellWeightButton->setValue(0.000000000000000);
         label_4 = new QLabel(MainWindow);
         label_4->setObjectName("label_4");
-        label_4->setGeometry(QRect(820, 400, 41, 21));
+        label_4->setGeometry(QRect(820, 380, 41, 21));
         label_5 = new QLabel(MainWindow);
         label_5->setObjectName("label_5");
-        label_5->setGeometry(QRect(940, 400, 41, 21));
+        label_5->setGeometry(QRect(940, 380, 41, 21));
         ConnectEndPointBox = new QCheckBox(MainWindow);
         ConnectEndPointBox->setObjectName("ConnectEndPointBox");
-        ConnectEndPointBox->setGeometry(QRect(820, 420, 161, 21));
+        ConnectEndPointBox->setGeometry(QRect(880, 430, 161, 21));
         developablityButton = new QCheckBox(MainWindow);
         developablityButton->setObjectName("developablityButton");
         developablityButton->setGeometry(QRect(1070, 410, 121, 18));
@@ -471,6 +490,24 @@ public:
         VisualizeRegCrv = new QCheckBox(MainWindow);
         VisualizeRegCrv->setObjectName("VisualizeRegCrv");
         VisualizeRegCrv->setGeometry(QRect(1180, 390, 121, 22));
+        TriAreaWeight = new QDoubleSpinBox(MainWindow);
+        TriAreaWeight->setObjectName("TriAreaWeight");
+        TriAreaWeight->setGeometry(QRect(990, 410, 62, 22));
+        TriAreaWeight->setDecimals(1);
+        TriAreaWeight->setSingleStep(0.100000000000000);
+        TriAreaWeight->setValue(0.300000000000000);
+        label_8 = new QLabel(MainWindow);
+        label_8->setObjectName("label_8");
+        label_8->setGeometry(QRect(950, 400, 41, 21));
+        NormErrorWeight = new QDoubleSpinBox(MainWindow);
+        NormErrorWeight->setObjectName("NormErrorWeight");
+        NormErrorWeight->setGeometry(QRect(860, 410, 62, 22));
+        NormErrorWeight->setDecimals(1);
+        NormErrorWeight->setSingleStep(0.100000000000000);
+        NormErrorWeight->setValue(0.100000000000000);
+        label_7 = new QLabel(MainWindow);
+        label_7->setObjectName("label_7");
+        label_7->setGeometry(QRect(810, 400, 51, 21));
 
         retranslateUi(MainWindow);
 
@@ -523,6 +560,7 @@ public:
         addFL_bezier->setText(QCoreApplication::translate("MainWindow", "Add Bezier", nullptr));
         label_3->setText(QCoreApplication::translate("MainWindow", "tolerance", nullptr));
         ReassinColorButton->setText(QCoreApplication::translate("MainWindow", "Reassin color", nullptr));
+        label_6->setText(QCoreApplication::translate("MainWindow", "boundary range", nullptr));
         label_2->setText(QCoreApplication::translate("MainWindow", "alpha", nullptr));
         startButton->setText(QCoreApplication::translate("MainWindow", "start", nullptr));
         switchDraw->setText(QCoreApplication::translate("MainWindow", "switch", nullptr));
@@ -533,6 +571,8 @@ public:
         ConnectEndPointBox->setText(QCoreApplication::translate("MainWindow", "ConnectEndPoint", nullptr));
         developablityButton->setText(QCoreApplication::translate("MainWindow", "developability", nullptr));
         VisualizeRegCrv->setText(QCoreApplication::translate("MainWindow", "Regression Curve", nullptr));
+        label_8->setText(QCoreApplication::translate("MainWindow", "area", nullptr));
+        label_7->setText(QCoreApplication::translate("MainWindow", "distance", nullptr));
     } // retranslateUi
 
 };

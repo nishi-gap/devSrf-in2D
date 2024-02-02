@@ -61,6 +61,7 @@ public:
     void modifyFoldingCurvePositionOn3d();
     void FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine, int alg);
     void flatten_lsp(std::shared_ptr<FoldLine>& FldLine);
+    void movevertex(std::shared_ptr<FoldLine>& FldLine, double t);
     //void InterpolationTNB();
 
     void SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::shared_ptr<Line>>& Surface, const std::vector<std::shared_ptr<Line>>& Rulings, bool IsupdateEndPt);
