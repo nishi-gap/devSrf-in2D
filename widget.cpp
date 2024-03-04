@@ -109,6 +109,7 @@ MainWindow::MainWindow(QWidget *parent)
     //regression curve
     connect(ui->VisualizeRegCrv, &QCheckBox::clicked, this, &MainWindow::SwitchingVisualization_RegCurve);
 
+    connect(ui->cb_IgnoreTipRuling, &QCheckBox::clicked, this, &MainWindow::SwitchStateIgnoreTipRuling);
     CurvesNum[0] = MainWindow::CurvesNum[1] = MainWindow::CurvesNum[2] = MainWindow::CurvesNum[3] = 0;
     SelectedBtn = nullptr;
 
@@ -134,6 +135,12 @@ void MainWindow::SwitchingVisualization_RegCurve(){
         ui->glWid3dim->ReceiveRegressionCurve({}, {});
         ui->glWid2dim->ReceiveRegressionCurve({}, {});
     }
+}
+
+bool _IsIgnoreTipRuling = false;
+void MainWindow::SwitchStateIgnoreTipRuling(){
+    _IsIgnoreTipRuling = !_IsIgnoreTipRuling;
+    qDebug()<<"_IsIgnoreTipRuling is " << _IsIgnoreTipRuling;
 }
 
 void MainWindow::SymmetricConstraint(){ emit constraintType(0);}
@@ -207,6 +214,13 @@ void MainWindow::changeToleranceValue_Slider(int val){
 }
 
 void MainWindow::changeToleranceValue_Spin(double val){
+    ui->glWid2dim->model.front()->movevertex(ui->glWid2dim->model.back()->FL[0], val);
+    ui->ToleranceValue->setValue(val * 100);
+
+    ui->glWid2dim->update();
+    ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->FL, ui->glWid2dim->AllRulings);
+    ui->glWid3dim->update();
+    return;
     double maxSpin = ui->TolValue->maximum(), maxSlider = ui->ToleranceValue->maximum();
     if(ui->glWid2dim->model.back()->FL.empty() || ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty())return;
     if(!ui->BinaryMVColor->isChecked())ui->BinaryMVColor->setChecked(true);
@@ -223,11 +237,10 @@ void MainWindow::changeToleranceValue_Spin(double val){
 void MainWindow::StartOptimization(){
     if(ui->glWid2dim->model.back()->FL.empty() || ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty())return;
     double tol = ui->TolValue->value();
-    double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-    double warea = ui->TriAreaWeight->value(), wsim = ui->NormErrorWeight->value();
+    double wp = ui->RulingDirWeight->value(), wsim = ui->NormErrorWeight->value();
     double bndrange = ui->BoundaryRange->value();
     int layerNum = ui->glWid2dim->model.back()->getLayerNum();
-    ui->glWid2dim->model.back()->BendingModel(wb, wp, warea, wsim, 3, tol, bndrange, layerNum, 1, IsStartEnd, OptimizeAngleFor3Rulings);
+    ui->glWid2dim->model.back()->BendingModel(wp,wsim, 3, tol, bndrange, layerNum, 1, IsStartEnd, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);
     fold_Sm();
 
 }
@@ -235,11 +248,10 @@ void MainWindow::StartOptimization(){
 void MainWindow::BendCurve(int num){
     if(ui->glWid2dim->model.back()->FL.empty() || ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty())return;
     double tol = ui->TolValue->value();
-    double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
-    double warea = ui->TriAreaWeight->value(), wsim = ui->NormErrorWeight->value();
+    double wp = ui->RulingDirWeight->value(),wsim = ui->NormErrorWeight->value();
     double bndrange = ui->BoundaryRange->value();
     qDebug() << "the number of bend curve is " << num;
-    ui->glWid2dim->model.back()->BendingModel(wb, wp,warea, wsim, 3, tol, bndrange, num, 1, IsStartEnd ,OptimizeAngleFor3Rulings);
+    ui->glWid2dim->model.back()->BendingModel(wp,wsim, 3, tol, bndrange, num, 1, IsStartEnd ,OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);
     fold_Sm();
 }
 
@@ -373,20 +385,21 @@ void MainWindow::ReassinColor(){
 void MainWindow::keyPressEvent(QKeyEvent *e){
     ui->glWid3dim->receiveKeyEvent(e);
     double bndrange = ui->BoundaryRange->value();
-    double warea = ui->TriAreaWeight->value(), wsim = ui->NormErrorWeight->value();
-    double wb = ui->BendWeightButton->value(), wp = ui->ParalellWeightButton->value();
+    double wsim = ui->NormErrorWeight->value(), wp = ui->RulingDirWeight->value();
     int layerNum = ui->glWid2dim->model.back()->getLayerNum();
     int dim = 3;
 
     if(e->key() == Qt::Key_0){
+         std::shared_ptr<FoldLine> FldLine = ui->glWid2dim->model.back()->refFL;
+         if(FldLine == nullptr)return;
          qDebug()<<"optimization for last adding folding curve";
-         ui->glWid2dim->model.back()->FL.back()->Optimization_FlapAngle(ui->glWid2dim->model.back()->outline->vertices,  wb,  wp,  0,  1,  IsStartEnd, 0, OptimizeAngleFor3Rulings);
+         FldLine->Optimization_FlapAngle(ui->glWid2dim->model.back()->outline->vertices,  wp,  wsim,  0,  1,  IsStartEnd, 0, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);
     }
     if(e->key() == Qt::Key_1){
         qDebug() <<"use ruling intersection";
         if(ui->glWid2dim->model.back()->FL.empty() || ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty())return;
         double tol = ui->TolValue->value();
-        ui->glWid2dim->model.back()->BendingModel(wb, wp, warea, wsim, dim, tol, bndrange, layerNum, 0, IsStartEnd, OptimizeAngleFor3Rulings);
+        ui->glWid2dim->model.back()->BendingModel(wp, wsim, dim, tol, bndrange, layerNum, 0, IsStartEnd, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);
         fold_Sm();
         qDebug()<<"/////////////////////////";
     }
@@ -394,24 +407,24 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         qDebug()<<"use regression curve and triangle area";
         if(ui->glWid2dim->model.back()->FL.empty() || ui->glWid2dim->model.back()->FL[0]->FoldingCurve.empty())return;
         double tol = ui->TolValue->value();
-        ui->glWid2dim->model.back()->BendingModel(wb, wp, warea, wsim, dim, tol, bndrange, layerNum, 1, IsStartEnd, OptimizeAngleFor3Rulings);
+        ui->glWid2dim->model.back()->BendingModel(wp, wsim, dim, tol, bndrange, layerNum, 1, IsStartEnd, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);
         fold_Sm();
         qDebug()<<"/////////////////////////";
     }
     if(e->key() == Qt::Key_3){
         qDebug()<<"vertices moving";
         if(e->modifiers().testFlag(Qt::ControlModifier)){
-            ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 12, IsStartEnd, OptimizeAngleFor3Rulings);
+            ui->glWid2dim->model.back()->BendingModel(wp, wsim, dim, 0, bndrange, layerNum, 12, IsStartEnd, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);
         }
-        else  ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 2, IsStartEnd, OptimizeAngleFor3Rulings) ;
+        else  ui->glWid2dim->model.back()->BendingModel(wp, wsim, dim, 0, bndrange, layerNum, 2, IsStartEnd, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling) ;
         qDebug()<<"/////////////////////////";
     }
     if(e->key() == Qt::Key_4){
         qDebug()<<"propagate optimization vertex points from center to end point ";
         if(e->modifiers().testFlag(Qt::ControlModifier)){
-            ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 13, IsStartEnd, OptimizeAngleFor3Rulings);
+            ui->glWid2dim->model.back()->BendingModel(wp, wsim, dim, 0, bndrange, layerNum, 13, IsStartEnd, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);
         }
-        else  ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 3, IsStartEnd, OptimizeAngleFor3Rulings);
+        else  ui->glWid2dim->model.back()->BendingModel(wp, wsim, dim, 0, bndrange, layerNum, 3, IsStartEnd, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);
         qDebug()<<"/////////////////////////";
     }
 
@@ -420,7 +433,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
 
         FldLine->applyAAAMethod(Poly_V, IsStartEnd, FldLine->a_flap);
-        FldLine->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 1, bndrange, warea, wsim);
+        FldLine->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 1, bndrange, wp, wsim);
         FldLine->applyAAAMethod(Poly_V, IsStartEnd, FldLine->a_flap);
         FldLine->CheckIsCrossedRulings();
         ui->glWid2dim->model.back()->SetOnVertices_outline(false);
@@ -428,36 +441,33 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         //ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 4, IsStartEnd, OptimizeAngleFor3Rulings);
     }
     if(e->key() == Qt::Key_6){
-        ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 5, IsStartEnd, OptimizeAngleFor3Rulings);
+        ui->glWid2dim->model.back()->BendingModel(wp, wsim, dim, 0, bndrange, layerNum, 5, IsStartEnd, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);
     }
     if(e->key() == Qt::Key_7){
-        ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 6, IsStartEnd, OptimizeAngleFor3Rulings);
+        ui->glWid2dim->model.back()->BendingModel(wp, wsim, dim, 0, bndrange, layerNum, 6, IsStartEnd, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);
     }
     if(e->key() == Qt::Key_8){
         std::shared_ptr<FoldLine> FldLine = ui->glWid2dim->model.back()->refFL;
         std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
 
-        bool res = res = FldLine->Optimization_FlapAngle(Poly_V, wb, wp, 0, 1, IsStartEnd, 0, OptimizeAngleFor3Rulings);
+        bool res = res = FldLine->Optimization_FlapAngle(Poly_V, wp, wsim, 0, 1, IsStartEnd, 0, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);
         while(!res){
             int validsize = FldLine->validsize - 1;
             bool isroot = (ui->glWid2dim->model.back()->NTree_fl.GetRoot()->data == FldLine)? true: false;
             FldLine->SimplifyModel(validsize, isroot);
-            res = FldLine->Optimization_FlapAngle(Poly_V, wb, wp, 0, 1, IsStartEnd, 0, OptimizeAngleFor3Rulings);
+            res = FldLine->Optimization_FlapAngle(Poly_V, wp, wsim, 0, 1, IsStartEnd, 0, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);
             int cnt = 0;
             for(auto&fc: FldLine->FoldingCurve){if(fc->IsCalc)cnt++;}
             if(cnt <=3)break;
 
         }
-        //if(e->modifiers().testFlag(Qt::ControlModifier)){
-            //ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 7, IsStartEnd, OptimizeAngleFor3Rulings);
-        //}
-        //else  ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 17, IsStartEnd, OptimizeAngleFor3Rulings);
+
     }
     if(e->key() == Qt::Key_9){
         if(e->modifiers().testFlag(Qt::ControlModifier)){
-            ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 8, IsStartEnd, OptimizeAngleFor3Rulings);
+            ui->glWid2dim->model.back()->BendingModel(wp, wsim, dim, 0, bndrange, layerNum, 8, IsStartEnd, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);
         }
-        else  ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, dim, 0, bndrange, layerNum, 18, IsStartEnd, OptimizeAngleFor3Rulings);
+        else  ui->glWid2dim->model.back()->BendingModel(wp, wsim, dim, 0, bndrange, layerNum, 18, IsStartEnd, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);
     }
     if(e->key() == Qt::Key_Return){//
         qDebug()<<"can't available"; return;
@@ -498,11 +508,11 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     if(e->key() == Qt::Key_E){
         if(e->modifiers().testFlag(Qt::ControlModifier)){
             qDebug()<<"optimization base";
-            ui->glWid2dim->model.back()->Modify4LastFoldLine(ui->glWid2dim->model.back()->FL.back(), warea, wsim, bndrange, 0, IsStartEnd);
+            ui->glWid2dim->model.back()->Modify4LastFoldLine(ui->glWid2dim->model.back()->FL.back(), wp, wsim, bndrange, 0, IsStartEnd);
         }
         else{
             qDebug()<<"fullsearch";
-            ui->glWid2dim->model.back()->Modify4LastFoldLine(ui->glWid2dim->model.back()->FL.back(), warea, wsim, bndrange, 1, IsStartEnd);
+            ui->glWid2dim->model.back()->Modify4LastFoldLine(ui->glWid2dim->model.back()->FL.back(), wp, wsim, bndrange, 1, IsStartEnd);
         }
     }
 
@@ -518,7 +528,6 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         }
         else {
             std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
-            //NewFL->Optimization_EndPoint(Poly_V);
             ui->glWid2dim->model.back()->FlattenSpaceCurve(NewFL, 2);
         }
     }
@@ -545,12 +554,6 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
 
     if(e->key() == Qt::Key_M){
         if(ui->glWid2dim->model.back()->FL.empty())return;
-        double tol = ui->TolValue->value();
-        //if(e->modifiers().testFlag(Qt::ControlModifier)){
-        //    auto NewFL = ui->glWid2dim->model.back()->FL.back();
-        //    ui->glWid2dim->model.back()->AddNewFoldLine(NewFL);
-        //}
-        //else ui->glWid2dim->model.back()->AssignRuling(3, tol, false);
         auto NewFL = ui->glWid2dim->model.back()->FL.back();
         ui->glWid2dim->model.back()->AddNewFoldLine(NewFL);
         ui->glWid2dim->update();
@@ -583,7 +586,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     }
 
     if(e->key() == Qt::Key_R){
-        if(e->modifiers().testFlag(Qt::ControlModifier))ui->glWid2dim->model.back()->BendingModel(0, 0, warea, wsim, 3, 0, bndrange, layerNum, -1, IsStartEnd, OptimizeAngleFor3Rulings);//initialization
+        if(e->modifiers().testFlag(Qt::ControlModifier))ui->glWid2dim->model.back()->BendingModel(wp, wsim, 3, 0, bndrange, layerNum, -1, IsStartEnd, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);//initialization
         else{
              std::vector<std::shared_ptr<Vertex>> Poly_V = ui->glWid2dim->model.back()->outline->getVertices();
              ui->glWid2dim->model.back()->FL.back()->initialize_foldstate(IsStartEnd, Poly_V);

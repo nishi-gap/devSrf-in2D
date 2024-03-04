@@ -97,6 +97,8 @@ public slots:
 
     //Regression Curve
     void SwitchingVisualization_RegCurve();
+
+    void SwitchStateIgnoreTipRuling();//検証用
 private:
     Ui::MainWindow *ui;
     QList<std::tuple<QCheckBox *, PaintTool >> CBoxlist;

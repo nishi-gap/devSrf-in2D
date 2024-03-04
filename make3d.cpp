@@ -690,12 +690,11 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
     }
 }
 
-bool Model::Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double warea, double wsim, double bndrange, int alg, bool IsStartEnd){
+bool Model::Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double wp, double wsim, double bndrange, int alg, bool IsStartEnd){
     std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
-    //if(tar->isbend())return true;
 
     tar->applyAAAMethod(Poly_V, IsStartEnd, tar->a_flap);
-    tar->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, alg, bndrange, warea, wsim);
+    tar->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, alg, bndrange, wp, wsim);
     tar->applyAAAMethod(Poly_V, IsStartEnd, tar->a_flap);
     //tar->CheckIsCrossedRulings();
     SetOnVertices_outline(false);
@@ -716,7 +715,8 @@ void Model::movevertex(std::shared_ptr<FoldLine>& FldLine, double t){
     FldLine->_movevertex(t, Poly_V);
 }
 
-bool Model::BendingModel(double wb, double wp, double warea, double wsim, int dim, double tol, double bndrange, int bendrank, int alg, bool IsStartEnd, bool OptimizeAngleFor3Rulings){
+bool Model::BendingModel(double wp, double wsim, int dim, double tol,
+                         double bndrange, int bendrank, int alg, bool IsStartEnd, bool OptimizeAngleFor3Rulings, bool _IsIgnoreTipRuling){
     static int AlgNum = 0;
     UpdateFLOrder(dim);
     SplitRulings(dim);
@@ -761,18 +761,11 @@ bool Model::BendingModel(double wb, double wp, double warea, double wsim, int di
 
         //Optimization Vertexのテスト用
         if(alg % 10 == 2){
-            //cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
-            //cur->data->Optimization_Vertex(Poly_V, IsStartEnd, OrderConst, AlgNum);
-            //SetOnVertices_outline(false);
-            //return false;
-            //cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum, OptimizeAngleFor3Rulings);//正しい第5引数はalgだけど検証用に1
             cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
-            cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 0, bndrange, warea, wsim);
+            cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 0, bndrange, wp, wsim);
             if(alg / 10 == 1){//shift key + 3のとき
                 cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
                 cur->data->CheckIsCrossedRulings();
-                //SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
-                //SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
                 SetOnVertices_outline(false);
                 cur->data->SimpleSmooothSrf(Poly_V);
             }
@@ -780,10 +773,10 @@ bool Model::BendingModel(double wb, double wp, double warea, double wsim, int di
         if(alg % 10 == 3){
             //交点位置の修正を全探索で行うやり方
             AddNewFoldLine(cur->data);
-            cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum, OptimizeAngleFor3Rulings);//正しい第5引数はalgだけど検証用に1
+            cur->data->Optimization_FlapAngle(Poly_V, wp, wsim, rank, 1, IsStartEnd, AlgNum, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);//正しい第5引数はalgだけど検証用に1
             cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
             if(cur == root){
-                cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 1, bndrange, warea, wsim);
+                cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 1, bndrange, wp, wsim);
                 cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
                 cur->data->CheckIsCrossedRulings();
                 //SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
@@ -796,7 +789,7 @@ bool Model::BendingModel(double wb, double wp, double warea, double wsim, int di
             //cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum, OptimizeAngleFor3Rulings);//正しい第5引数はalgだけど検証用に1
             cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
             if(cur == root){
-                cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 0, 1, bndrange, warea, wsim);
+                cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 0, 1, bndrange, wp, wsim);
                 cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
                 cur->data->CheckIsCrossedRulings();
                 //SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
@@ -807,9 +800,9 @@ bool Model::BendingModel(double wb, double wp, double warea, double wsim, int di
         }
         //alg = 4: 一番下の曲線に対してのみflap angleの最適化＋交点位置の修正. 5: 各曲線のflap angleの最適化 + 一番下の曲線に対してのみ交点位置の修正. 6:
         if(alg % 10 == 5 || alg % 10 == 6 || alg % 10 == 7){
-            cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum, OptimizeAngleFor3Rulings);//正しい第5引数はalgだけど検証用に1
+            cur->data->Optimization_FlapAngle(Poly_V, wp, wsim, rank, 1, IsStartEnd, AlgNum, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);//正しい第5引数はalgだけど検証用に1
             cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
-            cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 0, 1, bndrange, warea, wsim);
+            cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 0, 1, bndrange, wp, wsim);
             if(alg % 10 == 7 && alg / 10 == 1){//shift key + 8のとき
                 cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
                 cur->data->CheckIsCrossedRulings();
@@ -833,12 +826,12 @@ bool Model::BendingModel(double wb, double wp, double warea, double wsim, int di
             continue;
         }
         if(alg % 10 == 8){
-            bool res = res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum, OptimizeAngleFor3Rulings);
+            bool res = res = cur->data->Optimization_FlapAngle(Poly_V, wp, wsim, rank, 1, IsStartEnd, AlgNum, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);
             while(!res){
                 bool isroot = (cur == root)? true: false;
                 int validsize = cur->data->validsize - 1;
                 cur->data->SimplifyModel(validsize, isroot);
-                res = cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum, OptimizeAngleFor3Rulings);
+                res = cur->data->Optimization_FlapAngle(Poly_V, wp, wsim, rank, 1, IsStartEnd, AlgNum, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);
                 qDebug() << "optimization result " << res << "  ,  tol = " << tol << ", ruling num = " << cur->data->validsize;
                 int cnt = 0;
                 for(auto&fc: cur->data->FoldingCurve){if(fc->IsCalc)cnt++;}

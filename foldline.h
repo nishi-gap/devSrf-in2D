@@ -40,10 +40,8 @@ public:
     double getColor();
     bool RevisionCrosPtsPosition();
 
-    bool Optimization_EndPoint(const std::vector<std::shared_ptr<Vertex>>& Poly_V);
-    bool Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double wb, double wp, int rank, int alg, bool IsStartEnd, int OptimizationAlgorithm, bool OptimizeAngleFor3Rulings);
-    bool Optimization_Vertex(const std::vector<std::shared_ptr<Vertex>>& Poly_V);
-    bool PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool IsStartEnd, int VertexMoveAlg, int OptimizationAlgorithm, double range, double warea, double wsim);
+    bool Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double wp, double wsim, int rank, int alg, bool IsStartEnd, int OptimizationAlgorithm, bool OptimizeAngleFor3Rulings, bool _IsIgnoreTipRuling);
+    bool PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool IsStartEnd, int VertexMoveAlg, int OptimizationAlgorithm, double range, double wp, double wsim);
     void ReviseCenterFlapAngle(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool IsStartEnd, int AlgType);
     void _movevertex(double t, const std::vector<std::shared_ptr<Vertex>>& Poly_V);
 
@@ -73,10 +71,9 @@ private:
     int curveNum;
 
     std::vector<std::shared_ptr<CrvPt_FL>> Points_On_Curve;
-    bool ReviseVertexPos(const std::vector<std::shared_ptr<Vertex>>& Poly_V, int EndIndex_left, int EndIndex_right, int AlgOptim, double range, double warea, double wsim);
+    bool ReviseVertexPos(const std::vector<std::shared_ptr<Vertex>>& Poly_V, int EndIndex_left, int EndIndex_right, int AlgOptim, double range, double wp, double wsim);
     //Eigen::MatrixXd GlobalSplineInterpolation(std::vector<double>&Knot, bool is3d, int dim);
 };
-
 
 class NTreeNode{
 public:
@@ -95,7 +92,6 @@ public:
         return false;
     }
 };
-
 
 class NTree {
 private:

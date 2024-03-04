@@ -1,5 +1,9 @@
 #include "foldline.h"
 
+std::ofstream ofs_obj, ofs_sbj;
+bool hasContainSbjfunc = false;
+
+bool IsIgnoreTipRuling = false;
 const double w_at = 1e-4;
 const double eps = 1e-7;
 double GetFlapAngle(int ind, const std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, double a_init, int StartingIndex);
@@ -53,23 +57,14 @@ inline void update_Vertex(double t, std::shared_ptr<Vertex4d>&tar, const std::sh
 namespace RevisionVertices{
     using FoldLine3d = std::vector<std::shared_ptr<Vertex4d>>;
 
-    class FrenetFrame{
-        public:
-        std::vector<Eigen::Vector3d> T, N, B, R;
-        std::vector<double> Beta, Tau, Kappa;
-        FrenetFrame(std::vector<Eigen::Vector3d>& _T, std::vector<Eigen::Vector3d>& _N, std::vector<Eigen::Vector3d>& _B, std::vector<Eigen::Vector3d>& _R,
-                    std::vector<double>& _beta, std::vector<double>_tau, std::vector<double>& _kappa): T(_T), N(_N), B(_B), Beta(_beta), Tau(_tau), Kappa(_kappa), R(_R) {}
-    };
-
     struct OptimizeParam{
         FoldLine3d FC;
         std::vector<std::shared_ptr<Vertex>> Poly_V;
         FoldLine3d BasePt;
         int StartingIndex;
-        double wb, wp ,wr;
-        double mu;
+        double wsim, wp;
         bool IsSameWeight_flapangle;
-        void AddWeight(double _wb, double _wp, double _wr, double _mu){ wb = _wb; wp = _wp; wr = _wr; mu = _mu;}
+        void AddWeight(double _wsim, double _wp){ wsim =_wsim; wp = _wp;}
         void SwitchIsSameWight(bool IsSameWeight){IsSameWeight_flapangle = IsSameWeight;};
         void AddBasePt(std::vector<std::shared_ptr<Vertex4d>>& FC){BasePt = FC;}
         OptimizeParam(FoldLine3d& _FC,  const std::vector<std::shared_ptr<Vertex>>& _Poly_V, int _StartingIndex):FC{_FC}, Poly_V{_Poly_V}, StartingIndex(_StartingIndex){}
@@ -426,58 +421,19 @@ double RulingsCrossed(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve){
     Eigen::Vector2d b;
     std::vector<std::shared_ptr<Vertex4d>> ValidFC;
     for(auto&fc: FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
-    for(int i = 1; i < (int)ValidFC.size() -1; i++){
-        double w = 0.0;
-        double _f = 0.0;
-        for(int j = -1; j <= 1; j +=2){
-            int i2 = i + j;
-            if(i2 <= 0 || i2 >= (int)ValidFC.size() - 1)continue;
-            Eigen::Vector3d e = (ValidFC[i2]->first->p - ValidFC[i]->first->p), r = (ValidFC[i]->second->p - ValidFC[i]->first->p).normalized(), r2 = (ValidFC[i2]->second->p - ValidFC[i2]->first->p).normalized();
-            double phi1 = std::acos(r.dot(e.normalized())), phi2 = std::acos(r2.dot(-e.normalized()));
-            double l = sin(phi2)/sin(phi1+phi2)*(ValidFC[i2]->first->p - ValidFC[i]->first->p).norm();
-            double lmax = (ValidFC[i]->second->p - ValidFC[i]->first->p).norm();
-            if(0 <= l && l < lmax){_f += lmax/l; w++;}
-            continue;
-            A(0,0) = ValidFC[i]->first->p.x() - ValidFC[i]->second->p.x();
-            A(0,1) = -(ValidFC[i2]->first->p.x() - ValidFC[i2]->second->p.x());
-            A(1,0) = ValidFC[i]->first->p.y() - ValidFC[i]->second->p.y();
-            A(1,1) = -(ValidFC[i2]->first->p.y() - ValidFC[i2]->second->p.y());
-            b(0) = ValidFC[i]->first->p.x() - ValidFC[i2]->first->p.x();
-            b(1) = ValidFC[i]->first->p.y() - ValidFC[i2]->first->p.y();
-            Eigen::Vector2d ts = A.colPivHouseholderQr().solve(b);
-            if((0 < ts(0) && ts(0) < 1) && (0 < ts(1) && ts(1) < 1)){_f += 1.0/std::min(ts(0), ts(1)); w++;}
-            else if(!(0 < ts(0) && ts(0) < 1) && (0 < ts(1) && ts(1) < 1)){_f += 1.0/ts(1);}
-            else if((0 < ts(0) && ts(0) < 1) && !(0 < ts(1) && ts(1) < 1)){_f += 1.0/ts(0);}
-        }
-        f += w * _f;
-    }
-    return f;
-}
+    int mid = ValidFC.size()/2;
 
-double RulingsCrossed_NoOutline(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve){
-    double f = 0.0;
-    Eigen::Matrix2d A;
-    Eigen::Vector2d b;
-    std::vector<std::shared_ptr<Vertex4d>> ValidFC;
-    for(auto&fc: FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
-    for(int i = 1; i < (int)ValidFC.size() -1; i++){
-        for(int j = -1; j <= 1; j +=2){
-            int i2 = i + j;
-            if(i2 <= 0 || i2 >= (int)ValidFC.size() - 1)continue;
-            Eigen::Vector3d p1 = ValidFC[i]->first->p, q1 = ValidFC[i]->second->p, p2 = ValidFC[i2]->first->p, q2 = ValidFC[i2]->second->p;
-            double t = ((p2.x() - p1.x())*(p2.y() - q2.y()) - (p2.x() - q2.x())*(p2.y() - p1.y()))/((q1.x() - p1.x()) * (p2.y() - q2.y()) - (p2.x() - q2.x())*(q1.y() - p1.y()));
-            //f += abs(1.0/t);
-            //continue;
-            A(0,0) = ValidFC[i]->first->p.x() - ValidFC[i]->second->p.x();
-            A(0,1) = -(ValidFC[i2]->first->p.x() - ValidFC[i2]->second->p.x());
-            A(1,0) = ValidFC[i]->first->p.y() - ValidFC[i]->second->p.y();
-            A(1,1) = -(ValidFC[i2]->first->p.y() - ValidFC[i2]->second->p.y());
-            b(0) = ValidFC[i]->first->p.x() - ValidFC[i2]->first->p.x();
-            b(1) = ValidFC[i]->first->p.y() - ValidFC[i2]->first->p.y();
-            Eigen::Vector2d ts = A.colPivHouseholderQr().solve(b);
-            f += abs(1.0/ts(0));
-        }
-    }
+    auto f_cross = [](const std::shared_ptr<Vertex4d>& Vmove, const std::shared_ptr<Vertex4d>& Vfix){
+        Eigen::Matrix2d A; Eigen::Vector2d b;
+        A(0,0) = Vmove->second->p.x() - Vmove->first->p.x(); A(0,1) = -(Vfix->second->p.x() - Vfix->first->p.x());
+        A(1,0) = Vmove->second->p.y() - Vmove->first->p.y(); A(1,1) = -(Vfix->second->p.y() - Vfix->first->p.y());
+        b(0) = Vfix->first->p.x() - Vmove->first->p.x(); b(1) = Vfix->first->p.y() - Vmove->first->p.y();
+        Eigen::Vector2d ts = A.colPivHouseholderQr().solve(b);
+        return (ts(1) >= 1 || ts(1) <= 0)? 0.0: 1.0/std::abs(ts(1));
+    };
+
+    for(int i = mid; i > 0; i--) f += f_cross(ValidFC[i-1], ValidFC[i]);
+    for(int i = mid; i < (int)ValidFC.size() -1; i++) f += f_cross(ValidFC[i+1], ValidFC[i]);
     return f;
 }
 
@@ -647,11 +603,11 @@ double Fconst_mixed(const std::vector<double> &X, std::vector<double> &grad, voi
                                       std::vector<std::shared_ptr<Vertex>>& Poly_V, double a, int n, int s)->double{
         auto fruling = [](const std::shared_ptr<Vertex4d>& Vmove, const std::shared_ptr<Vertex4d>& Vfix){
             Eigen::Matrix2d A; Eigen::Vector2d b;
-            A(0,0) = Vmove->first->p.x() - Vmove->second->p.x(); A(0,1) = -(Vfix->first->p.x() - Vfix->second->p.x());
-            A(1,0) = Vmove->first->p.y() - Vmove->second->p.y(); A(1,1) = -(Vfix->first->p.y() - Vfix->second->p.y());
-            b(0) = Vmove->first->p.x() - Vfix->first->p.x(); b(1) = Vmove->first->p.y() - Vfix->first->p.y();
+            A(0,0) = Vmove->second->p.x() - Vmove->first->p.x(); A(0,1) = -(Vfix->second->p.x() - Vfix->first->p.x());
+            A(1,0) = Vmove->second->p.y() - Vmove->first->p.y(); A(1,1) = -(Vfix->second->p.y() - Vfix->first->p.y());
+            b(0) = Vfix->first->p.x() - Vmove->first->p.x(); b(1) = Vfix->first->p.y() - Vmove->first->p.y();
             Eigen::Vector2d ts = A.colPivHouseholderQr().solve(b);
-            return (ts(1) >= 1 || ts(1) <= 0)? 0.0: 1.0/std::abs(ts(1));
+            return (0.0 <= ts(1) && ts(1) < 1.0)? 1.0/ts(1): 0.0;
         };
 
         double fc = 0.0, fr = 0.0;
@@ -659,26 +615,24 @@ double Fconst_mixed(const std::vector<double> &X, std::vector<double> &grad, voi
         cb_Folding(FC, Poly_V, a, s);
         if(n > mid){
             if(n <= (int)FC.size() - 1){
-                fr += std::exp(fruling(FC[n - 1], FC[n - 2])) - 1.0; fc += Fconv(FC, BasePt, s, n - 1);
+                fr += fruling(FC[n - 1], FC[n - 2]); fc += Fconv(FC, BasePt, s, n - 1);
             }
         }
         else{
             if(n >= 0){
-                fr += std::exp(fruling(FC[n + 1], FC[n + 2])) - 1.0; fc += Fconv(FC, BasePt, n + 1, s);
+                fr += fruling(FC[n + 1], FC[n + 2]); fc += Fconv(FC, BasePt, n + 1, s);
             }
         }
         return fr + fc;
     };
 
     double f = func(X[0], od->FC, od->BasePt, od->Poly_V, od->a, od->ind_l, od->StartingIndex);
-    double w = 0.1;
     if(!grad.empty()){
         double fp = func(X[0] + eps, od->FC, od->BasePt, od->Poly_V, od->a, od->ind_l, od->StartingIndex);
         double fm = func(X[0] - eps, od->FC, od->BasePt, od->Poly_V, od->a, od->ind_l, od->StartingIndex);
         grad[0] = (fp - fm)/(2.0*eps);
     }
-    update_Vertex(X[0], od->FC[od->ind_r], od->BasePt[od->ind_r]);
-    qDebug() <<"constraint = " << f;
+    ofs_sbj << X[0] << "," << f << "\n";
     return f;
 }
 
@@ -782,7 +736,7 @@ double ObjFunc_RulingIntersection(const std::vector<double> &X, std::vector<doub
         od->FC[i-1]->first->p3 =  X[i]*(od->BasePt[i-1]->first->p3 - od->BasePt[i-1]->third->p3) + od->FC[i-1]->third->p3;
     }
     cb_Folding(od->FC, Poly_V, X[0], od->StartingIndex);
-    double fb =  Fbend2(od->FC), fp = Fparallel(od->FC),fr = (od->wr != -1)?RulingsCrossed_NoOutline(od->FC): 0;
+    double fb =  Fbend2(od->FC), fp = Fparallel(od->FC);
 
     std::vector<double> a = X;
     if(!grad.empty()){
@@ -793,7 +747,7 @@ double ObjFunc_RulingIntersection(const std::vector<double> &X, std::vector<doub
                 od->FC[i-1]->first->p3 =  a[i]*(od->BasePt[i-1]->first->p3 - od->BasePt[i-1]->third->p3) + od->FC[i-1]->third->p3;
             }
             cb_Folding(od->FC, Poly_V, a[0], od->StartingIndex);
-            double fp = Fbend2(od->FC), fp2 = Fparallel(od->FC), fp3 = (od->wr != -1)?RulingsCrossed_NoOutline(od->FC): 0;
+            double fp = Fbend2(od->FC), fp2 = Fparallel(od->FC);
 
             a[i] = X[i] - eps;
             if(i != 0){
@@ -801,8 +755,8 @@ double ObjFunc_RulingIntersection(const std::vector<double> &X, std::vector<doub
                 od->FC[i-1]->first->p3 =  a[i]*(od->BasePt[i-1]->first->p3 - od->BasePt[i-1]->third->p3) + od->FC[i-1]->third->p3;
             }
             cb_Folding(od->FC, Poly_V, a[0], od->StartingIndex);
-            double fm = Fbend2(od->FC), fm2 = Fparallel(od->FC), fm3 = (od->wr != -1)?RulingsCrossed_NoOutline(od->FC): 0;
-            grad[i] = od->wb * (fp - fm)/(2.0 * eps) + od->wp * (fp2 - fm2)/(2.0 * eps) + 100.0*(fp3 - fm3)/(2.0*eps);
+            double fm = Fbend2(od->FC), fm2 = Fparallel(od->FC);
+            grad[i] = od->wsim * (fp - fm)/(2.0 * eps) + od->wp * (fp2 - fm2)/(2.0 * eps);
             if(i != 0)grad[i] *= w_at;
             a[i] = X[i];
             if(i != 0){
@@ -811,7 +765,7 @@ double ObjFunc_RulingIntersection(const std::vector<double> &X, std::vector<doub
             }
        }
     }
-    return od->wb * fb + od->wp * fp + 100.0 * fr;
+    return od->wsim * fb + od->wp * fp ;
 }
 
 double ObjFunc_RegressionCurve(const std::vector<double> &a, std::vector<double> &grad, void* f_data){
@@ -847,7 +801,7 @@ double ObjFunc_Vertex(const std::vector<double> &X, std::vector<double> &grad, v
     int mid = od->FC.size()/2;
 
     auto objfunc = [&mid](double x, std::vector<std::shared_ptr<Vertex4d>>& FC, std::vector<std::shared_ptr<Vertex4d>>& BasePt,
-                          std::vector<std::shared_ptr<Vertex>>& Poly_V, double wa, double wsim, double a, int n, int s){
+                          std::vector<std::shared_ptr<Vertex>>& Poly_V, double wsim, double wp, double a, int n, int s){
         update_Vertex(x, FC[n], BasePt[n]);
         cb_Folding(FC, Poly_V, a, s);
         double fa = 0.0, fsim = 0.0;
@@ -856,12 +810,13 @@ double ObjFunc_Vertex(const std::vector<double> &X, std::vector<double> &grad, v
             return 1.0 - v1.dot(v2);
         };
         if(n > mid){
-            if(n <= (int)FC.size() - 1)fa += wa * fparalell(FC[n - 2], FC[n - 1]);
+            if(n <= (int)FC.size() - 1)fa += wp * fparalell(FC[n - 2], FC[n - 1]);
         }
         else{
-            if(n >= 0)fa += wa * fparalell(FC[n +1], FC[n + 2]);
+            if(n >= 0)fa += wp * fparalell(FC[n +1], FC[n + 2]);
         }
         fsim = wsim* (FC[n]->first->p - BasePt[n]->first->p).norm();
+
         return fa + fsim;
     };
 
@@ -869,11 +824,11 @@ double ObjFunc_Vertex(const std::vector<double> &X, std::vector<double> &grad, v
                        std::vector<std::shared_ptr<Vertex>>& Poly_V, double a, int n, int s)->double{
         auto fruling = [](const std::shared_ptr<Vertex4d>& Vmove, const std::shared_ptr<Vertex4d>& Vfix){
             Eigen::Matrix2d A; Eigen::Vector2d b;
-            A(0,0) = Vmove->first->p.x() - Vmove->second->p.x(); A(0,1) = -(Vfix->first->p.x() - Vfix->second->p.x());
-            A(1,0) = Vmove->first->p.y() - Vmove->second->p.y(); A(1,1) = -(Vfix->first->p.y() - Vfix->second->p.y());
-            b(0) = Vmove->first->p.x() - Vfix->first->p.x(); b(1) = Vmove->first->p.y() - Vfix->first->p.y();
+            A(0,0) = Vmove->second->p.x() - Vmove->first->p.x(); A(0,1) = -(Vfix->second->p.x() - Vfix->first->p.x());
+            A(1,0) = Vmove->second->p.y() - Vmove->first->p.y(); A(1,1) = -(Vfix->second->p.y() - Vfix->first->p.y());
+            b(0) = Vfix->first->p.x() - Vmove->first->p.x(); b(1) = Vfix->first->p.y() - Vmove->first->p.y();
             Eigen::Vector2d ts = A.colPivHouseholderQr().solve(b);
-            return (ts(1) >= 1 || ts(1) <= 0)? 0.0: 1.0/std::abs(ts(1));
+            return (0.0 <= ts(1) && ts(1) < 1.0)? 1.0/ts(1): 0.0;
         };
 
         double fc = 0.0, fr = 0.0;
@@ -881,31 +836,35 @@ double ObjFunc_Vertex(const std::vector<double> &X, std::vector<double> &grad, v
         cb_Folding(FC, Poly_V, a, s);
         if(n > mid){
             if(n <= (int)FC.size() - 1){
-                fr += std::exp(fruling(FC[n - 1], FC[n - 2])) - 1.0; fc += Fconv(FC, BasePt, s, n - 1);
+                fr += fruling(FC[n - 1], FC[n - 2]); fc += Fconv(FC, BasePt, s, n - 1);
             }
         }
         else{
             if(n >= 0){
-                fr += std::exp(fruling(FC[n + 1], FC[n + 2])) - 1.0; fc += Fconv(FC, BasePt, n + 1, s);
+                fr += fruling(FC[n + 1], FC[n + 2]); fc += Fconv(FC, BasePt, n + 1, s);
             }
         }
         return fr + fc;
     };
 
-
-    double fc = constfunc(X[0], od->FC, od->BasePt, od->Poly_V, od->a, od->ind_l, od->StartingIndex);
-    double fo = objfunc(X[0], od->FC, od->BasePt, od->Poly_V, od->wb, od->wp, od->a, od->ind_l, od->StartingIndex);
+    //geometory
+    double wc = 1, wo = 1e-2;
+    double fc = wc * constfunc(X[0], od->FC, od->BasePt, od->Poly_V, od->a, od->ind_l, od->StartingIndex);
+    double fo = wo * objfunc(X[0], od->FC, od->BasePt, od->Poly_V, od->wsim, od->wp, od->a, od->ind_l, od->StartingIndex);
     if(!grad.empty()){
-       double fop = objfunc(X[0] + eps, od->FC, od->BasePt, od->Poly_V, od->wb, od->wp, od->a, od->ind_l, od->StartingIndex);
-       double fom = objfunc(X[0] - eps, od->FC, od->BasePt, od->Poly_V, od->wb, od->wp, od->a, od->ind_l, od->StartingIndex);
+       double fop = wo * objfunc(X[0] + eps, od->FC, od->BasePt, od->Poly_V, od->wsim, od->wp, od->a, od->ind_l, od->StartingIndex);
+       double fom = wo * objfunc(X[0] - eps, od->FC, od->BasePt, od->Poly_V, od->wsim, od->wp, od->a, od->ind_l, od->StartingIndex);
 
-       double fcp = constfunc(X[0] + eps, od->FC, od->BasePt, od->Poly_V, od->a, od->ind_l, od->StartingIndex);
-       double fcm = constfunc(X[0] - eps, od->FC, od->BasePt, od->Poly_V, od->a, od->ind_l, od->StartingIndex);
-       grad[0] = (fop + fcp - fom - fcm)/(2.0*eps);
+       double fcp = wc * constfunc(X[0] + eps, od->FC, od->BasePt, od->Poly_V, od->a, od->ind_l, od->StartingIndex);
+       double fcm = wc * constfunc(X[0] - eps, od->FC, od->BasePt, od->Poly_V, od->a, od->ind_l, od->StartingIndex);
+       grad[0] = (fop - fom)/(2.0*eps);
     }
+    double f = (hasContainSbjfunc)? fo + fc: fo;
+    ofs_obj << X[0] << "," << f << "\n";
+
     update_Vertex(X[0], od->FC[od->ind_r], od->BasePt[od->ind_r]);
     //qDebug() <<"objfunc = " << fo;
-    return  fo + fc;
+    return  f;
 }
 
 double ObjFunc_3Rulings(const std::vector<double> &X, std::vector<double> &grad, void* f_data){
@@ -966,97 +925,6 @@ void update_leftside(std::vector<std::shared_ptr<Vertex4d>>& FC, const std::vect
        d = (d < low)? low: (up < d)? up: d;
        update_Vertex(d, FC[k], FC[k]);
     }
-}
-
-//全探索による頂点最適化
-//外側の頂点について振動させながら凹凸性とrulingの交差がない位置があれば終了
-//外側の頂点で探索範囲内で見つからなければ内側の頂点も少しづつ振動させて見つける
-//片側についてのみ探索するものとする←実装を簡単にするため＋検証目的
-void FindFirstLocation(std::vector<double> &X, RevisionVertices::ObjData_v& od,
-                const std::vector<double>& bnd_lower, const std::vector<double>& bnd_upper, bool& IsCrossed_l, bool& IsCrossed_r, int ind_l, int ind_r){
-    auto Fruling = [&](const std::vector<std::shared_ptr<Vertex4d>>& FC, int s){
-        double f = 0.0;
-        int mid = FC.size()/2;
-        if(mid < s){//左側
-            for(int i = mid + 1; i <= s; i++)f += calcCrossPt4Constraint(FC[i],FC[i-1]);
-        }else{//右側
-            for(int i = mid - 1; i >= s; i--)f += calcCrossPt4Constraint(FC[i],FC[i+1]);
-        }
-
-        return f;
-    };
-
-    for(int i = 0; i < static_cast<int>(X.size()); i++) update_Vertex(X[i], od.FC[i], od.BasePt[i]);
-
-    const double step = 1e-4;
-
-    std::vector<double> minf_l{1e+10, 0,0}, minf_r{1e+10,0,0};
-    double fl_r, fl_c, fr_r, fr_c;
-
-    auto initloopCounter = [](const std::vector<double>& x, const std::vector<double>& bnd_lower, const std::vector<double>& bnd_upper, int i, double step){
-        std::vector<double> X{x[i]};
-        double tl = x[i] - step, tu = x[i] + step;
-        do{
-            if(tu < bnd_upper[i]){X.push_back(tu); tu += step;}
-            if(bnd_lower[i] < tl){ X.push_back(tl); tl -=step;}
-        }while(bnd_lower[i] <= tl || tu <= bnd_upper[i]);
-        return X;
-    };
-
-    if(IsCrossed_l){
-       std::vector<double> Xli = initloopCounter(X, bnd_lower, bnd_upper, ind_l, 1e-1), Xlo = initloopCounter(X, bnd_lower, bnd_upper, ind_l+1, step);
-       for(int i = 0; i < 1 && IsCrossed_l; i++){
-        //update_Vertex(Xli[i], od.FC[ind_l], od.BasePt[ind_l]);
-            for(int j = 0; j < (int)Xlo.size() && IsCrossed_l; j++){
-                update_Vertex(Xlo[j], od.FC[ind_l + 1], od.BasePt[ind_l + 1]);
-                cb_Folding(od.FC, od.Poly_V, od.a, od.StartingIndex);
-                fl_r = Fruling(od.FC, ind_l); fl_c = Fconv(od.FC, od.BasePt, od.StartingIndex, ind_l);
-                if(minf_l[0] > fl_r){minf_l[0] = fl_r; minf_l[1] = fl_c;}
-                if(fl_r == 0.0 && fl_c == 0.0){
-                    //update_Vertex(Xli[i], od.BasePt[ind_l], od.BasePt[ind_l]);
-                    update_Vertex(Xlo[j], od.BasePt[ind_l + 1], od.BasePt[ind_l + 1]);
-                    double _d = (Xlo[j] - X[ind_l + 1]);//後ろの交点も変化させる値(動かした交点同士の平均としておく)
-                    qDebug()<<"left side :  inner = " << Xli[i] - X[ind_l] << " , outer = " << Xlo[j] - X[ind_l + 1] << " , d = " <<_d;
-                    for(int k = ind_l + 2; k < (int)X.size(); k++){
-                        double d = _d + X[k];
-                        d = (d < bnd_lower[k])? bnd_lower[k]: (bnd_upper[k] < d)? bnd_upper[k]: d;
-                        update_Vertex(d, od.BasePt[k], od.BasePt[k]);
-                    }
-                    IsCrossed_l = false;
-                    break;
-                }
-            }
-       }
-    }
-
-    if(IsCrossed_r){
-       std::vector<double> Xri = initloopCounter(X, bnd_lower, bnd_upper, ind_r, 1e-1), Xro = initloopCounter(X, bnd_lower, bnd_upper, ind_r - 1, step);
-       for(int i = 0; i < 1 && IsCrossed_r; i++){
-            //update_Vertex(Xri[i], od.FC[ind_r], od.BasePt[ind_r]);
-            for(int j = 0; j < (int)Xro.size() && IsCrossed_r; j++){
-                update_Vertex(Xro[j], od.FC[ind_r - 1], od.BasePt[ind_r - 1]);
-                cb_Folding(od.FC, od.Poly_V, od.a, od.StartingIndex);
-                fr_r = Fruling(od.FC, ind_r); fr_c = Fconv(od.FC, od.BasePt, ind_r, od.StartingIndex );
-                if(minf_r[0] > fr_r){minf_r[0] = fr_r; minf_r[1] = fr_c;}
-                if(fr_r == 0.0 && fr_c == 0.0){
-                    //update_Vertex(Xri[i], od.BasePt[ind_r], od.BasePt[ind_r]);
-                    update_Vertex(Xro[j], od.BasePt[ind_r - 1], od.BasePt[ind_r - 1]);
-                    double _d = (Xro[j] - X[ind_r - 1]);//後ろの交点も変化させる値(動かした交点同士の平均としておく)
-                    qDebug()<<"right side :  inner = " << Xri[i] - X[ind_r] << " , outer = " << Xro[j] - X[ind_r-1]<< " , d = " <<_d;
-                    for(int k = ind_r - 2; k >= 0; k--){
-                        double d = _d + X[k];
-                        d = (d < bnd_lower[k])? bnd_lower[k]: (bnd_upper[k] < d)? bnd_upper[k]: d;
-                        update_Vertex(d, od.BasePt[k], od.BasePt[k]);
-                    }
-
-                    IsCrossed_r = false;
-                    break;
-                }
-            }
-       }
-    }
-    qDebug() <<"result : minf_l ruling = " << minf_l[0] << " , conv = " << minf_l[1] << ", area = " << minf_l[2] << "  ,  minf_r ruling =  " << minf_r[0] << ", conv = " << minf_r[1] <<", area = " << minf_r[2];
-    return;
 }
 
 void FullSearch(std::vector<double> &X, RevisionVertices::ObjData_v& od,
@@ -1167,15 +1035,15 @@ void SetOptimizationParameter(nlopt::opt& opt, const std::vector<double>&bnd_low
     opt.set_lower_bounds(bnd_lower);
     opt.set_upper_bounds(bnd_upper);
 
-    //opt.set_xtol_abs(xtol);
-    //opt.set_ftol_abs(ftol);
+    opt.set_xtol_rel(xtol);
+    //opt.set_ftol_rel(ftol);
     opt.set_maxtime(maxtime);//stop over this time
 }
 
 //片側の全探索による交点位置最適化
 //i番目のrulingが交差した場合、i,i+1番目の交点位置を修正する(すべての交点位置を少しづつ動かして検証するのが正しいのかもしれないが、動かすのはi,i+1番目だけでよいという仮定)
 //全探索により見つからない場合は境界条件を少しずらして再挑戦させる
-bool FoldLine::ReviseVertexPos(const std::vector<std::shared_ptr<Vertex>>& Poly_V, int EndIndex_left, int EndIndex_right, int AlgOptim, double range, double warea, double wsim){
+bool FoldLine::ReviseVertexPos(const std::vector<std::shared_ptr<Vertex>>& Poly_V, int EndIndex_left, int EndIndex_right, int AlgOptim, double range, double wp, double wsim){
     std::vector<std::shared_ptr<Vertex4d>> ValidFC;
     for(auto&fc: FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
 
@@ -1203,8 +1071,7 @@ bool FoldLine::ReviseVertexPos(const std::vector<std::shared_ptr<Vertex>>& Poly_
     bool IsCrossed_l = (EndIndex_left >= (int)FC.size() - 1)? false: true, IsCrossed_r= (EndIndex_right <= 0)? false: true;
     int maxitr = 2;//最大5回境界条件を変えて検証する
     for(int i = 0; i < maxitr; i++){
-       if(AlgOptim == 0)FindFirstLocation(X, od, bnd_lower,bnd_upper, IsCrossed_l, IsCrossed_r, EndIndex_left, EndIndex_right);
-       else if(AlgOptim == 1)FullSearch(X, od, bnd_lower,bnd_upper, IsCrossed_l, IsCrossed_r, EndIndex_left, EndIndex_right, warea, wsim);
+       FullSearch(X, od, bnd_lower,bnd_upper, IsCrossed_l, IsCrossed_r, EndIndex_left, EndIndex_right, wp, wsim);
        double fc_bef = RulingsCrossed(ValidFC);
        if(!IsCrossed_l || !IsCrossed_r){//片方だけでも交差除去できていたらtrueを返す
         cb_Folding(ValidFC, Poly_V, a_flap, mid);
@@ -1228,7 +1095,8 @@ void FoldLine::_movevertex(double t, const std::vector<std::shared_ptr<Vertex>>&
     cb_Folding(FoldingCurve, Poly_V, a_flap, StartingIndex);
 }
 
-bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool IsStartEnd, int VertexMoveAlg, int OptimizationAlgorithm, double range, double warea, double wsim){
+#include <chrono>
+bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool IsStartEnd, int VertexMoveAlg, int OptimizationAlgorithm, double range, double wp, double wsim){
     if(IsStartEnd){
        qDebug()<<"this method is applied only starting from center";
        return false;
@@ -1256,26 +1124,14 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
            }
            auto calcCrossPt4Constraint2 = [](const std::shared_ptr<Vertex4d>& Vmove, const std::shared_ptr<Vertex4d>& Vfix){
                Eigen::Matrix2d A; Eigen::Vector2d b;
-               A(0,0) = Vmove->first->p.x() - Vmove->second->p.x(); A(0,1) = -(Vfix->first->p.x() - Vfix->second->p.x());
-               A(1,0) = Vmove->first->p.y() - Vmove->second->p.y(); A(1,1) = -(Vfix->first->p.y() - Vfix->second->p.y());
-               b(0) = Vmove->first->p.x() - Vfix->first->p.x(); b(1) = Vmove->first->p.y() - Vfix->first->p.y();
+               A(0,0) = Vmove->second->p.x() - Vmove->first->p.x(); A(0,1) = -(Vfix->second->p.x() - Vfix->first->p.x());
+               A(1,0) = Vmove->second->p.y() - Vmove->first->p.y(); A(1,1) = -(Vfix->second->p.y() - Vfix->first->p.y());
+               b(0) = Vfix->first->p.x() - Vmove->first->p.x(); b(1) = Vfix->first->p.y() - Vmove->first->p.y();
                Eigen::Vector2d ts = A.colPivHouseholderQr().solve(b);
-               return (ts(1) >= 1 || ts(1) <= 0)? 0.0: 1.0/std::abs(ts(1));
+               return ts(1);
            };
            if(OptimizationAlgorithm == 0){
-               int back = FC4csv.size() - 1;
-                Eigen::Vector3d x1 = FC4csv[back-1]->first->p3, x2 = FC4csv[back-2]->first->p3, x3 = FC4csv[back]->first->p3;
-                Eigen::Vector3d p1 = FC4csv[back-1]->third->p3, p2 = FC4csv[back-2]->third->p3, p3 = FC4csv[back]->third->p3;
-                Eigen::Vector3d l1 = (x1 - p1).normalized(),l2 = (x2 - p2).normalized(),l3 = (x3 - p3).normalized();
-                Eigen::Vector3d e2d = (FC4csv[back-2]->first->p - FC4csv[back-1]->first->p).normalized(), v2d = (FC4csv[back-2]->second->p - FC4csv[back-2]->first->p).normalized();
-               Eigen::Vector3d e = (x2 - x1).normalized(),e2 = (x3 - x1).normalized();
-               double beta = std::acos(e.dot(e2)), k = 2.0*std::numbers::pi - std::acos(e.dot(-l1)) - std::acos(e2.dot(-l1));
-               double phi2 = std::acos(((FC4csv[back-2]->second->p3 - FC4csv[back-2]->first->p3).normalized()).dot(-e));
-               qDebug()<<"geometory parameter : s = " << X.back() << "; a = " << a_flap << "; beta = " << beta << "; k = " << k << "; phi2 = " << phi2 << ";";
-               qDebug()<<"l1 = {" << l1.x() <<" , " << l1.y() <<" , " << l1.z() << "}; l2 = {" << l2.x() << " , " << l2.y() << " , " << l2.z() << "}; l3 = {" << l3.x() << ", " << l3.y() << " , " << l3.z() << "}";
-               qDebug()<<"p1 = {" << p1.x() <<" , " << p1.y() <<" , " << p1.z() << "}; p2 = {" << p2.x() << " , " << p2.y() << " , " << p2.z() << "}; p3 = {" << p3.x() << ", " << p3.y() << " , " << p3.z() << "}";
-               qDebug()<<"x1 = {" << x1.x() <<" , " << x1.y() <<" , " << x1.z() << "}; x2 = {" << x2.x() << " , " << x2.y() << " , " << x2.z() << "}; x3 = {" << x3.x() << ", " << x3.y() << " , " << x3.z() << "}";
-               qDebug()<<"e2d = {" << e2d.x() <<", " << e2d.y() << "};  v2d = {" << v2d.x() << ", " << v2d.y() <<"}";
+               int back = FC4csv.size() - 1;            
                std::ofstream ofs; std::string file = "./Optimization/OptimizationVertex.csv";
                ofs.open(file, std::ios::out); ofs << "t, t - x0, Erulig(no outline),Eruling,df \n";
                double fr = 0.0;
@@ -1283,8 +1139,8 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
                while(t <= X.back() + range){
                    update_Vertex(t, FC4csv.back(), FC4csv.back());
                    cb_Folding(FC4csv, Poly_V, a_flap, StartingIndex);
-                   double f = std::exp(calcCrossPt4Constraint(FC4csv[back-2],FC4csv[back-1]));
-                   double fr2 = std::exp(calcCrossPt4Constraint2(FC4csv[back-1],FC4csv[back-2])) - 1;
+                   double f = calcCrossPt4Constraint2(FC4csv[back-1],FC4csv[back-2]); f = 1.0/f;
+                   double fr2 = calcCrossPt4Constraint2(FC4csv[back-1],FC4csv[back-2]);fr2 = (0 <= fr2 && fr2 <= 1)? 1.0/fr2: 0.0;
 
                    double df = (t == X.back() - range)? 0: (f - fr);
                    df = (t >= X.back())? f - fr: fr - f;
@@ -1293,14 +1149,13 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
                    t += 1e-4;
                }
                ofs.close(); qDebug()<<"export csv file";
-
            }
        };
 
        //マルチスレッドのためにvoid関数でまとめておく
        std::mutex mtx_; // 排他制御用ミューテックス
-       std::thread th_csv(WriteCSV);
-       th_csv.join();
+       //std::thread th_csv(WriteCSV);
+       //th_csv.join();
     }
 
     std::vector<Eigen::Vector3d> initX(ValidFC.size());
@@ -1321,21 +1176,27 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
            upper = std::max((v4d->first->p - v4d->third->p).norm(), (point - v4d->third->p).norm());
        };
 
-       auto apply_optimization = [&](nlopt::opt& opt, int ind, const double step)->double{
+       auto apply_optimization = [&](nlopt::opt& opt, int ind)->double{
+           if(ind < 0 || ind >= (int)ValidFC.size())return -1;
            int mid = ValidFC.size()/2;
-           int SplitSize = 2*range/step;
-           double ftol = 1e-9, xtol = 1e-9, maxtime = 1;
+
+           double ftol = 1e-5, xtol = 1e-5, maxtime = 2;
 
            std::vector<double> X(1), bnd_lower(1), bnd_upper(1);//ind_lに左右関係なくパラメータを定義→左右の交点位置の最適化は別々に行う
            double minf = 1e+10, minX = (ValidFC[ind]->first->p - ValidFC[ind]->third->p).norm();
-           qDebug()<<"init X = " << minX;
+           //qDebug()<<"init X = " << minX;
            SetParam(ValidFC[ind], X[0], bnd_lower[0], bnd_upper[0]);
 
            SetOptimizationParameter(opt, bnd_lower, bnd_upper, ftol, xtol, maxtime);
            double _minf;
+           nlopt::result result;
            try {
-               nlopt::result result = opt.optimize(X, _minf);
-           }catch (std::exception& e) { qDebug() << "nlopt failed: " << e.what() ; }
+               result = opt.optimize(X, _minf);
+               qDebug() <<"Result is " << result;
+           }catch (std::exception& e) {
+               qDebug() << "nlopt failed: " << e.what();
+           }
+
            update_Vertex(X[0], FC[ind], ValidFC[ind]);
            cb_Folding(FC, Poly_V, a_flap, mid);
            if(ind > mid){//左側
@@ -1351,63 +1212,97 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
                    minf = _minf;
                }
            }
-           qDebug()<<"ind " << ind << " , minf = " << minf << " , X = " << minX;
+           //qDebug()<<"ind " << ind << " , minf = " << minf << " , X = " << minX;
+           update_Vertex(minX, FC[ind], ValidFC[ind]);
+           cb_Folding(FC, Poly_V, a_flap, mid);
            return minX;
        };
 
        ind_l = std::min(mid+2, (int)ValidFC.size()-1); ind_r = std::max(mid-2, 0);
        FC.resize(ValidFC.size());
+
+       //geometory
+       nlopt::opt opt = nlopt::opt(nlopt::LN_AUGLAG, 1);
+
+       static int alg = 0;
+       //if(alg == 0){opt = nlopt::opt(nlopt::LN_BOBYQA, 1);qDebug()<< "nlopt::LN_BOBYQA";}
+       //if(alg == 1){opt = nlopt::opt(nlopt::LN_COBYLA, 1);qDebug()<< "nlopt::LN_COBYLA";}
+       //if(alg == 2){opt = nlopt::opt(nlopt::LD_CCSAQ, 1);qDebug()<< "nlopt::LD_CCSAQ";}
+       //if(alg == 3){opt = nlopt::opt(nlopt::LN_NEWUOA, 1);qDebug()<< "nlopt::LN_NEWUOA";}
+       //if(alg == 4){opt = nlopt::opt(nlopt::LN_NELDERMEAD, 1);qDebug()<< "nlopt::LN_NELDERMEAD";}
+       //if(alg == 5){opt = nlopt::opt(nlopt::LN_PRAXIS, 1);qDebug()<< "nlopt::LN_PRAXIS";}
+       //if(alg == 6){opt = nlopt::opt(nlopt::LN_SBPLX, 1);qDebug()<< "nlopt::LN_SBPLX";}
+       //if(alg == 7){opt = nlopt::opt(nlopt::LD_MMA, 1);qDebug()<< "nlopt::LD_MMA";}
+       //if(alg == 8){opt = nlopt::opt(nlopt::LD_LBFGS, 1);qDebug()<< "nlopt::LD_LBFGS";}
+       //if(alg == 9){opt = nlopt::opt(nlopt::LD_SLSQP, 1);qDebug()<< "nlopt::LD_SLSQP";}
+
+
+       RevisionVertices::ObjData_v od = {a_flap, FC, Poly_V, mid};// Specify the augmented Lagrangian algorithm
+       od.AddBasePt(ValidFC);
+       od.AddWeight(wsim, wp);
+
+       if(!hasContainSbjfunc){
+        nlopt::opt local_optimizer(nlopt::LN_NELDERMEAD, 1);// Specify the Nelder-Mead algorithm for solving each step
+        opt.set_local_optimizer(local_optimizer);
+        opt.add_equality_constraint(Fconst_mixed, &od);
+       }else opt = nlopt::opt(nlopt::LN_NELDERMEAD, 1);
+       opt.set_min_objective(ObjFunc_Vertex, &od);
+
+       qDebug()<<"hasContainSbjfunc is " << hasContainSbjfunc;
+
+       for(int i = 0; i < (int)FC.size(); i++){
+        FC[i] = ValidFC[i]->deepCopy(); FC[i]->addline(ValidFC[i]->line_parent);
+       }
+       od.FC = FC;
+
+       alg = (alg + 1) % 10;
+       auto starttime = std::chrono::high_resolution_clock::now();
        do{
 
-        double step = 0.1;
-        nlopt::opt opt;
-        for(int i = 0; i < (int)FC.size(); i++){
-                FC[i] = ValidFC[i]->deepCopy();
-                FC[i]->addline(ValidFC[i]->line_parent);
-        }
-
-        RevisionVertices::ObjData_v od = {a_flap, FC, Poly_V, mid};
-        od.AddBasePt(ValidFC);
-        od.AddWeight(warea, wsim,0,0);
-        opt = nlopt::opt(nlopt::LD_SLSQP, 1);
-        //opt.add_inequality_constraint(Fconst_mixed, &od);
-        opt.set_min_objective(ObjFunc_Vertex, &od);
         od.SetCrossedIndex(ind_l, ind_l);
-        double update_l = apply_optimization(opt, ind_l, step);
-        update_Vertex(update_l, ValidFC[ind_l], ValidFC[ind_l]);
+        std::string filepath_obj = "./Optimization/objfunc" + std::to_string(ind_l) + ".csv";
+        std::string filepath_sbj = "./Optimization/sbjfunc" + std::to_string(ind_l) + ".csv";
+        ofs_obj.open(filepath_obj, std::ios::out); ofs_sbj.open(filepath_sbj, std::ios::out);
+        apply_optimization(opt, ind_l);
+        ofs_obj.close(); ofs_sbj.close();
 
-        opt = nlopt::opt(nlopt::LN_COBYLA, 1);
-        opt.add_inequality_constraint(Fconst_mixed, &od);
-        opt.set_min_objective(ObjFunc_Vertex, &od);
         od.SetCrossedIndex(ind_r, ind_r);
-        double update_r = apply_optimization(opt, ind_r, step);
-        update_Vertex(update_r, ValidFC[ind_r], ValidFC[ind_r]);
-        cb_Folding(ValidFC, Poly_V, a_flap, mid);
+        filepath_obj = "./Optimization/objfunc" + std::to_string(ind_r) + ".csv";
+        filepath_sbj = "./Optimization/sbjfunc" + std::to_string(ind_r) + ".csv";
+        ofs_obj.open(filepath_obj, std::ios::out); ofs_sbj.open(filepath_sbj, std::ios::out);
+        apply_optimization(opt, ind_r);
+        ofs_obj.close(); ofs_sbj.close();
 
-        for(int i = 0; i < (int)initX.size(); i++){
-            double sgn = (MathTool::is_point_on_line(initX[i], ValidFC[i]->first->p, ValidFC[i]->third->p))?1: -1;
-            qDebug() << i << " : error  = " << sgn * (initX[i] - ValidFC[i]->first->p).norm();
-            ofs << sgn * (initX[i] - ValidFC[i]->first->p).norm() << " ,";
-        }
         qDebug()<<"ind_l = " << ind_l   << " , ind_r = " << ind_r;
-        fr = RulingsCrossed(ValidFC);
+        fr = RulingsCrossed(FC);
 
         if(((bef_l != -1 && bef_r != -1) && (bef_l == ind_l && bef_r == ind_r)))break;//同じ場所をloopしていたら修正を強制終了
-        //bef_l = ind_l; bef_r = ind_r;
-        //if(ind_l < (int)ValidFC.size() - 1)ind_l = (calcCrossPt4Constraint(ValidFC[ind_l], ValidFC[ind_l - 1]) != 0)? ind_l: ind_l+1;
-        //if(ind_r > 0)ind_r = (calcCrossPt4Constraint(ValidFC[ind_r], ValidFC[ind_r + 1]) != 0)? ind_r: ind_r-1;
+        bef_l = ind_l; bef_r = ind_r;
 
         //交差していようがひとまず無視するやり方(最後に交差した箇所のrulingの向きを強制的に書き換える)
-        if(ind_l < (int)ValidFC.size() - 1)ind_l++;
-        if(ind_r > 0)ind_r--;
-        if(ind_r == 0 && ind_l == (int)ValidFC.size()-1)break;
+        if(ind_l < (int)ValidFC.size())ind_l++;
+        if(ind_r >= 0)ind_r--;
+        if(ind_r < 0 && ind_l >= (int)ValidFC.size())break;
+
        }while(fr != 0.0);
 
+       for(int i = 0; i < (int)initX.size(); i++){
+        double sgn = (MathTool::is_point_on_line(initX[i], ValidFC[i]->first->p, ValidFC[i]->third->p))?1: -1;
+        qDebug() << i << " : error  = " << sgn * (initX[i] - ValidFC[i]->first->p).norm();
+        ofs << sgn * (initX[i] - ValidFC[i]->first->p).norm() << " ,";
+       }
+       auto endtime = std::chrono::high_resolution_clock::now();
+       qDebug() << "Elapsed time: " <<  std::chrono::duration_cast<std::chrono::milliseconds>(endtime - starttime).count() << " millisecond\n";
+
+       for(int i = 0; i < (int)FC.size(); i++){
+        ValidFC[i]->first->p = FC[i]->first->p; ValidFC[i]->first->p3 = FC[i]->first->p3;
+       }
+       cb_Folding(ValidFC, Poly_V, a_flap, (int)ValidFC.size()/2);
     }else{//逐次的な探索による修正
        bool res;
        std::string type = (VertexMoveAlg == 0)? "FindFirstPoint": "Fullsearch";
        qDebug()<<type;
-       std::string file = "./Optimization/iteration_" + type + "_range" + std::to_string(range) + "_warea" + std::to_string(warea) + "_wsim" + std::to_string(wsim) + ".csv";
+       std::string file = "./Optimization/iteration_" + type + "_range" + std::to_string(range) + "_wp" + std::to_string(wp) + "_wsim" + std::to_string(wsim) + ".csv";
        ofs.open(file, std::ios::out);
        ind_l = mid+1; ind_r = mid-1;
        do{
@@ -1415,8 +1310,8 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
         //for(int i = mid+1; i < (int)ValidFC.size() - 1 && ind_l == (int)ValidFC.size() - 1; i++) ind_l = (calcCrossPt4Constraint(ValidFC[i], ValidFC[i-1]) != 0)? i: ind_l;
         //for(int i = mid - 1; i > 0 && ind_r == 0; i--)  ind_r = (calcCrossPt4Constraint(ValidFC[i], ValidFC[i+1]) != 0)? i: ind_r;
 
-        if(VertexMoveAlg == 0)res = ReviseVertexPos(Poly_V, ind_l, ind_r, 0, range, warea, wsim);//全探索ではないほう(最初に条件を満たす場所を見つける)
-        else if(VertexMoveAlg == 1)res = ReviseVertexPos(Poly_V, ind_l, ind_r, 1, range, warea, wsim);//全探索
+        if(VertexMoveAlg == 0)res = ReviseVertexPos(Poly_V, ind_l, ind_r, 0, range, wp, wsim);//全探索ではないほう(最初に条件を満たす場所を見つける)
+        else if(VertexMoveAlg == 1)res = ReviseVertexPos(Poly_V, ind_l, ind_r, 1, range, wp, wsim);//全探索
         cb_Folding(ValidFC, Poly_V, a_flap, mid);
         qDebug()<<"movement vertex ";
 
@@ -1428,19 +1323,14 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
         ofs << "\n";
         qDebug()<<"ind_l = " << ind_l   << " , ind_r = " << ind_r << " , result = " << res;
         fr = RulingsCrossed(ValidFC);
-
-        //if(!res || ((bef_l != -1 && bef_r != -1) && (bef_l == ind_l && bef_r == ind_r)))break;//同じ場所をloopしていたら修正を強制終了
-        //bef_l = ind_l; bef_r = ind_r;
-        //if(ind_l < (int)ValidFC.size() - 1)ind_l = (calcCrossPt4Constraint(ValidFC[ind_l], ValidFC[ind_l - 1]) != 0)? ind_l: ind_l+1;
-        //if(ind_r > 0)ind_r = (calcCrossPt4Constraint(ValidFC[ind_r], ValidFC[ind_r + 1]) != 0)? ind_r: ind_r-1;
-        //交差していようがひとまず無視するやり方(最後に交差した箇所のrulingの向きを強制的に書き換える)
         if(ind_l < (int)ValidFC.size() - 1)ind_l++;
         if(ind_r > 0)ind_r--;
-        if(ind_r == 0 && ind_l == (int)ValidFC.size()-1)break;
+        if(ind_r < 0 && ind_l >= (int)ValidFC.size())break;
        }while(fr != 0.0 && res);
     }
     
     ofs.close();
+    hasContainSbjfunc = !hasContainSbjfunc;
     return (fr == 0.0) ? true: false;
 }
 
@@ -1487,122 +1377,7 @@ void FlattenSpaceCurve(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, int
     }
 }
 
-double ObjFunc_EndPoint(const std::vector<double> &X, std::vector<double> &grad, void* f_data){
-    std::vector<double> w = {0.01, 0.01};
-    RevisionVertices::ObjData_ep *od = (RevisionVertices::ObjData_ep *)f_data;
-    update_Vertex(X[0], od->FC[1], od->FC[1]); update_Vertex(X[1], od->FC[2], od->FC[2]);
-    FlattenSpaceCurve(od->FC, 0);
-    double f = (od->EndPt[0] - od->FC.back()->first->p).norm();
-    if(!grad.empty()){
-       for(int i = 0; i < 2; i++){
-        update_Vertex(X[i] + eps, od->FC[i+1], od->FC[i+1]); FlattenSpaceCurve(od->FC, 0);
-        double fp = (od->EndPt[0] - od->FC.back()->first->p).norm();
-        update_Vertex(X[i] - eps, od->FC[i+1], od->FC[i+1]); FlattenSpaceCurve(od->FC, 0);
-        double fm = (od->EndPt[0] - od->FC.back()->first->p).norm();
-        grad[i] = w[i]*(fp - fm)/(2.0*eps);
-       }
-    }
-    return f;
-}
-
-bool FoldLine::Optimization_EndPoint(const std::vector<std::shared_ptr<Vertex>>& Poly_V){
-    nlopt::opt opt;
-    std::vector<double> X(2), bnd_lower(2,0), bnd_upper(2);
-
-    std::vector<std::shared_ptr<Vertex4d>> FC;
-    for(auto&fc: FoldingCurve){
-       if(fc->IsCalc){FC.push_back(fc);}
-    }
-
-    for(int i = 0; i < 2; i++){
-       Eigen::Vector3d crossPoint;
-       for(int k = 0; k < (int)Poly_V.size(); k++){
-        crossPoint = MathTool::calcCrossPoint_2Vector(FC[i+1]->first->p, 1000.0 * (FC[i+1]->first->p - FC[i+1]->third->p).normalized() + FC[i+1]->first->p, Poly_V[k]->p, Poly_V[(k + 1) % (int)Poly_V.size()]->p);
-        if(MathTool::is_point_on_line(crossPoint, Poly_V[k]->p, Poly_V[(k + 1) % (int)Poly_V.size()]->p) && (FC[i+1]->first->p - FC[i+1]->third->p).normalized().dot(crossPoint - FC[i+1]->first->p) > 0)break;
-       }
-       X[i] = (FC[i+1]->first->p - FC[i+1]->third->p).norm(); bnd_upper[i] = (crossPoint - FC[i+1]->third->p).norm();
-    }
-    Eigen::Vector3d ep = FC.back()->first->p;
-    FlattenSpaceCurve(FC, 0);
-    RevisionVertices::ObjData_ep od = {FC, {ep}};
-    opt = nlopt::opt(nlopt::GD_STOGO, 2);
-    opt.set_min_objective(ObjFunc_EndPoint, &od);
-    opt.set_lower_bounds(bnd_lower);
-    opt.set_upper_bounds(bnd_upper);
-
-    double ftol = 1e-6, xtol = 1e-6, maxtime = 3;
-    SetOptimizationParameter(opt, bnd_lower, bnd_upper, ftol, xtol, maxtime);
-    double minf;
-    try {
-       nlopt::result result = opt.optimize(X, minf);
-    }catch (std::exception& e) { qDebug() << "nlopt failed: " << e.what() ; }
-    update_Vertex(X[0], FC[1], FC[1]); update_Vertex(X[1], FC[2], FC[2]);
-    FlattenSpaceCurve(FC, 0);
-    return true;
-}
-
-bool FoldLine::Optimization_Vertex(const std::vector<std::shared_ptr<Vertex>>& Poly_V){
-    qDebug() <<"this optimization has to be started center of folding curve. End Point will not be mistaken result.";
-    qDebug()<<"before optimization ";
-    double fc_bef = RulingsCrossed(FoldingCurve);
-    qDebug()<<"ruling intersection  : " << fc_bef;
-    nlopt::opt opt;
-    std::vector<double> X, bnd_lower, bnd_upper;
-    std::vector<std::shared_ptr<Vertex4d>> FC;
-    for(auto&fc: FoldingCurve){
-        std::shared_ptr<Vertex4d> v4d = fc->deepCopy(); v4d->addline(fc->line_parent);
-        FC.push_back(v4d);
-        double init_l;
-        if(fc == FoldingCurve.front() || fc == FoldingCurve.back()){
-            init_l = (fc->first->p - fc->third->p).norm();
-        }else{
-            init_l = (v4d->first->p - v4d->third->p).norm();
-            Eigen::Vector3d crossPoint;
-            for(int k = 0; k < (int)Poly_V.size(); k++){
-                crossPoint = MathTool::calcCrossPoint_2Vector(v4d->first->p, 1000.0 * (v4d->first->p - v4d->third->p).normalized() + v4d->first->p, Poly_V[k]->p, Poly_V[(k + 1) % (int)Poly_V.size()]->p);
-                if(MathTool::is_point_on_line(crossPoint, Poly_V[k]->p, Poly_V[(k + 1) % (int)Poly_V.size()]->p) && (v4d->first->p - v4d->third->p).normalized().dot(crossPoint - v4d->first->p) > 0)break;
-            }
-        }
-
-        X.push_back(init_l);
-        bnd_lower.push_back(init_l - 20);
-        bnd_upper.push_back(init_l + 20);
-        //bnd_lower.push_back(0);
-        //bnd_upper.push_back((crossPoint - v4d->third->p).norm());
-    }
-    int StartingIndex = FoldingCurve.size()/2;
-    RevisionVertices::ObjData_v od = {a_flap, FC, Poly_V, StartingIndex};
-    od.AddBasePt(FoldingCurve);
-
-    opt = nlopt::opt(nlopt::LD_MMA, X.size());
-    opt.set_min_objective(ObjFunc_Vertex, &od);
-    opt.add_inequality_constraint(Fruling4Vertex, &od);
-    opt.add_inequality_constraint(Fconst_conv, &od);
-
-    double ftol = 1e-9, xtol = 1e-9, maxtime = 100;
-    SetOptimizationParameter(opt, bnd_lower, bnd_upper, ftol, xtol, maxtime);
-    //opt.set_param("inner_maxeval", 10);
-    double minf;
-    try {
-        nlopt::result result = opt.optimize(X, minf);
-        qDebug()<<"result " << result;
-    }catch (std::exception& e){qDebug() << "nlopt failed: " << e.what();}
-
-    for(int i = 0; i < (int)X.size(); i++) qDebug() <<"norm error  " << i << "  ,  " << (FoldingCurve[i]->first->p - FoldingCurve[i]->third->p).norm() - X[i];
-
-    for(int i = 0; i < (int)X.size(); i++){
-        FoldingCurve[i]->first->p = X[i] * (FoldingCurve[i]->first->p - FoldingCurve[i]->third->p).normalized() + FoldingCurve[i]->third->p;
-        FoldingCurve[i]->first->p3 = X[i] * (FoldingCurve[i]->first->p3 - FoldingCurve[i]->third->p3).normalized() + FoldingCurve[i]->third->p3;
-    }
-    cb_Folding(FoldingCurve, Poly_V, a_flap, StartingIndex);
-    double fc = RulingsCrossed(FoldingCurve);
-    qDebug() <<"before ruling" << fc_bef <<"  ,  result = " << fc<< " , error " << minf;
-
-
-    return false;
-}
-
-bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double wb, double wp, int rank, int alg, bool IsStartEnd, int OptimizationAlgorithm, bool OptimizeAngleFor3Rulings){
+bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double wp, double wsim, int rank, int alg, bool IsStartEnd, int OptimizationAlgorithm, bool OptimizeAngleFor3Rulings, bool _IsIgnoreTipRuling){
 
     auto apply_optimization = [&](nlopt::opt& opt, std::vector<double>& X, std::vector<std::shared_ptr<Vertex4d>>& ValidFC, const std::vector<std::shared_ptr<Vertex>>& Poly_V,
                             int StartingIndex,  double& minf, double& fruling){
@@ -1619,11 +1394,11 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
 
     if(FoldingCurve.empty())return false;
     //if(isbend())return true;
-
+    IsIgnoreTipRuling = _IsIgnoreTipRuling;
     std::vector<std::shared_ptr<Vertex4d>> ValidFC;
     for(auto&fc: FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
     double a = 0, a_min, a_max;
-    double ftol = 1e-9, xtol = 1e-9, maxtime = 1;
+    double ftol = 1e-6, xtol = 1e-6, maxtime = 1;
     const double th_ruling = 1e-9;
 
     Eigen::Vector3d e, e2, SpinAxis, Nb, N4;
@@ -1679,8 +1454,8 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     }
 
     RevisionVertices::ObjData od = {ValidFC, Poly_V, StartingPoint};
-    double mu = 1e-1;
-    od.AddWeight(wb, 0.1*wp, -1, mu); od.SwitchIsSameWight(IsSameWeight);
+
+    od.AddWeight(wsim, wp); od.SwitchIsSameWight(IsSameWeight);
     std::vector<double> X, minf, fruling;
     bnd_lower.push_back(a_min); bnd_upper.push_back(a_max);
     if(alg == 0){//ruling intersection as a constraint  
@@ -1724,32 +1499,41 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
 
         X.push_back(a_min + 0.5); minf.resize(2); fruling.resize(2);
         nlopt::opt opt;
-        opt = nlopt::opt(nlopt::LD_MMA, 1);
-        opt.set_min_objective(ObjFunc_RegressionCurve, &od);
-        opt.add_inequality_constraint(Fruling, &od);
+        //geometory
+        static int alg = 0;
+        if(alg == 0){opt = nlopt::opt(nlopt::LN_BOBYQA, 1);qDebug()<< "nlopt::LN_BOBYQA";}//精度としては微妙
+        if(alg == 1){opt = nlopt::opt(nlopt::LN_COBYLA, 1);qDebug()<< "nlopt::LN_COBYLA";}//早いけど局所解に陥る可能性あり?
+        if(alg == 2){opt = nlopt::opt(nlopt::LD_CCSAQ, 1);qDebug()<< "nlopt::LD_CCSAQ";}//やや遅くなる時もあるけど局所解に陥りづらい？
+        if(alg == 3){opt = nlopt::opt(nlopt::LN_NELDERMEAD, 1);qDebug()<< "nlopt::LN_NELDERMEAD";}//早いけど局所解に陥る可能性あり?
+        if(alg == 4){opt = nlopt::opt(nlopt::LN_PRAXIS, 1);qDebug()<< "nlopt::LN_PRAXIS";}//やや遅い　局所解に陥る
+        if(alg == 5){opt = nlopt::opt(nlopt::LN_SBPLX, 1);qDebug()<< "nlopt::LN_SBPLX";}//早いけど局所解に陥る可能性あり?
+        if(alg == 6){opt = nlopt::opt(nlopt::LD_LBFGS, 1);qDebug()<< "nlopt::LD_LBFGS";}//LN_NELDERMEADよりは若干遅くなる時もあるけど局所解に陥りづらい？
+        opt = nlopt::opt(nlopt::LN_NELDERMEAD, 1);
+        alg = (alg + 1) % 7;
+
+        //opt.set_min_objective(ObjFunc_RegressionCurve, &od);
+        //opt.add_inequality_constraint(Fruling, &od);
+        opt.set_min_objective(Fruling, &od);
         SetOptimizationParameter(opt, bnd_lower, bnd_upper, ftol, xtol, maxtime);
         apply_optimization(opt, X, ValidFC, Poly_V, StartingPoint, minf[0], fruling[0]);
+        double minx = X[0];
 
         X[0] = a_max - 0.5;
-        opt = nlopt::opt(nlopt::LD_MMA, 1);
-        opt.set_min_objective(ObjFunc_RegressionCurve, &od);
-        opt.add_inequality_constraint(Fruling, &od);
-        SetOptimizationParameter(opt, bnd_lower, bnd_upper, ftol, xtol, maxtime);
         apply_optimization(opt, X, ValidFC, Poly_V, StartingPoint, minf[1], fruling[1]);
 
         if(fruling[0] >= th_ruling && fruling[1] > th_ruling){
-            if(minf[0] < minf[1]) a_flap = X[0];
-            else a_flap = X[1];
+            if(minf[0] < minf[1]) a_flap = minx;
+            else a_flap = X[0];
             cb_Folding(ValidFC, Poly_V, a_flap, StartingPoint);
             qDebug()<<"could not avoid ruling cross";
             qDebug() << "result : smaller = " << MathTool::rad2deg(a_flap)  << "(" << a_flap << ") " <<  "  f_bend = " << Fbend2(FoldingCurve) << "  ,  f_ruling = " <<RulingsCrossed(FoldingCurve) ;
             return false;
         }
         if(fruling[0] < th_ruling && fruling[1] < th_ruling){
-            if(minf[0] < minf[1]) a_flap = X[0];
-            else a_flap = X[1];
-        }else if(fruling[0] < th_ruling && fruling[0] >= th_ruling) a_flap = X[0];
-        else if(fruling[0] >= th_ruling && fruling[1] < th_ruling)  a_flap = X[1];
+            if(minf[0] < minf[1]) a_flap = minx;
+            else a_flap = X[0];
+        }else if(fruling[0] < th_ruling && fruling[0] >= th_ruling) a_flap = minx;
+        else if(fruling[0] >= th_ruling && fruling[1] < th_ruling)  a_flap = X[0];
         cb_Folding(ValidFC, Poly_V, a_flap, StartingPoint);
         qDebug() << "result : smaller = " << MathTool::rad2deg(a_flap)  << "(" << a_flap << "), tol = " << tol <<  "  f_bend = " << Fbend2(FoldingCurve) << "  ,  f_ruling = " <<RulingsCrossed(FoldingCurve) ;
         qDebug() << "finish";
@@ -2321,7 +2105,6 @@ std::vector<std::vector<std::shared_ptr<Vertex>>> FoldLine::CalclateRegressionCu
     return Triangles;
 }
 
-
 double calclate_adjacent_angle(const std::shared_ptr<Vertex4d>&xbef, const std::shared_ptr<Vertex4d>&x, const std::shared_ptr<Vertex4d>& xnext, double a, double& phi1, Eigen::Vector3d& SrfN){
     Eigen::Vector3d e = (xbef->first->p3 - x->first->p3).normalized(), e2 = (xnext->first->p3 - x->first->p3).normalized() , Axis = (x->third->p3 - x->first->p3).normalized();
     double beta = std::acos(e.dot(e2)), k = 2.0 * std::numbers::pi - (std::acos(e2.dot(Axis)) + std::acos(e.dot(Axis)));
@@ -2808,10 +2591,10 @@ void FoldLine::FittingEndPoint_flattencurve(const Eigen::Vector3d& initRight, co
     for(int i = 0; i < (int)ValidFC.size(); i++) ValidFC[i]->first->p = vertices[i];
     PolyCurveOn2D data = {ValidFC, Phis, v2d, initRight, initLeft};
     nlopt::opt opt;
-    opt = nlopt::opt(nlopt::LD_LBFGS, 1);
+    opt = nlopt::opt(nlopt::LN_NELDERMEAD, 1);
     opt.set_min_objective(ObjFunc_FittingPoint, &data);
     opt.set_lower_bounds(-std::numbers::pi); opt.set_upper_bounds(std::numbers::pi);
-    opt.set_maxtime(3.0); opt.set_ftol_rel(1e-8);
+    opt.set_maxtime(3.0); opt.set_xtol_rel(1e-8);
     e = (initLeft - initRight).normalized(); e2 = (ValidFC.back()->first->p - initRight).normalized();
     double phi = std::acos((e.dot(e2) < -1)? -1: (e.dot(e2) > 1)? 1: e.dot(e2));
     qDebug()<< "init ro = " << MathTool::rad2deg(phi) << " , error = " << err;
