@@ -105,7 +105,7 @@ public:
     bool eraseCtrlPt(int curveDimention, int crvPtNum);
     int movePtIndex(Eigen::Vector3d& p, double& dist);
     void ClearPt();
-    void InsertControlPoint2(Eigen::Vector3d& p);
+    void InsertControlPoint(QPointF _p);
     void SetNewPoint();
 
     int InsertPointSegment;
@@ -142,12 +142,12 @@ public:
     int VerticesNum;
     std::vector<std::shared_ptr<Vertex>> vertices;
     void addVertex(const std::shared_ptr<Vertex>&v, int n);
-    void addVertex(Eigen::Vector3d& p);
+    void addVertex(Eigen::Vector3d p);
     void eraseVertex();
     std::vector<std::shared_ptr<Vertex>> getVertices();
     std::vector<std::shared_ptr<Line>> Lines;
     void ConnectEdges(bool IsConnected = true);
-    void drawPolygon(Eigen::Vector3d& p, bool IsClicked);
+    void drawPolygon(Eigen::Vector3d p, bool IsClicked);
     void MoveOutline(Eigen::Vector3d p);//polygonの移動
     void MoveVertex(Eigen::Vector3d p, int ind);
     Eigen::Vector2d origin;//polygonの始点
@@ -161,11 +161,10 @@ private:
 
 void CrossDetection(std::shared_ptr<OUTLINE>& outline, std::shared_ptr<CRV>& crvs);
 std::shared_ptr<Vertex> getClosestVertex(const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o,  const std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, bool SkipTrimedPoint);
-Eigen::MatrixXd GlobalSplineInterpolation(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, std::vector<double>&Knot, std::vector<double>& T, bool is3d, int dim);
 std::vector<double> BezierClipping(std::vector<Eigen::Vector3d>&CtrlPts, const std::shared_ptr<Vertex>& p, const std::shared_ptr<Vertex>& q, int dim);
 std::vector<std::shared_ptr<Vertex>> SortPolygon(std::vector<std::shared_ptr<Vertex>>& polygon);
 std::vector<std::vector<std::shared_ptr<Vertex>>> MakeModel(const std::vector<std::shared_ptr<Line>>& Surface,
-                                                            const std::vector<std::shared_ptr<Line>>& Rulings,  const std::vector<std::vector<std::shared_ptr<Vertex4d>>>& FoldingCurves);
+                                                            const std::vector<std::shared_ptr<Line>>& Rulings,  const std::vector<std::vector<std::shared_ptr<Vertex4d>>>& Creases);
 
-Eigen::Vector3d getCenter(const std::vector<Eigen::Vector3d>& vertice, double&sum);
+QPointF SetOnGrid(QPointF& cursol, double gridsize, const QSize& S);
 #endif // SETRULINGS_H

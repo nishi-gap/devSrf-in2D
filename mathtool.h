@@ -27,7 +27,6 @@ enum class CurveType{
     bsp3,
     line,
     arc,
-    DebugTest,
 };
 
 struct ColorPoint{
@@ -56,22 +55,14 @@ enum class PaintTool{
     Polyline_ol,
     EditVertex_ol,
     Move_ol,
-    Const_ol,
-    ConnectVertices_ol,
 
     MoveCtrlPt,
     InsertCtrlPt,
     DeleteCtrlPt,
     DeleteCurve,
 
-    FoldLine_bezier,
-    FoldLine_line,
-    FoldLine_arc,
-    FoldLine_test,
-    FoldlineColor,
-    FoldLine_move,
-
-    CheckDevelopability,
+    Crease,
+    Crease_move,
 
 };
 
@@ -130,134 +121,5 @@ template<typename T>
 void swap(T &a, T& b){ T c = a; a = b; b = c;}
 
 }
-
-/*
-template <typename T>
-class NTreeNode{
-public:
-  T data;
-  std::vector<std::shared_ptr<NTreeNode<T>>> children;
-  NTreeNode(const T& val): data(val){}
-  bool IsChild(const T& val){
-      std::queue<std::shared_ptr<NTreeNode<T>>> q; q.push(std::shared_ptr<NTreeNode<T>>(this));
-      while (!q.empty()) {
-          std::shared_ptr<NTreeNode<T>> cur = q.front(); q.pop();
-          for (std::shared_ptr<NTreeNode<T>> child : cur->children){
-              if(child->data == val)return true;
-              q.push(child);
-          }
-      }
-      return false;
-  }
-};
-
-
-template <typename T>
-class NTree {
-private:
-    std::shared_ptr<NTreeNode<T>> root;
-
-public:
-    NTree(const T& val) { root = std::make_shared<NTreeNode<T>>(NTreeNode<T>(val));}
-    NTree(){root = std::shared_ptr<NTreeNode<T>>(nullptr);}
-
-    bool empty(){return (root == nullptr)? true: false;}
-    void insert(const T& parentVal, const T& val){
-        std::shared_ptr<NTreeNode<T>> newNode = std::make_shared<NTreeNode<T>>(NTreeNode<T>(val));
-        insertRecursive(root, parentVal, newNode);
-    }
-    std::shared_ptr<NTreeNode<T>> GetRoot(){return (root != nullptr)? root: std::shared_ptr<NTreeNode<T>>(nullptr);}
-
-    std::shared_ptr<NTreeNode<T>> getParent(const T& val){
-        if (root == nullptr)return std::shared_ptr<NTreeNode<T>>(nullptr);
-        std::queue<std::shared_ptr<NTreeNode<T>>> q;
-        q.push(root);
-        while (!q.empty()) {
-            std::shared_ptr<NTreeNode<T>> cur = q.front(); q.pop();
-            for (std::shared_ptr<NTreeNode<T>> child : cur->children){
-                if(child->data == val)return cur;
-                q.push(child);
-            }
-        }
-        return std::shared_ptr<NTreeNode<T>>(nullptr);
-    }
-
-    std::vector<std::shared_ptr<NTreeNode<T>>> GetChildren(const std::shared_ptr<NTreeNode<T>>& parent){
-        return parent->children;
-    }
-
-    void insertRecursive(const std::shared_ptr<NTreeNode<T>>& node, const T& parentVal, const std::shared_ptr<NTreeNode<T>>& newNode){
-        if (node == nullptr) return;
-        if (node->data == parentVal) {
-            node->children.push_back(newNode);
-            return;
-        }
-        for (const std::shared_ptr<NTreeNode<T>>& child : node->children) {
-            insertRecursive(child, parentVal, newNode);
-        }
-    }
-
-    void erase(const T& val){
-        std::shared_ptr<NTreeNode<T>> Tree = find(val);
-        if(Tree == nullptr)return;
-        std::shared_ptr<NTreeNode<T>> par = getParent(val);
-        for(const auto&child: Tree->children)par->children.push_back(child);
-        delete Tree;//内部の変数のアドレスは解放されていない
-    }
-
-    void clear(){
-        if (root == nullptr)return;
-        std::queue<std::shared_ptr<NTreeNode<T>>> q;
-        q.push(root);
-        while (!q.empty()) {
-            std::shared_ptr<NTreeNode<T>> cur = q.front(); q.pop();
-            for (const std::shared_ptr<NTreeNode<T>>& child : cur->children)q.push(child);
-            cur.reset();
-        }
-        root = nullptr;
-    }
-
-    void changeRoot(const T& val){
-        std::shared_ptr<NTreeNode<T>> newNode = std::make_shared<NTreeNode<T>>(NTreeNode<T>(val));
-        std::shared_ptr<NTreeNode<T>> tmp = root;
-        root = newNode;
-        root->children.push_back(tmp);
-    }
-    std::shared_ptr<NTreeNode<T>> find(const T& val){
-        if (root == nullptr)return nullptr;
-        std::queue<std::shared_ptr<NTreeNode<T>>> q;
-        q.push(root);
-        while (!q.empty()) {
-            std::shared_ptr<NTreeNode<T>> cur = q.front(); q.pop();
-            if(cur->data == val)return cur;
-            for (std::shared_ptr<NTreeNode<T>> child : cur->children){
-                if(child != nullptr)q.push(child);
-            }
-        }
-        return nullptr;
-    }
-    void printTree(const std::shared_ptr<NTreeNode<T>>& node, int depth = 0){
-        if (node == nullptr)return;
-        for (int i = 0; i < depth; ++i)std::cout << "*";
-        std::cout << node->data << std::endl;
-        for (const std::shared_ptr<NTreeNode<T>>& child : node->children)printTree(child, depth + 1);
-    }
-    void print(){printTree(root);}
-    int getLayerNum(){
-        int rank = 0;
-        if (root == nullptr)return rank;
-        std::queue<std::shared_ptr<NTreeNode<T>>> q;
-        q.push(root);
-        while (!q.empty()) {
-            std::shared_ptr<NTreeNode<T>> cur = q.front(); q.pop();
-            for (std::shared_ptr<NTreeNode<T>> child : cur->children){
-                if(child != nullptr)q.push(child);
-            }
-            rank++;
-        }
-        return rank;
-    }
-};
-*/
 
 #endif // MATHTOOL_H

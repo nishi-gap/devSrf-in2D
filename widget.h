@@ -52,17 +52,14 @@ public slots:
     void ChangeDivSizeEditFromSlider(int val);
     void ChangeDivSizeEditFromSpinBox(int val);
     void sendCurveType(CurveType &ct);
-    void Initialize();
 
     //new gradation mode
-    void changeInterpolationType();
     void ApplyNewColor(int wd, int color);
     void FinishColorChange();
 
     //輪郭
     void sendNewEdgeNum();
     void switchActivateCheckBox(PaintTool active);
-    void SymmetricConstraint();
 
     //layer関係
     void addCurveBtn();
@@ -70,35 +67,13 @@ public slots:
     void SetHandleCrv(Btn4Crv *btn, QMouseEvent *e);
 
     //fold line
-    void moveCtrlPts_fl();
-    void addFoldLine_l();
-    void addFoldLine_arc();
-    void addFoldLine_bezier();
-    void addFoldLine_test();
-    void color_FL();
     void changeAngleFromSlider(int val);
     void changeAngleFromSpinBox(double val);
-
-    void changeToleranceValue_Slider(int val);
-    void changeToleranceValue_Spin(double val);
     void changeRulingNum(int val);
-    void sendFoldingParam(double &tol, bool &begincenter);
 
-    void ReassinColor();
+    void changeLineWidthFromSlider(int n);//Line Width
+    void StartOptimization();//optimization or discrete developable surface
 
-    //Line Width
-    void changeLineWidthFromSlider(int n);
-    void changeLineWidthFromSpinBox(double d);
-
-    //optimization or discrete developable surface
-    void SimpleSmoothing();
-    void StartOptimization();
-    void BendCurve(int num);
-
-    //Regression Curve
-    void SwitchingVisualization_RegCurve();
-
-    void SwitchStateIgnoreTipRuling();//検証用
 private:
     Ui::MainWindow *ui;
     QList<std::tuple<QCheckBox *, PaintTool >> CBoxlist;
@@ -118,14 +93,10 @@ signals:
     void sliderValChanged();
     void makeGradation();
     void signalNewEdgeNum(int num);
-    void PressedEnter();
-    void PressedBackSpace();
     void signalNewSelectedCrv(int ind);
     void swapIndex(int n1, int n2);
-    void constraintType(int state);
-    void signalFLtype(PaintTool state);
     void signalNewLineWidth(double d);
 
-    void sendAngle(double val, int keyType);
+    void sendAngle(double val);
 };
 #endif // WIDGET_H

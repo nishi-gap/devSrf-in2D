@@ -25,10 +25,8 @@ public:
     std::vector<Eigen::Vector3d> point;
     std::vector<std::shared_ptr<Vertex4d>> FoldingCurve;
     std::vector<Eigen::Vector3d> CurvePts;
-    std::vector<std::array<Eigen::Vector3d, 2>>  AllRulings;
     PaintTool type;
     double a_flap;
-    double tol;
     int validsize;
 
     std::shared_ptr<FoldLine> deepCopy();
@@ -37,42 +35,26 @@ public:
     bool delCtrlPt(Eigen::Vector3d& p, int dim, std::shared_ptr<OUTLINE>& outline);
     bool moveCtrlPt(Eigen::Vector3d& p, int movePtIndex, int dim);
     bool setCurve(int dim);
-    double getColor();
     bool RevisionCrosPtsPosition();
 
-    bool Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double wp, double wsim, int rank, int alg, bool IsStartEnd, int OptimizationAlgorithm, bool OptimizeAngleFor3Rulings, bool _IsIgnoreTipRuling);
-    bool PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool IsStartEnd, int VertexMoveAlg, int OptimizationAlgorithm, double range, double wp, double wsim);
-    void ReviseCenterFlapAngle(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool IsStartEnd, int AlgType);
-    void _movevertex(double t, const std::vector<std::shared_ptr<Vertex>>& Poly_V);
+    bool Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double wp, double wsim, int rank);
+    bool PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double wp, double wsim);
 
-    std::vector<std::vector<Eigen::Vector3d>> Optimization_SmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v, bool IsConnectEndPoint);
-    std::vector<std::vector<Eigen::Vector3d>> Optimization_PlanaritySrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void ReassignColor();
-    void TrimLines(int size);
-    //void SimplifyModel(double tol, bool isroot);
+
     void SimplifyModel(int iselim, bool isroot);
     bool SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void SortCurve(bool ascending = false);
     void AlignmentVertex4dDirection();
     void CheckIsCrossedRulings();
-    void initialize_foldstate(bool IsStartEnd, const std::vector<std::shared_ptr<Vertex>>& Poly_V);
+    void initialize_foldstate(const std::vector<std::shared_ptr<Vertex>>& Poly_V);
     void reassignruling(std::shared_ptr<FoldLine>& parent, const std::vector<std::shared_ptr<Line>>& Surface, const std::vector<std::shared_ptr<Line>>& Rulings);
 
-    void applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool IsStartEnd, double a);
-    void revisecrossedruling(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
-    void drawRulingInAllAngles(std::vector<std::array<Eigen::Vector3d, 2>>& _Rulings);
-
-    void test_rotate(double a);
+    void applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double a);
     void FittingEndPoint_flattencurve(const Eigen::Vector3d& initRight, const Eigen::Vector3d& initLeft);
-    std::vector<std::vector<std::shared_ptr<Vertex>>> CalclateRegressionCurve(double a, const std::vector<std::shared_ptr<Vertex>>& Poly_V, bool IsWriteCSV, bool IsStartEnd, std::vector<std::vector<std::shared_ptr<Vertex>>>& Tri_fixside);
 private:
-    double color;
-
     int curveNum;
-
     std::vector<std::shared_ptr<CrvPt_FL>> Points_On_Curve;
-    bool ReviseVertexPos(const std::vector<std::shared_ptr<Vertex>>& Poly_V, int EndIndex_left, int EndIndex_right, int AlgOptim, double range, double wp, double wsim);
-    //Eigen::MatrixXd GlobalSplineInterpolation(std::vector<double>&Knot, bool is3d, int dim);
 };
 
 class NTreeNode{

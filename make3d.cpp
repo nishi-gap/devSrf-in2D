@@ -10,30 +10,29 @@ Model::Model(int _crvPtNum){
     clear();
     outline = std::make_shared<OUTLINE>();
     refCrv.clear();
-    refFL = nullptr;
-    FoldCurveIndex = befFaceNum = 0;
-    NTree_fl = NTree();
+    refCreases = nullptr;
+    FoldCurveIndex = 0;
+    NTree_Creases = NTree();
 }
 
 std::shared_ptr<Model> Model::deepCopy(){
     std::shared_ptr<Model> m = std::make_shared<Model>();
-    m->crvPtNum = crvPtNum;  m->befFaceNum =  befFaceNum;  m->FoldCurveIndex =  FoldCurveIndex; m->refCrv = refCrv;
-    m->ColorPt = ColorPt; m->Axis4Const[0] = Axis4Const[0]; m->Axis4Const[1] = Axis4Const[1];
+    m->crvPtNum = crvPtNum;  m->FoldCurveIndex =  FoldCurveIndex; m->refCrv = refCrv;
+    m->ColorPt = ColorPt;
     m->Rulings.resize(Rulings.size());
     for(int i = 0; i < (int)Rulings.size(); i++)m->Rulings[i] = Rulings[i]->deepCopy();
     m->outline = outline->deepCopy();
     m->crvs.resize(crvs.size());
     for(int i = 0; i < (int)crvs.size(); i++)m->crvs[i] = crvs[i]->deepCopy();
-    m->FL.resize(FL.size());
-    for(int i = 0; i < (int)FL.size(); i++){
-        m->FL[i] = FL[i]->deepCopy();
-    }
+    m->Creases.resize(Creases.size());
+    for(int i = 0; i < (int)Creases.size(); i++)m->Creases[i] = Creases[i]->deepCopy();
+
     return m;
 }
 
 std::shared_ptr<Model> Model::stashcurrentstate(){
     std::shared_ptr<Model> m = deepCopy();
-    for(auto&fl: m->FL){
+    for(auto&fl: m->Creases){
         if(fl->FoldingCurve.empty())continue;
         for(auto&v4d: fl->FoldingCurve){
             v4d->first->update(); v4d->second->update(); v4d->third->update();
@@ -63,34 +62,34 @@ void Model::Initialize(){
 
 //将来的にはfoldlineだけでなくほかのオブジェクトも判定して操作できるようにしたい
 void Model::detectClickedObj(const QPointF& curPos){
-    refFL = nullptr;
+    refCreases = nullptr;
     const double step = 0.002;
     double mindist = 7.0;
     Eigen::Vector3d pos{curPos.x(), curPos.y(), 0};
-    for(auto&fl: FL){
+    for(auto&fl: Creases){
         if(fl->CtrlPts.size() <= 3)continue;
         for(double t = 0.0; t <= 1.0; t += step){
             Eigen::Vector3d p = MathTool::bezier(fl->CtrlPts, t, 3);//三次ベジエ曲線に限定しているため
             double d = (p - pos).norm();
             if(d < mindist){
-                mindist = d; refFL = fl;
+                mindist = d; refCreases = fl;
             }
         }
     }
-    qDebug()<<"clicked object  " << refFL.get();
+    qDebug()<<"clicked object  " << refCreases.get();
 }
 
 void Model::AffinTranse_Crease(int type, const QPointF& befPos, const QPointF& curPos, const QPointF& basePos){
-    if(refFL == nullptr || std::find(FL.begin(), FL.end(), refFL) == FL.end())return;
+    if(refCreases == nullptr || std::find(Creases.begin(), Creases.end(), refCreases) == Creases.end())return;
     switch (type) {
     case 0:
-        AffinTrans(refFL, befPos, curPos);
+        AffinTrans(refCreases, befPos, curPos);
         break;
     case 1:
-        AffinScale(refFL, basePos, befPos, curPos);
+        AffinScale(refCreases, basePos, befPos, curPos);
     default:
     case 2:
-        AffinRotate(refFL, basePos, befPos, curPos);
+        AffinRotate(refCreases, basePos, befPos, curPos);
         break;
     }
 }
@@ -107,13 +106,6 @@ void Model::SetMaxFold(double val){
     deform();
 }
 
-
-Eigen::Vector3d Model::SetOnGrid(QPointF& cursol, double gridsize, const QSize& S){
-    int x = (int)cursol.x() % (int)gridsize, y = (int)cursol.y() % (int)gridsize;
-    x = (cursol.x() - x + gridsize/2);
-    y = (cursol.y() - y + gridsize/2);
-    return Eigen::Vector3d(x,y,0);
-}
 
 void Model::deform(){
     auto Color2Angle = [](double a, ColorPoint CP){
@@ -184,16 +176,15 @@ void Model::deform(){
 }
 
 void Model::ChangeFoldLineState(){
-    if((int)FL.size() == 1){FoldCurveIndex = 0; return;}
+    if((int)Creases.size() == 1){FoldCurveIndex = 0; return;}
     FoldCurveIndex++;
-    for(auto itr = FL.begin(); itr != FL.end();){
-        if((*itr)->FoldingCurve.empty() && std::distance(FL.begin(), itr) < FoldCurveIndex){
-            itr = FL.erase(itr);
+    for(auto itr = Creases.begin(); itr != Creases.end();){
+        if((*itr)->FoldingCurve.empty() && std::distance(Creases.begin(), itr) < FoldCurveIndex){
+            itr = Creases.erase(itr);
         }
         else itr++;
     }
-    //vertices.shrink_to_fit();
-    FoldCurveIndex = FL.size() - 1;
+    FoldCurveIndex = Creases.size() - 1;
 }
 
 std::vector<std::shared_ptr<CrvPt_FL>> getCrossPoint(std::vector<Eigen::Vector3d>& CtrlPts,  const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o, int dim){
@@ -214,8 +205,8 @@ std::vector<std::shared_ptr<CrvPt_FL>> getCrossPoint(std::vector<Eigen::Vector3d
 void Model::initializeSurfaceVertices(){ for(auto&v: outline->vertices)v->p3 = v->p3_ori;}
 
 void Model::RemoveUnable2GenCurve(){
-    for(auto it = FL.begin(); it != FL.end();){
-        if((*it)->CtrlPts.size() <= 3)it = FL.erase(it);
+    for(auto it = Creases.begin(); it != Creases.end();){
+        if((*it)->CtrlPts.size() <= 3)it = Creases.erase(it);
         else it++;
     }
 }
@@ -231,7 +222,7 @@ void Model::MakeTree(){
     }
     int btm_i = std::distance(outline->Lines.begin(), std::find(outline->Lines.begin(), outline->Lines.end(),btm));
     int i = btm_i;
-    std::list<std::shared_ptr<FoldLine>> List_FL;
+    std::list<std::shared_ptr<FoldLine>> List_Creases;
 
     class LineOnFL{
     public:
@@ -245,8 +236,8 @@ void Model::MakeTree(){
     //曲面の各辺と交点があるか探索する
     //曲線が交差した辺のインデックスを持っておく
     RemoveUnable2GenCurve();
-    NTree_fl.clear();
-    for(auto&fl: FL){
+    NTree_Creases.clear();
+    for(auto&fl: Creases){
         if(fl->FoldingCurve.empty()){
             if((int)fl->CtrlPts.size() > dim){
                 hasFoldingCurve.push_back(fl);
@@ -279,24 +270,24 @@ void Model::MakeTree(){
         if(!LoF.empty()){
             std::sort(LoF.begin(), LoF.end(), [](const LineOnFL& a, const LineOnFL& b){return a.t < b.t;});
             for(auto&x: LoF){
-                if(List_FL.empty()){
-                    List_FL.push_back(x.FL);
-                    if(NTree_fl.empty())NTree_fl = NTree(x.FL);
+                if(List_Creases.empty()){
+                    List_Creases.push_back(x.FL);
+                    if(NTree_Creases.empty())NTree_Creases = NTree(x.FL);
                 }else{
-                    auto res = NTree_fl.find(x.FL);
+                    auto res = NTree_Creases.find(x.FL);
                     if(res == nullptr){
-                        NTree_fl.insert(List_FL.front(), x.FL);
-                        List_FL.push_front(x.FL);
+                        NTree_Creases.insert(List_Creases.front(), x.FL);
+                        List_Creases.push_front(x.FL);
                     }else{
-                        auto it = std::find(List_FL.begin(), List_FL.end(), x.FL);
-                        if(it != List_FL.end()) List_FL.erase(it);
+                        auto it = std::find(List_Creases.begin(), List_Creases.end(), x.FL);
+                        if(it != List_Creases.end()) List_Creases.erase(it);
                     }
                 }
             }
         }
         i = (i + 1) % (int)outline->Lines.size();
     }while(i != btm_i);
-    NTree_fl.print();
+    NTree_Creases.print();
     return;
 }
 
@@ -312,7 +303,7 @@ void Model::UpdateFLOrder(int dim){
     }
     int btm_i = std::distance(outline->Lines.begin(), std::find(outline->Lines.begin(), outline->Lines.end(),btm));
     int i = btm_i;
-    std::list<std::shared_ptr<FoldLine>> List_FL;
+    std::list<std::shared_ptr<FoldLine>> List_Creases;
 
 
     class LineOnFL{
@@ -327,7 +318,7 @@ void Model::UpdateFLOrder(int dim){
     //曲面の各辺と交点があるか探索する
     //曲線が交差した辺のインデックスを持っておく
     RemoveUnable2GenCurve();
-    for(auto&fl: FL){
+    for(auto&fl: Creases){
         fl->FoldingCurve.clear();
         if((int)fl->CtrlPts.size() > dim){
             hasFoldingCurve.push_back(fl);
@@ -348,7 +339,7 @@ void Model::UpdateFLOrder(int dim){
         }
     }
 
-    NTree_fl.clear();
+    List_Creases.clear();
     do{
        std::vector<LineOnFL> LoF;
         for(auto&fl: hasFoldingCurve){
@@ -360,17 +351,17 @@ void Model::UpdateFLOrder(int dim){
         if(!LoF.empty()){
             std::sort(LoF.begin(), LoF.end(), [](const LineOnFL& a, const LineOnFL& b){return a.t < b.t;});
             for(auto&x: LoF){
-                if(List_FL.empty()){
-                    List_FL.push_back(x.FL);
-                    if(NTree_fl.empty())NTree_fl = NTree(x.FL);
+                if(List_Creases.empty()){
+                    List_Creases.push_back(x.FL);
+                    if(NTree_Creases.empty())NTree_Creases = NTree(x.FL);
                 }else{
-                    auto res = NTree_fl.find(x.FL);
+                    auto res = NTree_Creases.find(x.FL);
                     if(res == nullptr){
-                        NTree_fl.insert(List_FL.front(), x.FL);
-                        List_FL.push_front(x.FL);
+                        NTree_Creases.insert(List_Creases.front(), x.FL);
+                        List_Creases.push_front(x.FL);
                     }else{
-                        auto it = std::find(List_FL.begin(), List_FL.end(), x.FL);
-                        if(it != List_FL.end()) List_FL.erase(it);
+                        auto it = std::find(List_Creases.begin(), List_Creases.end(), x.FL);
+                        if(it != List_Creases.end()) List_Creases.erase(it);
                     }
                 }
             }
@@ -378,12 +369,10 @@ void Model::UpdateFLOrder(int dim){
         i = (i + 1) % (int)outline->Lines.size();
     }while(i != btm_i);
     if(DebugMode::Singleton::getInstance().isdebug())qDebug() <<"order of FoldLines";
-    //NTree_fl.print();
+    //NTree_Creases.print();
     for(auto&r: Rulings)r->hasCrossPoint = false;
     return;
 }
-
-int Model::getLayerNum(){return NTree_fl.getLayerNum();}
 
 template <typename T>
 bool IsOverlapped(std::shared_ptr<T>&p, std::shared_ptr<T>&q){return ((p->p - q->p).norm() < 1e-8)? true: false;};
@@ -397,9 +386,9 @@ void Model::SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::sh
         if(MathTool::is_point_on_line(v4d->first->p, Surface[i]->o->p, Surface[i]->v->p)){prev = Surface[i]->o; next = Surface[i]->v;}
     }
 
-    for(int i = 0; i < (int)FL.size(); i++){
-        if(FL[i]->FoldingCurve.empty())continue;
-        for(auto it = FL[i]->FoldingCurve.begin() + 1; it != FL[i]->FoldingCurve.end()-1;it++){
+    for(int i = 0; i < (int)Creases.size(); i++){
+        if(Creases[i]->FoldingCurve.empty())continue;
+        for(auto it = Creases[i]->FoldingCurve.begin() + 1; it != Creases[i]->FoldingCurve.end()-1;it++){
             if(!(*it)->IsCalc)continue;
             if(IsOverlapped(downcast, (*it)->second)){v4d->first->p3 = (*it)->second->p3; return;}
             if(IsOverlapped(downcast, (*it)->third)){v4d->first->p3 = (*it)->third->p3; return;}
@@ -424,11 +413,6 @@ void Model::SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::sh
         if(MathTool::is_point_on_line(v4d->first->p, r->o->p, prev->p) && MathTool::is_point_on_line(r->o->p, prev->p, next->p))next = r->o;
         if(MathTool::is_point_on_line(v4d->first->p, r->o->p, next->p) && MathTool::is_point_on_line(r->o->p, prev->p, next->p))prev = r->o;
     }
-    //if(prev == nullptr || next == nullptr)return;
-    //auto p_tmp = (prev->p - v4d->first->p).norm()*(next->p3 - prev->p3).normalized() + prev->p3;
-    //if(IsupdateEndPt)v4d->first->p3_ori = v4d->first->p3 = (prev->p - v4d->first->p).norm()*(next->p3 - prev->p3).normalized() + prev->p3;
-    //v4d->second = next; v4d->third = prev;
-
 
     auto EdgeSplit = [](std::vector<std::shared_ptr<Line>>& Lines, std::shared_ptr<Vertex>& v){
         for(auto&l: Lines){
@@ -447,7 +431,7 @@ void Model::SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::sh
         EdgeSplit(polyline_surface, r->v);
         EdgeSplit(polyline_surface, r->o);
     }
-    for(auto&fc: FL){
+    for(auto&fc: Creases){
         if(fc->FoldingCurve.empty())continue;
         for(auto it = fc->FoldingCurve.begin(); it != fc->FoldingCurve.end();it++){
             if(!(*it)->IsCalc || (*it) == v4d)continue;
@@ -465,7 +449,7 @@ void Model::SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::sh
                 v4d->first->p3_ori = v4d->first->p3 = (l->v->p - v4d->first->p).norm()*(l->o->p3 - l->v->p3).normalized() + l->v->p3;
             }
             v4d->second = l->o; v4d->third = l->v;
-            for(auto&fc: FL){
+            for(auto&fc: Creases){
                 if(fc->FoldingCurve.empty())continue;
                 fc->AlignmentVertex4dDirection();
             }
@@ -500,7 +484,7 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
     };
 
 
-    for(auto&fl:FL){
+    for(auto&fl:Creases){
         if((int)fl->FoldingCurve.size() <= 2)continue;
         std::vector<std::shared_ptr<Vertex4d>> ValidFC;
         for(auto&fc: fl->FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
@@ -564,23 +548,21 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
             p->p3 = t * (prev->p3 - basePt->p3) + s * (next->p3 - basePt->p3) + basePt->p3;
         }
     }
-    for(auto&fl: FL){
+    for(auto&fl: Creases){
         if(fl->FoldingCurve.empty())continue;
-        //SetEndPoint(fl->FoldingCurve.front(), outline->Lines, Rulings, IsupdateEndPt);
-        //SetEndPoint(fl->FoldingCurve.back(), outline->Lines, Rulings, IsupdateEndPt);
         fl->SortCurve();
     }
     return;
 
     int s = outline->vertices.size();
     initializeSurfaceVertices();
-    for(auto&fl:FL)fl->SortCurve();
+    for(auto&fl:Creases)fl->SortCurve();
     for(int i = 0; i < s; i++){
         std::shared_ptr<Vertex> p = outline->vertices[i];
         bool Isvertexlapped = false;
         std::shared_ptr<Vertex> prev = outline->vertices[(i - 1 + s)  % s], next = outline->vertices[(i + 1) % s];//前後の頂点で作られるlineのうち最も近いものを入れる
         std::shared_ptr<Vertex> basePt = nullptr;
-        for(auto&fl: FL){
+        for(auto&fl: Creases){
             if((int)fl->FoldingCurve.size() <= 2)continue;
             for(auto&v4d: fl->FoldingCurve){
                 if(!v4d->IsCalc)continue;
@@ -682,72 +664,50 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
             }
         }
     }
-    for(auto&fl: FL){
+    for(auto&fl: Creases){
         if(fl->FoldingCurve.empty())continue;
-        //SetEndPoint(fl->FoldingCurve.front(), outline->Lines, Rulings, IsupdateEndPt);
-        //SetEndPoint(fl->FoldingCurve.back(), outline->Lines, Rulings, IsupdateEndPt);
         fl->SortCurve();
     }
 }
 
-bool Model::Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double wp, double wsim, double bndrange, int alg, bool IsStartEnd){
+bool Model::Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double wp, double wsim){
     std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
 
-    tar->applyAAAMethod(Poly_V, IsStartEnd, tar->a_flap);
-    tar->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, alg, bndrange, wp, wsim);
-    tar->applyAAAMethod(Poly_V, IsStartEnd, tar->a_flap);
+    tar->applyAAAMethod(Poly_V, tar->a_flap);
+    tar->PropagateOptimization_Vertex(Poly_V, wp, wsim);
+    tar->applyAAAMethod(Poly_V, tar->a_flap);
     //tar->CheckIsCrossedRulings();
     SetOnVertices_outline(false);
     //tar->SimpleSmooothSrf(Poly_V);
     return true;
 }
 
-void Model::Interpolation(std::shared_ptr<FoldLine>& FldLine){
-    std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
+bool Model::BendingModel(double wp, double wsim, int dim, int alg){
 
-    FldLine->CheckIsCrossedRulings();
-    SetOnVertices_outline(false);
-    FldLine->SimpleSmooothSrf(Poly_V);
-}
-
-void Model::movevertex(std::shared_ptr<FoldLine>& FldLine, double t){
-    std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
-    FldLine->_movevertex(t, Poly_V);
-}
-
-bool Model::BendingModel(double wp, double wsim, int dim, double tol,
-                         double bndrange, int bendrank, int alg, bool IsStartEnd, bool OptimizeAngleFor3Rulings, bool _IsIgnoreTipRuling){
-    static int AlgNum = 0;
     UpdateFLOrder(dim);
     SplitRulings(dim);
-    std::shared_ptr<NTreeNode> root = NTree_fl.GetRoot();
+    std::shared_ptr<NTreeNode> root = NTree_Creases.GetRoot();
     if(root == nullptr)return false;
-    if(bendrank == 0){
-        AssignRuling(dim, tol, false);
+    if(Creases.size() == 0){
+        AssignRuling(dim);
         return true;
     }
+
     std::queue<std::shared_ptr<NTreeNode>> q;
     std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
 
-    std::string msg = (!IsStartEnd)? "center": "End Point"; qDebug() <<"input flap angle start with : " << msg;
-
     q.push(root);
     int rank = 0;
-    int bendnum = 0;
     while(!q.empty()){
-        if(bendnum == bendrank){
-            AssignRuling(dim, tol, false);
-            return true;
-        }
+
         std::shared_ptr<NTreeNode> cur = q.front(); q.pop();
         cur->data->ReassignColor();
-        //cur->data->RevisionCrosPtsPosition();//端点の修正
         qDebug() << "trim each iteration";
 
         if(alg == -1){
             //initialization
             AddNewFoldLine(cur->data);
-            cur->data->initialize_foldstate(IsStartEnd, Poly_V);
+            cur->data->initialize_foldstate(Poly_V);
             for (const auto& child : cur->children){
                 if(child != nullptr){
                     child->data->reassignruling(cur->data, outline->Lines, Rulings);
@@ -755,16 +715,15 @@ bool Model::BendingModel(double wp, double wsim, int dim, double tol,
                     q.push(child);
                 }
             }
-            bendnum++;
             continue;
         }
 
         //Optimization Vertexのテスト用
         if(alg % 10 == 2){
-            cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
-            cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 0, bndrange, wp, wsim);
+            cur->data->applyAAAMethod(Poly_V, cur->data->a_flap);
+            cur->data->PropagateOptimization_Vertex(Poly_V,wp, wsim);
             if(alg / 10 == 1){//shift key + 3のとき
-                cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
+                cur->data->applyAAAMethod(Poly_V, cur->data->a_flap);
                 cur->data->CheckIsCrossedRulings();
                 SetOnVertices_outline(false);
                 cur->data->SimpleSmooothSrf(Poly_V);
@@ -773,74 +732,15 @@ bool Model::BendingModel(double wp, double wsim, int dim, double tol,
         if(alg % 10 == 3){
             //交点位置の修正を全探索で行うやり方
             AddNewFoldLine(cur->data);
-            cur->data->Optimization_FlapAngle(Poly_V, wp, wsim, rank, 1, IsStartEnd, AlgNum, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);//正しい第5引数はalgだけど検証用に1
-            cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
+            cur->data->Optimization_FlapAngle(Poly_V, wp, wsim, rank);
+            cur->data->applyAAAMethod(Poly_V, cur->data->a_flap);
             if(cur == root){
-                cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 1, 1, bndrange, wp, wsim);
-                cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
+                cur->data->PropagateOptimization_Vertex(Poly_V, wp, wsim);
+                cur->data->applyAAAMethod(Poly_V, cur->data->a_flap);
                 cur->data->CheckIsCrossedRulings();
-                //SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
-                //SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
                 SetOnVertices_outline(false);
                 cur->data->SimpleSmooothSrf(Poly_V);
             }
-        }
-        if(alg == 4){
-            //cur->data->Optimization_FlapAngle(Poly_V, wb, wp, rank, 1, IsStartEnd, AlgNum, OptimizeAngleFor3Rulings);//正しい第5引数はalgだけど検証用に1
-            cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
-            if(cur == root){
-                cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 0, 1, bndrange, wp, wsim);
-                cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
-                cur->data->CheckIsCrossedRulings();
-                //SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
-                //SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
-                SetOnVertices_outline(false);
-                cur->data->SimpleSmooothSrf(Poly_V);
-            }
-        }
-        //alg = 4: 一番下の曲線に対してのみflap angleの最適化＋交点位置の修正. 5: 各曲線のflap angleの最適化 + 一番下の曲線に対してのみ交点位置の修正. 6:
-        if(alg % 10 == 5 || alg % 10 == 6 || alg % 10 == 7){
-            cur->data->Optimization_FlapAngle(Poly_V, wp, wsim, rank, 1, IsStartEnd, AlgNum, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);//正しい第5引数はalgだけど検証用に1
-            cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
-            cur->data->PropagateOptimization_Vertex(Poly_V, IsStartEnd, 0, 1, bndrange, wp, wsim);
-            if(alg % 10 == 7 && alg / 10 == 1){//shift key + 8のとき
-                cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
-                cur->data->CheckIsCrossedRulings();
-                //SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
-                //SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
-                SetOnVertices_outline(false);
-                cur->data->SimpleSmooothSrf(Poly_V);
-            }
-            if(cur->data->FoldingCurve.empty())continue;
-            //SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
-            //SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
-            SetOnVertices_outline(false);
-            for (const auto& child : cur->children){
-                if(child != nullptr){
-                    child->data->reassignruling(cur->data, outline->Lines, Rulings);
-                    rank++;
-                    q.push(child);
-                }
-            }
-            bendnum++;
-            continue;
-        }
-        if(alg % 10 == 8){
-            bool res = res = cur->data->Optimization_FlapAngle(Poly_V, wp, wsim, rank, 1, IsStartEnd, AlgNum, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);
-            while(!res){
-                bool isroot = (cur == root)? true: false;
-                int validsize = cur->data->validsize - 1;
-                cur->data->SimplifyModel(validsize, isroot);
-                res = cur->data->Optimization_FlapAngle(Poly_V, wp, wsim, rank, 1, IsStartEnd, AlgNum, OptimizeAngleFor3Rulings, _IsIgnoreTipRuling);
-                qDebug() << "optimization result " << res << "  ,  tol = " << tol << ", ruling num = " << cur->data->validsize;
-                int cnt = 0;
-                for(auto&fc: cur->data->FoldingCurve){if(fc->IsCalc)cnt++;}
-                if(cnt <=3)break;
-
-            }
-            qDebug() <<"bending result : tol = " << cur->data->tol << " valid ruling num = " << cur->data->validsize  << " , a_flap = " << cur->data->a_flap ;
-            //cur->data->applyAAAMethod(Poly_V, IsStartEnd, cur->data->a_flap);
-            if(cur->data->FoldingCurve.empty())continue;
         }
 
         for (const auto& child : cur->children){
@@ -850,18 +750,10 @@ bool Model::BendingModel(double wp, double wsim, int dim, double tol,
                 q.push(child);
             }
         }     
-        bendnum++;
     }
     SetOnVertices_outline(false);
     return true;
 }
-
-void Model::applyAAAMethod(double a, bool begincenter){
-    auto Poly_V = outline->getVertices();
-    FL.back()->applyAAAMethod(Poly_V, begincenter, a);
-}
-
-bool Model::RevisionCrosPtsPosition(){return FL[FoldCurveIndex]->RevisionCrosPtsPosition();}
 
 std::vector<vertexinfo> Model::MappingVertex(bool IsRemovingOverlapping){
     std::vector<vertexinfo> VerticesInfo;
@@ -882,7 +774,7 @@ std::vector<vertexinfo> Model::MappingVertex(bool IsRemovingOverlapping){
         }
     };
 
-    for(auto&fl:FL){
+    for(auto&fl:Creases){
         if((int)fl->FoldingCurve.size() <= 2)continue;
         EdgeSplit(fl->FoldingCurve.front()->first, 1);EdgeSplit(fl->FoldingCurve.back()->first, 1);
 
@@ -898,16 +790,16 @@ std::vector<vertexinfo> Model::MappingVertex(bool IsRemovingOverlapping){
 }
 
 bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
-    if(FL.empty())return false;
+    if(Creases.empty())return false;
     int dim = 3;
     MakeTree();
     NewFL->FoldingCurve.clear();
-    auto par = NTree_fl.getParent(NewFL);
-    if((int)FL.size() == 1){
+    auto par = NTree_Creases.getParent(NewFL);
+    if((int)Creases.size() == 1){
         UpdateFLOrder(dim);
         SplitRulings(dim);
     }else if(par == nullptr){
-        std::shared_ptr<NTreeNode> root = NTree_fl.GetRoot();
+        std::shared_ptr<NTreeNode> root = NTree_Creases.GetRoot();
         for(const auto&child: root->children){
             NewFL->reassignruling(child->data, outline->Lines, Rulings);
             break;
@@ -963,40 +855,22 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
     VecPrev = (NewFL->FoldingCurve.end()[-2]->first->p - NewFL->FoldingCurve.end()[-2]->third->p).normalized(), Vec = (NewFL->FoldingCurve.back()->first->p - NewFL->FoldingCurve.back()->third->p).normalized();
     if(VecPrev.dot(Vec) < 0){std::swap(NewFL->FoldingCurve.back()->second, NewFL->FoldingCurve.back()->third);}
     SetOnVertices_outline(false);
-    refFL = NewFL;
-
-    /*
-    std::queue<std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>>> q;
-    std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>> root = NTree_fl.GetRoot(), NewFL_node = NTree_fl.find(NewFL);
-    q.push(root);
-    std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
-    while(!q.empty()){
-        std::shared_ptr<NTreeNode<std::shared_ptr<FoldLine>>> cur = q.front(); q.pop();
-        for (const auto& child : cur->children){
-            if(child != nullptr) q.push(child);
-            else{
-                if(NewFL_node->IsChild(child->data)){
-                    //child->data->initialize_foldstate(false, Poly_V);
-                }
-            }
-        }
-    }*/
+    refCreases = NewFL;
     return true;
 }
 
-bool Model::AssignRuling(int dim, double tol, bool begincenter){
+bool Model::AssignRuling(int dim){
     UpdateFLOrder(dim);
     SplitRulings(dim);
     auto Poly_V = outline->getVertices();
-    auto root = NTree_fl.GetRoot();
+    auto root = NTree_Creases.GetRoot();
     if(root == nullptr)return false;
     std::queue<std::shared_ptr<NTreeNode>>q;
     q.push(root);
     while (!q.empty()) {
         auto cur = q.front(); q.pop();
         if(cur->data->isbend()){
-            //cur->data->RevisionCrosPtsPosition();//端点の修正
-            cur->data->applyAAAMethod(Poly_V, begincenter, cur->data->a_flap);
+            cur->data->applyAAAMethod(Poly_V, cur->data->a_flap);
             if(cur->data->FoldingCurve.empty())continue;
             //SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
             //SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
@@ -1018,8 +892,8 @@ bool Model::AssignRuling(int dim, double tol, bool begincenter){
 
 bool Model::SplitRulings(int dim){
     Eigen::Vector3d UpVec(0,-1,0);
-    if(FL.empty() || (int)FL[FoldCurveIndex]->CtrlPts.size() <= dim)return false;
-    auto root = NTree_fl.GetRoot();
+    if(Creases.empty() || (int)Creases[FoldCurveIndex]->CtrlPts.size() <= dim)return false;
+    auto root = NTree_Creases.GetRoot();
     if(root == nullptr)return false;
     for(auto& r: Rulings){
         std::vector<std::shared_ptr<CrvPt_FL>> P = getCrossPoint(root->data->CtrlPts, r->v, r->o, dim);
@@ -1045,119 +919,16 @@ void Model::flatten_lsp(std::shared_ptr<FoldLine>& FldLine){
     _flatten_lsp(FldLine);
 }
 
-
-void Model::FlattenSpaceCurve(std::shared_ptr<FoldLine>& FldLine, int alg){
-    //隣接する頂点のうちthirdあるいはrulingのものを返す
-    auto findPoint = [&](const std::shared_ptr<Vertex>& v){
-        std::vector<vertexinfo> VerticesInfo = MappingVertex(true);
-        //重なる場所があればどれか削除
-        auto itr = std::find_if(VerticesInfo.begin(), VerticesInfo.end(), [&v](const vertexinfo& vi){return (vi.v->p - v->p).norm() < 1e-9;});
-        int visize = VerticesInfo.size() , i = std::distance(VerticesInfo.begin(), itr);
-        if(VerticesInfo[(i + 1) % visize].vtype != 2 && (VerticesInfo[(i + 1) % visize].v->p - v->p).norm() > 1e-3)return VerticesInfo[(i + 1) % visize].v;
-        else return VerticesInfo[(i - 1 + visize) % visize].v;
-    };
-
-    if((int)FldLine->FoldingCurve.size() <= 3)return;
-    std::vector<std::shared_ptr<Vertex4d>> ValidFC;
-    for(auto&fc: FldLine->FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
-    int mid = ValidFC.size()/2;
-    Eigen::Vector3d e, e2, o;
-    std::shared_ptr<Vertex>p, v;
-    double maxError = 0.0;//rulingの端点を超えた場合の距離の最大値(最後にエラー分下げてすべての曲線がruling、辺上にあるようにする)
-    Eigen::Vector3d initRight = ValidFC[0]->first->p, initLeft = ValidFC.back()->first->p;
-    if(alg == 0){
-        //右端の交点を基準に回転させるやり方
-        for(int i = 2; i < (int)ValidFC.size()-1; i++){
-            v = ValidFC[i+1]->first; p = (i == (int)ValidFC.size()-2)? findPoint(v): ValidFC[i+1]->third;
-            o = ValidFC[i-1]->first->p3; e = (ValidFC[i]->first->p3 - o).normalized(), e2 = (ValidFC[i-2]->first->p3 - o).normalized();
-            Eigen::Vector3d PointOnPlane = MathTool::CrossPointLineAndPlane(e, e2, o , p->p3, v->p3);
-            maxError = std::max(maxError, (ValidFC[i-1]->first->p3 - PointOnPlane).norm());
-            ValidFC[i+1]->first->p3 = PointOnPlane;
-            ValidFC[i+1]->first->p = (PointOnPlane - p->p3).norm()*(v->p - p->p).normalized() + p->p;
-        }
-    }
-
-    else{
-        //右側
-        for(int i = mid-1; i > 0; i--){
-            v = ValidFC[i-1]->first;
-            p = (i == 1)? findPoint(v): ValidFC[i-1]->third;
-            o = ValidFC[i+1]->first->p3; e = (ValidFC[i]->first->p3 - o), e2 = (ValidFC[i+2]->first->p3 - o);
-            Eigen::Vector3d PointOnPlane = MathTool::CrossPointLineAndPlane(e, e2, o , p->p3, v->p3);
-            maxError = std::max(maxError, (ValidFC[i-1]->first->p3 - PointOnPlane).norm());
-            ValidFC[i-1]->first->p3 = PointOnPlane;
-            ValidFC[i-1]->first->p = (PointOnPlane - p->p3).norm()*(v->p - p->p).normalized() + p->p;
-        }
-
-        //左側
-        for(int i = mid+1; i < (int)ValidFC.size()-1; i++){
-            v = ValidFC[i+1]->first;
-            p = (i == (int)ValidFC.size()-2)? findPoint(v): ValidFC[i+1]->third;
-            o = ValidFC[i-1]->first->p3; e = (ValidFC[i]->first->p3 - o).normalized(), e2 = (ValidFC[i-2]->first->p3 - o).normalized();
-            Eigen::Vector3d PointOnPlane = MathTool::CrossPointLineAndPlane(e, e2, o , p->p3, v->p3);
-            maxError = std::max(maxError, (ValidFC[i-1]->first->p3 - PointOnPlane).norm());
-            ValidFC[i+1]->first->p3 = PointOnPlane;
-            ValidFC[i+1]->first->p = (PointOnPlane - p->p3).norm()*(v->p - p->p).normalized() + p->p;
-        }
-    }
-
-    if(alg == 2){
-        /*
-        double phi = 0.0; Eigen::Vector3d axis = Eigen::Vector3d(0,0,1);
-        for(int j = 0; j < 1; j++){
-            Eigen::AngleAxisd R = Eigen::AngleAxisd(phi, axis);
-            Eigen::Vector3d v2d = (ValidFC[1]->first->p - ValidFC[0]->first->p);
-            std::vector<double> Phis(static_cast<int>(ValidFC.size())-2);
-            for(int i = 1; i < (int)ValidFC.size()-1; i++){
-                e = (ValidFC[i-1]->first->p - ValidFC[i]->first->p).normalized(); e2 =  (ValidFC[i+1]->first->p - ValidFC[i]->first->p).normalized();
-                Eigen::Vector3d axis = (ValidFC[i]->third->p - ValidFC[i]->first->p).normalized();
-                double phi4 = (e.dot(axis) < -1)? std::numbers::pi: (e.dot(axis) > 1)? 0: std::acos(e.dot(axis));
-                double phi3 = (e2.dot(axis) < -1)? std::numbers::pi: (e2.dot(axis) > 1)? 0: std::acos(e2.dot(axis));
-                Phis[i-1] = 2.0*std::numbers::pi - phi3 - phi4;
-            }
-
-            ValidFC[0]->first->p = initRight;
-            Eigen::Vector3d p2 = 100.0*(ValidFC[1]->first->p - ValidFC[1]->third->p) + ValidFC[1]->third->p;
-            Eigen::Vector3d q1 = 1000.0* v2d + initRight;
-            ValidFC[1]->first->p = MathTool::calcCrossPoint_2Vector(initRight, q1, p2, ValidFC[1]->third->p);
-            for(int i = 1; i <= (int)Phis.size(); i++){
-                Eigen::AngleAxisd R = Eigen::AngleAxisd(Phis[i-1], Eigen::Vector3d(0,0,-1));
-                v2d = R * (ValidFC[i-1]->first->p - ValidFC[i]->first->p);
-                p2 = 1000.0 * (ValidFC[i+1]->first->p - ValidFC[i+1]->third->p) + ValidFC[i+1]->third->p;
-                q1 = 1000.0 * v2d + ValidFC[i]->first->p;
-                ValidFC[i+1]->first->p = MathTool::calcCrossPoint_2Vector(ValidFC[i]->first->p, q1, p2, ValidFC[i+1]->third->p);
-            }
-            e = (initLeft - initRight).normalized(); e2 = (ValidFC.back()->first->p - initRight).normalized();
-            phi = (e.dot(e2) < -1)? std::numbers::pi: (e.dot(e2) > 1)? 0: std::acos(e.dot(e2)); axis = (e2.cross(e)).normalized();
-            qDebug()<<"phi = " << MathTool::rad2deg(phi);
-        }*/
-        FldLine->FittingEndPoint_flattencurve(initRight, initLeft);
-    }
-    for(auto&v4d: ValidFC){
-        double t = (v4d->first->p - v4d->third->p).norm();
-        v4d->first->p3 = t*(v4d->first->p3 - v4d->third->p3).normalized() + v4d->third->p3;
-    }
-    qDebug()<<"left error = " << (initLeft - ValidFC.back()->first->p).norm();
-}
-
-
 void Model::SimplifyModel(int iselim){
-    if(!(0 <= FoldCurveIndex && FoldCurveIndex < (int)FL.size()) || FL[FoldCurveIndex]->FoldingCurve.empty())return;
-    auto root = NTree_fl.GetRoot();
-    bool isroot = (root->data == FL[FoldCurveIndex])? true: false;
-    int validsize = FL[FoldCurveIndex]->validsize - iselim;
-    FL[FoldCurveIndex]->SimplifyModel(validsize, isroot);
-}
-
-void Model::SimplifyModel(double tol){
-    if(!(0 <= FoldCurveIndex && FoldCurveIndex < (int)FL.size()) || FL[FoldCurveIndex]->FoldingCurve.empty())return;
-    auto root = NTree_fl.GetRoot();
-    bool isroot = (root->data == FL[FoldCurveIndex])? true: false;
-    //FL[FoldCurveIndex]->SimplifyModel(tol, isroot);
+    if(!(0 <= FoldCurveIndex && FoldCurveIndex < (int)Creases.size()) || Creases[FoldCurveIndex]->FoldingCurve.empty())return;
+    auto root = NTree_Creases.GetRoot();
+    bool isroot = (root->data == Creases[FoldCurveIndex])? true: false;
+    int validsize = Creases[FoldCurveIndex]->validsize - iselim;
+    Creases[FoldCurveIndex]->SimplifyModel(validsize, isroot);
 }
 
 bool Model::Smoothing(){
-    auto root = NTree_fl.GetRoot();
+    auto root = NTree_Creases.GetRoot();
     if(root == nullptr)return false;
     std::queue<std::shared_ptr<NTreeNode>>q;
     q.push(root);
@@ -1176,8 +947,8 @@ bool Model::Smoothing(){
 }
 
 void Model::modifyFoldingCurvePositionOn3d(){
-    for(auto&FC: FL){
-        for(auto&fldCrv: FC->FoldingCurve){
+    for(auto&crease: Creases){
+        for(auto&fldCrv: crease->FoldingCurve){
             for(auto&r: Rulings){
                 if(!MathTool::is_point_on_line(fldCrv->first->p, r->o->p, r->v->p))continue;
                 double t = (fldCrv->first->p - r->o->p).norm()/(r->o->p - r->v->p).norm();
@@ -1194,54 +965,10 @@ void Model::modifyFoldingCurvePositionOn3d(){
     }
 }
 
-void Model:: addConstraint(QPointF& cursol, int type, int gridsize, Eigen::Vector3d (&axis)[2], const QSize& S){
-    if(outline->IsClosed()){
-        qDebug()<<"constraint can be applied only not closed outline";
-        return;
-    }
-    Eigen::Vector3d p = SetOnGrid(cursol, gridsize, S);
-    if(axis[0] == Eigen::Vector3d(-1,-1,0)){axis[0] = p; return;}
-    else if(axis[1] == Eigen::Vector3d(-1,-1,0) && axis[0] != p)axis[1] = p;
-    Eigen::Vector3d V = (axis[1] - axis[0]).normalized();
-    Eigen::Vector3d N(-V.y(), V.x(), 0);
-    std::vector<std::shared_ptr<Vertex>> SymPts;
-    std::vector<std::shared_ptr<Vertex>> Vertices = outline->getVertices();
-    if(type == 0){
-        for(auto&v: Vertices){
-            double t = ((v->p - axis[0]).cross(axis[0] - axis[1])).norm()/(axis[0] - axis[1]).norm();
-            if(N.dot(axis[0] - v->p) < 0) N *= -1;
-            SymPts.push_back(std::make_shared<Vertex>(v->p + 2 * t * N));
-        }
-    }
-    //鏡映反転したことで作成した曲線の始点、終点が元の曲線の始点、終点のいずれかと十分近い場合接続する。
-    //基準の距離 5px
-
-    int n = Vertices.size();
-    int IsConnected = 0;
-    double dist = gridsize/2;
-    if((SymPts[0]->p - Vertices[0]->p).norm() < dist && (SymPts[n-1]->p - Vertices[n-1]->p).norm() < dist){
-        for(int i = 1; i < (int)SymPts.size(); i++) outline->addVertex(SymPts[i], 0);
-        IsConnected = 2;
-    }
-    else if((SymPts[0]->p - Vertices[0]->p).norm() < dist && (SymPts[n-1]->p - Vertices[n-1]->p).norm() > dist){
-        for(int i = 1; i <(int)SymPts.size(); i++) outline->addVertex(SymPts[i], 0);
-        IsConnected = 1;
-    }
-    else if((SymPts[0]->p - Vertices[0]->p).norm() > dist && (SymPts[n-1]->p - Vertices[n-1]->p).norm() < dist){
-        for(int i = (int)SymPts.size() - 2; i >= 0; i--) outline->addVertex(SymPts[i], outline->getVertices().size());
-        IsConnected = 1;
-    }
-    if(IsConnected == 0){
-        ol_vertices.push_back(SymPts);
-    }
-    else if(IsConnected == 2){//元々あったedgeを削除してつなぎなおす
-        qDebug()<<"can't use now";
-    }
-}
-
 //曲面の輪郭が凹型でないと仮定
 void Model::drawOutline(QPointF& cursol, int drawtype, double gridsize, const QSize& S, bool IsClicked){
-    Eigen::Vector3d p = SetOnGrid(cursol, gridsize, S);
+    QPointF _p = SetOnGrid(cursol, gridsize, S);
+    Eigen::Vector3d p(_p.x(), _p.y(), 0);
     if(drawtype == 0 || drawtype == 1){
         if(outline->hasPtNum != 2)outline->addVertex(p);
     }else if(drawtype == 2) outline->drawPolygon(p, IsClicked);
@@ -1254,16 +981,15 @@ void Model::drawOutline(QPointF& cursol, int drawtype, double gridsize, const QS
         Eigen::Vector3d N = (outline->vertices[0]->p - center).cross(outline->vertices[1]->p - center);
         if(N.dot(Eigen::Vector3d(0,0,1)) < 0){
             std::reverse(outline->vertices.begin(), outline->vertices.end());
-            for(auto&l: outline->Lines){
-                std::swap(l->o, l->v);
-            }
+            for(auto&l: outline->Lines) std::swap(l->o, l->v);
             std::reverse(outline->Lines.begin(), outline->Lines.end());
         }
     }
 }
 
 void Model::editOutlineVertex(QPointF& cursol, double gridsize, const QSize& S, int event){
-    Eigen::Vector3d p = SetOnGrid(cursol, gridsize, S);
+    QPointF _p = SetOnGrid(cursol, gridsize, S);
+    Eigen::Vector3d p(_p.x(), _p.y(), 0);
     static int grabedOutlineVertex = -1;
     if(event == 0){
         float dist = 5;
@@ -1278,17 +1004,6 @@ void Model::editOutlineVertex(QPointF& cursol, double gridsize, const QSize& S, 
         outline->MoveVertex(p, grabedOutlineVertex);
         if(outline->IsClosed())deform();
     }else if(event == 2)grabedOutlineVertex = -1;
-}
-
-void Model::ConnectOutline(QPointF& cursol, double gridsize, const QSize& S){
-    Eigen::Vector3d p = SetOnGrid(cursol, gridsize, S);
-    std::vector<std::shared_ptr<Vertex>> V = outline->getVertices();
-    for(auto&v: V){
-        if(p == v->p){
-            if(Connect2Vertices[0] == nullptr)Connect2Vertices[0] = v;
-            else if(Connect2Vertices[1] == nullptr && Connect2Vertices[0] != v)Connect2Vertices[1] = v;
-        }
-    }
 }
 
 void Model::LinearInterPolation(const std::vector<std::shared_ptr<Line>>& path){
@@ -1321,109 +1036,24 @@ void Model::LinearInterPolation(const std::vector<std::shared_ptr<Line>>& path){
     }
 }
 
-/*
-void Model::SplineInterPolation(const std::vector<std::shared_ptr<Line>>& path, std::vector<Eigen::Vector2d>& CurvePath){//凹型に関してはとりあえず虫
-    if((int)GradationPoints.size() < 2)return;
-    CurvePath.clear();
-    int N =(int)GradationPoints.size() - 1;
-    auto getCenter = [](const std::shared_ptr<Line>& L) { return Eigen::Vector3d(L->o->p + L->v->p)/2.0;};
-    Eigen::VectorXd v(N - 1);
-    std::vector<double>h(N);
-    for(int i = 1; i < N + 1; i++)h[i - 1] = (getCenter(GradationPoints[i]) - getCenter(GradationPoints[i - 1])).norm();
-    for(int i = 1; i < N; i++){
-        double a = (h[i] != 0) ? (GradationPoints[i + 1]->color - GradationPoints[i]->color)/h[i] : 0, b = (h[i - 1] != 0) ? (GradationPoints[i]->color - GradationPoints[i - 1]->color)/h[i - 1]: 0;
-        v(i - 1) = 6 * (a - b);
-    }
-    Eigen::VectorXd u;
-    if(N == 1){
-        u = Eigen::VectorXd::Zero(2);
-    }
-    if(N == 2){
-        u = Eigen::VectorXd::Zero(3);
-        double dx1, dx2, dx3;
-        dx1 = (getCenter(GradationPoints[2]) - getCenter(GradationPoints[0])).norm();
-        dx2 = (getCenter(GradationPoints[2]) -  getCenter(GradationPoints[1])).norm();
-        dx3 = (getCenter(GradationPoints[1]) - getCenter(GradationPoints[0])).norm();
-        if(abs(dx1) < 1e-9) u(1) = 0;
-        else{
-            double a = (dx2 == 0) ? 0: (GradationPoints[2]->color - GradationPoints[1]->color)/dx2;
-            double b = (dx3 == 0) ? 0: (GradationPoints[1]->color - GradationPoints[0]->color)/dx3;
-            u(1) = 3 * (a - b)/dx1;
-        }
-    }
-    if(N > 2){
-        Eigen::MatrixXd A = Eigen::MatrixXd::Zero(N-1,N-1);
-        for(int i = 0; i < N-1;i++){
-            A(i,i) = 2 * (h[i] + h[i + 1]);
-            if(i != 0){
-                A(i-1,i) = A(i,i-1) = h[i];
-            }
-
-        }
-        Eigen::VectorXd t = A.colPivHouseholderQr().solve(v);
-        u = Eigen::VectorXd::Zero(N+1);
-        for(int i = 0; i < (int)t.size(); i++)u(i+1) = t(i);
-    }
-
-    double x, a, b, c, d, y;
-
-    int cnt = 0;
-    for(int i = 0; i < N; i++){
-        auto itr_cur = std::find(path.begin(), path.end(), GradationPoints[i]);
-        int cur = (itr_cur != path.end()) ? std::distance(path.begin(), itr_cur): -1;
-        auto itr_next = std::find(path.begin(), path.end(), GradationPoints[i+1]);
-        int next = (itr_next != path.end()) ? std::distance(path.begin(), itr_next): -1;
-        if(cur == -1){
-        qDebug()<< i << "  cur";
-            return;
-        }
-        if(next == -1 ){
-            qDebug()<< i << "  next";
-            return;
-        }
-        Eigen::Vector3d befcenter = getCenter(GradationPoints[i]);
-        Eigen::Vector3d center = getCenter(GradationPoints[i + 1]);
-        double den = (befcenter - center).norm();
-        a = (den != 0)? (u(i + 1) - u(i))/(6 * den) : 0;
-        b = u(i)/2;
-        c = - den * (2 * u(i) + u(i + 1))/6.0;
-        c += (den != 0)? (GradationPoints[i + 1]->color - GradationPoints[i]->color)/den : 0;
-        d = GradationPoints[i]->color;
-        for(int k = cur + 1; k < next; k++){
-            x =  (getCenter(path[k]) - befcenter).norm();
-            y = a * std::pow(x, 3) + b * std::pow(x, 2) + c * x + d;
-            path[k]->color = y;
-            CurvePath.push_back(Eigen::Vector2d(cnt++,y));
-        }
-    }
-}
-*/
-
-void Model::setGradationValue(int val, const std::shared_ptr<Line>& refL, int InterpolationType, std::vector<Eigen::Vector2d>& CurvePath){
+void Model::setGradationValue(int val, const std::shared_ptr<Line>& refL, std::vector<Eigen::Vector2d>& CurvePath){
     if(Rulings.empty() || std::find(Rulings.begin(), Rulings.end(), refL) == Rulings.end()){qDebug()<<"no selected"; return;}
     if(refL->et != EdgeType::r)return;
     refL->color += val;
     refL->color = (refL->color < -255.0)? -255.0 : (255.0 < refL->color)? 255.0 : refL->color;
 
-    if(InterpolationType == 0){
-        if(GradationPoints.size() == 0)GradationPoints.push_back(refL);
-        if(std::find(GradationPoints.begin(), GradationPoints.end(), refL) == GradationPoints.end() && GradationPoints.size() < 2)GradationPoints.push_back(refL);
-        if(GradationPoints.empty())return;
-        std::vector<std::shared_ptr<Line>> path;
-        if(GradationPoints.size() == 1) path = {refL};
-        else{
-            int i0 = std::distance(Rulings.begin(), std::find(Rulings.begin(), Rulings.end(), GradationPoints[0]));
-            int i1 = std::distance(Rulings.begin(), std::find(Rulings.begin(), Rulings.end(), GradationPoints[1]));
-            path = {Rulings.begin() + std::min(i0, i1), Rulings.begin() + std::max(i0, i1)+1};
-        }
-        LinearInterPolation(path);//単一のruling制御曲線からのみ操作するものとする
+    if(GradationPoints.size() == 0)GradationPoints.push_back(refL);
+    if(std::find(GradationPoints.begin(), GradationPoints.end(), refL) == GradationPoints.end() && GradationPoints.size() < 2)GradationPoints.push_back(refL);
+    if(GradationPoints.empty())return;
+    std::vector<std::shared_ptr<Line>> path;
+    if(GradationPoints.size() == 1) path = {refL};
+    else{
+        int i0 = std::distance(Rulings.begin(), std::find(Rulings.begin(), Rulings.end(), GradationPoints[0]));
+        int i1 = std::distance(Rulings.begin(), std::find(Rulings.begin(), Rulings.end(), GradationPoints[1]));
+        path = {Rulings.begin() + std::min(i0, i1), Rulings.begin() + std::max(i0, i1)+1};
     }
-    if(InterpolationType == 1){
-        //if(GradationPoints.size() == 0)GradationPoints.push_back(refL);
-        //if(std::find(GradationPoints.begin(), GradationPoints.end(), refL) == GradationPoints.end())GradationPoints.push_back(refHE);
-        //std::vector<Line*> path = makePath();
-        //SplineInterPolation(Rulings, CurvePath);
-    }
+    LinearInterPolation(path);//単一のruling制御曲線からのみ操作するものとする
+
     return;
 }
 
@@ -1461,11 +1091,11 @@ std::array<int, 2> Model::getSelectedCurveIndex(QPointF pt){
 }
 
 //type = 0 -> Control Point, 1: Curve Point
-std::array<int, 2> Model::searchPointIndex(QPointF pt, int& ptInd, int type){
+std::array<int, 2> Model::searchPointIndex(QPointF _p, int& ptInd, int type){
+    Eigen::Vector3d p(_p.x(), _p.y(), 0);
     double dist = 5.0;
     ptInd = -1;
     std::array<int, 2> CrvInds{-1,-1};
-    Eigen::Vector3d p(pt.x(), pt.y(), 0);
     if(type == 0){
         for(int j = 0; j < (int)crvs.size(); j++){
             for(int i = 0; i < (int)crvs[j]->ControllPoints.size(); i++){
@@ -1490,11 +1120,11 @@ std::array<int, 2> Model::searchPointIndex(QPointF pt, int& ptInd, int type){
             }
         }
     }
-    for(int i = 0; i < (int)FL.size(); i++){
-        for(int j = 0; j < (int)FL[i]->CtrlPts.size(); j++){
-            double d = (FL[i]->CtrlPts[j] - p).norm();
+    for(int i = 0; i < (int)Creases.size(); i++){
+        for(int j = 0; j < (int)Creases[i]->CtrlPts.size(); j++){
+            double d = (Creases[i]->CtrlPts[j] - p).norm();
             if(dist > d){
-                dist = (FL[i]->CtrlPts[j] - p).norm();
+                dist = (Creases[i]->CtrlPts[j] - p).norm();
                 ptInd = j; FoldCurveIndex = i;
             }
         }
@@ -1510,40 +1140,6 @@ int Model::DeleteCurve(){
     crvs.shrink_to_fit();
     refCrv.shrink_to_fit();
     return DelIndex;
-}
-
-void Model::DeleteControlPoint(QPointF pt, int curveDimention, int DivSize){
-    int ptInd;
-    auto DelIndex = searchPointIndex(pt, ptInd, 0);
-    if(DelIndex[0] == -1 && FoldCurveIndex == -1)return;
-    bool res = false;
-    if(DelIndex[0] != -1){
-        crvs[DelIndex[0]]->ControllPoints.erase(crvs[DelIndex[0]]->ControllPoints.begin() + ptInd);
-        //if(crvs[DelIndex]->getCurveType() == CurveType::bezier3)crvs[DelIndex]->drawBezier(3, crvPtNum);
-        if(crvs[DelIndex[0]]->getCurveType() == CurveType::bsp3)res = crvs[DelIndex[0]]->drawBspline(3, crvPtNum);
-        if(crvs[DelIndex[0]]->ControllPoints.size() == 0){
-            crvs.erase(crvs.begin() + DelIndex[0]);
-            refCrv.erase(refCrv.begin() + DelIndex[0]);
-            res = false;
-        }
-        crvs[DelIndex[0]]->ControllPoints.shrink_to_fit();
-        crvs.shrink_to_fit();
-        refCrv.shrink_to_fit();
-        if(outline->IsClosed() && res){
-            if(crvs[DelIndex[0]]->getCurveType() == CurveType::bezier3)crvs[DelIndex[0]]->BezierRulings(outline, DivSize, crvPtNum);
-            if(crvs[DelIndex[0]]->getCurveType() == CurveType::bsp3)crvs[DelIndex[0]]->BsplineRulings(outline, DivSize, crvPtNum, curveDimention);
-            addRulings();
-        }
-    }else{
-        if(FoldCurveIndex != -1){
-            FL[FoldCurveIndex]->CtrlPts.erase(FL[FoldCurveIndex]->CtrlPts.begin() + ptInd);
-            if((int)FL[FoldCurveIndex]->CtrlPts.size() <= curveDimention){
-                FL.erase(FL.begin() + FoldCurveIndex);
-                FoldCurveIndex = FL.size() - 1;
-            }
-        }
-    }
-
 }
 
 void Model::Check4Param(int curveDimention, std::vector<int>& deleteIndex){
@@ -1562,10 +1158,6 @@ void Model::Check4Param(int curveDimention, std::vector<int>& deleteIndex){
     crvs.shrink_to_fit();
     refCrv.shrink_to_fit();
     GradationPoints.clear();
-    Axis4Const[0] = Eigen::Vector3d(-1,-1,0);
-    Axis4Const[1] = Eigen::Vector3d(-1,-1,0);
-    Connect2Vertices[0] = std::shared_ptr<Vertex>(nullptr);
-    Connect2Vertices[1] = std::shared_ptr<Vertex>(nullptr);
 }
 
 int Model::AddNewCurve(CurveType curveType, int DivSize){
@@ -1578,55 +1170,95 @@ int Model::AddNewCurve(CurveType curveType, int DivSize){
     return 0;
 }
 
-bool Model::AddControlPoint(Eigen::Vector3d& p, int curveDimention, int DivSize){
-    int AddPtIndex = IsSelectedCurve();
-    if(AddPtIndex == -1)return false;
-    bool res = false;
-    if(crvs[AddPtIndex]->getCurveType() == CurveType::bsp3){
-        double dist = 5.0;
-        int n = crvs[AddPtIndex]->movePtIndex(p, dist);
-        if(n == -1){
-            crvs[AddPtIndex]->ControllPoints.push_back(p);
-            res = crvs[AddPtIndex]->drawBspline(curveDimention, crvPtNum);
-        }
-    }
-    else if(crvs[AddPtIndex]->getCurveType() == CurveType::line){
-        if(crvs[AddPtIndex]->ControllPoints.size() < 2)crvs[AddPtIndex]->ControllPoints.push_back(p);
-        if(crvs[AddPtIndex]->ControllPoints.size() == 2)res = crvs[AddPtIndex]->drawLine();
-    }
-    else if(crvs[AddPtIndex]->getCurveType() == CurveType::arc){
-        if(crvs[AddPtIndex]->ControllPoints.size() == 0){
-            if(outline->IsClosed()){
-                bool PointInFace = outline->IsPointInFace(p);
-                bool PointOnLines = false;
-                for(auto&l : outline->Lines){if(l->is_on_line(p))PointOnLines = true;}
-                if(!PointInFace || PointOnLines)crvs[AddPtIndex]->ControllPoints.push_back(p);
+bool Model::ControlPoint(PaintTool dtype, int event, QPointF p, int curveDimention, int DivSize){
+    Eigen::Vector3d _p(p.x(), p.y(), 0);
+    if(dtype == PaintTool::Crease){
+        return (event == 0)? Creases[FoldCurveIndex]->addCtrlPt(_p, curveDimention): Creases[FoldCurveIndex]->delCtrlPt(_p, curveDimention, outline);
+    }else{
+        if(event == 0){
+            int AddPtIndex = IsSelectedCurve();
+            if(AddPtIndex == -1)return false;
+            bool res = false;
+            if(crvs[AddPtIndex]->getCurveType() == CurveType::bsp3){
+                double dist = 5.0;
+                int n = crvs[AddPtIndex]->movePtIndex(_p, dist);
+                if(n == -1){
+                    crvs[AddPtIndex]->ControllPoints.push_back(_p);
+                    res = crvs[AddPtIndex]->drawBspline(curveDimention, crvPtNum);
+                }
             }
-            else crvs[AddPtIndex]->ControllPoints.push_back(p);
-        }
-        else if(crvs[AddPtIndex]->ControllPoints.size() == 1)crvs[AddPtIndex]->ControllPoints.push_back(p);
-        else if(crvs[AddPtIndex]->ControllPoints.size() == 2){
-            double l = (crvs[AddPtIndex]->ControllPoints[0] - crvs[AddPtIndex]->ControllPoints[1]).norm();
-            double l2 = (crvs[AddPtIndex]->ControllPoints[0] - p).norm();
-            Eigen::Vector3d point = l/l2 * (p - crvs[AddPtIndex]->ControllPoints[0]) + crvs[AddPtIndex]->ControllPoints[0];
-            crvs[AddPtIndex]->ControllPoints.push_back(point);
-        }
-        if(crvs[AddPtIndex]->ControllPoints.size() == 3)res = crvs[AddPtIndex]->drawArc(crvPtNum);
+            else if(crvs[AddPtIndex]->getCurveType() == CurveType::line){
+                if(crvs[AddPtIndex]->ControllPoints.size() < 2)crvs[AddPtIndex]->ControllPoints.push_back(_p);
+                if(crvs[AddPtIndex]->ControllPoints.size() == 2)res = crvs[AddPtIndex]->drawLine();
+            }
+            else if(crvs[AddPtIndex]->getCurveType() == CurveType::arc){
+                if(crvs[AddPtIndex]->ControllPoints.size() == 0){
+                    if(outline->IsClosed()){
+                        bool PointInFace = outline->IsPointInFace(_p);
+                        bool PointOnLines = false;
+                        for(auto&l : outline->Lines){
+                            if(l->is_on_line(_p))PointOnLines = true;
+                        }
+                        if(!PointInFace || PointOnLines)crvs[AddPtIndex]->ControllPoints.push_back(_p);
+                    }
+                    else crvs[AddPtIndex]->ControllPoints.push_back(_p);
+                }
+                else if(crvs[AddPtIndex]->ControllPoints.size() == 1)crvs[AddPtIndex]->ControllPoints.push_back(_p);
+                else if(crvs[AddPtIndex]->ControllPoints.size() == 2){
+                    double l = (crvs[AddPtIndex]->ControllPoints[0] - crvs[AddPtIndex]->ControllPoints[1]).norm();
+                    double l2 = (crvs[AddPtIndex]->ControllPoints[0] - _p).norm();
+                    Eigen::Vector3d point = l/l2 * (_p - crvs[AddPtIndex]->ControllPoints[0]) + crvs[AddPtIndex]->ControllPoints[0];
+                    crvs[AddPtIndex]->ControllPoints.push_back(point);
+                }
+                if(crvs[AddPtIndex]->ControllPoints.size() == 3)res = crvs[AddPtIndex]->drawArc(crvPtNum);
 
-    }
-    if(outline->IsClosed() && res){
-        //if(crv->getCurveType() == 0)crvs[AddPtIndex]->BezierRulings(outline->vertices, DivSize, crvPtNum);
-        if(crvs[AddPtIndex]->getCurveType() == CurveType::bsp3)crvs[AddPtIndex]->BsplineRulings(outline, DivSize, crvPtNum, curveDimention);
-        if(crvs[AddPtIndex]->getCurveType() == CurveType::line)crvs[AddPtIndex]->LineRulings(outline, DivSize);
-        if(crvs[AddPtIndex]->getCurveType() == CurveType::arc)crvs[AddPtIndex]->ArcRulings(outline, DivSize);
-        //addRulings();
-        return true;
+            }
+            if(outline->IsClosed() && res){
+                if(crvs[AddPtIndex]->getCurveType() == CurveType::bsp3)crvs[AddPtIndex]->BsplineRulings(outline, DivSize, crvPtNum, curveDimention);
+                if(crvs[AddPtIndex]->getCurveType() == CurveType::line)crvs[AddPtIndex]->LineRulings(outline, DivSize);
+                if(crvs[AddPtIndex]->getCurveType() == CurveType::arc)crvs[AddPtIndex]->ArcRulings(outline, DivSize);
+                return true;
+            }
+            return false;
+        }else if(event == 1){
+            int ptInd;
+            auto DelIndex = searchPointIndex(p, ptInd, 0);
+            if(DelIndex[0] == -1 && FoldCurveIndex == -1)return false;
+            bool res = false;
+            if(DelIndex[0] != -1){
+                crvs[DelIndex[0]]->ControllPoints.erase(crvs[DelIndex[0]]->ControllPoints.begin() + ptInd);
+                if(crvs[DelIndex[0]]->getCurveType() == CurveType::bsp3)res = crvs[DelIndex[0]]->drawBspline(3, crvPtNum);
+                if(crvs[DelIndex[0]]->ControllPoints.size() == 0){
+                    crvs.erase(crvs.begin() + DelIndex[0]);
+                    refCrv.erase(refCrv.begin() + DelIndex[0]);
+                    res = false;
+                }
+                crvs[DelIndex[0]]->ControllPoints.shrink_to_fit();
+                crvs.shrink_to_fit();
+                refCrv.shrink_to_fit();
+                if(outline->IsClosed() && res){
+                    if(crvs[DelIndex[0]]->getCurveType() == CurveType::bezier3)crvs[DelIndex[0]]->BezierRulings(outline, DivSize, crvPtNum);
+                    if(crvs[DelIndex[0]]->getCurveType() == CurveType::bsp3)crvs[DelIndex[0]]->BsplineRulings(outline, DivSize, crvPtNum, curveDimention);
+                    addRulings();
+                }
+            }else{
+                if(FoldCurveIndex != -1){
+                    Creases[FoldCurveIndex]->CtrlPts.erase(Creases[FoldCurveIndex]->CtrlPts.begin() + ptInd);
+                    if((int)Creases[FoldCurveIndex]->CtrlPts.size() <= curveDimention){
+                        Creases.erase(Creases.begin() + FoldCurveIndex);
+                        FoldCurveIndex = Creases.size() - 1;
+                    }
+                }
+            }
+        }
     }
     return false;
 }
 
-bool Model::MoveCurvePoint(Eigen::Vector3d& p, int MoveIndex, int ptInd, int curveDimention, int DivSize){
+bool Model::MoveCurvePoint(QPointF _p, int MoveIndex, int ptInd, int curveDimention, int DivSize){
+
     if((MoveIndex == -1 && FoldCurveIndex == -1) || ptInd == -1)return false;
+    Eigen::Vector3d p(_p.x(), _p.y(), 0);
     bool res = false;
     if(MoveIndex != -1){
         if(crvs[MoveIndex]->getCurveType() == CurveType::arc && ptInd == 0){
@@ -1641,26 +1273,15 @@ bool Model::MoveCurvePoint(Eigen::Vector3d& p, int MoveIndex, int ptInd, int cur
         else if(crvs[MoveIndex]->getCurveType() == CurveType::arc)res = crvs[MoveIndex]->drawArc(crvPtNum);
 
         if(outline->IsClosed() && res){
-            //if(crvs[MoveIndex]->getCurveType() == 0)crvs[MoveIndex]->BezierRulings(outline->vertices, DivSize, crvPtNum);
-            //if(crvs[MoveIndex]->getCurveType() == 1)crvs[MoveIndex]->BsplineRulings(outline->vertices, DivSize, crvPtNum, curveDimention);
             if(crvs[MoveIndex]->getCurveType() == CurveType::line)crvs[MoveIndex]->LineRulings(outline, DivSize);
             if(crvs[MoveIndex]->getCurveType() == CurveType::arc)crvs[MoveIndex]->ArcRulings(outline, DivSize);
         }
     }else{
-        return FL[FoldCurveIndex]->moveCtrlPt(p, ptInd, curveDimention);
+        return Creases[FoldCurveIndex]->moveCtrlPt(p, ptInd, curveDimention);
     }
     return true;
 }
 
-bool Model::AddControlPoint_FL(Eigen::Vector3d& p, int event, int curveDimention){
-    bool res = false;
-    if(event == 0){
-        res = FL[FoldCurveIndex]->addCtrlPt(p, curveDimention);
-    }else if(event == 1){
-        res = FL[FoldCurveIndex]->delCtrlPt(p, curveDimention, outline);
-    }
-    return res;
-}
 
 bool Model::CrossDection4AllCurve(){
     if(crvs.empty() || crvs[0]->isempty)return false;

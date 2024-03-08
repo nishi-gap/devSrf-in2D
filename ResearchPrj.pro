@@ -21,8 +21,6 @@ SOURCES += \
     foldline.cpp \
     glwidget_2d.cpp \
     glwidget_3d.cpp \
-    gradationwidget.cpp \
-    gtoolwnd.cpp \
     main.cpp \
     make3d.cpp \
     mathtool.cpp \
@@ -37,8 +35,6 @@ HEADERS += \
     foldline.h \
     glwidget_2d.h \
     glwidget_3d.h \
-    gradationwidget.h \
-    gtoolwnd.h \
     make3d.h \
     mathtool.h \
     originalbutton.h \
@@ -47,7 +43,6 @@ HEADERS += \
     widget.h \
 
 FORMS += \
-    gtoolwnd.ui \
     widget.ui
 
 INCLUDEPATH += $$PWD/includes

@@ -3,30 +3,16 @@ using namespace MathTool;
 
 GLWidget_3D::GLWidget_3D(QWidget *parent):QOpenGLWidget(parent)
 {
-
     this->Vertices.clear();
-    TriMeshs.clear();
     this->firstRotate = true;
     actionType = 0;
-    center = Eigen::Vector3d(0,0,0);
     eraseCtrlPt = eraseCrossPt = eraseVec = eraseCurve = false;
-    eraseMesh = 0;
-    VisiblePlanarity = false;
     drawEdgePlane = -1;
     IsEraseNonFoldEdge = false;
-
-    Mirror = Eigen::Matrix3d::Identity();
-    Mirror(1,1) = -1;
     Scale = 0.1;
-    Points.clear(); Curve.clear();
-}
-GLWidget_3D::~GLWidget_3D(){
-
 }
 
-void GLWidget_3D::reset(){
-    Points.clear(); Curve.clear(); RegCurve.clear();
-}
+GLWidget_3D::~GLWidget_3D(){}
 
 void GLWidget_3D::initializeGL(){
     initializeOpenGLFunctions();
@@ -34,8 +20,6 @@ void GLWidget_3D::initializeGL(){
     QSize s = this->size();
     TransX = 25.f, TransY = -16.f, TransZ = -100.f;
     angleY = 90;
-    //Eigen::Vector3d up(0,1,0);
-    //arccam = ArcBallCam(Eigen::Vector3d(0,0,-100), center, up);
     glViewport(s.width(),0,s.width(),s.height());
     glMatrixMode(GL_PROJECTION);
     perspective(30.0f, (float)s.width() / (float)s.height(), 0.1, 100.f);
@@ -54,7 +38,7 @@ void GLWidget_3D::EraseNonFoldEdge(bool state){
     update();
 }
 
-void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const FoldLine3d FldCrvs, const Ruling3d& _AllRulings){
+void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const FoldLine3d FldCrvs){
 
     auto Planerity  = [](const std::vector<std::shared_ptr<Vertex>>& vertices, const Lines Poly_V)->double{
         if((int)vertices.size() == 3)return 0.0;
@@ -77,96 +61,26 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
             return d/l_avg;
         }
     };
+    Eigen::Matrix3d Mirror = Eigen::Matrix3d::Identity();
+    Mirror(1,1) = -1;
 
     Vertices.clear();
-    TriMeshs.clear();
-    PlanarityColor.clear();
-    C.clear();
-    Eigen::Vector3d _center;
     FoldLineVertices.clear();
-
-    AllRulings.clear();
-    for(auto&v: _AllRulings){
-        std::array<Eigen::Vector3d, 2> tmpV{Scale * Mirror * v[0], Scale * Mirror * v[1]};
-        AllRulings.push_back(tmpV);
-    }
-
-    if(eraseMesh != 0){
-        for(auto&FldCrv: FldCrvs){
-            for(auto itr= FldCrv->FoldingCurve.begin() + 1; itr != FldCrv->FoldingCurve.end() - eraseMesh;itr++){
-                FoldLineVertices.push_back({(*itr)->first->p3, (*(itr+1))->first->p3});
-                FoldLineVertices.push_back({(*itr)->first->p3, (*(itr-1))->first->p3});
-                FoldLineVertices.push_back({(*itr)->first->p3, (*itr)->second->p3});
-                FoldLineVertices.push_back({(*itr)->first->p3, (*itr)->third->p3});
-            }
-        }
-        for(auto& l: FoldLineVertices){
-            for(auto&p: l)p = Scale * Mirror * p;
-        }
-        for(auto&FldCrv: FldCrvs){
-            for(auto itr= FldCrv->FoldingCurve.begin(); itr != FldCrv->FoldingCurve.end() - eraseMesh;itr++){
-                Eigen::Vector3d vf = (*itr)->first->p3, vt = (*itr)->third->p3, vt2 = (*(itr+1))->third->p3, vf2 = (*(itr+1))->first->p3;
-                Vertices.push_back({vf, vt, vt2, vf2});
-            }
-        }
-        for(auto& l: Vertices){
-            for(auto&p: l)p = Scale * Mirror * p;
-        }
-        return;
-    }
 
     std::vector<std::vector<std::shared_ptr<Vertex4d>>> FoldingCurves;
     for(auto&FldCrv: FldCrvs)FoldingCurves.push_back(FldCrv->FoldingCurve);
     std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons = MakeModel(Surface, Rulings, FoldingCurves);
     for(auto& polygon: Polygons){
         auto p_sort = SortPolygon(polygon);
-        if(!Rulings.empty())PlanarityColor.push_back(Planerity(p_sort, Surface));
-        else PlanarityColor.push_back(0);
         std::vector<Eigen::Vector3d> vertices;
         for(auto& p: p_sort)vertices.push_back(Scale * (Mirror * p->p3));
         Vertices.push_back(vertices);
     }
-
-
-    for(auto&tri : TriMeshs){
-        _center = (tri[2] + tri[1] + tri[0])/3.0;
-        double area = ((tri[2] - tri[0]).cross(tri[1] - tri[0])).norm()/2.0;
-        center += _center * area;
-    }
-    center = Eigen::Vector3d(0,0,0);
     update();
 }
 
 inline void GLWidget_3D::dispV(Eigen::Vector3d p){
     glVertex3d(p.x(), p.y(), p.z());
-}
-
-void GLWidget_3D::ReceiveParam(std::vector<std::vector<Eigen::Vector3d>>&_C){
-    C = _C;
-    for(auto&c: C){
-        for(auto&p: c) p = Scale * Mirror * p;
-    }
-}
-void GLWidget_3D::ReceiveCurve(std::vector<Eigen::Vector3d>&_C, std::vector<Eigen::Vector3d>&_P){
-    Curve = _C;
-    for(auto&c: Curve) c = Scale * Mirror * c;
-
-    Points.clear();
-    for(auto&p: _P) Points.push_back(Scale * Mirror * p);
-
-}
-
-void GLWidget_3D::ReceiveRegressionCurve(const std::vector<std::vector<std::vector<std::shared_ptr<Vertex>>>>& _RegCurve, const std::vector<std::vector<double>>&color){
-    RegCurve.clear();
-    for(int i = 0; i < (int)color.size(); i++){
-        drawobj obj = drawobj(color[i],_RegCurve[i]);
-        for(auto&mesh: obj.V){
-            for(auto&v: mesh)v = Scale * Mirror * v;
-        }
-        RegCurve.push_back(obj);
-    }
-
-    update();
 }
 
 void GLWidget_3D::paintGL(){
@@ -180,113 +94,10 @@ void GLWidget_3D::paintGL(){
     glRotated(0.2 * angleX, 0.0, 1.0, 0.0);
     glRotated(0.2 * angleY, 1.0, 0.0, 0.0);
 
-    if(eraseMesh){
-        glColor3d(0,0,0);
-        for(auto&l: FoldLineVertices){
-            glBegin(GL_LINES);
-            glVertex3d(l[0].x(), l[0].y(), l[0].z());
-            glVertex3d(l[1].x(), l[1].y(), l[1].z());
-            glEnd();
-        }
-        glPointSize(5);
-        for(auto&l: FoldLineVertices){
-            glBegin(GL_POINTS);
-            glVertex3d(l[0].x(), l[0].y(), l[0].z());
-            glEnd();
-            glBegin(GL_POINTS);
-            glVertex3d(l[1].x(), l[1].y(), l[1].z());
-            glEnd();
-        }
-
-    }
-
-    glColor3d(0,0,0);
-    glBegin(GL_LINE_STRIP);
-    for(const auto&c: Points) glVertex3d(c.x(), c.y(), c.z());
-    glEnd();
-    for(const auto&c: Points){
-        glPointSize(10);
-        glBegin(GL_POINTS);
-        glColor3d(1,0,0);
-        glVertex3d(c.x(), c.y(), c.z());
-        glEnd();
-    }
-
-    glColor3d(0,1,0);
-    glBegin(GL_LINE_STRIP);
-    for(const auto&c: Curve) glVertex3d(c.x(), c.y(), c.z());
-    glEnd();
 
     DrawMeshLines();
-    //if(!eraseMesh){
-
-        DrawMesh(true);
-        DrawMesh(false);
-    //}
-    //
-
-    glPolygonOffset(0.5f,1.f);
-    for(int i = 0; i < (int)AllRulings.size(); i++){
-        //glColor3d(0, (double)i/AllRulings.size(), (double)i/AllRulings.size());
-        //if(i % 2 == 0)glColor3d(1,0,0);
-        //else glColor3d(0,1,0);
-        if(i % 3 == 0)glColor3d(1,0,0);
-        else if(i % 3 == 1)glColor3d(0,1,0);
-        else glColor3d(0,0,1);
-        glBegin(GL_LINES);
-        glVertex3d(AllRulings[i][0].x(), AllRulings[i][0].y(), AllRulings[i][0].z());
-        glVertex3d(AllRulings[i][1].x(), AllRulings[i][1].y(), AllRulings[i][1].z());
-        glEnd();
-
-        glPointSize(5);
-        glBegin(GL_POINTS);
-        glVertex3d(AllRulings[i][0].x(), AllRulings[i][0].y(), AllRulings[i][0].z());
-        glEnd();
-    }
-
-    glPolygonOffset(1.f,2.f);
-    for(const auto&c: C){
-        glPointSize(6);
-        glColor3d(1,0,0);
-        for(const auto&v: c){
-            glBegin(GL_POINTS);
-            glVertex3d(v.x(), v.y(), v.z());
-            glEnd();
-        }
-        glEnable(GL_LINE_STIPPLE);
-        glLineStipple(1 , 0xF0F0);
-        glBegin(GL_LINE_STRIP);
-        glColor3d(0.4, 0.4, 0.4);
-        for (const auto& v: c)glVertex3d(v.x(), v.y(), v.z());
-        glEnd();
-        glDisable(GL_LINE_STIPPLE);
-    }
-
-    //draw regression curve
-    glPolygonOffset(1.5f,2.f);
-    glPointSize(6);
-    for(auto&RC: RegCurve){
-        glColor3d(RC.c[0],RC.c[1],RC.c[2]);
-        for(auto&mesh: RC.V){
-            for(auto&v: mesh){
-                glBegin(GL_POINTS);
-                glVertex3d(v.x(), v.y(), v.z());
-                glEnd();
-            }
-        }
-        glColor4d(RC.c[0], RC.c[1], RC.c[2], 0.3);
-        for(auto&mesh: RC.V){
-            glBegin(GL_POLYGON);
-            for(auto&v: mesh) glVertex3d(v.x(), v.y(), v.z());
-            glEnd();
-        }
-        glColor4d(0.,0.,0,0.7);
-        for(auto&mesh: RC.V){
-            glBegin(GL_LINE_LOOP);
-            for(auto&v: mesh)glVertex3d(v.x(), v.y(), v.z());
-            glEnd();
-        }
-    }
+    DrawMesh(true);
+    DrawMesh(false);
 
     glPolygonOffset(0.f,0.f);
 
@@ -294,60 +105,33 @@ void GLWidget_3D::paintGL(){
 
 void GLWidget_3D::DrawMesh(bool isFront){
     glPolygonOffset(1.f,0.5f);
-    if(VisiblePlanarity){
-        for(int i = 0; i < (int)Vertices.size(); i++){
-            if(drawEdgePlane == i)continue;
-            if(PlanarityColor[i] >= th_planarity){
-                glColor3d(1,0,0);
-            }else{
-                glColor3d(PlanarityColor[i]/th_planarity, 1 - PlanarityColor[i]/th_planarity, 0);
-            }
+    glEnable(GL_CULL_FACE);
+    if(isFront){
+        glCullFace(GL_FRONT);
+        glColor3d(0.6,0.6,0.6);
+    }
+    else {
+        glCullFace(GL_BACK);
+        glColor3d(0.9,0.9,0.9);
 
-            glBegin(GL_POLYGON);
-            for (auto& v : Vertices[i]) {
-                glVertex3d(v.x(), v.y(), v.z());
-            }
-            glEnd();
-        }
-    }else{
-        glEnable(GL_CULL_FACE);
-        if(isFront){
-            glCullFace(GL_FRONT);
-            glColor3d(0.6,0.6,0.6);
-        }
-        else {
-            glCullFace(GL_BACK);
-            glColor3d(0.9,0.9,0.9);
-
-        }
-        //glColor4d(0.9,0.9,0.9, 0.3);
-        for(int i = 0; i < (int)Vertices.size(); i++){
-            if(drawEdgePlane == i)continue;
-            glBegin(GL_POLYGON);
-            for (auto& v : Vertices[i]) {
-                glVertex3d(v.x(), v.y(), v.z());
-            }
-            glEnd();
-        }
-        glDisable(GL_LIGHTING);
-        glDisable(GL_LIGHT0);
-        glDisable(GL_CULL_FACE);
     }
 
-    //for(int i = 0; i < (int)TriMeshs.size(); i++){
-      //  glBegin(GL_POLYGON);
-        //for (auto& v : TriMeshs[i]) {
-          //  glVertex3d(v.x, v.y, v.z);
-        //}
-        //glEnd();
-    //}
-
+    for(int i = 0; i < (int)Vertices.size(); i++){
+        if(drawEdgePlane == i)continue;
+        glBegin(GL_POLYGON);
+        for (auto& v : Vertices[i]) {
+            glVertex3d(v.x(), v.y(), v.z());
+        }
+        glEnd();
+    }
+    glDisable(GL_LIGHTING);
+    glDisable(GL_LIGHT0);
+    glDisable(GL_CULL_FACE);
 
     glPolygonOffset(0.f,0.f);
 }
 
 void GLWidget_3D::DrawMeshLines(){
-    //std::vector<std::vector<Eigen::Vector3d>> TriMeshs;
     glColor3d(0.f, 0.f, 0.f);
     glLineWidth(1.0f);
     for(auto&V: Vertices){
@@ -355,30 +139,6 @@ void GLWidget_3D::DrawMeshLines(){
         for(auto&v: V)glVertex3d(v.x(), v.y(), v.z());
         glEnd();
     }
-}
-
-void GLWidget_3D::PlanarityDispay(bool state){
-    VisiblePlanarity = !VisiblePlanarity;
-    for(auto&c: PlanarityColor)
-        if(c > th_planarity && DebugMode::Singleton::getInstance().isdebug())qDebug() << "planarity : " << c;
-    update();
-}
-
-void GLWidget_3D::DrawGrid(){
-    double ground_max_x = 300.0;
-    double ground_max_y = 300.0;
-    glColor3d(0.8, 0.8, 0.8);
-    glLineWidth(1.0f);
-    glBegin(GL_LINES);
-    for (double ly = -ground_max_y; ly <= ground_max_y; ly += 10.0) {
-        glVertex3d(-ground_max_x, 0, ly);
-        glVertex3d(ground_max_x, 0, ly);
-    }
-    for (double lx = -ground_max_x; lx <= ground_max_x; lx += 10.0) {
-        glVertex3d(lx, 0, ground_max_y);
-        glVertex3d(lx, 0, -ground_max_y);
-    }
-    glEnd();
 }
 
 void GLWidget_3D::perspective(GLdouble fovy, GLdouble aspect, GLdouble zNear, GLdouble zFar){
@@ -408,13 +168,9 @@ void GLWidget_3D::wheelEvent(QWheelEvent *we){
 }
 
 void GLWidget_3D::receiveKeyEvent(QKeyEvent *e){
-    //if(e->key() == Qt::Key_M)eraseMesh = !eraseMesh;
     if(e->key() == Qt::Key_C)eraseCtrlPt = !eraseCtrlPt;
     if(e->key() == Qt::Key_X)eraseCrossPt = !eraseCrossPt;
     if(e->key() == Qt::Key_D)eraseCurve = !eraseCurve;
-    //if(e->key() == Qt::Key_O)eraseMesh = !eraseMesh;
-
-
     update();
 }
 

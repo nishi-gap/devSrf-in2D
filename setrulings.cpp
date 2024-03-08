@@ -330,9 +330,9 @@ void CRV::ArcRulings(std::shared_ptr<OUTLINE>& outline, int DivSize){
     return;
 }
 
-void CRV::InsertControlPoint2(Eigen::Vector3d& p){
+void CRV::InsertControlPoint(QPointF _p){
     int ind, d;
-
+    Eigen::Vector3d p(_p.x(), _p.y(), 0);
     //d = -1：どこにものっかっていない　d = 0：曲線上　d = 1：制御点を結んだ線上
     if(isempty)d = -1;
     double lc = 5, lp = 5;
@@ -427,8 +427,9 @@ void OUTLINE::addVertex(const std::shared_ptr<Vertex>& v, int n){
     else vertices.insert(vertices.begin() + n, v);
 }
 
-void OUTLINE::addVertex(Eigen::Vector3d& p){
+void OUTLINE::addVertex(Eigen::Vector3d p){
     if(IsClosed()) return;
+
     if(type == "Rectangle"){
         vertices.push_back(std::make_shared<Vertex>(p));
         if((int)vertices.size() == 2){
@@ -483,7 +484,7 @@ void OUTLINE::eraseVertex(){
     ConnectEdges(false);
 }
 
-void OUTLINE::drawPolygon(Eigen::Vector3d& p, bool IsClicked){
+void OUTLINE::drawPolygon(Eigen::Vector3d p, bool IsClicked){
     if(hasPtNum == 0 && IsClicked){
         origin = Eigen::Vector2d(p.x(), p.y());
         hasPtNum = 1;
@@ -714,95 +715,6 @@ std::vector<std::shared_ptr<Vertex>> SortPolygon(std::vector<std::shared_ptr<Ver
     return poly_sort;
 }
 
-//https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/INT-APP/CURVE-INT-global.html
-//http://www.cad.zju.edu.cn/home/zhx/GM/009/00-bsia.pdf
-Eigen::MatrixXd GlobalSplineInterpolation(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, std::vector<double>&Knot, std::vector<double>& T, bool is3d, int dim){
-    int n = FoldingCurve.size() - 1;
-    int s = FoldingCurve.size();
-    T.assign(s, 0);
-    int m = s + dim;
-    Knot.assign(m + 1,0);
-    //if(s < 1)return std::vector<Eigen::Vector3d>{};
-    Eigen::MatrixXd Points(s,3);
-    for(int i = 0; i <= n; i++){
-        if(is3d){Points.row(i) = FoldingCurve[i]->first->p3;}
-        else{Points.row(i) = FoldingCurve[i]->first->p;}
-    }
-
-    //The Centripetal Method
-    double L= 0.0; for(int i = 1; i < s; i++)L += sqrt((Points.row(i) - Points.row(i - 1)).norm());
-    for(int i = 1; i < s; i++){
-        double sum = 0; for(int j = 1; j <= i; j++)sum += sqrt((Points.row(j) - Points.row(j - 1)).norm());
-        T[i] = sum/L;
-    }
-
-    //for(int i = 0; i < s; i++)FoldingCurve[i]->first->s = T[i];//update parameter t
-
-    //The Universal method
-    for(int i = 0; i <= dim; i++)Knot[i] = 0;
-    for(int i = 0; i <= dim; i++)Knot[m - dim + i] = 1;
-    for(int i = 1; i <= n - dim; i++){
-        double d = (double)s/(double)(s - dim);
-        double a = i * d - 1;
-        //Knot[dim + i] = (1.0 - a)*T[int(i * d)-1] + a*T[int(i * d)];
-        //Knot[dim + i] = (double)i/(double)(s - dim);
-        //Knot[dim+i] = 0;
-        for(int j = i; j < i+dim; j++) Knot[dim+i] += T[j];
-        Knot[dim+i] /= (double)dim;
-    }
-
-    auto calculateCoefficientsMatrix = [](int n, int p, double u, const std::vector<double>& knots){
-        Eigen::VectorXd N = Eigen::VectorXd::Zero(n + 1);
-        if(u == knots[0]){N(0) = 1; return N;}
-        if(u == knots.back()){N(n) = 1; return N;}
-        int k = 0;
-        while (!(knots[k] <= u && u < knots[k + 1]))  k++;
-        N(k) = 1.0; // Degree 0 coefficient
-        for (int d = 1; d <= p; d++) {
-            N(k -d) = (knots[k+1] - u)/(knots[k+1] - knots[k - d + 1]) * N(k-d+1);
-            for(int i = k - d + 1; i <= k-1; i++)N(i) = (u - knots[i])/(knots[i+d] - knots[i])*N(i) + (knots[i+d+1] - u)/(knots[i+d+1] - knots[i+1])*N(i+1);
-            N(k) = (u - knots[k])/(knots[k+d] - knots[k])*N(k);
-        }
-        return N;
-    };
-    //Knot Matrix
-    Eigen::MatrixXd KnotMatrix = Eigen::MatrixXd::Zero(s, s);
-    for(int i = 0; i < s; i++){
-        Eigen::VectorXd _N = calculateCoefficientsMatrix(s-1, dim, T[i], Knot);
-
-        KnotMatrix.row(i) = _N;
-    }
-    /*
-    for(int i = 0; i < s; i++){//列ベクトル
-        double u = T[i];
-        if(u == Knot[0]){ KnotMatrix(0,i) = 1;continue;}
-        if(u == Knot[m]){KnotMatrix(n,i) = 1; continue;}
-        //for(int j = 0; j < s; j++){N(i,j) = basis(n,j,dim,u,Knot);}
-        for(int k = 0; k < m; k++){
-            if(!(Knot[k] <= u && u < Knot[k+1]))continue;
-            KnotMatrix(k,i) = 1;
-            for(int d = 1; d <= dim; d++){
-                //N(i,k - d) = (Knot[k+1] != Knot[k - d + 1]) ? (Knot[k+1] - u)/(Knot[k+1] - Knot[k - d + 1]) * N(i,k - d + 1): 0;
-                //N(i,j) = basis(s,j,dim,u,Knot);
-                for(int j = k - d + 1; j < k; j++){
-                    //N(i,j) = (Knot[j+d] != Knot[j]) ? (u - Knot[j])/(Knot[j+d] - Knot[j])*N(i,j): 0;
-                    KnotMatrix(j,i) += (Knot[j+d + 1] != Knot[j + 1]) ? (Knot[j + d + 1] - u)/(Knot[j+d + 1] - Knot[j + 1])*KnotMatrix(i,j+1): 0;
-                }
-                KnotMatrix(i,k) = (Knot[k+d] != Knot[k])? (u - Knot[k])/(Knot[k+d] - Knot[k])*KnotMatrix(i,k): 0;
-            }
-        }
-    }*/
-
-    //Eigen::MatrixXd inv(s,s); inv = KnotMatrix.inverse();
-    return KnotMatrix.colPivHouseholderQr().solve(Points);
-    Eigen::MatrixXd NewPoints(s, 3);
-    //qDebug() << "size = " << (inv * Points).rows();
-    return Points;
-    //
-    //CtrlPts_res[0] = glm::f64vec3{_D(0,0), _D(0,1), _D(0,2)};
-    //CtrlPts_res[n] = glm::f64vec3{_D(n,0), _D(n,1), _D(n,2)};//もしからしたらこれ必要かも
-}
-
 std::shared_ptr<Vertex> getClosestVertex(const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o,  const std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, bool SkipTrimedPoint){
     std::shared_ptr<Vertex> V_max = nullptr;
     double t_max = -1;
@@ -820,7 +732,7 @@ std::shared_ptr<Vertex> getClosestVertex(const std::shared_ptr<Vertex>& v, const
 }
 
 std::vector<std::vector<std::shared_ptr<Vertex>>> MakeModel(const std::vector<std::shared_ptr<Line>>& Surface,
-                                                            const std::vector<std::shared_ptr<Line>>& Rulings,  const std::vector<std::vector<std::shared_ptr<Vertex4d>>>& FoldingCurves){
+                                                            const std::vector<std::shared_ptr<Line>>& Rulings,  const std::vector<std::vector<std::shared_ptr<Vertex4d>>>& Creases){
     //firstの頂点(折曲線上の点)と輪郭の頂点が重なる場合輪郭の頂点を取り除く
     auto RemoveOverlappedVertex = [&](std::vector<std::shared_ptr<Vertex>>& mesh){
         int i = 0;
@@ -871,7 +783,7 @@ std::vector<std::vector<std::shared_ptr<Vertex>>> MakeModel(const std::vector<st
     Polygons.push_back(polygon);
     std::vector<std::vector<std::shared_ptr<Vertex4d>>> DrawCrvs;
 
-    for(auto&FC: FoldingCurves){
+    for(auto&FC: Creases){
         if((int)FC.size() <= 2)continue;
         std::vector<std::shared_ptr<Vertex4d>> DrawCrv;
         for(auto& v: FC){if(v->IsCalc)DrawCrv.push_back(v);}
@@ -944,12 +856,11 @@ std::vector<std::vector<std::shared_ptr<Vertex>>> MakeModel(const std::vector<st
     return Polygons;
 }
 
-Eigen::Vector3d getCenter(const std::vector<Eigen::Vector3d>& vertices, double& sum){
-    Eigen::Vector3d c(Eigen::Vector3d::Zero());
-    sum = 0.0;
-    for(auto&v: vertices)c += v;
-    c /= static_cast<double>(vertices.size());
-    for(auto&v: vertices)sum += (c - v).norm();
-    return c;
+QPointF SetOnGrid(QPointF& cursol, double gridsize, const QSize& S){
+    int x = (int)cursol.x() % (int)gridsize, y = (int)cursol.y() % (int)gridsize;
+    x = (cursol.x() - x + gridsize/2);
+    y = (cursol.y() - y + gridsize/2);
+    QPointF p; p.setX(x); p.setY(y);
+    return p;
 }
 
