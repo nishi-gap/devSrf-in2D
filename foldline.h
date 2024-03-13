@@ -51,7 +51,7 @@ public:
     void reassignruling(std::shared_ptr<FoldLine>& parent, const std::vector<std::shared_ptr<Line>>& Surface, const std::vector<std::shared_ptr<Line>>& Rulings);
 
     void applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double a);
-    void FittingEndPoint_flattencurve(const Eigen::Vector3d& initRight, const Eigen::Vector3d& initLeft);
+    //void FittingEndPoint_flattencurve(const Eigen::Vector3d& initRight, const Eigen::Vector3d& initLeft);
 private:
     int curveNum;
     std::vector<std::shared_ptr<CrvPt_FL>> Points_On_Curve;

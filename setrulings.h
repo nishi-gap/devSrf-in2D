@@ -52,7 +52,7 @@ public:
     std::shared_ptr<Vertex> v;//原則の方向はv[1] - v[0] (v[0]が原点)
     EdgeType et = EdgeType::none;
     Line(const std::shared_ptr<Vertex>& _o, const std::shared_ptr<Vertex>& _v, EdgeType _et): o(_o), v(_v), et(_et), IsCrossed(-1), color(0), hasCrossPoint(false){}
-    Line():o(nullptr),v(nullptr), IsCrossed(-1), color(0), hasCrossPoint(false) {}
+    Line():o(nullptr), v(nullptr), IsCrossed(-1), color(0), hasCrossPoint(false) {}
     std::shared_ptr<Line> deepCopy();
     //bool operator !=(const Line& l)const{return IsCrossed != l.IsCrossed || color != l.color || (v[0] != l.v[0] && v[0] != l.v[1]);}
     //bool operator ==(const Line &l)const{return IsCrossed == l.IsCrossed && color == l.color && ((v[0] == l.v[0] && v[1] == l.v[1]) || (v[1] == l.v[0] && v[0] == l.v[1]));}
@@ -70,7 +70,7 @@ public:
     void addline(std::shared_ptr<Vertex>& tip, std::shared_ptr<Vertex>& end){line_parent = std::make_shared<Line>(tip, end, EdgeType::r);}
     void addline(std::shared_ptr<Line>& L){line_parent = L;}
     Vertex4d(): first{nullptr}, second{nullptr}, third{nullptr} {}
-    Vertex4d(CrvPt_FL v, Vertex v2, Vertex v3): first(std::make_shared<CrvPt_FL>(v)), second(std::make_shared<Vertex>(v2)), third(std::make_shared<Vertex>(v3)){}
+    //Vertex4d(const std::shared_ptr<Vertex>& v, const std::shared_ptr<Line>& L):line_parent(L), first(v), second(L->v), third(L->o), IsCalc(true){}
     Vertex4d(const std::shared_ptr<CrvPt_FL>& v, const std::shared_ptr<Vertex>& v2, const std::shared_ptr<Vertex>& v3): first(v), second(v2), third(v3), IsCalc(true){}
     std::shared_ptr<Vertex4d> deepCopy();
     void release();
@@ -114,7 +114,6 @@ public:
     std::vector<Eigen::Vector3d> ControllPoints;
     std::vector<Eigen::Vector3d> CurvePoints;
     std::vector<std::shared_ptr<Line>> Rulings;//偶数番目 ruling　奇数番目 グラデーションの多角形に使用
-    //std::vector<meshline*> meshLines;
     Eigen::Vector3d InsertPoint;
     bool isempty;
 

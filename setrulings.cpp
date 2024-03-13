@@ -66,8 +66,6 @@ bool CRV::eraseCtrlPt(int curveDimention, int crvPtNum){
     return false;
 }
 
-//void CRV::movePt(glm::f64vec3 p, int ind){ControllPoints[ind] = p;}
-
 int CRV::movePtIndex(Eigen::Vector3d& p, double& dist){
     int n = ControllPoints.size();
     dist = 5.0;
@@ -121,6 +119,7 @@ bool CRV::drawBezier(int curveDimention, int crvPtNum){
 }
 
 bool CRV::setPoint(const std::vector<std::shared_ptr<Vertex>>&outline, Eigen::Vector3d N, Eigen::Vector3d& cp, std::vector<Eigen::Vector3d>& P){
+
     Eigen::Vector3d N0 = N + cp, N1 = -N + cp;
     Eigen::Vector3d v, v2;
     std::vector<Eigen::Vector3d> crossPoint;
@@ -130,9 +129,9 @@ bool CRV::setPoint(const std::vector<std::shared_ptr<Vertex>>&outline, Eigen::Ve
     for(int i = 0; i < onum; i++){
         v = outline[i]->p;
         v2 = outline[(i + 1) % onum]->p;
-        if (IsIntersect(v, v2, N0, N1, true)) {
-            auto tmp = getIntersectionPoint(v, v2, N0, N1);
-            if(std::find_if(crossPoint.begin(), crossPoint.end(), [&](Eigen::Vector3d c){return (c - tmp).norm() < 1e-9;}) == crossPoint.end()) crossPoint.push_back(tmp);
+        Eigen::Vector3d q;
+        if (IsIntersect(v, v2, N0, N1, q, true)) {
+            if(std::find_if(crossPoint.begin(), crossPoint.end(), [&](Eigen::Vector3d c){return (c - q).norm() < 1e-9;}) == crossPoint.end()) crossPoint.push_back(q);
             IsIntersected = true;
         }
     }
@@ -151,13 +150,10 @@ bool CRV::setPoint(const std::vector<std::shared_ptr<Vertex>>&outline, Eigen::Ve
         minPt = ((p - cp).norm() < (minPt - cp).norm()) ? p : minPt;
     }
     auto itr = std::find(crossPoint.begin(), crossPoint.end(), minPt);
-    if(itr == crossPoint.end())return IsIntersected;
-    //int minInd = std::distance(crossPoint.begin(), itr);
-    //minInd /= 2;
-    //P.push_back(crossPoint[2 * minInd]); P.push_back(crossPoint[2 * minInd + 1]);//原因ここ?
-    for(int i = 0; i < (int)crossPoint.size(); i++){
-        P.push_back(crossPoint[i]);
-    }
+    //if(itr == crossPoint.end())return IsIntersected;
+
+    for(int i = 0; i < (int)crossPoint.size(); i++) P.push_back(crossPoint[i]);
+
     std::sort(P.begin(), P.end(), [](auto& pl, auto& pr){return pl.y() < pr.y();});
     return IsIntersected;
 }
@@ -332,6 +328,14 @@ void CRV::ArcRulings(std::shared_ptr<OUTLINE>& outline, int DivSize){
 
 void CRV::InsertControlPoint(QPointF _p){
     int ind, d;
+    auto DistanceToLine = [](const Eigen::Vector3d& la, const Eigen::Vector3d& lb, const Eigen::Vector3d& p, Eigen::Vector3d& q)->double{
+        double s = (p - la).dot((lb - la))/(lb - la).dot((lb - la));
+        if(0 <= s && s <= 1){
+            q = la + s * (lb - la);
+            return (p - q).norm();
+        }
+        return -1;
+    };
     Eigen::Vector3d p(_p.x(), _p.y(), 0);
     //d = -1：どこにものっかっていない　d = 0：曲線上　d = 1：制御点を結んだ線上
     if(isempty)d = -1;
@@ -343,7 +347,7 @@ void CRV::InsertControlPoint(QPointF _p){
     }
     Eigen::Vector3d q;
     for(int i = 0; i < (int)ControllPoints.size() - 1; i++) {
-        double l = distP2L(ControllPoints[i], ControllPoints[i + 1], p, q);
+        double l = DistanceToLine(ControllPoints[i], ControllPoints[i + 1], p, q);
         if(l != -1 && l < lp){
             lp = l; ind = i;
         }
@@ -367,7 +371,7 @@ void CRV::InsertControlPoint(QPointF _p){
         double l;
         Eigen::Vector3d q;
         for(int i = 0; i < (int)ControllPoints.size() - 1; i++){
-            l = distP2L(ControllPoints[i], ControllPoints[i + 1], p, q);
+            l = DistanceToLine(ControllPoints[i], ControllPoints[i + 1], p, q);
             if(l != -1 && l < minDist){ minDist = l; InsertPoint = p; InsertPointSegment = i;}
         }
         if(minDist == 100.0){IsInsertNewPoint = false;InsertPointSegment = -1;}
@@ -383,7 +387,7 @@ void CRV::InsertControlPoint(QPointF _p){
         }
     }else if(d == 1){//直線上
         Eigen::Vector3d q;
-        double l = distP2L(ControllPoints[ind], ControllPoints[ind + 1], p, q);
+        double l = DistanceToLine(ControllPoints[ind], ControllPoints[ind + 1], p, q);
         if(l != -1){
             InsertPoint = q;
             InsertPointSegment = ind;
@@ -602,12 +606,10 @@ void CrossDetection(std::shared_ptr<OUTLINE>& outline, std::shared_ptr<CRV>& crv
     if(crvs->getCurveType() == CurveType::arc || crvs->getCurveType() == CurveType::line)return;
     for(int in = 0; in < (int)crvs->Rulings.size(); in ++){
         for(int inn = in+1; inn < (int)crvs->Rulings.size(); inn++){
-            bool rs = IsIntersect(crvs->Rulings[in]->v->p, crvs->Rulings[in]->o->p, crvs->Rulings[inn]->v->p,crvs->Rulings[inn]->o->p, false);
+            Eigen::Vector3d q;
+            bool rs = IsIntersect(crvs->Rulings[in]->v->p, crvs->Rulings[in]->o->p, crvs->Rulings[inn]->v->p,crvs->Rulings[inn]->o->p, q, false);
             if(rs){
-                auto p = getIntersectionPoint(crvs->Rulings[in]->v->p, crvs->Rulings[in]->o->p, crvs->Rulings[inn]->v->p,crvs->Rulings[inn]->o->p);
-                bool PointOnLines = false;
-                bool PointInFace = outline->IsPointInFace(p);
-                for(auto&l: outline->Lines){if(l->is_on_line(p))PointOnLines = true;}
+                bool PointInFace = outline->IsPointInFace(q);
                 if(PointInFace)crvs->Rulings[in]->IsCrossed = crvs->Rulings[inn]->IsCrossed = 0;
             }
         }

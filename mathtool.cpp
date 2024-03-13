@@ -58,28 +58,14 @@ namespace MathTool{
         return vec;
     }
 
-    double distP2L(const Eigen::Vector3d& la, const Eigen::Vector3d& lb, const Eigen::Vector3d& p, Eigen::Vector3d& q){
-        double s = (p - la).dot((lb - la))/(lb - la).dot((lb - la));
-        if(0 <= s && s <= 1){
-            q = la + s * (lb - la);
-            return (p - q).norm();
-        }
-        return -1;
-    }
-
-
-
-    Eigen::Vector3d getIntersectionPoint(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2,const Eigen::Vector3d p3, const Eigen::Vector3d& p4){
-        double det = (p1.x() - p2.x()) * (p4.y() - p3.y()) - (p4.x() - p3.x()) * (p1.y() - p2.y());
-        double t = ((p4.y() - p3.y()) * (p4.x() - p2.x()) + (p3.x() - p4.x()) * (p4.y() - p2.y())) / det;
-
-        return Eigen::Vector3d(t * p1.x() + (1.0 - t) * p2.x(), t * p1.y() + (1.0 - t) * p2.y(), 0);
-    }
-
-    bool IsIntersect(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, const Eigen::Vector3d& p3, const Eigen::Vector3d& p4, bool ConsiderEnd){
+    bool IsIntersect(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, const Eigen::Vector3d& p3, const Eigen::Vector3d& p4, Eigen::Vector3d& q, bool ConsiderEnd){
         auto set3pt = [](const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, const Eigen::Vector3d& p3) {
             return (p2(0) - p1(0)) * (p3(1) - p1(1)) - (p2(1) - p1(1)) * (p3(0) - p1(0));
         };
+
+        double det = (p1.x() - p2.x()) * (p4.y() - p3.y()) - (p4.x() - p3.x()) * (p1.y() - p2.y());
+        double t = ((p4.y() - p3.y()) * (p4.x() - p2.x()) + (p3.x() - p4.x()) * (p4.y() - p2.y())) / det;
+        q = t * p1 + (1.0 - t)*p2;
 
         double t1 = set3pt(p1, p2, p3), t2 = set3pt(p1, p2, p4), t3 = set3pt(p3, p4, p1), t4 = set3pt(p3, p4, p2);
         if(ConsiderEnd){
@@ -88,6 +74,7 @@ namespace MathTool{
         else{
             if (t1 * t2 < 0 && t3 * t4 < 0) return true;//交点を持つ
         }
+
         return false;
     }
 

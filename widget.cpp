@@ -10,13 +10,11 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->setupUi(this);
     ui->glWid2dim->DivSize = ui->DivSizeSpinBox->value();
-    //model = new Model(crvPtNum);
-    //ui->glWid2dim->model = model;
-    CBoxlist = {{ui->outline_rectangle, PaintTool::Rectangle_ol}, {ui->outline_polygon,  PaintTool::Polygon_ol},{ui->outline_polyline, PaintTool::Polyline_ol}, {ui->Reset, PaintTool::Reset}};
+    CBoxlist = {{ui->outline_rectangle, PaintTool::Rectangle}, {ui->outline_polygon,  PaintTool::Polygon},{ui->outline_polyline, PaintTool::Polyline}, {ui->Reset, PaintTool::Reset}};
 
     setGeometry(0,0,1250, 620);
-    //色の最大値
-    connect(ui->ColorLimitation, &QSpinBox::valueChanged, this, &MainWindow::ChangeMaxColor);
+
+    connect(ui->ColorLimitation, &QSpinBox::valueChanged, this, &MainWindow::ChangeMaxColor);//色の最大値
     connect(ui->BinaryMVColor, &QCheckBox::clicked, ui->glWid2dim, &GLWidget_2D::VisualizeMVColor);//山谷の色を二値化するかグラデーションを描画するか切り替える
     connect(ui->Reset, &QCheckBox::stateChanged,ui->glWid2dim,&GLWidget_2D::Reset);
 
@@ -194,7 +192,6 @@ void MainWindow::switchActivateCheckBox(PaintTool active){
     }
 }
 
-
 void MainWindow::keyPressEvent(QKeyEvent *e){
     ui->glWid3dim->receiveKeyEvent(e);
     double wsim = ui->NormErrorWeight->value(), wp = ui->RulingDirWeight->value();
@@ -286,7 +283,6 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
         ui->glWid2dim->model.back()->flatten_lsp(NewFL);
     }
 
-
     if(e->key() == Qt::Key_G){
         ui->glWid2dim->switchGrid();
     }
@@ -326,9 +322,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
     }
 
     if(e->key() == Qt::Key_S){
-        if(e->modifiers().testFlag(Qt::ControlModifier)){
-             exportobj();
-        }
+        if(e->modifiers().testFlag(Qt::ControlModifier))exportobj();
     }
 
     if(e->key() == Qt::Key_V){
@@ -529,10 +523,10 @@ void MainWindow::exportobj(){
     int cnt = 1;
     for(int i = 0; i < (int)Vertices.size(); i++){
         QString s = "f ";
-        for(const auto& v: Vertices[i]){
-            s += QString::number(cnt) + "//" + QString::number(i+1) + " ";
-            cnt++;
+        for(int j = 0; j < (int)Vertices[i].size(); j++){
+            s += QString::number(cnt++) + "//" + QString::number(i+1) + " ";
         }
+
         s += "\n";
         WriteList.append(s);
     }
@@ -628,12 +622,12 @@ void MainWindow::addCurveBtn(){
     int pad = 5;
     int btn_w = geo.width() - 2 * pad, btn_h = 25;
     QString text;
-    if(ui->glWid2dim->model.back()->crvs[0]->getCurveType() == CurveType::bezier3)text = "Bezier" + QString::number(++CurvesNum[0]);
-    else if(ui->glWid2dim->model.back()->crvs[0]->getCurveType()  == CurveType::bsp3)text = "Bspline" + QString::number(++CurvesNum[1]);
-    else if(ui->glWid2dim->model.back()->crvs[0]->getCurveType() == CurveType::line)text = "Line" + QString::number(++CurvesNum[2]);
-    else if(ui->glWid2dim->model.back()->crvs[0]->getCurveType() == CurveType::arc)text = "Arc"+QString::number(++CurvesNum[3]);
+    if(ui->glWid2dim->model.back()->RulingCurve[0]->getCurveType() == CurveType::bezier3)text = "Bezier" + QString::number(++CurvesNum[0]);
+    else if(ui->glWid2dim->model.back()->RulingCurve[0]->getCurveType()  == CurveType::bsp3)text = "Bspline" + QString::number(++CurvesNum[1]);
+    else if(ui->glWid2dim->model.back()->RulingCurve[0]->getCurveType() == CurveType::line)text = "Line" + QString::number(++CurvesNum[2]);
+    else if(ui->glWid2dim->model.back()->RulingCurve[0]->getCurveType() == CurveType::arc)text = "Arc"+QString::number(++CurvesNum[3]);
 
-    std::shared_ptr<Btn4Crv> newbtn = std::make_shared<Btn4Crv>(ui->glWid2dim->model.back()->crvs[0],text, ui->LayerListWidget);
+    std::shared_ptr<Btn4Crv> newbtn = std::make_shared<Btn4Crv>(ui->glWid2dim->model.back()->RulingCurve[0],text, ui->LayerListWidget);
     connect(newbtn.get(), &Btn4Crv::clicked, this, &MainWindow::SetHandleCrv);
     for(int i = 0; i < (int)LayerList.size(); i++) LayerList[i]->setGeometry(pad, btn_h + (i + 1) * (btn_h + pad), btn_w, btn_h);
     LayerList.insert(LayerList.begin(), newbtn);

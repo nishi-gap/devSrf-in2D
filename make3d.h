@@ -9,8 +9,8 @@ class Model: public std::enable_shared_from_this<Model>{
 public:
     std::vector<std::shared_ptr<Line>> Rulings;
     std::shared_ptr<OUTLINE> outline;
-    std::vector<std::vector<std::shared_ptr<Vertex>>> ol_vertices;
-    std::vector<std::shared_ptr<CRV>> crvs;
+    //std::vector<std::vector<std::shared_ptr<Vertex>>> ol_vertices;
+    std::vector<std::shared_ptr<CRV>> RulingCurve;
     std::vector<std::shared_ptr<FoldLine>> Creases;
     ColorPoint ColorPt;
 
@@ -31,7 +31,7 @@ public:
     void deform();
     void Initialize();
 
-    void setGradationValue(int val, const std::shared_ptr<Line>& refL, std::vector<Eigen::Vector2d>& CurvePath);
+    void SetGradationValue(int val, const std::shared_ptr<Line>& refL);
     void SetMaxFold(double val);
     void drawOutline(QPointF& cursol, int drawtype, double gridsize, const QSize&S, bool IsClicked = true);
     void editOutlineVertex(QPointF& cursol, double gridsize, const QSize& S, int event);
@@ -71,7 +71,7 @@ public:
     void SelectCurve(QPointF pt);
     int DeleteCurve();
 private:
-
+    int movingVertexIndex;
     void MakeTree();
     std::vector<vertexinfo> MappingVertex(bool IsRemoveOverlapping);
 

@@ -61,13 +61,12 @@ void GLWidget_2D::AddCurve(){
 
     emit signalCurveType(curvetype);
     model.back()->Check4Param(curveDimention, deleteIndex);
-    if(model.back()->crvs.empty()) MoveCrvIndex = {-1,-1};
+    if(model.back()->RulingCurve.empty()) MoveCrvIndex = {-1,-1};
     emit deleteCrvSignal(deleteIndex);
 
-    if(curvetype == CurveType::bezier3)drawtype = PaintTool::Bezier_r;
-    else if(curvetype == CurveType::bsp3)drawtype = PaintTool::Bspline_r;
-    else if(curvetype == CurveType::line)drawtype = PaintTool::Line_r;
-    else if(curvetype == CurveType::arc)drawtype = PaintTool::Line_r;
+    if(curvetype == CurveType::bsp3)drawtype = PaintTool::Bspline;
+    else if(curvetype == CurveType::line)drawtype = PaintTool::Line;
+    else if(curvetype == CurveType::arc)drawtype = PaintTool::Arc;
 
     MoveCrvIndex[0] = model.back()->AddNewCurve(curvetype, DivSize);
     setMouseTracking(true);
@@ -80,7 +79,7 @@ void GLWidget_2D::InsertNewPoint(){
     setMouseTracking(true);
     std::vector<int>deleteIndex;
     model.back()->Check4Param(curveDimention, deleteIndex);
-    if(model.back()->crvs.empty()) MoveCrvIndex[0] = -1;
+    if(model.back()->RulingCurve.empty()) MoveCrvIndex[0] = -1;
     emit deleteCrvSignal(deleteIndex);
     emit SendNewActiveCheckBox(PaintTool::InsertCtrlPt);
 }
@@ -102,46 +101,46 @@ void GLWidget_2D::MoveCurvePt(){
 
 void GLWidget_2D::DrawOutlineRectangle(){
     //drawtype = -1;
-    drawtype = PaintTool::Rectangle_ol;
+    drawtype = PaintTool::Rectangle;
     std::vector<int>deleteIndex;
     model.back()->Check4Param(curveDimention, deleteIndex);
-    if(model.back()->crvs.empty()) MoveCrvIndex[0] = -1;
+    if(model.back()->RulingCurve.empty()) MoveCrvIndex[0] = -1;
     if(model.back()->Creases.empty())MoveCrvIndex[1] = -1;
     emit deleteCrvSignal(deleteIndex);
     model.back()->outline = std::make_shared<OUTLINE>();
     model.back()->outline->type = "Rectangle";
     this->setMouseTracking(false);
-    emit SendNewActiveCheckBox(PaintTool::Rectangle_ol);
+    emit SendNewActiveCheckBox(PaintTool::Rectangle);
 }
 
 void GLWidget_2D::DrawOutlinePolygon(int state){
     if(state == 0)return;
-    drawtype = PaintTool::Polygon_ol;
+    drawtype = PaintTool::Polygon;
     std::vector<int>deleteIndex;
     model.back()->Check4Param(curveDimention, deleteIndex);
-    if(model.back()->crvs.empty()) MoveCrvIndex[0] = -1;
+    if(model.back()->RulingCurve.empty()) MoveCrvIndex[0] = -1;
     if(model.back()->Creases.empty()) MoveCrvIndex[1] = -1;
     emit deleteCrvSignal(deleteIndex);
     model.back()->outline = std::make_shared<OUTLINE>();
     model.back()->outline->type = "Polygon";
-    for(auto&c: model.back()->crvs)c->isempty = true;
+    for(auto&c: model.back()->RulingCurve)c->isempty = true;
     emit getEdgeNum();
-    emit SendNewActiveCheckBox(PaintTool::Polygon_ol);
+    emit SendNewActiveCheckBox(PaintTool::Polygon);
     this->setMouseTracking(true);
 }
 
 void GLWidget_2D::DrawOutlinePolyline(int state){
     if(state == 0)return;
-    drawtype = PaintTool::Polyline_ol;
+    drawtype = PaintTool::Polyline;
     std::vector<int>deleteIndex;
     model.back()->Check4Param(curveDimention, deleteIndex);
-    if(model.back()->crvs.empty()) MoveCrvIndex[0] = -1;
+    if(model.back()->RulingCurve.empty()) MoveCrvIndex[0] = -1;
     if(model.back()->Creases.empty()) MoveCrvIndex[1] = -1;
     emit deleteCrvSignal(deleteIndex);
     model.back()->outline = std::make_shared<OUTLINE>();
     model.back()->outline->type = "Polyline";
-    for(auto&c: model.back()->crvs)c->isempty = true;
-    emit SendNewActiveCheckBox(PaintTool::Polyline_ol);
+    for(auto&c: model.back()->RulingCurve)c->isempty = true;
+    emit SendNewActiveCheckBox(PaintTool::Polyline);
 }
 
 void GLWidget_2D::DeleteCtrlPt(){
@@ -158,7 +157,7 @@ void GLWidget_2D::DeleteCurve(){
     drawtype = PaintTool::DeleteCurve;
     std::vector<int>deleteIndex;
     model.back()->Check4Param(curveDimention, deleteIndex);
-    if(model.back()->crvs.empty()) MoveCrvIndex[0] = -1;
+    if(model.back()->RulingCurve.empty()) MoveCrvIndex[0] = -1;
     if(model.back()->Creases.empty()) MoveCrvIndex[1] = -1;
     emit deleteCrvSignal(deleteIndex);
     setMouseTracking(true);
@@ -197,19 +196,19 @@ void GLWidget_2D::recieveNewEdgeNum(int num){model.back()->outline->VerticesNum 
 
 void GLWidget_2D::ChangedDivSizeEdit(int n){
     this->DivSize = (n < 0)? DivSize: (maxDivSize < n)? maxDivSize: n;
-    if(MoveCrvIndex[0] == -1 || model.back()->crvs.empty()) return;
+    if(MoveCrvIndex[0] == -1 || model.back()->RulingCurve.empty()) return;
     bool res = false;
     if(curvetype == CurveType::bezier3){
-       res = model.back()->crvs[MoveCrvIndex[0]]->drawBezier(curveDimention, crvPtNum);
+       res = model.back()->RulingCurve[MoveCrvIndex[0]]->drawBezier(curveDimention, crvPtNum);
         //if(model.back()->outline->isClosed  && model.back()->crv->CurvePoints[0].pt != glm::f64vec2{-1,-1})model.back()->crv->BezierRulings(model.back()->outline->vertices,DivSize,crvPtNum);
     }
     if(curvetype == CurveType::bsp3){
-        res = model.back()->crvs[MoveCrvIndex[0]]->drawBspline(curveDimention, crvPtNum);
-        if(model.back()->outline->IsClosed() && res)model.back()->crvs[MoveCrvIndex[0]]->BsplineRulings(model.back()->outline,DivSize,crvPtNum, curveDimention);
+        res = model.back()->RulingCurve[MoveCrvIndex[0]]->drawBspline(curveDimention, crvPtNum);
+        if(model.back()->outline->IsClosed() && res)model.back()->RulingCurve[MoveCrvIndex[0]]->BsplineRulings(model.back()->outline,DivSize,crvPtNum, curveDimention);
     }
     if(curvetype == CurveType::line){
-        res = model.back()->crvs[MoveCrvIndex[0]]->drawLine();
-        if(model.back()->outline->IsClosed() && res)model.back()->crvs[MoveCrvIndex[0]]->LineRulings(model.back()->outline,DivSize);
+        res = model.back()->RulingCurve[MoveCrvIndex[0]]->drawLine();
+        if(model.back()->outline->IsClosed() && res)model.back()->RulingCurve[MoveCrvIndex[0]]->LineRulings(model.back()->outline,DivSize);
     }
 
     if(model.back()->outline->IsClosed() && model.back()->CrossDection4AllCurve()){
@@ -242,7 +241,7 @@ void GLWidget_2D::changeSelectedCurve(int ind){MoveCrvIndex[0] = ind; drawtype =
 
 void GLWidget_2D::swapCrvsOnLayer(int n1, int n2){
     if(n1 == n2)return;
-    std::iter_swap(model.back()->crvs.begin() + n1, model.back()->crvs.begin() + n2);
+    std::iter_swap(model.back()->RulingCurve.begin() + n1, model.back()->RulingCurve.begin() + n2);
     if(MoveCrvIndex[0] == n1)MoveCrvIndex[0] = n2;
     else MoveCrvIndex[0] = n1;
     model.back()->addRulings();
@@ -497,13 +496,13 @@ void GLWidget_2D::paintGL(){
     if(!visibleCurve || drawtype == PaintTool::Crease)return;
     //ruling制御曲線の制御点
     if(drawtype != PaintTool::NewGradationMode){
-        for(int i = 0; i < (int)model.back()->crvs.size(); i++){
+        for(int i = 0; i < (int)model.back()->RulingCurve.size(); i++){
             if((i == model.back()->getSelectedCurveIndex(mapFromGlobal(QCursor::pos()))[0]) ||
-                    ((drawtype == PaintTool::Bezier_r || drawtype == PaintTool::Bspline_r || drawtype == PaintTool::Line_r || drawtype == PaintTool::Arc_r)
+                    ((drawtype == PaintTool::Bspline || drawtype == PaintTool::Line || drawtype == PaintTool::Arc)
                      && MoveCrvIndex[0] == i)
                     || drawtype == PaintTool::MoveCtrlPt || drawtype == PaintTool::InsertCtrlPt ||  drawtype == PaintTool::DeleteCtrlPt || drawtype == PaintTool::None){
                 //glPolygonOffset(0.f,1.f);
-                for (auto& c: model.back()->crvs[i]->ControllPoints) {
+                for (auto& c: model.back()->RulingCurve[i]->ControllPoints) {
                     glColor3d(1, 0, 0);
                     glPointSize(5.0f);
                     glBegin(GL_POINTS);
@@ -515,7 +514,7 @@ void GLWidget_2D::paintGL(){
                 glLineStipple(1 , 0xF0F0);
                 glBegin(GL_LINE_STRIP);
                 glColor3d(0.4, 0.4, 0.4);
-                for (auto& c: model.back()->crvs[i]->ControllPoints)glVertex3d( c.x(), c.y(),0);
+                for (auto& c: model.back()->RulingCurve[i]->ControllPoints)glVertex3d( c.x(), c.y(),0);
                 glEnd();
                 glDisable(GL_LINE_STIPPLE);
                 glPolygonOffset(0.f,0.f);
@@ -523,11 +522,11 @@ void GLWidget_2D::paintGL(){
         }
 
         //ruling制御曲線の描画
-        for(int i = 0; i < (int)model.back()->crvs.size(); i++){
+        for(int i = 0; i < (int)model.back()->RulingCurve.size(); i++){
             if(i == MoveCrvIndex[0])glColor3d(1, 0, 0);
             else glColor3d(0.4, 0.4, 0.4);
             glBegin(GL_LINE_STRIP);
-            for(auto &c: model.back()->crvs[i]->CurvePoints){
+            for(auto &c: model.back()->RulingCurve[i]->CurvePoints){
                 glVertex2s(c.x(), c.y());
             }
             glEnd();
@@ -583,12 +582,12 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
         befCur = p;
     }
     if(e->button() ==Qt::LeftButton){
-        if(drawtype == PaintTool::Rectangle_ol)model.back()->drawOutline(p, 0, gridsize, size());
-        else if(drawtype == PaintTool::Polyline_ol){
+        if(drawtype == PaintTool::Rectangle)model.back()->drawOutline(p, 0, gridsize, size());
+        else if(drawtype == PaintTool::Polyline){
             model.back()->drawOutline(p, 1, gridsize, size());
         }
-        else if(drawtype == PaintTool::Polygon_ol)model.back()->drawOutline(p, 2, gridsize, this->size());
-        else if(drawtype == PaintTool::EditVertex_ol)model.back()->editOutlineVertex(p, gridsize, this->size(), 0);
+        else if(drawtype == PaintTool::Polygon)model.back()->drawOutline(p, 2, gridsize, this->size());
+        else if(drawtype == PaintTool::EditVertex)model.back()->editOutlineVertex(p, gridsize, this->size(), 0);
         else if(drawtype == PaintTool::NewGradationMode)AddPoints4Gradation(e, p);
         else if(drawtype == PaintTool::Crease) model.back()->ControlPoint(drawtype, 0, p_ongrid, curveDimention, 0);
         else if(drawtype == PaintTool::DeleteCurve){
@@ -598,7 +597,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
             emit deleteCrvSignal(n);
             MoveCrvIndex = {-1, -1};
         }
-        if(drawtype == PaintTool::Bezier_r || drawtype == PaintTool::Bspline_r || drawtype == PaintTool::Line_r || drawtype == PaintTool::Arc_r){
+        if(drawtype == PaintTool::Bspline || drawtype == PaintTool::Line || drawtype == PaintTool::Arc){
             bool res = model.back()->ControlPoint(drawtype, 0, p_ongrid, curveDimention, DivSize);
             if(res)model.back()->addRulings();
         }
@@ -607,13 +606,13 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
                 model.back()->SelectCurve(p);
                 MoveCrvIndex[0] = model.back()->IsSelectedCurve();
             }else{
-                if(model.back()->crvs[MoveCrvIndex[0]]->getCurveType() == CurveType::bsp3 && !model.back()->crvs[MoveCrvIndex[0]]->isempty){
-                    model.back()->crvs[MoveCrvIndex[0]]->InsertControlPoint(p_ongrid);
-                    model.back()->crvs[MoveCrvIndex[0]]->SetNewPoint();
-                    model.back()->crvs[MoveCrvIndex[0]]->drawBspline(curveDimention,crvPtNum);
+                if(model.back()->RulingCurve[MoveCrvIndex[0]]->getCurveType() == CurveType::bsp3 && !model.back()->RulingCurve[MoveCrvIndex[0]]->isempty){
+                    model.back()->RulingCurve[MoveCrvIndex[0]]->InsertControlPoint(p_ongrid);
+                    model.back()->RulingCurve[MoveCrvIndex[0]]->SetNewPoint();
+                    model.back()->RulingCurve[MoveCrvIndex[0]]->drawBspline(curveDimention,crvPtNum);
                     if(model.back()->outline->IsClosed()){
-                        model.back()->crvs[MoveCrvIndex[0]]->BsplineRulings(model.back()->outline,DivSize,crvPtNum, curveDimention);
-                        if(model.back()->crvs[MoveCrvIndex[0]]->Rulings.front()->v != nullptr){
+                        model.back()->RulingCurve[MoveCrvIndex[0]]->BsplineRulings(model.back()->outline,DivSize,crvPtNum, curveDimention);
+                        if(model.back()->RulingCurve[MoveCrvIndex[0]]->Rulings.front()->v != nullptr){
                             model.back()->addRulings();
                             model.back()->deform();
                             //emit foldingSignals();
@@ -633,9 +632,9 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
         }
 
     }else if(e->button() == Qt::RightButton){
-        if(drawtype == PaintTool::Rectangle_ol || drawtype == PaintTool::Polyline_ol || drawtype == PaintTool::Polygon_ol) model.back()->outline->eraseVertex();
-        if(drawtype == PaintTool::Bezier_r || drawtype == PaintTool::Bspline_r || drawtype == PaintTool::Line_r || drawtype == PaintTool::Arc_r){
-            if(MoveCrvIndex[0] != -1) model.back()->crvs[MoveCrvIndex[0]]->eraseCtrlPt(curveDimention, crvPtNum);
+        if(drawtype == PaintTool::Rectangle || drawtype == PaintTool::Polyline || drawtype == PaintTool::Polygon) model.back()->outline->eraseVertex();
+        if(drawtype == PaintTool::Bspline || drawtype == PaintTool::Line || drawtype == PaintTool::Arc){
+            if(MoveCrvIndex[0] != -1) model.back()->RulingCurve[MoveCrvIndex[0]]->eraseCtrlPt(curveDimention, crvPtNum);
         }
         else if(drawtype == PaintTool::Crease) model.back()->ControlPoint(drawtype, 1 , p_ongrid, curveDimention, DivSize);
 
@@ -665,14 +664,14 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
     }
 
     QPointF p_ongrid = SetOnGrid(p, gridsize, this->size());
-    if(drawtype == PaintTool::Polygon_ol){
+    if(drawtype == PaintTool::Polygon){
         if(model.back()->outline->hasPtNum == 1){
             model.back()->drawOutline(p, 2, gridsize, size(), false);
             model.back()->outline->hasPtNum = 1;
         }
     }
 
-    if(drawtype == PaintTool::EditVertex_ol){
+    if(drawtype == PaintTool::EditVertex){
         model.back()->editOutlineVertex(p, gridsize, size(), 1);
         model.back()->addRulings();
         model.back()->deform();
@@ -690,15 +689,15 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
     }
 
     if(MoveCrvIndex[0] != -1){
-        if(drawtype == PaintTool::InsertCtrlPt &&  model.back()->crvs[MoveCrvIndex[0]]->getCurveType() == CurveType::bsp3 && !model.back()->crvs[MoveCrvIndex[0]]->isempty){//制御点の挿入(B-spline)
-            model.back()->crvs[MoveCrvIndex[0]]->InsertControlPoint(p_ongrid);
+        if(drawtype == PaintTool::InsertCtrlPt &&  model.back()->RulingCurve[MoveCrvIndex[0]]->getCurveType() == CurveType::bsp3 && !model.back()->RulingCurve[MoveCrvIndex[0]]->isempty){//制御点の挿入(B-spline)
+            model.back()->RulingCurve[MoveCrvIndex[0]]->InsertControlPoint(p_ongrid);
         }
         
-        if(drawtype != PaintTool::NewGradationMode && model.back()->outline->IsClosed() && !model.back()->crvs[MoveCrvIndex[0]]->isempty){
+        if(drawtype != PaintTool::NewGradationMode && model.back()->outline->IsClosed() && !model.back()->RulingCurve[MoveCrvIndex[0]]->isempty){
 
-            if(model.back()->crvs[MoveCrvIndex[0]]->getCurveType() == CurveType::bsp3) model.back()->crvs[MoveCrvIndex[0]]->BsplineRulings(model.back()->outline,DivSize,crvPtNum, curveDimention);
-            if(model.back()->crvs[MoveCrvIndex[0]]->getCurveType() == CurveType::line) model.back()->crvs[MoveCrvIndex[0]]->LineRulings(model.back()->outline,DivSize);
-            if(model.back()->crvs[MoveCrvIndex[0]]->getCurveType() == CurveType::arc) model.back()->crvs[MoveCrvIndex[0]]->ArcRulings(model.back()->outline,DivSize);
+            if(model.back()->RulingCurve[MoveCrvIndex[0]]->getCurveType() == CurveType::bsp3) model.back()->RulingCurve[MoveCrvIndex[0]]->BsplineRulings(model.back()->outline,DivSize,crvPtNum, curveDimention);
+            if(model.back()->RulingCurve[MoveCrvIndex[0]]->getCurveType() == CurveType::line) model.back()->RulingCurve[MoveCrvIndex[0]]->LineRulings(model.back()->outline,DivSize);
+            if(model.back()->RulingCurve[MoveCrvIndex[0]]->getCurveType() == CurveType::arc) model.back()->RulingCurve[MoveCrvIndex[0]]->ArcRulings(model.back()->outline,DivSize);
             model.back()->addRulings();
             model.back()->deform();
         }
@@ -718,8 +717,8 @@ void GLWidget_2D::mouseReleaseEvent(QMouseEvent * e){
     }
 
 
-    if(MoveCrvIndex[0] != -1 && !model.back()->crvs.empty()) model.back()->crvs[MoveCrvIndex[0]]->InsertPointSegment = -1;
-    if(drawtype == PaintTool::EditVertex_ol){
+    if(MoveCrvIndex[0] != -1 && !model.back()->RulingCurve.empty()) model.back()->RulingCurve[MoveCrvIndex[0]]->InsertPointSegment = -1;
+    if(drawtype == PaintTool::EditVertex){
         model.back()->editOutlineVertex(p, gridsize, size(), 2);
         if(model.back()->outline->IsClosed())model.back()->deform();
     }
@@ -741,7 +740,7 @@ void GLWidget_2D::wheelEvent(QWheelEvent *we){
         if(refLine == nullptr || std::find(model.back()->Rulings.begin(), model.back()->Rulings.end(), refLine) == model.back()->Rulings.end()){
             return;
         }
-        model.back()->setGradationValue(DiffWheel, refLine, CurvePath);
+        model.back()->SetGradationValue(DiffWheel, refLine);
         emit ColorChangeFrom(0, refLine->color);
         model.back()->deform();
 
@@ -769,7 +768,7 @@ void GLWidget_2D::AddPoints4Gradation(QMouseEvent *e, QPointF& p){
             }
         }
         if(refLine == nullptr || std::find(model.back()->Rulings.begin(), model.back()->Rulings.end(), refLine) == model.back()->Rulings.end()){qDebug()<<"not found" ; return;}
-        model.back()->setGradationValue(0, refLine, CurvePath);
+        model.back()->SetGradationValue(0, refLine);
         emit ColorChangeFrom(0, refLine->color);
         model.back()->deform();
 
@@ -788,7 +787,7 @@ void GLWidget_2D::GetGradationFromSlider(int val){
     if(refLine == nullptr) return;
     refLine->color = val;
     emit ColorChangeFrom(1, val);
-    model.back()->setGradationValue(0, refLine, CurvePath);
+    model.back()->SetGradationValue(0, refLine);
     emit foldingSignals();
     update();
 }

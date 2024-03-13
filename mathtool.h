@@ -41,19 +41,19 @@ enum class PaintTool{
     deform,
     AffinTrans,
 
+    //ruling control curve
     AddCurve,
-    Bezier_r,
-    Bspline_r,
-    Line_r,
-    Arc_r,
+    Bspline,
+    Line,
+    Arc,
 
     SetColor,
     NewGradationMode,
 
-    Rectangle_ol,
-    Polygon_ol,
-    Polyline_ol,
-    EditVertex_ol,
+    Rectangle,
+    Polygon,
+    Polyline,
+    EditVertex,
     Move_ol,
 
     MoveCtrlPt,
@@ -84,19 +84,10 @@ namespace DebugMode{
 
 namespace MathTool{
 double rad2deg(double a);
-double deg2rad(double a);
 Eigen::Vector3d CrossPointLineAndPlane(Eigen::Vector3d e, Eigen::Vector3d e2, Eigen::Vector3d o, Eigen::Vector3d p, Eigen::Vector3d v);
-double distP2L(const Eigen::Vector3d& la, const Eigen::Vector3d& lb, const Eigen::Vector3d& p, Eigen::Vector3d& q);//点と線分の距離, s:laからlbへの比率(垂線が内部にあれば0 ~ 1)
-template <typename T>
-T getVector(double l, T v, T o){return l * v + o;}
 
-bool IsIntersect(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, const Eigen::Vector3d& p3, const Eigen::Vector3d& p4, bool ConsiderEnd = false);
-Eigen::Vector3d getIntersectionPoint(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2,const Eigen::Vector3d p3, const Eigen::Vector3d& p4);
+bool IsIntersect(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, const Eigen::Vector3d& p3, const Eigen::Vector3d& p4, Eigen::Vector3d& q, bool ConsiderEnd = false);
 Eigen::Vector3d calcCrossPoint_2Vector(Eigen::Vector3d p1, Eigen::Vector3d q1, Eigen::Vector3d p2, Eigen::Vector3d q2);
-
-bool hasPointInTriangle3D(const Eigen::Vector3d& p, std::array<Eigen::Vector3d, 3>& V);
-bool IsAngleLessThan180(Eigen::Vector3d& o, Eigen::Vector3d& a, Eigen::Vector3d& b);
-
 std::vector<double> _bezierclipping(const std::vector<Eigen::Vector3d>&CtrlPts_base, std::vector<Eigen::Vector3d>&CtrlPts_cur, std::array<Eigen::Vector3d, 2>& line, int dim);//交点が一つのみの場合
 bool is_point_on_line(Eigen::Vector3d p, Eigen::Vector3d lp1, Eigen::Vector3d lp2);
 std::pair<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>> BezierSplit(const std::vector<Eigen::Vector3d>& CtrlPts, double t);

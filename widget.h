@@ -8,8 +8,8 @@
 #include <QDoubleSpinBox>
 #include <QPushButton>
 #include <QSlider>
+#include <QMenuBar>
 #include <QLineEdit>
-#include <gtoolwnd.h>
 #include <QCheckBox>
 #include <QAbstractButton>
 #include <QList>

@@ -12,6 +12,7 @@ Model::Model(int _crvPtNum){
     refCrv.clear();
     refCreases = nullptr;
     FoldCurveIndex = 0;
+    movingVertexIndex = -1;
     NTree_Creases = NTree();
 }
 
@@ -22,8 +23,8 @@ std::shared_ptr<Model> Model::deepCopy(){
     m->Rulings.resize(Rulings.size());
     for(int i = 0; i < (int)Rulings.size(); i++)m->Rulings[i] = Rulings[i]->deepCopy();
     m->outline = outline->deepCopy();
-    m->crvs.resize(crvs.size());
-    for(int i = 0; i < (int)crvs.size(); i++)m->crvs[i] = crvs[i]->deepCopy();
+    m->RulingCurve.resize(RulingCurve.size());
+    for(int i = 0; i < (int)RulingCurve.size(); i++)m->RulingCurve[i] = RulingCurve[i]->deepCopy();
     m->Creases.resize(Creases.size());
     for(int i = 0; i < (int)Creases.size(); i++)m->Creases[i] = Creases[i]->deepCopy();
 
@@ -50,7 +51,7 @@ std::shared_ptr<Model> Model::stashcurrentstate(){
 
 void Model::clear(){
     Rulings.clear();
-    ol_vertices.clear();
+    //ol_vertices.clear();
     ColorPt = ColorPoint(200, std::numbers::pi/2.0);
 }
 
@@ -97,7 +98,7 @@ void Model::AffinTranse_Crease(int type, const QPointF& befPos, const QPointF& c
 void Model::SetMaxFold(double val){
     ColorPt.angle = val * std::numbers::pi/180.0;
     if(!outline->IsClosed())return;
-    for(auto& c: crvs){
+    for(auto& c: RulingCurve){
         if(c->isempty){
             qDebug() << "crvs has empty";
             return;
@@ -869,6 +870,7 @@ bool Model::AssignRuling(int dim){
     q.push(root);
     while (!q.empty()) {
         auto cur = q.front(); q.pop();
+        if(cur->data == nullptr)continue;
         if(cur->data->isbend()){
             cur->data->applyAAAMethod(Poly_V, cur->data->a_flap);
             if(cur->data->FoldingCurve.empty())continue;
@@ -990,20 +992,18 @@ void Model::drawOutline(QPointF& cursol, int drawtype, double gridsize, const QS
 void Model::editOutlineVertex(QPointF& cursol, double gridsize, const QSize& S, int event){
     QPointF _p = SetOnGrid(cursol, gridsize, S);
     Eigen::Vector3d p(_p.x(), _p.y(), 0);
-    static int grabedOutlineVertex = -1;
     if(event == 0){
-        float dist = 5;
-        grabedOutlineVertex = -1;//0~: vertex
-        std::vector<std::shared_ptr<Vertex>> _vertices = outline->getVertices();
-        for(int i = 0; i < (int)_vertices.size(); i++){
-            if((_vertices[i]->p - p).norm() < dist){
-                grabedOutlineVertex = i; dist = (_vertices[i]->p - p).norm();
+        double dist = 5;
+        movingVertexIndex = -1;//0~: vertex
+        for(int i = 0; i < (int)outline->vertices.size(); i++){
+            if((outline->vertices[i]->p - p).norm() < dist){
+                movingVertexIndex = i; dist = (outline->vertices[i]->p - p).norm();
             }
         }
     }else if(event == 1){
-        outline->MoveVertex(p, grabedOutlineVertex);
+        outline->MoveVertex(p, movingVertexIndex);
         if(outline->IsClosed())deform();
-    }else if(event == 2)grabedOutlineVertex = -1;
+    }else if(event == 2)movingVertexIndex = -1;
 }
 
 void Model::LinearInterPolation(const std::vector<std::shared_ptr<Line>>& path){
@@ -1036,8 +1036,8 @@ void Model::LinearInterPolation(const std::vector<std::shared_ptr<Line>>& path){
     }
 }
 
-void Model::setGradationValue(int val, const std::shared_ptr<Line>& refL, std::vector<Eigen::Vector2d>& CurvePath){
-    if(Rulings.empty() || std::find(Rulings.begin(), Rulings.end(), refL) == Rulings.end()){qDebug()<<"no selected"; return;}
+void Model::SetGradationValue(int val, const std::shared_ptr<Line>& refL){
+    if(Rulings.empty() || std::find(Rulings.begin(), Rulings.end(), refL) == Rulings.end())return;
     if(refL->et != EdgeType::r)return;
     refL->color += val;
     refL->color = (refL->color < -255.0)? -255.0 : (255.0 < refL->color)? 255.0 : refL->color;
@@ -1050,10 +1050,9 @@ void Model::setGradationValue(int val, const std::shared_ptr<Line>& refL, std::v
     else{
         int i0 = std::distance(Rulings.begin(), std::find(Rulings.begin(), Rulings.end(), GradationPoints[0]));
         int i1 = std::distance(Rulings.begin(), std::find(Rulings.begin(), Rulings.end(), GradationPoints[1]));
-        path = {Rulings.begin() + std::min(i0, i1), Rulings.begin() + std::max(i0, i1)+1};
+        path = {Rulings.begin() + std::min(i0, i1), Rulings.begin() + std::max(i0, i1)+1};      
     }
-    LinearInterPolation(path);//単一のruling制御曲線からのみ操作するものとする
-
+    LinearInterPolation(path);
     return;
 }
 
@@ -1061,13 +1060,11 @@ void Model::setGradationValue(int val, const std::shared_ptr<Line>& refL, std::v
 void Model::addRulings(){
     if(!outline->IsClosed())return;
     Rulings.clear();
-    for(auto&c: crvs)CrossDetection(outline, c);
+    for(auto&c: RulingCurve)CrossDetection(outline, c);
     CrossDection4AllCurve();
-    for(auto&c: crvs){
+    for(auto&c: RulingCurve){
         for(auto&r: c->Rulings){
-            if(r->IsCrossed == -1 || r->IsCrossed == 0){
-                this->Rulings.push_back(r);
-            }
+            if(r->IsCrossed == -1 || r->IsCrossed == 0) Rulings.push_back(r);
         }
     }
 }
@@ -1097,9 +1094,9 @@ std::array<int, 2> Model::searchPointIndex(QPointF _p, int& ptInd, int type){
     ptInd = -1;
     std::array<int, 2> CrvInds{-1,-1};
     if(type == 0){
-        for(int j = 0; j < (int)crvs.size(); j++){
-            for(int i = 0; i < (int)crvs[j]->ControllPoints.size(); i++){
-                Eigen::Vector3d cp = crvs[j]->ControllPoints[i];
+        for(int j = 0; j < (int)RulingCurve.size(); j++){
+            for(int i = 0; i < (int)RulingCurve[j]->ControllPoints.size(); i++){
+                Eigen::Vector3d cp = RulingCurve[j]->ControllPoints[i];
                 if(dist  > (cp - p).norm()){
                     dist = (cp - p).norm();
                     ptInd = i;
@@ -1109,9 +1106,9 @@ std::array<int, 2> Model::searchPointIndex(QPointF _p, int& ptInd, int type){
         }
 
     }else{
-        for(int j = 0; j < (int)crvs.size(); j++){
-            for(int i = 0; i < (int)crvs[j]->CurvePoints.size(); i++){
-                Eigen::Vector3d cp = crvs[j]->CurvePoints[i];
+        for(int j = 0; j < (int)RulingCurve.size(); j++){
+            for(int i = 0; i < (int)RulingCurve[j]->CurvePoints.size(); i++){
+                Eigen::Vector3d cp = RulingCurve[j]->CurvePoints[i];
                 if(dist > (cp - p).norm()){
                     dist = (cp - p).norm();
                     ptInd = i;
@@ -1135,35 +1132,35 @@ std::array<int, 2> Model::searchPointIndex(QPointF _p, int& ptInd, int type){
 int Model::DeleteCurve(){
     int DelIndex = IsSelectedCurve();
     if(DelIndex == -1)return -1;
-    crvs.erase(crvs.begin() + DelIndex);
+    RulingCurve.erase(RulingCurve.begin() + DelIndex);
     refCrv.erase(refCrv.begin() + DelIndex);
-    crvs.shrink_to_fit();
+    RulingCurve.shrink_to_fit();
     refCrv.shrink_to_fit();
     return DelIndex;
 }
 
 void Model::Check4Param(int curveDimention, std::vector<int>& deleteIndex){
     deleteIndex.clear();
-    for(int i = (int)crvs.size() - 1; i >= 0; i--){
-        if((crvs[i]->getCurveType() == CurveType::bezier3 && (int)crvs[i]->ControllPoints.size() < curveDimention) ||
-                (crvs[i]->getCurveType() == CurveType::bsp3 && (int)crvs[i]->ControllPoints.size() <= curveDimention) ||
-                (crvs[i]->getCurveType() == CurveType::line && (int)crvs[i]->ControllPoints.size() < 2) ||
-                (crvs[i]->getCurveType() == CurveType::arc && (int)crvs[i]->ControllPoints.size() < 3)) {
+    for(int i = (int)RulingCurve.size() - 1; i >= 0; i--){
+        if((RulingCurve[i]->getCurveType() == CurveType::bezier3 && (int)RulingCurve[i]->ControllPoints.size() < curveDimention) ||
+                (RulingCurve[i]->getCurveType() == CurveType::bsp3 && (int)RulingCurve[i]->ControllPoints.size() <= curveDimention) ||
+                (RulingCurve[i]->getCurveType() == CurveType::line && (int)RulingCurve[i]->ControllPoints.size() < 2) ||
+                (RulingCurve[i]->getCurveType() == CurveType::arc && (int)RulingCurve[i]->ControllPoints.size() < 3)) {
             deleteIndex.push_back(i);
-            crvs.erase(crvs.begin() + i);
+            RulingCurve.erase(RulingCurve.begin() + i);
             refCrv.erase(refCrv.begin() + i);
         }
 
     }
-    crvs.shrink_to_fit();
+    RulingCurve.shrink_to_fit();
     refCrv.shrink_to_fit();
     GradationPoints.clear();
 }
 
 int Model::AddNewCurve(CurveType curveType, int DivSize){
-    std::shared_ptr<CRV> crv = std::make_shared<CRV>(crvPtNum, DivSize);
-    crv->setCurveType(curveType);
-    crvs.insert(crvs.begin(), crv);
+    std::shared_ptr<CRV> NewCurve = std::make_shared<CRV>(crvPtNum, DivSize);
+    NewCurve->setCurveType(curveType);
+    RulingCurve.insert(RulingCurve.begin(), NewCurve);
     refCrv.insert(refCrv.begin(), 0);
     std::fill(refCrv.begin(), refCrv.end(), 0);
     refCrv[0] = 1;
@@ -1179,44 +1176,44 @@ bool Model::ControlPoint(PaintTool dtype, int event, QPointF p, int curveDimenti
             int AddPtIndex = IsSelectedCurve();
             if(AddPtIndex == -1)return false;
             bool res = false;
-            if(crvs[AddPtIndex]->getCurveType() == CurveType::bsp3){
+            if(RulingCurve[AddPtIndex]->getCurveType() == CurveType::bsp3){
                 double dist = 5.0;
-                int n = crvs[AddPtIndex]->movePtIndex(_p, dist);
+                int n = RulingCurve[AddPtIndex]->movePtIndex(_p, dist);
                 if(n == -1){
-                    crvs[AddPtIndex]->ControllPoints.push_back(_p);
-                    res = crvs[AddPtIndex]->drawBspline(curveDimention, crvPtNum);
+                    RulingCurve[AddPtIndex]->ControllPoints.push_back(_p);
+                    res = RulingCurve[AddPtIndex]->drawBspline(curveDimention, crvPtNum);
                 }
             }
-            else if(crvs[AddPtIndex]->getCurveType() == CurveType::line){
-                if(crvs[AddPtIndex]->ControllPoints.size() < 2)crvs[AddPtIndex]->ControllPoints.push_back(_p);
-                if(crvs[AddPtIndex]->ControllPoints.size() == 2)res = crvs[AddPtIndex]->drawLine();
+            else if(RulingCurve[AddPtIndex]->getCurveType() == CurveType::line){
+                if(RulingCurve[AddPtIndex]->ControllPoints.size() < 2)RulingCurve[AddPtIndex]->ControllPoints.push_back(_p);
+                if(RulingCurve[AddPtIndex]->ControllPoints.size() == 2)res = RulingCurve[AddPtIndex]->drawLine();
             }
-            else if(crvs[AddPtIndex]->getCurveType() == CurveType::arc){
-                if(crvs[AddPtIndex]->ControllPoints.size() == 0){
+            else if(RulingCurve[AddPtIndex]->getCurveType() == CurveType::arc){
+                if(RulingCurve[AddPtIndex]->ControllPoints.size() == 0){
                     if(outline->IsClosed()){
                         bool PointInFace = outline->IsPointInFace(_p);
                         bool PointOnLines = false;
                         for(auto&l : outline->Lines){
                             if(l->is_on_line(_p))PointOnLines = true;
                         }
-                        if(!PointInFace || PointOnLines)crvs[AddPtIndex]->ControllPoints.push_back(_p);
+                        if(!PointInFace || PointOnLines)RulingCurve[AddPtIndex]->ControllPoints.push_back(_p);
                     }
-                    else crvs[AddPtIndex]->ControllPoints.push_back(_p);
+                    else RulingCurve[AddPtIndex]->ControllPoints.push_back(_p);
                 }
-                else if(crvs[AddPtIndex]->ControllPoints.size() == 1)crvs[AddPtIndex]->ControllPoints.push_back(_p);
-                else if(crvs[AddPtIndex]->ControllPoints.size() == 2){
-                    double l = (crvs[AddPtIndex]->ControllPoints[0] - crvs[AddPtIndex]->ControllPoints[1]).norm();
-                    double l2 = (crvs[AddPtIndex]->ControllPoints[0] - _p).norm();
-                    Eigen::Vector3d point = l/l2 * (_p - crvs[AddPtIndex]->ControllPoints[0]) + crvs[AddPtIndex]->ControllPoints[0];
-                    crvs[AddPtIndex]->ControllPoints.push_back(point);
+                else if(RulingCurve[AddPtIndex]->ControllPoints.size() == 1)RulingCurve[AddPtIndex]->ControllPoints.push_back(_p);
+                else if(RulingCurve[AddPtIndex]->ControllPoints.size() == 2){
+                    double l = (RulingCurve[AddPtIndex]->ControllPoints[0] - RulingCurve[AddPtIndex]->ControllPoints[1]).norm();
+                    double l2 = (RulingCurve[AddPtIndex]->ControllPoints[0] - _p).norm();
+                    Eigen::Vector3d point = l/l2 * (_p - RulingCurve[AddPtIndex]->ControllPoints[0]) + RulingCurve[AddPtIndex]->ControllPoints[0];
+                    RulingCurve[AddPtIndex]->ControllPoints.push_back(point);
                 }
-                if(crvs[AddPtIndex]->ControllPoints.size() == 3)res = crvs[AddPtIndex]->drawArc(crvPtNum);
+                if(RulingCurve[AddPtIndex]->ControllPoints.size() == 3)res = RulingCurve[AddPtIndex]->drawArc(crvPtNum);
 
             }
             if(outline->IsClosed() && res){
-                if(crvs[AddPtIndex]->getCurveType() == CurveType::bsp3)crvs[AddPtIndex]->BsplineRulings(outline, DivSize, crvPtNum, curveDimention);
-                if(crvs[AddPtIndex]->getCurveType() == CurveType::line)crvs[AddPtIndex]->LineRulings(outline, DivSize);
-                if(crvs[AddPtIndex]->getCurveType() == CurveType::arc)crvs[AddPtIndex]->ArcRulings(outline, DivSize);
+                if(RulingCurve[AddPtIndex]->getCurveType() == CurveType::bsp3)RulingCurve[AddPtIndex]->BsplineRulings(outline, DivSize, crvPtNum, curveDimention);
+                if(RulingCurve[AddPtIndex]->getCurveType() == CurveType::line)RulingCurve[AddPtIndex]->LineRulings(outline, DivSize);
+                if(RulingCurve[AddPtIndex]->getCurveType() == CurveType::arc)RulingCurve[AddPtIndex]->ArcRulings(outline, DivSize);
                 return true;
             }
             return false;
@@ -1226,19 +1223,19 @@ bool Model::ControlPoint(PaintTool dtype, int event, QPointF p, int curveDimenti
             if(DelIndex[0] == -1 && FoldCurveIndex == -1)return false;
             bool res = false;
             if(DelIndex[0] != -1){
-                crvs[DelIndex[0]]->ControllPoints.erase(crvs[DelIndex[0]]->ControllPoints.begin() + ptInd);
-                if(crvs[DelIndex[0]]->getCurveType() == CurveType::bsp3)res = crvs[DelIndex[0]]->drawBspline(3, crvPtNum);
-                if(crvs[DelIndex[0]]->ControllPoints.size() == 0){
-                    crvs.erase(crvs.begin() + DelIndex[0]);
+                RulingCurve[DelIndex[0]]->ControllPoints.erase(RulingCurve[DelIndex[0]]->ControllPoints.begin() + ptInd);
+                if(RulingCurve[DelIndex[0]]->getCurveType() == CurveType::bsp3)res = RulingCurve[DelIndex[0]]->drawBspline(3, crvPtNum);
+                if(RulingCurve[DelIndex[0]]->ControllPoints.size() == 0){
+                    RulingCurve.erase(RulingCurve.begin() + DelIndex[0]);
                     refCrv.erase(refCrv.begin() + DelIndex[0]);
                     res = false;
                 }
-                crvs[DelIndex[0]]->ControllPoints.shrink_to_fit();
-                crvs.shrink_to_fit();
+                RulingCurve[DelIndex[0]]->ControllPoints.shrink_to_fit();
+                RulingCurve.shrink_to_fit();
                 refCrv.shrink_to_fit();
                 if(outline->IsClosed() && res){
-                    if(crvs[DelIndex[0]]->getCurveType() == CurveType::bezier3)crvs[DelIndex[0]]->BezierRulings(outline, DivSize, crvPtNum);
-                    if(crvs[DelIndex[0]]->getCurveType() == CurveType::bsp3)crvs[DelIndex[0]]->BsplineRulings(outline, DivSize, crvPtNum, curveDimention);
+                    if(RulingCurve[DelIndex[0]]->getCurveType() == CurveType::bezier3)RulingCurve[DelIndex[0]]->BezierRulings(outline, DivSize, crvPtNum);
+                    if(RulingCurve[DelIndex[0]]->getCurveType() == CurveType::bsp3)RulingCurve[DelIndex[0]]->BsplineRulings(outline, DivSize, crvPtNum, curveDimention);
                     addRulings();
                 }
             }else{
@@ -1261,20 +1258,20 @@ bool Model::MoveCurvePoint(QPointF _p, int MoveIndex, int ptInd, int curveDiment
     Eigen::Vector3d p(_p.x(), _p.y(), 0);
     bool res = false;
     if(MoveIndex != -1){
-        if(crvs[MoveIndex]->getCurveType() == CurveType::arc && ptInd == 0){
+        if(RulingCurve[MoveIndex]->getCurveType() == CurveType::arc && ptInd == 0){
             bool PointOnLines = false;
             bool PointInFace = outline->IsPointInFace(p);
             for(auto&l : outline->Lines){if(MathTool::is_point_on_line(p, l->o->p, l->v->p))PointOnLines = true;}
-            if(!PointInFace || PointOnLines) crvs[MoveIndex]->ControllPoints[ptInd] = p;
+            if(!PointInFace || PointOnLines) RulingCurve[MoveIndex]->ControllPoints[ptInd] = p;
         }
-        else crvs[MoveIndex]->ControllPoints[ptInd] = p;
-        if(crvs[MoveIndex]->getCurveType() == CurveType::bsp3)res = crvs[MoveIndex]->drawBspline(curveDimention, crvPtNum);
-        else if(crvs[MoveIndex]->getCurveType() == CurveType::line)res = crvs[MoveIndex]->drawLine();
-        else if(crvs[MoveIndex]->getCurveType() == CurveType::arc)res = crvs[MoveIndex]->drawArc(crvPtNum);
+        else RulingCurve[MoveIndex]->ControllPoints[ptInd] = p;
+        if(RulingCurve[MoveIndex]->getCurveType() == CurveType::bsp3)res = RulingCurve[MoveIndex]->drawBspline(curveDimention, crvPtNum);
+        else if(RulingCurve[MoveIndex]->getCurveType() == CurveType::line)res = RulingCurve[MoveIndex]->drawLine();
+        else if(RulingCurve[MoveIndex]->getCurveType() == CurveType::arc)res = RulingCurve[MoveIndex]->drawArc(crvPtNum);
 
         if(outline->IsClosed() && res){
-            if(crvs[MoveIndex]->getCurveType() == CurveType::line)crvs[MoveIndex]->LineRulings(outline, DivSize);
-            if(crvs[MoveIndex]->getCurveType() == CurveType::arc)crvs[MoveIndex]->ArcRulings(outline, DivSize);
+            if(RulingCurve[MoveIndex]->getCurveType() == CurveType::line)RulingCurve[MoveIndex]->LineRulings(outline, DivSize);
+            if(RulingCurve[MoveIndex]->getCurveType() == CurveType::arc)RulingCurve[MoveIndex]->ArcRulings(outline, DivSize);
         }
     }else{
         return Creases[FoldCurveIndex]->moveCtrlPt(p, ptInd, curveDimention);
@@ -1284,16 +1281,17 @@ bool Model::MoveCurvePoint(QPointF _p, int MoveIndex, int ptInd, int curveDiment
 
 
 bool Model::CrossDection4AllCurve(){
-    if(crvs.empty() || crvs[0]->isempty)return false;
-    for(int i = 0; i < (int)crvs.size(); i++){
-        std::shared_ptr<CRV> c1 = crvs[i];
+    if(RulingCurve.empty() || RulingCurve[0]->isempty)return false;
+    for(int i = 0; i < (int)RulingCurve.size(); i++){
+        std::shared_ptr<CRV> c1 = RulingCurve[i];
         if(c1->isempty)continue;
-        for(int j = i + 1; j < (int)crvs.size(); j++){
-            std::shared_ptr<CRV> c2 = crvs[j];
+        for(int j = i + 1; j < (int)RulingCurve.size(); j++){
+            std::shared_ptr<CRV> c2 = RulingCurve[j];
             if(c2->isempty)continue;
+            Eigen::Vector3d q;
             for(auto& r1: c1->Rulings){
                 for(auto& r2: c2->Rulings){
-                    if(MathTool::IsIntersect(r1->v->p, r1->o->p, r2->v->p, r2->o->p)){
+                    if(MathTool::IsIntersect(r1->v->p, r1->o->p, r2->v->p, r2->o->p, q)){
                         r2->IsCrossed = 1;
                     }
                 }
