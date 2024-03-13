@@ -91,7 +91,7 @@ public:
     }
     std::shared_ptr<NTreeNode> GetRoot(){return (root != nullptr)? root: std::shared_ptr<NTreeNode>(nullptr);}
 
-    std::shared_ptr<NTreeNode> getParent(const std::shared_ptr<FoldLine>& val){
+    std::shared_ptr<NTreeNode> GetParent(const std::shared_ptr<FoldLine>& val){
         if (root == nullptr)return std::shared_ptr<NTreeNode>(nullptr);
         std::queue<std::shared_ptr<NTreeNode>> q;
         q.push(root);
@@ -105,8 +105,20 @@ public:
         return std::shared_ptr<NTreeNode>(nullptr);
     }
 
-    std::vector<std::shared_ptr<NTreeNode>> GetChildren(const std::shared_ptr<NTreeNode>& parent){
-        return parent->children;
+    std::vector<std::shared_ptr<NTreeNode>> GetChildren(const std::shared_ptr<NTreeNode>& parent){ return parent->children; }
+
+    std::vector<std::shared_ptr<NTreeNode>> GetNodeList(){
+        std::vector<std::shared_ptr<NTreeNode>> List;
+        if (root == nullptr) return List;
+        std::queue<std::shared_ptr<NTreeNode>> q;
+        q.push(root);
+        while (!q.empty()) {
+            std::shared_ptr<NTreeNode> cur = q.front(); q.pop();
+            for (std::shared_ptr<NTreeNode> child : cur->children){
+                List.push_back(q);
+                q.push(child);
+            }
+        }
     }
 
     void insertRecursive(const std::shared_ptr<NTreeNode>& node, const std::shared_ptr<FoldLine>& parentVal, const std::shared_ptr<NTreeNode>& newNode){
@@ -123,7 +135,7 @@ public:
     void erase(const std::shared_ptr<FoldLine>& val){
         std::shared_ptr<NTreeNode> Tree = find(val);
         if(Tree == nullptr)return;
-        std::shared_ptr<NTreeNode> par = getParent(val);
+        std::shared_ptr<NTreeNode> par = GetParent(val);
         for(const auto&child: Tree->children)par->children.push_back(child);
         //delete Tree;//内部の変数のアドレスは解放されていない
     }
@@ -146,6 +158,7 @@ public:
         root = newNode;
         root->children.push_back(tmp);
     }
+
     std::shared_ptr<NTreeNode> find(const std::shared_ptr<FoldLine>& val){
         if (root == nullptr)return nullptr;
         std::queue<std::shared_ptr<NTreeNode>> q;
@@ -159,13 +172,16 @@ public:
         }
         return nullptr;
     }
+
     void printTree(const std::shared_ptr<NTreeNode>& node, int depth = 0){
         if (node == nullptr)return;
         for (int i = 0; i < depth; ++i)std::cout << "*";
         std::cout << node->data << std::endl;
         for (const std::shared_ptr<NTreeNode>& child : node->children)printTree(child, depth + 1);
     }
+
     void print(){printTree(root);}
+
     int getLayerNum(){
         int rank = 0;
         if (root == nullptr)return rank;

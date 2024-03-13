@@ -292,9 +292,9 @@ void Model::MakeTree(){
     return;
 }
 
-void Model::UpdateFLOrder(int dim){
+void Model::UpdateTree(int dim){
     Eigen::Vector3d UpVec(0,-1,0);
-    std::vector<std::shared_ptr<FoldLine>> hasFoldingCurve;
+    std::vector<std::shared_ptr<FoldLine>> hasCrease;
     std::shared_ptr<Line> btm = outline->Lines.front();//一番下の辺を探索
 
     initializeSurfaceVertices();
@@ -322,7 +322,7 @@ void Model::UpdateFLOrder(int dim){
     for(auto&fl: Creases){
         fl->FoldingCurve.clear();
         if((int)fl->CtrlPts.size() > dim){
-            hasFoldingCurve.push_back(fl);
+            hasCrease.push_back(fl);
             for(auto& l: outline->Lines){
                 std::vector<std::shared_ptr<CrvPt_FL>> P = getCrossPoint(fl->CtrlPts, l->v, l->o, dim);
                 if(!P.empty()){
@@ -343,7 +343,7 @@ void Model::UpdateFLOrder(int dim){
     List_Creases.clear();
     do{
        std::vector<LineOnFL> LoF;
-        for(auto&fl: hasFoldingCurve){
+        for(auto&fl: hasCrease){
             if(outline->Lines[i]->is_on_line(fl->FoldingCurve.front()->first->p))
                 LoF.push_back(LineOnFL(fl, (fl->FoldingCurve.front()->first->p - outline->Lines[i]->o->p).norm()/(outline->Lines[i]->v->p - outline->Lines[i]->o->p).norm()));
             if(outline->Lines[i]->is_on_line(fl->FoldingCurve.back()->first->p))
@@ -369,8 +369,7 @@ void Model::UpdateFLOrder(int dim){
         }
         i = (i + 1) % (int)outline->Lines.size();
     }while(i != btm_i);
-    if(DebugMode::Singleton::getInstance().isdebug())qDebug() <<"order of FoldLines";
-    //NTree_Creases.print();
+
     for(auto&r: Rulings)r->hasCrossPoint = false;
     return;
 }
@@ -685,7 +684,7 @@ bool Model::Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double wp, doubl
 
 bool Model::BendingModel(double wp, double wsim, int dim, int alg){
 
-    UpdateFLOrder(dim);
+    UpdateTree(dim);
     SplitRulings(dim);
     std::shared_ptr<NTreeNode> root = NTree_Creases.GetRoot();
     if(root == nullptr)return false;
@@ -797,7 +796,7 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
     NewFL->FoldingCurve.clear();
     auto par = NTree_Creases.getParent(NewFL);
     if((int)Creases.size() == 1){
-        UpdateFLOrder(dim);
+        UpdateTree(dim);
         SplitRulings(dim);
     }else if(par == nullptr){
         std::shared_ptr<NTreeNode> root = NTree_Creases.GetRoot();
@@ -861,7 +860,7 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
 }
 
 bool Model::AssignRuling(int dim){
-    UpdateFLOrder(dim);
+    UpdateTree(dim);
     SplitRulings(dim);
     auto Poly_V = outline->getVertices();
     auto root = NTree_Creases.GetRoot();

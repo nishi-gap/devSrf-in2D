@@ -55,7 +55,7 @@ public:
     void SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::shared_ptr<Line>>& Surface, const std::vector<std::shared_ptr<Line>>& Rulings, bool IsupdateEndPt);
     void SimplifyModel(int iselim);
     bool Smoothing();
-    void UpdateFLOrder(int dim);
+    void UpdateTree(int dim);
 
     //event:0 -> add ,event:1 -> delete
     bool ControlPoint(PaintTool dtype, int event, QPointF p, int curveDimention, int DivSize);
