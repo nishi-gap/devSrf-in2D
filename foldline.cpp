@@ -90,10 +90,20 @@ FoldLine::FoldLine(PaintTool _type)
     validsize = 0;
 }
 
+FoldLine::FoldLine(const FoldLine& _FL){
+    CtrlPts = _FL.CtrlPts;
+    curveNum = _FL.curveNum;
+    type = _FL.type;
+    CurvePts = _FL.CurvePts;
+    a_flap = _FL.a_flap;
+    validsize = _FL.validsize;
+    FoldingCurve.clear();
+    for(const auto& v4d: _FL.FoldingCurve)FoldingCurve.push_back(v4d);
+}
+
 std::shared_ptr<FoldLine> FoldLine::deepCopy(){
     std::shared_ptr<FoldLine> fl = std::make_shared<FoldLine>(type);
     fl->CtrlPts = CtrlPts;  fl->CurvePts = CurvePts; fl->a_flap = a_flap; fl->validsize = validsize;
-    fl->point = point;
     fl->FoldingCurve.resize(FoldingCurve.size());
     for(int i = 0; i < (int)FoldingCurve.size(); i++)fl->FoldingCurve[i] = FoldingCurve[i]->deepCopy();
 
@@ -150,11 +160,7 @@ bool FoldLine::delCtrlPt(Eigen::Vector3d& p, int dim, std::shared_ptr<OUTLINE>& 
         }
     }
     if(ind != -1) CtrlPts.erase(CtrlPts.begin() + ind);
-    bool hasCrv = setCurve(dim);
-    if(outline->IsClosed() && hasCrv){
-        //bool res = applyCurvedFolding(dim, outline);
-        //return res;
-    }
+    setCurve(dim);
 }
 
 bool FoldLine::moveCtrlPt(Eigen::Vector3d& p, int movePtIndex, int dim){
@@ -166,11 +172,11 @@ bool FoldLine::moveCtrlPt(Eigen::Vector3d& p, int movePtIndex, int dim){
 
 }
 
-bool FoldLine::addCtrlPt(Eigen::Vector3d& p, int dim){
+std::shared_ptr<FoldLine> FoldLine::addCtrlPt(Eigen::Vector3d& p, int dim){
     //if((int)CtrlPts.size() <= dim)
     CtrlPts.push_back(p);
     bool hasCrv = setCurve(dim);
-    return hasCrv;
+    return (hasCrv)? shared_from_this(): nullptr;
 }
 
 //type == 0 line

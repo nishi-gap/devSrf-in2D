@@ -251,7 +251,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
             else if(!ui->glWid2dim->model.back()->Creases.empty()){
                 ui->glWid2dim->model.back()->Creases[0]->ReassignColor();
                 ui->glWid2dim->model.back()->deform();
-                ui->glWid2dim->model.back()->AddNewFoldLine(ui->glWid2dim->model.back()->Creases[0]);
+                ui->glWid2dim->model.back()->AddNewCrease();
                 ui->glWid2dim->model.back()->modifyFoldingCurvePositionOn3d();
                 ui->glWid2dim->update();
                 ui->glWid3dim->setVertices(ui->glWid2dim->model.back()->outline->Lines, ui->glWid2dim->model.back()->Rulings, ui->glWid2dim->model.back()->Creases);
@@ -299,8 +299,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
 
     if(e->key() == Qt::Key_M){
         if(ui->glWid2dim->model.back()->Creases.empty())return;
-        auto NewFL = ui->glWid2dim->model.back()->Creases.back();
-        ui->glWid2dim->model.back()->AddNewFoldLine(NewFL);
+        ui->glWid2dim->model.back()->AddNewCrease();
         ui->glWid2dim->update();
         fold_Sm();
     }

@@ -589,7 +589,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
         else if(drawtype == PaintTool::Polygon)model.back()->drawOutline(p, 2, gridsize, this->size());
         else if(drawtype == PaintTool::EditVertex)model.back()->editOutlineVertex(p, gridsize, this->size(), 0);
         else if(drawtype == PaintTool::NewGradationMode)AddPoints4Gradation(e, p);
-        else if(drawtype == PaintTool::Crease) model.back()->ControlPoint(drawtype, 0, p_ongrid, curveDimention, 0);
+        else if(drawtype == PaintTool::Crease) model.back()->ControlPoint(drawtype, 0, p_ongrid, curveDimention, 0 ,model.back()->refCreases);
         else if(drawtype == PaintTool::DeleteCurve){
             model.back()->SelectCurve(p);
             std::vector<int> n(1);
@@ -598,7 +598,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
             MoveCrvIndex = {-1, -1};
         }
         if(drawtype == PaintTool::Bspline || drawtype == PaintTool::Line || drawtype == PaintTool::Arc){
-            bool res = model.back()->ControlPoint(drawtype, 0, p_ongrid, curveDimention, DivSize);
+            bool res = model.back()->ControlPoint(drawtype, 0, p_ongrid, curveDimention, DivSize, model.back()->refCreases);
             if(res)model.back()->addRulings();
         }
         else if(drawtype == PaintTool::InsertCtrlPt){
@@ -623,7 +623,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
         }
         else if(drawtype == PaintTool::DeleteCtrlPt){
             model.back()->SelectCurve(p);
-            model.back()->ControlPoint(drawtype, 1, p, curveDimention, DivSize);
+            model.back()->ControlPoint(drawtype, 1, p, curveDimention, DivSize, model.back()->refCreases);
             model.back()->AssignRuling(3);
 
         }else if(drawtype == PaintTool::MoveCtrlPt){
@@ -636,7 +636,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
         if(drawtype == PaintTool::Bspline || drawtype == PaintTool::Line || drawtype == PaintTool::Arc){
             if(MoveCrvIndex[0] != -1) model.back()->RulingCurve[MoveCrvIndex[0]]->eraseCtrlPt(curveDimention, crvPtNum);
         }
-        else if(drawtype == PaintTool::Crease) model.back()->ControlPoint(drawtype, 1 , p_ongrid, curveDimention, DivSize);
+        else if(drawtype == PaintTool::Crease) model.back()->ControlPoint(drawtype, 1 , p_ongrid, curveDimention, DivSize, model.back()->refCreases);
 
     }
     if(model.back()->outline->IsClosed()){

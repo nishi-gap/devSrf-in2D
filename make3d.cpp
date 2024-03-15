@@ -13,7 +13,7 @@ Model::Model(int _crvPtNum){
     refCreases = nullptr;
     FoldCurveIndex = 0;
     movingVertexIndex = -1;
-    NTree_Creases = NTree();
+    NTree_Creases = std::shared_ptr<FoldLine>();
 }
 
 std::shared_ptr<Model> Model::deepCopy(){
@@ -212,7 +212,32 @@ void Model::RemoveUnable2GenCurve(){
     }
 }
 
-void Model::MakeTree(){
+
+//曲線同士の交差を想定しない
+void Model::MakeTree(std::shared_ptr<FoldLine>& NewCrease){
+
+    //C：木構造内の折り目, Cnew:追加する折り目
+    //-2: 同じ折り目　-1:Cnewが親 0：兄弟, 1:Cnewが子
+    auto parent_child_relation = []( const std::shared_ptr<FoldLine>& C, const std::shared_ptr<FoldLine>& Cnew,
+                                    const std::vector<std::shared_ptr<Vertex>>& Poly_V, int btm)->int{
+        if(C == Cnew)return -2;
+        int i = btm;
+        double sumlen = 0.0;
+        double pl, pr, pcl, pcr;//曲面上の基準とした頂点からの全ての辺を一直線に伸ばしたときの距離
+        do{
+            Eigen::Vector3d x = Poly_V[i]->p, x2 = Poly_V[(i + 1) % (int)Poly_V.size()]->p;
+            if(MathTool::is_point_on_line(C->FoldingCurve.front()->first->p, x, x2))pr = sumlen + (C->FoldingCurve.front()->first->p - x).norm();
+            if(MathTool::is_point_on_line(C->FoldingCurve.back()->first->p, x, x2))pl = sumlen + (C->FoldingCurve.back()->first->p - x).norm();
+            if(MathTool::is_point_on_line(Cnew->FoldingCurve.front()->first->p, x, x2))pcr = sumlen + (Cnew->FoldingCurve.front()->first->p - x).norm();
+            if(MathTool::is_point_on_line(Cnew->FoldingCurve.back()->first->p, x, x2))pcl = sumlen + (Cnew->FoldingCurve.back()->first->p - x).norm();
+            sumlen += (x - x2).norm();
+            i = (i + 1) % (int)Poly_V.size();
+        }while(i != btm);
+        if(pl < pcl && pcl < pcr && pcr < pr)return 1;
+        if(pcl < pl && pl < pr && pr < pcr)return -1;
+        return 0;
+    };
+
     int dim = 3;
     Eigen::Vector3d UpVec(0,-1,0);
     std::vector<std::shared_ptr<FoldLine>> hasFoldingCurve;
@@ -237,29 +262,62 @@ void Model::MakeTree(){
     //曲面の各辺と交点があるか探索する
     //曲線が交差した辺のインデックスを持っておく
     RemoveUnable2GenCurve();
-    NTree_Creases.clear();
-    for(auto&fl: Creases){
-        if(fl->FoldingCurve.empty()){
-            if((int)fl->CtrlPts.size() > dim){
-                hasFoldingCurve.push_back(fl);
+
+    if(NTree_Creases.GetRoot()->children.empty()){
+        NTree_Creases.Insert(NTree_Creases.GetRoot(), NewCrease);
+    }else{
+        auto node = NTree_Creases.GetRoot();
+        std::queue<std::shared_ptr<TreeNode<std::shared_ptr<FoldLine>>>> q;
+        q.push(node);
+        while (!q.empty()) {
+            std::shared_ptr<TreeNode<std::shared_ptr<FoldLine>>> cur = q.front(); q.pop();
+            for (auto child : cur->children){if (child != nullptr)q.push(child);}
+            if(cur == NTree_Creases.GetRoot())continue;
+            int res = parent_child_relation(cur->data, NewCrease, outline->vertices, btm_i);
+            if(res == 1){
+                if(cur->children.empty()){
+                    NTree_Creases.Insert(cur->data, NewCrease);
+                    return;
+                }
+
+            }else{
+                auto parent = NTree_Creases.GetParent(cur->data);
+                NTree_Creases.Insert(parent->data, NewCrease);
+                std::vector<int> res_child;
+                for(auto& child: parent->children)  res_child.push_back(parent_child_relation(child->data, NewCrease, outline->vertices, btm_i));
+                for(int j = 0; j < (int)res_child.size(); j++){
+                    if(res_child[j] == -1)NTree_Creases.Planting(NewCrease, parent->children[j]->data);
+                }
+            }
+        }
+    }
+    NTree_Creases.print();
+    qDebug() <<"refCrease = " << refCreases.get();
+
+    /*
+    NTree_Creases.Clear();
+    for(auto&fl: hasCrease){
+        if(fl->data.FoldingCurve.empty()){
+            if((int)fl->data.CtrlPts.size() > dim){
+                //hasFoldingCurve.push_back(fl->data);
                 for(auto& l: outline->Lines){
-                    std::vector<std::shared_ptr<CrvPt_FL>> P = getCrossPoint(fl->CtrlPts, l->v, l->o, dim);
+                    std::vector<std::shared_ptr<CrvPt_FL>> P = getCrossPoint(fl->data.CtrlPts, l->v, l->o, dim);
                     if(!P.empty()){
                         for(auto&p: P){
                             std::shared_ptr<Vertex> sec, thi;
                             if(UpVec.dot((l->v->p - l->o->p).normalized()) > 0){sec = l->v->deepCopy(); thi = l->o->deepCopy();}
                             else{sec = l->o->deepCopy(); thi = l->v->deepCopy();}
                             std::shared_ptr<Vertex4d> v4d = std::make_shared<Vertex4d>(p, sec, thi); v4d->addline(thi, sec);
-                            fl->FoldingCurve.push_back(v4d);
+                            fl->data.FoldingCurve.push_back(v4d);
                         }
                     }
                 }
-                fl->SortCurve();
+                fl->data.SortCurve();
             }
         }else hasFoldingCurve.push_back(fl);
-    }
+    }*/
 
-
+    /*
     do{
         std::vector<LineOnFL> LoF;
         for(auto&fl: hasFoldingCurve){
@@ -273,7 +331,7 @@ void Model::MakeTree(){
             for(auto&x: LoF){
                 if(List_Creases.empty()){
                     List_Creases.push_back(x.FL);
-                    if(NTree_Creases.empty())NTree_Creases = NTree(x.FL);
+                    if(NTree_Creases.GetRoot() == nullptr)NTree_Creases = x.FL;
                 }else{
                     auto res = NTree_Creases.find(x.FL);
                     if(res == nullptr){
@@ -288,7 +346,7 @@ void Model::MakeTree(){
         }
         i = (i + 1) % (int)outline->Lines.size();
     }while(i != btm_i);
-    NTree_Creases.print();
+    NTree_Creases.print();*/
     return;
 }
 
@@ -340,6 +398,7 @@ void Model::UpdateTree(int dim){
         }
     }
 
+    /*
     List_Creases.clear();
     do{
        std::vector<LineOnFL> LoF;
@@ -369,7 +428,7 @@ void Model::UpdateTree(int dim){
         }
         i = (i + 1) % (int)outline->Lines.size();
     }while(i != btm_i);
-
+    */
     for(auto&r: Rulings)r->hasCrossPoint = false;
     return;
 }
@@ -684,39 +743,32 @@ bool Model::Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double wp, doubl
 
 bool Model::BendingModel(double wp, double wsim, int dim, int alg){
 
-    UpdateTree(dim);
+    //UpdateTree();
+    MakeTree(refCreases);
     SplitRulings(dim);
-    std::shared_ptr<NTreeNode> root = NTree_Creases.GetRoot();
-    if(root == nullptr)return false;
-    if(Creases.size() == 0){
-        AssignRuling(dim);
+    if(NTree_Creases.GetRoot()->children.empty())return false;
+    //if(Creases.size() == 0){
+        //AssignRuling(dim);
+        //return true;
+   // }
+
+    std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
+
+    if(alg == -1){
+        std::vector<std::shared_ptr<FoldLine>> _Creases = NTree_Creases.postOrderTraversal(NTree_Creases.GetRoot()->data);
+        for(auto&crease: _Creases){
+            if(crease == NTree_Creases.GetRoot()->data)return true;
+            crease->initialize_foldstate(Poly_V);
+        }
         return true;
     }
 
-    std::queue<std::shared_ptr<NTreeNode>> q;
-    std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
-
-    q.push(root);
+    std::queue<std::shared_ptr<TreeNode<std::shared_ptr<FoldLine>>>> q; 
+    for(auto&btmcrease: NTree_Creases.GetRoot()->children)q.push(btmcrease);
     int rank = 0;
     while(!q.empty()){
-
-        std::shared_ptr<NTreeNode> cur = q.front(); q.pop();
+        auto cur = q.front(); q.pop();
         cur->data->ReassignColor();
-        qDebug() << "trim each iteration";
-
-        if(alg == -1){
-            //initialization
-            AddNewFoldLine(cur->data);
-            cur->data->initialize_foldstate(Poly_V);
-            for (const auto& child : cur->children){
-                if(child != nullptr){
-                    child->data->reassignruling(cur->data, outline->Lines, Rulings);
-                    rank++;
-                    q.push(child);
-                }
-            }
-            continue;
-        }
 
         //Optimization Vertexのテスト用
         if(alg % 10 == 2){
@@ -731,10 +783,10 @@ bool Model::BendingModel(double wp, double wsim, int dim, int alg){
         }
         if(alg % 10 == 3){
             //交点位置の修正を全探索で行うやり方
-            AddNewFoldLine(cur->data);
+            //AddNewFoldLine(cur->data);
             cur->data->Optimization_FlapAngle(Poly_V, wp, wsim, rank);
             cur->data->applyAAAMethod(Poly_V, cur->data->a_flap);
-            if(cur == root){
+            if(std::find(NTree_Creases.GetRoot()->children.begin(), NTree_Creases.GetRoot()->children.end(), cur) != NTree_Creases.GetRoot()->children.end()){
                 cur->data->PropagateOptimization_Vertex(Poly_V, wp, wsim);
                 cur->data->applyAAAMethod(Poly_V, cur->data->a_flap);
                 cur->data->CheckIsCrossedRulings();
@@ -789,17 +841,36 @@ std::vector<vertexinfo> Model::MappingVertex(bool IsRemovingOverlapping){
     return VerticesInfo;
 }
 
-bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
+bool Model::AddNewCrease(){
     if(Creases.empty())return false;
+
+    MakeTree(refCreases);
     int dim = 3;
-    MakeTree();
+
+    std::queue<std::shared_ptr<TreeNode<std::shared_ptr<FoldLine>>>> q;
+    for(auto&btmcrease: NTree_Creases.GetRoot()->children)q.push(btmcrease);
+    while (!q.empty()) {
+        std::shared_ptr<TreeNode<std::shared_ptr<FoldLine>>> cur = q.front(); q.pop();
+        for (auto child : cur->children){if (child != nullptr)q.push(child);}
+        auto parentNode = NTree_Creases.GetParent(cur);
+        if(NTree_Creases.GetParent(refCreases) == NTree_Creases.GetRoot()) SplitRulings(dim);
+        else cur->data->reassignruling(parentNode->data, outline->Lines, Rulings);
+
+    }
+
+    std::vector<std::shared_ptr<Vertex>> Poly_V = outline->vertices;
+    auto initializecrease = NTree_Creases.postOrderTraversal(refCreases);
+    for(auto& crease: initializecrease) crease->initialize_foldstate(Poly_V);//追加された折り目より上側にある折り目に対して折り返す前の状態に戻す
+
+    /*
+
     NewFL->FoldingCurve.clear();
-    auto par = NTree_Creases.getParent(NewFL);
+    auto par = NTree_Creases.GetParent(NewFL);
     if((int)Creases.size() == 1){
         UpdateTree(dim);
         SplitRulings(dim);
     }else if(par == nullptr){
-        std::shared_ptr<NTreeNode> root = NTree_Creases.GetRoot();
+        auto root = NTree_Creases.GetRoot();
         for(const auto&child: root->children){
             NewFL->reassignruling(child->data, outline->Lines, Rulings);
             break;
@@ -856,6 +927,7 @@ bool Model::AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL){
     if(VecPrev.dot(Vec) < 0){std::swap(NewFL->FoldingCurve.back()->second, NewFL->FoldingCurve.back()->third);}
     SetOnVertices_outline(false);
     refCreases = NewFL;
+    */
     return true;
 }
 
@@ -863,18 +935,15 @@ bool Model::AssignRuling(int dim){
     UpdateTree(dim);
     SplitRulings(dim);
     auto Poly_V = outline->getVertices();
-    auto root = NTree_Creases.GetRoot();
-    if(root == nullptr)return false;
-    std::queue<std::shared_ptr<NTreeNode>>q;
-    q.push(root);
+    std::queue<std::shared_ptr<TreeNode<std::shared_ptr<FoldLine>>>>q;
+    for(auto& btmcrease: NTree_Creases.GetRoot()->children)q.push(btmcrease);
+    if(q.empty())return false;
     while (!q.empty()) {
         auto cur = q.front(); q.pop();
         if(cur->data == nullptr)continue;
         if(cur->data->isbend()){
             cur->data->applyAAAMethod(Poly_V, cur->data->a_flap);
             if(cur->data->FoldingCurve.empty())continue;
-            //SetEndPoint(cur->data->FoldingCurve.front(), outline->Lines, Rulings, false);
-            //SetEndPoint(cur->data->FoldingCurve.back(), outline->Lines, Rulings, false);
             cur->data->SortCurve();
             cur->data->SimpleSmooothSrf(Poly_V);
             SetOnVertices_outline(false);
@@ -894,25 +963,25 @@ bool Model::AssignRuling(int dim){
 bool Model::SplitRulings(int dim){
     Eigen::Vector3d UpVec(0,-1,0);
     if(Creases.empty() || (int)Creases[FoldCurveIndex]->CtrlPts.size() <= dim)return false;
-    auto root = NTree_Creases.GetRoot();
-    if(root == nullptr)return false;
-    for(auto& r: Rulings){
-        std::vector<std::shared_ptr<CrvPt_FL>> P = getCrossPoint(root->data->CtrlPts, r->v, r->o, dim);
-        if(!P.empty()){
-            for(auto&p: P){
-                r->hasCrossPoint = true;
-                std::shared_ptr<Vertex> sec, thi;
-                if(UpVec.dot((r->v->p - r->o->p).normalized()) > 0){ sec = r->v->deepCopy(); thi = r->o->deepCopy();}
-                else{sec = r->o->deepCopy(); thi = r->v->deepCopy(); }
-                std::shared_ptr<Vertex4d> v4d = std::make_shared<Vertex4d>(p, sec, thi); v4d->addline(thi, sec);
-                root->data->FoldingCurve.push_back(v4d);
+
+    for(const auto& crease: NTree_Creases.GetRoot()->children){
+        for(auto& r: Rulings){
+            std::vector<std::shared_ptr<CrvPt_FL>> P = getCrossPoint(crease->data->CtrlPts, r->v, r->o, dim);
+            if(!P.empty()){
+                for(auto&p: P){
+                    r->hasCrossPoint = true;
+                    std::shared_ptr<Vertex> sec, thi;
+                    if(UpVec.dot((r->v->p - r->o->p).normalized()) > 0){ sec = r->v->deepCopy(); thi = r->o->deepCopy();}
+                    else{sec = r->o->deepCopy(); thi = r->v->deepCopy(); }
+                    std::shared_ptr<Vertex4d> v4d = std::make_shared<Vertex4d>(p, sec, thi); v4d->addline(thi, sec);
+                    crease->data->FoldingCurve.push_back(v4d);
+                }
             }
         }
+        crease->data->SortCurve();
+        crease->data->AlignmentVertex4dDirection();
+        crease->data->validsize = crease->data->FoldingCurve.size();
     }
-    root->data->SortCurve();
-    root->data->AlignmentVertex4dDirection();
-    //SetOnVertices_outline(true);
-    root->data->validsize = root->data->FoldingCurve.size();
     return true;
 }
 
@@ -921,6 +990,7 @@ void Model::flatten_lsp(std::shared_ptr<FoldLine>& FldLine){
 }
 
 void Model::SimplifyModel(int iselim){
+    return;
     if(!(0 <= FoldCurveIndex && FoldCurveIndex < (int)Creases.size()) || Creases[FoldCurveIndex]->FoldingCurve.empty())return;
     auto root = NTree_Creases.GetRoot();
     bool isroot = (root->data == Creases[FoldCurveIndex])? true: false;
@@ -931,7 +1001,7 @@ void Model::SimplifyModel(int iselim){
 bool Model::Smoothing(){
     auto root = NTree_Creases.GetRoot();
     if(root == nullptr)return false;
-    std::queue<std::shared_ptr<NTreeNode>>q;
+    std::queue<std::shared_ptr<TreeNode<std::shared_ptr<FoldLine>>>>q;
     q.push(root);
     auto Poly_V = outline->getVertices();
     while (!q.empty()) {
@@ -1166,10 +1236,19 @@ int Model::AddNewCurve(CurveType curveType, int DivSize){
     return 0;
 }
 
-bool Model::ControlPoint(PaintTool dtype, int event, QPointF p, int curveDimention, int DivSize){
+bool Model::ControlPoint(PaintTool dtype, int event, QPointF p, int curveDimention, int DivSize, std::shared_ptr<FoldLine>& newCrease){
     Eigen::Vector3d _p(p.x(), p.y(), 0);
     if(dtype == PaintTool::Crease){
-        return (event == 0)? Creases[FoldCurveIndex]->addCtrlPt(_p, curveDimention): Creases[FoldCurveIndex]->delCtrlPt(_p, curveDimention, outline);
+        if(event == 0){
+            auto tmp = Creases[FoldCurveIndex]->addCtrlPt(_p, curveDimention);
+            if(tmp == nullptr)return false;
+            else{
+                newCrease = tmp;
+                return true;
+            }
+        }else{
+            return Creases[FoldCurveIndex]->delCtrlPt(_p, curveDimention, outline);
+        }
     }else{
         if(event == 0){
             int AddPtIndex = IsSelectedCurve();

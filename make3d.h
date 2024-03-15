@@ -16,7 +16,7 @@ public:
 
     std::vector<int> refCrv;//0:未参照　1:参照
     std::shared_ptr<FoldLine> refCreases;
-    NTree NTree_Creases;
+    NTree<std::shared_ptr<FoldLine>> NTree_Creases;
     int crvPtNum;
     int FoldCurveIndex;
 
@@ -42,7 +42,7 @@ public:
 
     //FoldLine
     void RemoveUnable2GenCurve();
-    bool AddNewFoldLine(std::shared_ptr<FoldLine>& NewFL);
+    bool AddNewCrease();
     bool AssignRuling(int dim);
     void applyFL();
     bool BendingModel(double wp, double wsim, int dim, int alg);//alg=0:ruling intersection, alg=1:regression curve
@@ -58,7 +58,7 @@ public:
     void UpdateTree(int dim);
 
     //event:0 -> add ,event:1 -> delete
-    bool ControlPoint(PaintTool dtype, int event, QPointF p, int curveDimention, int DivSize);
+    bool ControlPoint(PaintTool dtype, int event, QPointF p, int curveDimention, int DivSize, std::shared_ptr<FoldLine>& newCrease);
     int AddNewCurve(CurveType curveType, int DivSize);
 
     void Check4Param(int curveDimention, std::vector<int>&deleteIndex);
@@ -72,7 +72,7 @@ public:
     int DeleteCurve();
 private:
     int movingVertexIndex;
-    void MakeTree();
+    void MakeTree(std::shared_ptr<FoldLine>& NewCrease);
     std::vector<vertexinfo> MappingVertex(bool IsRemoveOverlapping);
 
     void initializeSurfaceVertices();
