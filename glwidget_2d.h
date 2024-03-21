@@ -28,7 +28,6 @@ public:
     bool visibleCurve;
     int DivSize;
     void EraseNonFoldEdge(bool state);
-    void stashcurrentstate();
     void back2befstate();
 
     class drawobj{
@@ -66,20 +65,16 @@ public slots:
     void ChangedDivSizeEdit(int n);
     void setColor();
 
-    //new gradation mode
+    //gradation
     void setNewGradationMode();
     void DrawGradationMode();
     void GetGradationFromSlider(int val);
     void VisualizeMVColor(bool state);
 
-    //add curve
+    //ruling control curve
     void AddCurve();
     void MoveCurvePt();
-
     void InsertNewPoint();
-    void DeleteCtrlPt();
-
-    //複数の曲線操作
     void DeleteCurve();
     void changeSelectedCurve(int ind);
     void swapCrvsOnLayer(int n1, int n2);

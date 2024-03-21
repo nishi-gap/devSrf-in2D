@@ -38,7 +38,7 @@ void GLWidget_3D::EraseNonFoldEdge(bool state){
     update();
 }
 
-void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const FoldLine3d FldCrvs){
+void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const FoldLine3d Creases){
 
     auto Planerity  = [](const std::vector<std::shared_ptr<Vertex>>& vertices, const Lines Poly_V)->double{
         if((int)vertices.size() == 3)return 0.0;
@@ -68,7 +68,9 @@ void GLWidget_3D::setVertices(const Lines Surface,  const Lines Rulings,  const 
     FoldLineVertices.clear();
 
     std::vector<std::vector<std::shared_ptr<Vertex4d>>> FoldingCurves;
-    for(auto&FldCrv: FldCrvs)FoldingCurves.push_back(FldCrv->FoldingCurve);
+    for(auto&crease: Creases){
+        if(crease->data != nullptr)FoldingCurves.push_back(crease->data->FoldingCurve);
+    }
     std::vector<std::vector<std::shared_ptr<Vertex>>> Polygons = MakeModel(Surface, Rulings, FoldingCurves);
     for(auto& polygon: Polygons){
         auto p_sort = SortPolygon(polygon);

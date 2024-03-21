@@ -9,23 +9,18 @@ class Model: public std::enable_shared_from_this<Model>{
 public:
     std::vector<std::shared_ptr<Line>> Rulings;
     std::shared_ptr<OUTLINE> outline;
-    //std::vector<std::vector<std::shared_ptr<Vertex>>> ol_vertices;
     std::vector<std::shared_ptr<CRV>> RulingCurve;
-    std::vector<std::shared_ptr<FoldLine>> Creases;
     ColorPoint ColorPt;
 
     std::vector<int> refCrv;//0:未参照　1:参照
     std::shared_ptr<FoldLine> refCreases;
     NTree<std::shared_ptr<FoldLine>> NTree_Creases;
     int crvPtNum;
-    int FoldCurveIndex;
 
     Model();
     Model(int _crvPtNum);
-    std::shared_ptr<Model> stashcurrentstate();
     std::shared_ptr<Model> deepCopy();
     void detectClickedObj(const QPointF& curPos);//将来的にはfoldlineだけでなくほかのオブジェクトも判定して操作できるようにしたい
-
     void AffinTranse_Crease(int type, const QPointF& befPos, const QPointF& curPos, const QPointF& basePos);
 
     void deform();
@@ -42,8 +37,7 @@ public:
 
     //FoldLine
     void RemoveUnable2GenCurve();
-    bool AddNewCrease();
-    bool AssignRuling(int dim);
+    bool AddNewCrease(std::shared_ptr<FoldLine>& NewCrease);
     void applyFL();
     bool BendingModel(double wp, double wsim, int dim, int alg);//alg=0:ruling intersection, alg=1:regression curve
     void ChangeFoldLineState();

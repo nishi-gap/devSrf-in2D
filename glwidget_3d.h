@@ -12,13 +12,13 @@
 #include <QDebug>
 
 typedef std::vector<std::shared_ptr<Line>> Lines;
-typedef std::vector<std::shared_ptr<FoldLine>> FoldLine3d;
+typedef std::vector<std::shared_ptr<TreeNode<std::shared_ptr<FoldLine>>>> FoldLine3d;
 
 class GLWidget_3D : public QOpenGLWidget, protected QOpenGLFunctions_3_0
 {
     Q_OBJECT
 public:
-    void setVertices(const Lines Surface = Lines(),  const Lines Rulings = Lines(),  const FoldLine3d FldCrvs = FoldLine3d());
+    void setVertices(const Lines Surface = Lines(),  const Lines Rulings = Lines(),  const FoldLine3d Creases = FoldLine3d());
     void receiveKeyEvent(QKeyEvent *e);
     void EraseNonFoldEdge(bool state);
     explicit GLWidget_3D(QWidget *parent = 0);

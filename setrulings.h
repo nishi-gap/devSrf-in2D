@@ -1,7 +1,7 @@
 #ifndef SETRULINGS_H
 #define SETRULINGS_H
 
-#include <Eigen/Geometry> //EigenのGeometry関連の関数を使う場合，これが必要
+#include <Eigen/Geometry>
 #include "mathtool.h"
 #include <QPointF>
 #include <QString>
@@ -31,16 +31,12 @@ public:
 class CrvPt_FL : public Vertex{
 public:
     double s, rt;
-    //std::shared_ptr<Vertex> ve;
-    //std::shared_ptr<Vertex> vo;
     bool IsValid;
     CrvPt_FL(Eigen::Vector3d _p2, Eigen::Vector3d _p3,  double _s) : Vertex(_p2, _p3), s(_s), IsValid(true){}
     CrvPt_FL(Eigen::Vector3d _p2, double _s) : Vertex(_p2), s(_s), IsValid(true){}
     std::shared_ptr<CrvPt_FL> deepCopy();
     bool operator == (const CrvPt_FL &p)const{return s == p.s && rt == p.rt && IsValid == p.IsValid;}
     bool operator != (const CrvPt_FL &p)const{return !(s == p.s && rt == p.rt && IsValid == p.IsValid);}
-    //void set(Eigen::Vector3d _p,const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& e);
-
 };
 
 class Line : public std::enable_shared_from_this<Line>{
@@ -54,8 +50,6 @@ public:
     Line(const std::shared_ptr<Vertex>& _o, const std::shared_ptr<Vertex>& _v, EdgeType _et): o(_o), v(_v), et(_et), IsCrossed(-1), color(0), hasCrossPoint(false){}
     Line():o(nullptr), v(nullptr), IsCrossed(-1), color(0), hasCrossPoint(false) {}
     std::shared_ptr<Line> deepCopy();
-    //bool operator !=(const Line& l)const{return IsCrossed != l.IsCrossed || color != l.color || (v[0] != l.v[0] && v[0] != l.v[1]);}
-    //bool operator ==(const Line &l)const{return IsCrossed == l.IsCrossed && color == l.color && ((v[0] == l.v[0] && v[1] == l.v[1]) || (v[1] == l.v[0] && v[0] == l.v[1]));}
     bool is_on_line(Eigen::Vector3d p);
 };
 
@@ -70,7 +64,6 @@ public:
     void addline(std::shared_ptr<Vertex>& tip, std::shared_ptr<Vertex>& end){line_parent = std::make_shared<Line>(tip, end, EdgeType::r);}
     void addline(std::shared_ptr<Line>& L){line_parent = L;}
     Vertex4d(): first{nullptr}, second{nullptr}, third{nullptr} {}
-    //Vertex4d(const std::shared_ptr<Vertex>& v, const std::shared_ptr<Line>& L):line_parent(L), first(v), second(L->v), third(L->o), IsCalc(true){}
     Vertex4d(const std::shared_ptr<CrvPt_FL>& v, const std::shared_ptr<Vertex>& v2, const std::shared_ptr<Vertex>& v3): first(v), second(v2), third(v3), IsCalc(true){}
     std::shared_ptr<Vertex4d> deepCopy();
     void release();
@@ -78,7 +71,6 @@ public:
     bool operator != (const Vertex4d &V4d)const{ return first != V4d.first || second != V4d.second || third != V4d.third || IsCalc != V4d.IsCalc; }
     bool operator == (const std::shared_ptr<Vertex> &V)const{return first == V; }
     bool operator != (const std::shared_ptr<Vertex> &V)const{return first != V; }
-    //void operator = (const Vertex4d &V){first = V.first; second = V.second; third = V.third; IsCalc = V.IsCalc;}
 };
 
 class vertexinfo{
@@ -116,9 +108,6 @@ public:
     std::vector<std::shared_ptr<Line>> Rulings;//偶数番目 ruling　奇数番目 グラデーションの多角形に使用
     Eigen::Vector3d InsertPoint;
     bool isempty;
-
-    //グラデーション
-    inline void clearColor();
 private:
 
     bool IsInsertNewPoint;

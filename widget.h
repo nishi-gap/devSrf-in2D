@@ -96,7 +96,6 @@ signals:
     void signalNewSelectedCrv(int ind);
     void swapIndex(int n1, int n2);
     void signalNewLineWidth(double d);
-
     void sendAngle(double val);
 };
 #endif // WIDGET_H

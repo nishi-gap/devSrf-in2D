@@ -53,7 +53,7 @@
    <property name="geometry">
     <rect>
      <x>510</x>
-     <y>480</y>
+     <y>420</y>
      <width>151</width>
      <height>231</height>
     </rect>
@@ -121,13 +121,6 @@
        </property>
       </widget>
      </item>
-     <item>
-      <widget class="QPushButton" name="delete_ctrl_pt">
-       <property name="text">
-        <string>Delete Control Point</string>
-       </property>
-      </widget>
-     </item>
     </layout>
    </widget>
   </widget>
@@ -135,7 +128,7 @@
    <property name="geometry">
     <rect>
      <x>340</x>
-     <y>460</y>
+     <y>420</y>
      <width>161</width>
      <height>281</height>
     </rect>
@@ -268,7 +261,7 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>450</y>
+     <y>420</y>
      <width>161</width>
      <height>131</height>
     </rect>
@@ -336,7 +329,7 @@
    <property name="geometry">
     <rect>
      <x>200</x>
-     <y>450</y>
+     <y>420</y>
      <width>121</width>
      <height>131</height>
     </rect>
@@ -421,8 +414,8 @@
   <widget class="QGroupBox" name="OtherBox">
    <property name="geometry">
     <rect>
-     <x>870</x>
-     <y>450</y>
+     <x>850</x>
+     <y>400</y>
      <width>171</width>
      <height>161</height>
     </rect>
@@ -482,19 +475,6 @@
      <string>Save</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="BackButton">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>130</y>
-      <width>149</width>
-      <height>24</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Back</string>
-    </property>
-   </widget>
   </widget>
   <widget class="QGroupBox" name="LayerListWidget">
    <property name="geometry">
@@ -536,9 +516,9 @@
    <property name="geometry">
     <rect>
      <x>680</x>
-     <y>440</y>
+     <y>400</y>
      <width>141</width>
-     <height>241</height>
+     <height>211</height>
     </rect>
    </property>
    <property name="title">
@@ -625,7 +605,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>210</y>
+      <y>180</y>
       <width>121</width>
       <height>16</height>
      </rect>
@@ -641,7 +621,7 @@
     <property name="geometry">
      <rect>
       <x>70</x>
-      <y>180</y>
+      <y>150</y>
       <width>62</width>
       <height>22</height>
      </rect>
@@ -659,8 +639,8 @@
    <widget class="QLabel" name="label_2">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>180</y>
+      <x>10</x>
+      <y>150</y>
       <width>31</width>
       <height>16</height>
      </rect>
@@ -673,7 +653,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>150</y>
+      <y>120</y>
       <width>111</width>
       <height>20</height>
      </rect>

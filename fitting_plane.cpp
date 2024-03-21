@@ -6,8 +6,6 @@ Eigen::Vector3d find_plane(const std::vector<Eigen::Vector3d>& X, Eigen::Vector3
     com = A.rowwise().mean();
     for(int i = 0; i < (int)X.size(); i++)A.col(i) -= com;
     A = A * A.transpose();
-    //Eigen::JacobiSVD<Eigen::MatrixXd> svd(A, Eigen::ComputeFullU | Eigen::ComputeFullV);
-
     Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> ES(A);//固有値問題
     Eigen::VectorXd e = ES.eigenvalues();
     Eigen::MatrixXd U = ES.eigenvectors();

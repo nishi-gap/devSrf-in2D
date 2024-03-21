@@ -694,6 +694,7 @@ std::vector<std::shared_ptr<Vertex>> ConvexHull_polygon(const std::vector<std::s
     std::shared_ptr<Vertex> top, next;
     for(int i = 0; i < (int)Args.size(); i++){
         do{
+            //if((int)P.size() == 1)break;
             top = P.back();
             P.pop_back();
             next = P.back();
@@ -702,7 +703,7 @@ std::vector<std::shared_ptr<Vertex>> ConvexHull_polygon(const std::vector<std::s
                 P.push_back(Args[i].second);
                 break;
             }
-        }while(1);
+        }while((int)P.size() != 1);
     }
     P.pop_back();
     return P;

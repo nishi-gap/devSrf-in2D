@@ -176,7 +176,7 @@ std::shared_ptr<FoldLine> FoldLine::addCtrlPt(Eigen::Vector3d& p, int dim){
     //if((int)CtrlPts.size() <= dim)
     CtrlPts.push_back(p);
     bool hasCrv = setCurve(dim);
-    return (hasCrv)? shared_from_this(): nullptr;
+    return shared_from_this();
 }
 
 //type == 0 line
@@ -472,9 +472,6 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
 
     //geometory
     nlopt::opt opt = nlopt::opt(nlopt::LN_AUGLAG, 1);
-
-    static int alg = 0;
-
     RevisionVertices::ObjData_v od = {a_flap, FC, Poly_V, mid};// Specify the augmented Lagrangian algorithm
     od.AddBasePt(ValidFC);
     od.AddWeight(wsim, wp);
@@ -493,7 +490,6 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
     }
     od.FC = FC;
 
-    alg = (alg + 1) % 10;
     auto starttime = std::chrono::high_resolution_clock::now();
     do{
 
@@ -517,7 +513,6 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
        if(((bef_l != -1 && bef_r != -1) && (bef_l == ind_l && bef_r == ind_r)))break;//同じ場所をloopしていたら修正を強制終了
        bef_l = ind_l; bef_r = ind_r;
 
-       //交差していようがひとまず無視するやり方(最後に交差した箇所のrulingの向きを強制的に書き換える)
        if(ind_l < (int)ValidFC.size())ind_l++;
        if(ind_r >= 0)ind_r--;
        if(ind_r < 0 && ind_l >= (int)ValidFC.size())break;
@@ -537,7 +532,7 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
     }
     cb_Folding(ValidFC, Poly_V, a_flap, (int)ValidFC.size()/2);
     ofs.close();
-    hasContainSbjfunc = !hasContainSbjfunc;
+    //hasContainSbjfunc = !hasContainSbjfunc;
     return (fr == 0.0) ? true: false;
 }
 
@@ -558,7 +553,6 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     };
 
     if(FoldingCurve.empty())return false;
-    //if(isbend())return true;
 
     std::vector<std::shared_ptr<Vertex4d>> ValidFC;
     for(auto&fc: FoldingCurve){if(fc->IsCalc)ValidFC.push_back(fc);}
@@ -718,22 +712,6 @@ bool FoldLine::SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly
             FoldingCurve[i]->third->p3 = FoldingCurve[i]->third->p3_ori;
         }
     }
-    /*
-    std::shared_ptr<Vertex> v_clst = getClosestVertex(FoldingCurve[0]->second, FoldingCurve[0]->first, FoldingCurve, false);
-    if(v_clst != nullptr){
-        int j;
-        for(j = 0; j < (int)FoldingCurve.size(); j++){if(v_clst == FoldingCurve[j]->second)break;}
-        FoldingCurve[0]->second->p3 = calcTargetDistanceOnPlane(FoldingCurve[0]->second->p, FoldingCurve[j]->first, FoldingCurve[j]->second, FoldingCurve[j+1]->second);
-    }else FoldingCurve[0]->second->p3 = calcTargetDistanceOnPlane(FoldingCurve[0]->second->p, FoldingCurve[1]->first, FoldingCurve[0]->first, FoldingCurve[1]->second);
-
-    v_clst = getClosestVertex(FoldingCurve.back()->second, FoldingCurve.back()->first, FoldingCurve, false);
-    if(v_clst != nullptr){
-        int j;
-        for(j = 0; j < (int)FoldingCurve.size(); j++){if(v_clst == FoldingCurve[j]->second)break;}
-        FoldingCurve.back()->second->p3 = calcTargetDistanceOnPlane(FoldingCurve.back()->second->p, FoldingCurve[j]->first, FoldingCurve[j]->second, FoldingCurve[j-1]->second);
-    }else FoldingCurve.back()->second->p3 = calcTargetDistanceOnPlane(FoldingCurve.back()->second->p, FoldingCurve.end()[-2]->first, FoldingCurve.back()->first, FoldingCurve.end()[-2]->second);
-    //validsize = FoldingCurve.size();
-    */
     return true;
 }
 
@@ -799,66 +777,6 @@ void FoldLine::SimplifyModel(int iselim, bool isroot){
     return;
 }
 
-bool FoldLine::RevisionCrosPtsPosition(){
-    if(FoldingCurve.empty() || (int)FoldingCurve.size() <= 4)return false;
-    FoldingCurve[1]->IsCalc = false;
-    FoldingCurve.end()[-2]->IsCalc = false;
-    validsize -= 2;
-    return true;
-    FoldingCurve.front()->first->p3 = FoldingCurve.front()->first->p3_ori;
-    FoldingCurve.back()->first->p3 = FoldingCurve.back()->first->p3_ori;
-    std::vector<std::shared_ptr<Vertex4d>> ValidFC;
-    for(auto&fc: FoldingCurve)if(fc->IsCalc)ValidFC.push_back(fc);
-    if(FoldingCurve.size() > 5){
-        qDebug() << "before revision";
-        for(int i = 1; i < (int)FoldingCurve.size()-1; i++){
-            auto v = (FoldingCurve[i-1]->first->p - FoldingCurve[i]->first->p).normalized(), v2 = (FoldingCurve[i+1]->first->p - FoldingCurve[i]->first->p).normalized();
-            double k = std::acos(v.dot(v2));
-            if(Eigen::Vector3d::UnitZ().dot(v.cross(v2)) > 0)k = 2.0*std::numbers::pi - k;
-        }
-        auto ReviseEndPosition = [](Eigen::Vector3d e,  double k)->Eigen::Vector3d{
-             return (Eigen::AngleAxisd(k, -Eigen::Vector3d::UnitZ()) * e).normalized();
-        };
-        auto getCrossPosition = [](const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& p, const std::shared_ptr<Vertex>& q){
-            Eigen::Matrix2d A;
-            Eigen::Vector2d b;
-            Eigen::Vector3d v2 = q->p - p->p;
-            A(0,0) = v->p.x(); A(0,1) = -v2.x(); A(1,0) = v->p.y(); A(1,1) = -v2.y();
-            b(0) = p->p.x() - o->p.x(); b(1) = p->p.y() - o->p.y();
-            Eigen::Vector2d ts = A.colPivHouseholderQr().solve(b);
-            return  o->p + ts(0) * v->p;
-        };
-        double k0,k1,k2;
-        //double k0 = RevisionVertices::getK(FoldingCurve[1]->first->p, FoldingCurve[0]->first->p, FoldingCurve[2]->first->p);
-        //double k1 = RevisionVertices::getK(FoldingCurve[2]->first->p, FoldingCurve[1]->first->p, FoldingCurve[3]->first->p);
-        //double k2 = RevisionVertices::getK(FoldingCurve[3]->first->p, FoldingCurve[2]->first->p, FoldingCurve[4]->first->p);
-        //qDebug() <<"front " << abs(k0 - k1) << ", " << abs(k1 - k2) << " , " << 2*k1 - k2 ;
-        if(abs(k0 - k1) > abs(k1 - k2)){
-            qDebug() <<"front";
-            FoldingCurve[0]->first->p = ReviseEndPosition(FoldingCurve[2]->first->p - FoldingCurve[1]->first->p,  -(2.*k1 - k2));
-            Eigen::Vector3d newPos = getCrossPosition(FoldingCurve[0]->first, FoldingCurve[1]->first, FoldingCurve[0]->third, FoldingCurve[0]->second);
-            FoldingCurve[0]->first->p = newPos;
-            FoldingCurve[0]->first->p3 = (newPos - FoldingCurve[0]->third->p).norm()/(FoldingCurve[0]->third->p - FoldingCurve[0]->second->p).norm()
-                    * (FoldingCurve[0]->second->p3 - FoldingCurve[0]->third->p3) + FoldingCurve[0]->third->p3;
-        }
-        //k0 = RevisionVertices::getK(FoldingCurve.end()[-2]->first->p, FoldingCurve.end()[-3]->first->p, FoldingCurve.back()->first->p);
-        //k1 = RevisionVertices::getK(FoldingCurve.end()[-3]->first->p, FoldingCurve.end()[-4]->first->p, FoldingCurve.end()[-2]->first->p);
-        //k2 = RevisionVertices::getK(FoldingCurve.end()[-4]->first->p, FoldingCurve.end()[-5]->first->p, FoldingCurve.end()[-3]->first->p);
-        //qDebug() <<"back " << abs(k0 - k1) << ", " << abs(k1 - k2) << ", " << 2.*k1 - k2 <<  std::endl;
-        if(abs(k0 - k1) > abs(k1 - k2)){
-            qDebug() << "back";
-            FoldingCurve.back()->first->p = ReviseEndPosition(FoldingCurve.end()[-3]->first->p - FoldingCurve.end()[-2]->first->p, 2.*k1 - k2);
-            Eigen::Vector3d newPos2 = getCrossPosition(FoldingCurve.back()->first, FoldingCurve.end()[-2]->first, FoldingCurve.back()->third, FoldingCurve.back()->second);
-            FoldingCurve.back()->first->p = newPos2;
-            FoldingCurve.back()->first->p3 = (newPos2 - FoldingCurve.back()->third->p).norm()/
-                    (FoldingCurve.back()->third->p - FoldingCurve.back()->second->p).norm() * (FoldingCurve.back()->second->p3 - FoldingCurve.back()->third->p3) + FoldingCurve.back()->third->p3;
-        }
-
-    }
-    return true;
-
-}
-
 void FoldLine::ReassignColor(){
     //Y字のとき折り線は山であると仮定(谷の場合は色を反転)
     typedef struct {
@@ -880,8 +798,6 @@ void FoldLine::ReassignColor(){
         Eigen::Vector3d fp_nv = ((ValidFC[i+1]->first->p3 - ValidFC[i]->first->p3).cross(ValidFC[i]->third->p3 - ValidFC[i]->first->p3)).normalized();
         Eigen::Vector3d SpinAxis = (ValidFC[i]->third->p3 - ValidFC[i]->first->p3).normalized();
 
-        //std::string s = (SpinAxis.dot(f_nv.cross(fp_nv)) <-1e-5)? "red": "blue";
-        //qDebug() << "color = " << s ;
         int mv = (abs(SpinAxis.dot(f_nv.cross(fp_nv))) < 1e-9 )? -1: (SpinAxis.dot(f_nv.cross(fp_nv)) < 1e-9)? 0: 1;
         int type_mvk = (mv == 0 && k < std::numbers::pi)? 0: (mv == 0 && k >= std::numbers::pi)? 1: (mv == 1 && k < std::numbers::pi)? 2: (mv == 1 && k >= std::numbers::pi)? 3: -1;
         InitState.push_back(MVK(ValidFC[i], type_mvk));
@@ -894,13 +810,11 @@ void FoldLine::ReassignColor(){
         for(auto& IS: InitState){
             if(MV[1] + MV[4] > MV[2] + MV[3] ){
                 if(IS.type_mvk == 1 || IS.type_mvk == 2){
-                    //IS.v->IsCalc = false;
                     IS.v->line_parent->color = -IS.v->line_parent->color;
                 }
             }else{
                 if(IS.type_mvk == 0 || IS.type_mvk == 3){
                     IS.v->line_parent->color = -IS.v->line_parent->color;
-                    //IS.v->IsCalc = false;
                 }
             }
         }
@@ -939,9 +853,8 @@ void FoldLine::reassignruling(std::shared_ptr<FoldLine>& parent, const std::vect
 
     if(parent == nullptr)return;
     if(parent->FoldingCurve.empty())return;
-    int dim = CtrlPts.size() - 1;
-    dim = 3;
-
+    int dim = 3;
+    FoldingCurve.clear();
     std::vector<std::shared_ptr<Line>> polyline_surface;
     for(auto&l: Surface) polyline_surface.push_back(std::make_shared<Line>(l->o, l->v, l->et));
 
@@ -958,7 +871,6 @@ void FoldLine::reassignruling(std::shared_ptr<FoldLine>& parent, const std::vect
         EdgeSplit(polyline_surface, r->o);
     }
 
-    //Surfaceの各Lineの要素に影響がないか調べること
     if(FoldingCurve.empty()){
         for(auto&l: polyline_surface){
             std::shared_ptr<CrvPt_FL> p;
@@ -980,8 +892,6 @@ void FoldLine::reassignruling(std::shared_ptr<FoldLine>& parent, const std::vect
         }
     }
 
-    //SplitOnEndLine(FoldingCurve.front(), parent->FoldingCurve.front(), parent->FoldingCurve, dim);
-    //SplitOnEndLine(FoldingCurve.back(),  parent->FoldingCurve.back(), parent->FoldingCurve, dim);
     for(auto it = parent->FoldingCurve.begin() + 1; it != parent->FoldingCurve.end() - 1; it++){
         if(!(*it)->IsCalc)continue;
         std::shared_ptr<CrvPt_FL> p;
@@ -1000,15 +910,12 @@ void FoldLine::reassignruling(std::shared_ptr<FoldLine>& parent, const std::vect
             (*it)->third = p;
         }
     }
-    //if(!MathTool::is_point_on_line(FoldingCurve.front()->first->p, FoldingCurve.front()->line_parent->v->p, FoldingCurve.front()->line_parent->o->p)){ }
     validsize = FoldingCurve.size();
     SortCurve();
     AlignmentVertex4dDirection();
 
     parent->SortCurve();
     parent->AlignmentVertex4dDirection();
-    //FoldingCurve.front()->first->p3 = (FoldingCurve.front()->second->p - FoldingCurve.front()->third->p).norm() * (FoldingCurve.front()->second->p3 - FoldingCurve.front()->third->p3).normalized() + FoldingCurve.front()->third->p3;
-    //FoldingCurve.back()->first->p3 = (FoldingCurve.back()->second->p - FoldingCurve.back()->third->p).norm() * (FoldingCurve.back()->second->p3 - FoldingCurve.back()->third->p3).normalized() + FoldingCurve.back()->third->p3;
 }
 
 double calclate_adjacent_angle(const std::shared_ptr<Vertex4d>&xbef, const std::shared_ptr<Vertex4d>&x, const std::shared_ptr<Vertex4d>& xnext, double a, double& phi1, Eigen::Vector3d& SrfN){
