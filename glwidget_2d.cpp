@@ -32,23 +32,29 @@ void GLWidget_2D::InitializeDrawMode(){
     drawtype = PaintTool::None; MoveCrvIndex = {-1, -1};
     emit SendNewActiveCheckBox(PaintTool::None);
 }
+
+//展開図上のrulingの色の描画方法の切り替え
 void GLWidget_2D::VisualizeMVColor(bool state){IsMVcolor_binary = state;update();}
 
+//折り目のアフィン変換で変形するモードへの切り替え
 void GLWidget_2D::switch2AffinMode(){ drawtype = PaintTool::AffinTrans;}
 
+//展開図上で扱う曲線の描画処理の切り替え
 void GLWidget_2D::switch2VisibleCurve(){
     visibleCurve = !visibleCurve;
-    update();}
+    update();
+}
 
+//折り目のコピー
 void GLWidget_2D::CopyCurveObj(){
     if(model.back()->refCreases == nullptr || !model.back()->NTree_Creases.find(model.back()->refCreases))IsCopied = false;
     IsCopied = true;
 }
 
+//折り目の貼り付け
 void GLWidget_2D::PasteCurveObj(){
     if(!IsCopied || !model.back()->NTree_Creases.find(model.back()->refCreases))return;
     auto newCrease = model.back()->refCreases->deepCopy();
-    //上方向に10移動させる
     double y = -30;
     for(auto&p: newCrease->CtrlPts)p.y() += y;
     newCrease->setCurve(3);
@@ -56,6 +62,7 @@ void GLWidget_2D::PasteCurveObj(){
     model.back()->AddNewCrease(newCrease);
 }
 
+//ruling制御曲線の追加
 void GLWidget_2D::AddCurve(){
     std::vector<int>deleteIndex;
 
@@ -73,6 +80,7 @@ void GLWidget_2D::AddCurve(){
     emit SendNewActiveCheckBox(PaintTool::AddCurve);
 }
 
+//ruling制御曲線でB-spline曲線を使う場合制御点の挿入を可能にする
 void GLWidget_2D::InsertNewPoint(){
     drawtype = PaintTool::InsertCtrlPt;
     MoveCrvIndex[0] = -1;
@@ -84,11 +92,13 @@ void GLWidget_2D::InsertNewPoint(){
     emit SendNewActiveCheckBox(PaintTool::InsertCtrlPt);
 }
 
+//rulingで割り当てられた色の値が0となるruling(平面になる)場所の描画方法の切り替え
 void GLWidget_2D::EraseNonFoldEdge(bool state){
     IsEraseNonFoldEdge = state;
     update();
 }
 
+//制御点の位置を動かす
 void GLWidget_2D::MoveCurvePt(){
     drawtype = PaintTool::MoveCtrlPt;
     std::vector<int>deleteIndex;
@@ -99,8 +109,8 @@ void GLWidget_2D::MoveCurvePt(){
     emit SendNewActiveCheckBox(PaintTool::MoveCtrlPt);
 }
 
+//長方形の輪郭作成
 void GLWidget_2D::DrawOutlineRectangle(){
-    //drawtype = -1;
     drawtype = PaintTool::Rectangle;
     std::vector<int>deleteIndex;
     model.back()->Check4Param(curveDimention, deleteIndex);
@@ -113,6 +123,7 @@ void GLWidget_2D::DrawOutlineRectangle(){
     emit SendNewActiveCheckBox(PaintTool::Rectangle);
 }
 
+//正n角形の輪郭作成
 void GLWidget_2D::DrawOutlinePolygon(int state){
     if(state == 0)return;
     drawtype = PaintTool::Polygon;
@@ -129,6 +140,7 @@ void GLWidget_2D::DrawOutlinePolygon(int state){
     this->setMouseTracking(true);
 }
 
+//折れ線からなる輪郭作成
 void GLWidget_2D::DrawOutlinePolyline(int state){
     if(state == 0)return;
     drawtype = PaintTool::Polyline;
@@ -143,6 +155,7 @@ void GLWidget_2D::DrawOutlinePolyline(int state){
     emit SendNewActiveCheckBox(PaintTool::Polyline);
 }
 
+//ruling制御曲線の削除
 void GLWidget_2D::DeleteCurve(){
     drawtype = PaintTool::DeleteCurve;
     std::vector<int>deleteIndex;
@@ -152,44 +165,44 @@ void GLWidget_2D::DeleteCurve(){
     emit deleteCrvSignal(deleteIndex);
     setMouseTracking(true);
     emit SendNewActiveCheckBox(PaintTool::DeleteCurve);
-
 }
 
+//折り目の追加
 void GLWidget_2D::AddNewCrease(){
     drawtype = PaintTool::Crease;
     IsMVcolor_binary = true;
     model.back()->RemoveUnable2GenCurve();
 
     model.back()->refCreases = std::make_shared<FoldLine>(PaintTool::Crease);
-    model.back()->ChangeFoldLineState();
     setMouseTracking(false);
     update();
 }
 
-void GLWidget_2D::setColor(){ drawtype = PaintTool::SetColor; }
-
+//グリッド描画の切り替え
 void GLWidget_2D::switchGrid(){
     visibleGrid *= -1;
     update();
 }
 
-
-void GLWidget_2D::setNewGradationMode(){
+//rulingに色を割り当てるモードへの切り替え
+void GLWidget_2D::setGradationMode(){
     std::vector<int> deleteIndex;
     drawtype = PaintTool::NewGradationMode;
     model.back()->Check4Param(curveDimention, deleteIndex); MoveCrvIndex = {-1, -1};
     emit deleteCrvSignal(deleteIndex);
     update();
 }
+
+//正n角形の数の変更
 void GLWidget_2D::recieveNewEdgeNum(int num){model.back()->outline->VerticesNum = num; update();}
 
+//ruling制御曲線上にのるrulingの数の変更
 void GLWidget_2D::ChangedDivSizeEdit(int n){
     this->DivSize = (n < 0)? DivSize: (maxDivSize < n)? maxDivSize: n;
     if(MoveCrvIndex[0] == -1 || model.back()->RulingCurve.empty()) return;
     bool res = false;
     if(curvetype == CurveType::bezier3){
        res = model.back()->RulingCurve[MoveCrvIndex[0]]->drawBezier(curveDimention, crvPtNum);
-        //if(model.back()->outline->isClosed  && model.back()->crv->CurvePoints[0].pt != glm::f64vec2{-1,-1})model.back()->crv->BezierRulings(model.back()->outline->vertices,DivSize,crvPtNum);
     }
     if(curvetype == CurveType::bsp3){
         res = model.back()->RulingCurve[MoveCrvIndex[0]]->drawBspline(curveDimention, crvPtNum);
@@ -209,17 +222,10 @@ void GLWidget_2D::ChangedDivSizeEdit(int n){
     update();
 }
 
-void GLWidget_2D::back2befstate(){
-    if(model.empty())return;
-    model.pop_back();
-    if(model.empty())model.push_back(std::make_shared<Model>(crvPtNum));
-    qDebug()<<"back and stashed size is " << model.size();
-    update();
-    emit foldingSignals();
-}
 
 void GLWidget_2D::changeSelectedCurve(int ind){MoveCrvIndex[0] = ind; drawtype = PaintTool::None; update();}
 
+//レイヤー上を操作したとき、ruling制御曲線のruling配置の優先順位を変更
 void GLWidget_2D::swapCrvsOnLayer(int n1, int n2){
     if(n1 == n2)return;
     std::iter_swap(model.back()->RulingCurve.begin() + n1, model.back()->RulingCurve.begin() + n2);
@@ -231,11 +237,13 @@ void GLWidget_2D::swapCrvsOnLayer(int n1, int n2){
     update();
 }
 
+//展開図上のrulingの線の太さの編集
 void GLWidget_2D::receiveNewLineWidth(double d){
     rulingWidth = d;
     update();
 }
 
+//インタフェース上でflap angleの値を変えた時のrulingの向きをシミュレート
 void GLWidget_2D::changeflapgnle(double val){
     if(model.back()->NTree_Creases.GetRoot()->children.empty())return;
     model.back()->refCreases->applyAAAMethod(model.back()->outline->vertices, val);
@@ -543,6 +551,7 @@ void GLWidget_2D::DrawGrid(){
     }
 }
 
+//マウスクリック時のイベント
 void GLWidget_2D::mousePressEvent(QMouseEvent *e){
     QPointF p = mapFromGlobal(QCursor::pos());
     QPointF p_ongrid = SetOnGrid(p, gridsize, this->size());
@@ -626,6 +635,7 @@ void GLWidget_2D::mousePressEvent(QMouseEvent *e){
     update();
 }
 
+//マウスを押し続けた時のイベント
 void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
     QPointF p = this->mapFromGlobal(QCursor::pos());
 
@@ -689,6 +699,7 @@ void GLWidget_2D::mouseMoveEvent(QMouseEvent *e){
 
 }
 
+//マウスを話したときのイベント
 void GLWidget_2D::mouseReleaseEvent(QMouseEvent * e){
     movePt = -1; affinmode = -1;
     if(IsAffinMoved){basePoint = QPointF(-1,-1); IsAffinMoved = false;}
@@ -706,6 +717,7 @@ void GLWidget_2D::mouseReleaseEvent(QMouseEvent * e){
     update();
 }
 
+//
 void GLWidget_2D::Reset(){
     model.clear();
     model.push_back(std::make_shared<Model>(crvPtNum));
@@ -715,6 +727,7 @@ void GLWidget_2D::Reset(){
     update();
 }
 
+//
 void GLWidget_2D::wheelEvent(QWheelEvent *we){
     DiffWheel = (we->angleDelta().y() > 0) ? 1 : -1;
     if(drawtype == PaintTool::NewGradationMode){
@@ -735,6 +748,7 @@ void GLWidget_2D::wheelEvent(QWheelEvent *we){
     update();
 }
 
+//色指定が行われたrulingを決定し色を割り当てる
 void GLWidget_2D::AddPoints4Gradation(QMouseEvent *e, QPointF& p){
     Eigen::Vector3d curPos{p.x(), p.y(), 0};
     double dist = 10;

@@ -53,11 +53,11 @@ std::shared_ptr<CRV> CRV::deepCopy(){
     return c;
 }
 
+//ruling制御曲線の制御点削除
 bool CRV::eraseCtrlPt(int curveDimention, int crvPtNum){
     if((int)ControllPoints.size() > 0)ControllPoints.erase(ControllPoints.end() - 1);
     ControllPoints.shrink_to_fit();
     if(curveType == CurveType::bezier3){
-        //return drawBezier(curveDimention, crvPtNum);
     }else if(curveType == CurveType::bsp3){
         return drawBspline(curveDimention, crvPtNum);
     }else if(curveType == CurveType::line){
@@ -66,6 +66,7 @@ bool CRV::eraseCtrlPt(int curveDimention, int crvPtNum){
     return false;
 }
 
+//動かす制御点のインデックスの計算
 int CRV::movePtIndex(Eigen::Vector3d& p, double& dist){
     int n = ControllPoints.size();
     dist = 5.0;
@@ -85,7 +86,6 @@ CurveType CRV::getCurveType(){return curveType;}
 void CRV::setCurveType(CurveType n){curveType = n;}
 
 bool CRV::drawBspline(int curveDimention,  int crvPtNum){
-    //Rulings.clear();
     if((int)ControllPoints.size() <= curveDimention) return false;
 
     int knotSize = (int)ControllPoints.size() + curveDimention + 1;
@@ -149,8 +149,6 @@ bool CRV::setPoint(const std::vector<std::shared_ptr<Vertex>>&outline, Eigen::Ve
     for(auto&p: crossPoint){
         minPt = ((p - cp).norm() < (minPt - cp).norm()) ? p : minPt;
     }
-    auto itr = std::find(crossPoint.begin(), crossPoint.end(), minPt);
-    //if(itr == crossPoint.end())return IsIntersected;
 
     for(int i = 0; i < (int)crossPoint.size(); i++) P.push_back(crossPoint[i]);
 
@@ -158,39 +156,7 @@ bool CRV::setPoint(const std::vector<std::shared_ptr<Vertex>>&outline, Eigen::Ve
     return IsIntersected;
 }
 
-void CRV::BezierRulings(std::shared_ptr<OUTLINE>& outline, int& DivSize, int crvPtNum){
-    qDebug() << "you can't use now";
-    return;
-    double l = 1000; //適当に大きな値
-    Eigen::Vector3d N, T;
-    std::vector<Eigen::Vector3d> crossPoint;
-    double t = 0.0;
-    //DivSize = (DivSize > crvPtNum)? crvPtNum: DivSize;
-
-    //int m = std::min(2 * DivSize - 3, crvPtNum);//2 * DivSize - 1 ... DivSize: the number of mesh , DivSize - 1: rulings(folding line)
-    int m = DivSize - 1;
-    int i = 0, rind = 0;
-    std::vector<std::shared_ptr<Vertex>> vertices = outline->getVertices();
-
-    while(i < m){
-        T = 3.0 * (-ControllPoints[0] + 3.0 * ControllPoints[1] - 3.0 * ControllPoints[2] + ControllPoints[3]) * t * t
-                + 6.0 * (ControllPoints[0] - 2.0 * ControllPoints[1] + ControllPoints[2]) * t + 3.0 * (-ControllPoints[0] + ControllPoints[1]);//一階微分(tについて)
-        N = l * Eigen::Vector3d(-T.y(), T.x(), 0);
-        //if (glm::dot(glm::normalized(N), glm::f64vec3{0,-1, 0}) < 0) N *= -1;
-        int n = std::min(int(((double)i/(double)(m - 1)) * crvPtNum), crvPtNum - 1);
-        bool IsIntersected = setPoint(vertices, N, CurvePoints[n], crossPoint);
-
-        if(IsIntersected){
-            for(int j = 0; j < (int)crossPoint.size(); j += 2){
-                //Rulings[rind] = std::make_tuple(new Vertex(crossPoint[j]), new Vertex(crossPoint[j+1]));
-                i++;
-            }
-        }
-        t += 1.0 / (double)(std::min(DivSize, crvPtNum) - 1);
-    }
-    return;
-}
-
+//B-spline曲線に直交するrulingの生成
 void CRV::BsplineRulings(std::shared_ptr<OUTLINE>& outline, int& DivSize, int crvPtNum, int curveDimention){
     if((int)ControllPoints.size() <= curveDimention) return;
     double l = 1000;//適当に大きな値
@@ -224,7 +190,6 @@ void CRV::BsplineRulings(std::shared_ptr<OUTLINE>& outline, int& DivSize, int cr
     }
     double n = double(sind);
     int rind = 0;
-    //ruling *r;
     while(n < eind){
         Rulings[rind]->et = EdgeType::r;
         Rulings[rind]->v = std::make_shared<Vertex>(Vertex(CrossPoints[floor(n)][0]));
@@ -250,6 +215,7 @@ bool CRV::drawLine(){
     return true;
 }
 
+//線分に直交するrulingの生成
 void CRV::LineRulings(std::shared_ptr<OUTLINE>& outline, int DivSize){
     if(ControllPoints.size() != 2)return;
     double l = 1000;//適当に大きな値
@@ -296,6 +262,7 @@ bool CRV::drawArc(int crvPtNum){
     return true;
 }
 
+//円弧に直交するrulingの生成
 void CRV::ArcRulings(std::shared_ptr<OUTLINE>& outline, int DivSize){
     if(ControllPoints.size() != 3)return;
     double l = 1000;//適当に大きな値
@@ -304,9 +271,6 @@ void CRV::ArcRulings(std::shared_ptr<OUTLINE>& outline, int DivSize){
     int sind = -1, eind = curveNum - 1;
     Eigen::Vector3d V, N;
     for(int i = 0; i < curveNum; i++){
-
-        //if(i == 0)V = (CurvePoints[1] - CurvePoints[0]).normalized();
-        //else V = (CurvePoints[i] - CurvePoints[i - 1]).normalized();
         N = l * Eigen::Vector3d(-V.y(), V.x(), 0);
         N = l * (ControllPoints[0] - CurvePoints[i]).normalized();
         bool IsIntersected = setPoint(outline->vertices, N, CurvePoints[i], crossPoint);
@@ -326,6 +290,7 @@ void CRV::ArcRulings(std::shared_ptr<OUTLINE>& outline, int DivSize){
     return;
 }
 
+//ruling制御曲線がB-spline曲線の場合、制御点の挿入を実行
 void CRV::InsertControlPoint(QPointF _p){
     int ind, d;
     auto DistanceToLine = [](const Eigen::Vector3d& la, const Eigen::Vector3d& lb, const Eigen::Vector3d& p, Eigen::Vector3d& q)->double{
@@ -400,7 +365,6 @@ void CRV::InsertControlPoint(QPointF _p){
 
 void CRV::SetNewPoint(){
     if(InsertPointSegment == -1)return;
-
     ControllPoints.insert(ControllPoints.begin() + InsertPointSegment + 1, InsertPoint);
 }
 
@@ -431,6 +395,7 @@ void OUTLINE::addVertex(const std::shared_ptr<Vertex>& v, int n){
     else vertices.insert(vertices.begin() + n, v);
 }
 
+//頂点の追加
 void OUTLINE::addVertex(Eigen::Vector3d p){
     if(IsClosed()) return;
 
@@ -440,9 +405,6 @@ void OUTLINE::addVertex(Eigen::Vector3d p){
             vertices.insert(vertices.begin() + 1, std::make_shared<Vertex>(Eigen::Vector3d(p.x(), vertices[0]->p.y(), 0)));
             vertices.push_back(std::make_shared<Vertex>(Eigen::Vector3d(vertices[0]->p.x(), p.y(), 0)));
             ConnectEdges();
-            if(Eigen::Vector3d::UnitX().dot(getNormalVec()) > 0){
-                //vertices[1]->p = vertices[1]->p3 = glm::f64vec3{p.x, vertices[0]->p.y, 0}; vertices[3]->p = vertices[3]->p3 = glm::f64vec3{vertices[0]->p.x, p.y, 0};
-            }
         }
     }else if(type == "Polyline"){
         double d = 5;
@@ -461,6 +423,7 @@ void OUTLINE::addVertex(Eigen::Vector3d p){
     }
 }
 
+//頂点の削除
 void OUTLINE::eraseVertex(){
     if(type == "Polyline"){
         if(vertices.size() == 0)return;
@@ -564,7 +527,6 @@ void OUTLINE::MoveVertex(Eigen::Vector3d p, int ind){
 std::vector<std::shared_ptr<Vertex>> OUTLINE::getVertices(){return vertices;}
 
 void OUTLINE::ConnectEdges(bool IsConnected){
-    //if(!isClosed)return;
     if(vertices.size() < 2)return;
     Lines.clear();
     if(IsConnected){
@@ -575,6 +537,7 @@ void OUTLINE::ConnectEdges(bool IsConnected){
     }
 }
 
+//引数として与えられた頂点が曲面内部にあるかの判定
 bool OUTLINE::IsPointInFace(Eigen::Vector3d p){
     if(!IsClosed())return false;
     int cnt = 0;
@@ -599,7 +562,7 @@ bool OUTLINE::IsClosed(){
     return true;
 }
 
-
+//rulingの交差判定
 void CrossDetection(std::shared_ptr<OUTLINE>& outline, std::shared_ptr<CRV>& crvs){
     if(crvs->Rulings.front()->v == nullptr)return;
     for(auto&r: crvs->Rulings)r->IsCrossed = -1;
@@ -615,20 +578,6 @@ void CrossDetection(std::shared_ptr<OUTLINE>& outline, std::shared_ptr<CRV>& crv
         }
     }
 }
-
-Eigen::Vector3d OUTLINE::getNormalVec(){
-    Eigen::Vector3d N(0,0,0);
-    auto prev = Lines.end() - 1;
-    for(auto cur = Lines.begin(); cur != Lines.end(); cur++){
-        auto v = ((*cur)->v->p - (*cur)->o->p).normalized(), v2 = ((*prev)->v->p - (*prev)->o->p).normalized();
-        if(abs(v.dot(v2)) < 1.0 - 1e-5){
-            return (v.cross(v2)).normalized();
-        }
-        prev = cur;
-    }
-    return N;
-}
-
 
 int OUTLINE::movePointIndex(Eigen::Vector3d p){
     int n = vertices.size();
@@ -694,7 +643,6 @@ std::vector<std::shared_ptr<Vertex>> ConvexHull_polygon(const std::vector<std::s
     std::shared_ptr<Vertex> top, next;
     for(int i = 0; i < (int)Args.size(); i++){
         do{
-            //if((int)P.size() == 1)break;
             top = P.back();
             P.pop_back();
             next = P.back();
@@ -708,6 +656,8 @@ std::vector<std::shared_ptr<Vertex>> ConvexHull_polygon(const std::vector<std::s
     P.pop_back();
     return P;
 }
+
+//polygonの向きを時計回り、反時計回りのいずれかに限定(凸多角形のみを扱うと仮定)
 std::vector<std::shared_ptr<Vertex>> SortPolygon(std::vector<std::shared_ptr<Vertex>>& polygon){
     std::vector<std::shared_ptr<Vertex>> poly_sort;
     if(polygon.size() > 3) poly_sort = ConvexHull_polygon(polygon);
@@ -718,22 +668,7 @@ std::vector<std::shared_ptr<Vertex>> SortPolygon(std::vector<std::shared_ptr<Ver
     return poly_sort;
 }
 
-std::shared_ptr<Vertex> getClosestVertex(const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o,  const std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, bool SkipTrimedPoint){
-    std::shared_ptr<Vertex> V_max = nullptr;
-    double t_max = -1;
-    for(auto&fc: FoldingCurve){
-        if(SkipTrimedPoint && !fc->IsCalc)continue;
-        if(((fc->second->p - v->p).norm() < 1e-7|| (fc->second->p - o->p).norm() < 1e-7))continue;
-        if(MathTool::is_point_on_line(fc->second->p, v->p, o->p)){
-            double t = (fc->second->p - o->p).norm()/(v->p - o->p).norm();
-            if(t > t_max){
-                t_max = t; V_max = fc->second;
-            }
-        }
-    }
-    return V_max;
-}
-
+//曲面の輪郭、ruling制御曲線上のruling、折り目を使って離散可展面の生成
 std::vector<std::vector<std::shared_ptr<Vertex>>> MakeModel(const std::vector<std::shared_ptr<Line>>& Surface,
                                                             const std::vector<std::shared_ptr<Line>>& Rulings,  const std::vector<std::vector<std::shared_ptr<Vertex4d>>>& Creases){
     //firstの頂点(折曲線上の点)と輪郭の頂点が重なる場合輪郭の頂点を取り除く
@@ -859,6 +794,7 @@ std::vector<std::vector<std::shared_ptr<Vertex>>> MakeModel(const std::vector<st
     return Polygons;
 }
 
+//クリックした箇所から最もグリッド講師座標の計算
 QPointF SetOnGrid(QPointF& cursol, double gridsize, const QSize& S){
     int x = (int)cursol.x() % (int)gridsize, y = (int)cursol.y() % (int)gridsize;
     x = (cursol.x() - x + gridsize/2);

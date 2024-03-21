@@ -150,21 +150,18 @@ void GLWidget_3D::perspective(GLdouble fovy, GLdouble aspect, GLdouble zNear, GL
     ymin = -ymax;
     xmin = ymin * aspect;
     xmax = ymax * aspect;
-
     glFrustum( xmin, xmax, ymin, ymax, zNear, zFar );
 }
 
 
 void GLWidget_3D::mousePressEvent(QMouseEvent *e){
     actionType = (e->button() == Qt::LeftButton)? 1 : (e->button() == Qt::RightButton)? 2: 0;
-
     befPos = this->mapFromGlobal(QCursor::pos());
     update();
 }
 
 void GLWidget_3D::wheelEvent(QWheelEvent *we){
     double z = (we->angleDelta().y() > 0) ? 5 : -5;
-    //arccam.zoom(z);
     TransZ += z;
     update();
 }
@@ -180,50 +177,13 @@ void GLWidget_3D::mouseMoveEvent(QMouseEvent *e){
 
     QPointF curPos = this->mapFromGlobal(QCursor::pos());
     QPointF diff = curPos - befPos;
-
     if(actionType == 1){//平行移動
         TransX -=  0.3 * diff.x();
-        TransY +=  0.3 * diff.y();
-        //arccam.pan(glm::f64vec2{diff.x(), diff.y()});
     }else if(actionType == 2){//回転
         angleX += diff.x();
         angleY += diff.y();
-        //arccam.rotate(glm::f64vec2{befPos.x(), befPos.y()}, glm::f64vec2{curPos.x(), curPos.y()});
     }
     befPos = curPos;
     update();
-}
-
-Eigen::Vector3d GLWidget_3D::getVec(double x, double y){
-    QSize s = this->size();
-    double shortSide = std::min(s.width(), s.height());
-    Eigen::Vector3d pt(2. * x / shortSide - 1.0, -2.0 * y / shortSide + 1.0, 0.0);
-    // z座標の計算
-    const double xySquared = pt.x() * pt.x() + pt.y() * pt.y();
-    if (xySquared <= 1.0) pt.z() = std::sqrt(1.0 - xySquared);// 単位円の内側ならz座標を計算
-    else pt = pt.normalized(); // 外側なら球の外枠上にあると考える
-    return pt;
-}
-
-void GLWidget_3D::updateRotate() {
-    QPointF curPos = this->mapFromGlobal(QCursor::pos());
-    // マウスクリック位置をアークボール球上の座標に変換
-    const Eigen::Vector3d u = getVec(befPos.x(), befPos.y());
-    const Eigen::Vector3d v = getVec(curPos.x(), curPos.y());
-
-    // カメラ座標における回転量 (=世界座標における回転量)
-    const double angle = std::acos(std::max(-1.0, std::min(u.dot(v), 1.0)));
-
-    // カメラ空間における回転軸
-    const Eigen::Vector3d rotAxis = u.cross(v);
-
-    // カメラ座標の情報を世界座標に変換する行列
-    //const glm::f64mat4 c2wMat = glm::inverse(viewMat);
-
-    // 世界座標における回転軸
-    //const Eigen::Vector3d rotAxisWorldSpace = glm::vec3(c2wMat * glm::vec4(rotAxis, 0.0f));
-
-    // 回転行列の更新
-    //acRotMat = glm::rotate(((4.0 * angle), rotAxisWorldSpace) * acRotMat;
 }
 

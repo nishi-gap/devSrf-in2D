@@ -60,7 +60,6 @@ public:
     bool SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v);
     void SortCurve(bool ascending = false);
     void AlignmentVertex4dDirection();
-    void CheckIsCrossedRulings();
     void initialize_foldstate(const std::vector<std::shared_ptr<Vertex>>& Poly_V);
     void reassignruling(std::shared_ptr<FoldLine>& parent, const std::vector<std::shared_ptr<Line>>& Surface, const std::vector<std::shared_ptr<Line>>& Rulings);
 

@@ -1,7 +1,6 @@
 #include "foldline.h"
 
 std::ofstream ofs_obj, ofs_sbj;
-bool hasContainSbjfunc = false;
 
 const double eps = 1e-7;
 inline Eigen::Vector3d _calcruling3d(const double& a, Eigen::Vector3d e, Eigen::Vector3d e2, Eigen::Vector3d axis, double& beta, std::vector<double>& Phi);
@@ -374,20 +373,17 @@ double ObjFunc_Vertex(const std::vector<double> &X, std::vector<double> &grad, v
         return fr + fc;
     };
 
-    //geometory
-    double wc = 1, wo = 1e-2;
-    double fc = wc * constfunc(X[0], od->FC, od->BasePt, od->Poly_V, od->a, od->ind_l, od->StartingIndex);
+    double wo = 1e-2;
     double fo = wo * objfunc(X[0], od->FC, od->BasePt, od->Poly_V, od->wsim, od->wp, od->a, od->ind_l, od->StartingIndex);
     if(!grad.empty()){
        double fop = wo * objfunc(X[0] + eps, od->FC, od->BasePt, od->Poly_V, od->wsim, od->wp, od->a, od->ind_l, od->StartingIndex);
        double fom = wo * objfunc(X[0] - eps, od->FC, od->BasePt, od->Poly_V, od->wsim, od->wp, od->a, od->ind_l, od->StartingIndex);
        grad[0] = (fop - fom)/(2.0*eps);
     }
-    double f = (hasContainSbjfunc)? fo + fc: fo;
+    double f = fo;
     ofs_obj << X[0] << "," << f << "\n";
 
     update_Vertex(X[0], od->FC[od->ind_r], od->BasePt[od->ind_r]);
-    //qDebug() <<"objfunc = " << fo;
     return  f;
 }
 
@@ -476,14 +472,10 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
     od.AddBasePt(ValidFC);
     od.AddWeight(wsim, wp);
 
-    if(!hasContainSbjfunc){
-       nlopt::opt local_optimizer(nlopt::LN_NELDERMEAD, 1);// Specify the Nelder-Mead algorithm for solving each step
-       opt.set_local_optimizer(local_optimizer);
-       opt.add_equality_constraint(Fconst_mixed, &od);
-    }else opt = nlopt::opt(nlopt::LN_NELDERMEAD, 1);
+    nlopt::opt local_optimizer(nlopt::LN_NELDERMEAD, 1);// Specify the Nelder-Mead algorithm for solving each step
+    opt.set_local_optimizer(local_optimizer);
+    opt.add_equality_constraint(Fconst_mixed, &od);
     opt.set_min_objective(ObjFunc_Vertex, &od);
-
-    qDebug()<<"hasContainSbjfunc is " << hasContainSbjfunc;
 
     for(int i = 0; i < (int)FC.size(); i++){
        FC[i] = ValidFC[i]->deepCopy(); FC[i]->addline(ValidFC[i]->line_parent);
@@ -532,11 +524,11 @@ bool FoldLine::PropagateOptimization_Vertex(const std::vector<std::shared_ptr<Ve
     }
     cb_Folding(ValidFC, Poly_V, a_flap, (int)ValidFC.size()/2);
     ofs.close();
-    //hasContainSbjfunc = !hasContainSbjfunc;
     return (fr == 0.0) ? true: false;
 }
 
-
+//flap angleの最適化
+//最適化ライブラリはnloptのNelder-Mead法
 bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double wp, double wsim, int rank){
 
     auto apply_optimization = [&](nlopt::opt& opt, std::vector<double>& X, std::vector<std::shared_ptr<Vertex4d>>& ValidFC, const std::vector<std::shared_ptr<Vertex>>& Poly_V,
@@ -638,23 +630,7 @@ bool FoldLine::Optimization_FlapAngle(const std::vector<std::shared_ptr<Vertex>>
     return true;
 }
 
-void FoldLine::CheckIsCrossedRulings(){
-    if((int)FoldingCurve.size() < 3)return;
-    int mid = FoldingCurve.size()/2;
-    for(int i = mid + 1; i < (int)FoldingCurve.size()-1; i++){//左側
-        if(calcCrossPt4Constraint(FoldingCurve[i], FoldingCurve[i-1]) != 0.0){
-            for(int j = i; j < (int)FoldingCurve.size()-1; j++)FoldingCurve[j]->IsCalc = false;
-            break;
-        }
-    }
-    for(int i = mid - 1; i > 0; i--){//右側
-        if(calcCrossPt4Constraint(FoldingCurve[i], FoldingCurve[i+1]) != 0.0){
-            for(int j = i; j > 0; j--)FoldingCurve[j]->IsCalc = false;
-            break;
-        }
-    }
-}
-
+//間引いた後のrulingを補間
 bool FoldLine::SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly_v){
 
     auto getV = [](const std::shared_ptr<Vertex>& o, const std::shared_ptr<Vertex>& x, const std::shared_ptr<Vertex>& o2, const std::shared_ptr<Vertex>& x2)->std::shared_ptr<Vertex>{
@@ -715,6 +691,7 @@ bool FoldLine::SimpleSmooothSrf(const std::vector<std::shared_ptr<Vertex>>& Poly
     return true;
 }
 
+//rulingが交差している場合折り目上で最も直線に近い要素を間引く
 void FoldLine::SimplifyModel(int iselim, bool isroot){
     auto elim_rulings = [&]()->std::vector<std::shared_ptr<Vertex4d>>{
         struct Point{
@@ -777,6 +754,7 @@ void FoldLine::SimplifyModel(int iselim, bool isroot){
     return;
 }
 
+//折り目とrulingの組み合わせから不適切なものがあればrulingの山谷の割り当てを編集
 void FoldLine::ReassignColor(){
     //Y字のとき折り線は山であると仮定(谷の場合は色を反転)
     typedef struct {
@@ -824,6 +802,7 @@ void FoldLine::ReassignColor(){
 
 template class PointOnEndEdge<std::shared_ptr<Vertex>>;
 
+//下の折り目を通るrulingから上側の折り目の頂点座標を決定
 void FoldLine::reassignruling(std::shared_ptr<FoldLine>& parent, const std::vector<std::shared_ptr<Line>>& Surface, const std::vector<std::shared_ptr<Line>>& Rulings){
     auto getCrossPoint = [](std::vector<Eigen::Vector3d>& CtrlPts, std::shared_ptr<Vertex> v, std::shared_ptr<Vertex> o, int dim){
         std::vector<double>arcT = BezierClipping(CtrlPts, v, o, dim);
@@ -918,6 +897,7 @@ void FoldLine::reassignruling(std::shared_ptr<FoldLine>& parent, const std::vect
     parent->AlignmentVertex4dDirection();
 }
 
+//an additive algorithmのa'の計算
 double calclate_adjacent_angle(const std::shared_ptr<Vertex4d>&xbef, const std::shared_ptr<Vertex4d>&x, const std::shared_ptr<Vertex4d>& xnext, double a, double& phi1, Eigen::Vector3d& SrfN){
     Eigen::Vector3d e = (xbef->first->p3 - x->first->p3).normalized(), e2 = (xnext->first->p3 - x->first->p3).normalized() , Axis = (x->third->p3 - x->first->p3).normalized();
     double beta = std::acos(e.dot(e2)), k = 2.0 * std::numbers::pi - (std::acos(e2.dot(Axis)) + std::acos(e.dot(Axis)));
@@ -929,24 +909,24 @@ double calclate_adjacent_angle(const std::shared_ptr<Vertex4d>&xbef, const std::
     double cos_a = (cos(phi1) - cos(phi2)*cos(beta))/(sin(phi2)*sin(beta));
     if(cos_a > 1)cos_a = 1; else if(cos_a < -1)cos_a = -1;
     double a2 = std::atan2(sin_a, cos_a);
-    if(a2 < 0)a2 += 2*std::numbers::pi;//koko chuui
+    if(a2 < 0)a2 += 2*std::numbers::pi;
     SrfN = MathTool::ProjectionVector(e.cross(e2), e2, true);
     return a2;
 }
 
+//an additive algorithmの実行
 void FoldLine::applyAAAMethod(const std::vector<std::shared_ptr<Vertex>>& Poly_V, double a){
 
     if(FoldingCurve.empty() && a_flap == -1)return;
     int StartingIndex = FoldingCurve.size()/2;
     cb_Folding(FoldingCurve, Poly_V, a, StartingIndex);
-    if(RulingsCrossed(FoldingCurve) < 1e-9){
-        a_flap = a; //tol = _tol;
-    }
+    if(RulingsCrossed(FoldingCurve) < 1e-9) a_flap = a;
 
     a_flap = a;
     return;
 }
 
+//一つ前のflap angleから求まるa'_i(引数のaに該当)から隣接する頂点のflap angle a_i+1を計算
 inline double update_flapangle(double a, const Eigen::Vector3d& befN, const Eigen::Vector3d& SrfN, const Eigen::Vector3d& e){
     double dir = (-e).dot(befN.cross(SrfN));
     double tau = (SrfN.dot(befN) < -1)? std::numbers::pi: (SrfN.dot(befN) > 1)? 0: std::acos(SrfN.dot(befN));
@@ -955,6 +935,7 @@ inline double update_flapangle(double a, const Eigen::Vector3d& befN, const Eige
     return a - tau;
 }
 
+//三次元空間上のrulingの向きの計算
 inline Eigen::Vector3d _calcruling3d(const double& a, Eigen::Vector3d e, Eigen::Vector3d e2, Eigen::Vector3d axis, double& beta, std::vector<double>& Phi){
     e = e.normalized(); e2 = e2.normalized(); axis = axis.normalized();
     beta = std::acos(e.dot(e2));
@@ -968,6 +949,7 @@ inline Eigen::Vector3d _calcruling3d(const double& a, Eigen::Vector3d e, Eigen::
     return RevisionVertices::decideRulingDirectionOn3d(e, e.cross(e2), a, Phi[0]);//新しいruling方向
 }
 
+//展開図と離散可展面上のrulingの向きと長さを計算
 void CalcRuling(double a, std::shared_ptr<Vertex4d>& xbef, std::shared_ptr<Vertex4d>& x, std::shared_ptr<Vertex4d>& xnext, const std::vector<std::shared_ptr<Vertex>>& Poly_V,  double& a2, Eigen::Vector3d& SrfN, const Eigen::Vector3d &SpinAxis ){
 
     Eigen::Vector3d e = (xbef->first->p3 - x->first->p3).normalized(), e2 = (xnext->first->p3 - x->first->p3).normalized();
@@ -988,6 +970,7 @@ void CalcRuling(double a, std::shared_ptr<Vertex4d>& xbef, std::shared_ptr<Verte
     a2 = calclate_adjacent_angle(xbef, x, xnext, a, phi1, SrfN);
 }
 
+//元の論文は一方向のみで考慮しているが、に方向に伝播させるための関数
 void CalcRuling_back(double a, std::shared_ptr<Vertex4d>& xbef, std::shared_ptr<Vertex4d>& x, std::shared_ptr<Vertex4d>& xnext, const std::vector<std::shared_ptr<Vertex>>& Poly_V,  double& a2, Eigen::Vector3d& SrfN, const Eigen::Vector3d &SpinAxis){
     double phi1;
     a2 = calclate_adjacent_angle(xbef, x, xnext, a, phi1, SrfN);
@@ -1004,8 +987,8 @@ void CalcRuling_back(double a, std::shared_ptr<Vertex4d>& xbef, std::shared_ptr<
     x->second->p3 = (crossPoint - x->first->p).norm() * r3d + x->first->p3;
 }
 
+//折り目の中心を起点として両側にflap angleを伝播させてrulingの向きを修正
 void _FoldingAAAMethod_center(std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, const std::vector<std::shared_ptr<Vertex>>& Poly_V, const double angle, int StartingIndex){
-
    double a2 = 0;
     Eigen::Vector3d e, e2;
     Eigen::Vector3d N, r, befN, befedge;
@@ -1013,7 +996,6 @@ void _FoldingAAAMethod_center(std::vector<std::shared_ptr<Vertex4d>>& FoldingCur
     for(auto&fc:FoldingCurve){if(fc->IsCalc)FC.push_back(fc);}
 
     double a = (angle < 0.0)? angle + 2.0 * std::numbers::pi: (angle > 2.0*std::numbers::pi)? angle - 2.0*std::numbers::pi: angle;
-    double a_init = a;
     std::shared_ptr<Vertex4d> fc, fc_bef, fc_next;
 
     for(int ind = StartingIndex; ind < (int)FC.size() - 1; ind++){
@@ -1042,7 +1024,6 @@ void _FoldingAAAMethod_center(std::vector<std::shared_ptr<Vertex4d>>& FoldingCur
     a = 2.0*std::numbers::pi  - (a + tau);
     if(a > 2*std::numbers::pi)a -= 2*std::numbers::pi;
     if(a < 0)a += 2*std::numbers::pi;
-    //a = 2.0*std::numbers::pi -  a;
     befN = MathTool::ProjectionVector(e.cross(e2), e2, true);
     for(int ind = StartingIndex -1; ind > 0; ind--){
         e = (FC[ind + 1]->first->p3 - FC[ind]->first->p3).normalized();

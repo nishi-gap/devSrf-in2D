@@ -29,7 +29,7 @@ MainWindow::MainWindow(QWidget *parent)
     //visualize Grid
     connect(ui->gridCBox, &QCheckBox::clicked, ui->glWid2dim, &GLWidget_2D::switchGrid);
 
-    connect(ui->AddPointsButton,&QPushButton::clicked,ui->glWid2dim,&GLWidget_2D::setNewGradationMode);
+    connect(ui->AddPointsButton,&QPushButton::clicked,ui->glWid2dim,&GLWidget_2D::setGradationMode);
     connect(ui->glWid2dim, &GLWidget_2D::ColorChangeFrom, this, &MainWindow::ApplyNewColor);
     connect(this, &MainWindow::makeGradation, ui->glWid2dim, &GLWidget_2D::DrawGradationMode);
     connect(ui->CP_colorSlider, &QSlider::valueChanged, ui->glWid2dim, &GLWidget_2D::GetGradationFromSlider);
@@ -116,6 +116,7 @@ void MainWindow::EraseNonFoldEdge(bool state){
 
 void MainWindow::StartOptimization(){
     double wp = ui->RulingDirWeight->value(), wsim = ui->NormErrorWeight->value();
+     ui->glWid2dim->model.back()->AddNewCrease(ui->glWid2dim->model.back()->refCreases);
     ui->glWid2dim->model.back()->BendingModel(wp,wsim, 3, 1);
     fold_Sm();
 }
@@ -142,7 +143,7 @@ void MainWindow::fold_Sm(){
     if(!ui->glWid2dim->model.back()->outline->IsClosed())ui->glWid3dim->setVertices();
 
     else{
-        ui->glWid2dim->model.back()->SetOnVertices_outline(false);
+        ui->glWid2dim->model.back()->SetOnVertices_outline();
         auto Surface = ui->glWid2dim->model.back()->outline->Lines;
         auto Rulings = ui->glWid2dim->model.back()->Rulings;
         auto FL = ui->glWid2dim->model.back()->NTree_Creases.NTree2Array();
@@ -264,10 +265,6 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
 
     if(e->key() == Qt::Key_V){
         if(e->modifiers().testFlag(Qt::ControlModifier)) ui->glWid2dim->PasteCurveObj();
-    }
-
-    if(e->key() == Qt::Key_Z){
-        if(e->modifiers().testFlag(Qt::ControlModifier)) ui->glWid2dim->back2befstate();
     }
 
     fold_Sm();

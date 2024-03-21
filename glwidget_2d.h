@@ -28,7 +28,6 @@ public:
     bool visibleCurve;
     int DivSize;
     void EraseNonFoldEdge(bool state);
-    void back2befstate();
 
     class drawobj{
     public:
@@ -63,10 +62,9 @@ public slots:
 
     void Reset();
     void ChangedDivSizeEdit(int n);
-    void setColor();
 
     //gradation
-    void setNewGradationMode();
+    void setGradationMode();
     void DrawGradationMode();
     void GetGradationFromSlider(int val);
     void VisualizeMVColor(bool state);

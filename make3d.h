@@ -33,16 +33,14 @@ public:
 
     void deleteOutline(QPointF& cursol);
     void addRulings(); //0:move curve point, 1: add(erase, insert) curve point
-    void SetOnVertices_outline(bool IsupdateEndPt);
+    void SetOnVertices_outline();
 
     //FoldLine
     void RemoveUnable2GenCurve();
     bool AddNewCrease(std::shared_ptr<FoldLine>& NewCrease);
     void applyFL();
     bool BendingModel(double wp, double wsim, int dim, int alg);//alg=0:ruling intersection, alg=1:regression curve
-    void ChangeFoldLineState();
 
-    bool Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double wp, double wsim);
     void modifyFoldingCurvePositionOn3d();
     void flatten_lsp(std::shared_ptr<FoldLine>& FldLine);
 

@@ -11,14 +11,13 @@ Model::Model(int _crvPtNum){
     outline = std::make_shared<OUTLINE>();
     refCrv.clear();
     refCreases = nullptr;
-    //FoldCurveIndex = 0;
     movingVertexIndex = -1;
     NTree_Creases = std::shared_ptr<FoldLine>();
 }
 
 std::shared_ptr<Model> Model::deepCopy(){
     std::shared_ptr<Model> m = std::make_shared<Model>();
-    m->crvPtNum = crvPtNum;  //m->FoldCurveIndex =  FoldCurveIndex;
+    m->crvPtNum = crvPtNum;
     m->refCrv = refCrv;
     m->ColorPt = ColorPt;
     m->Rulings.resize(Rulings.size());
@@ -31,7 +30,6 @@ std::shared_ptr<Model> Model::deepCopy(){
 
 void Model::clear(){
     Rulings.clear();
-    //ol_vertices.clear();
     ColorPt = ColorPoint(200, std::numbers::pi/2.0);
 }
 
@@ -41,7 +39,7 @@ void Model::Initialize(){
     refCrv.clear();
 }
 
-//将来的にはfoldlineだけでなくほかのオブジェクトも判定して操作できるようにしたい
+//クリックで選択した曲線の決定
 void Model::detectClickedObj(const QPointF& curPos){
     refCreases = nullptr;
     const double step = 0.002;
@@ -64,6 +62,7 @@ void Model::detectClickedObj(const QPointF& curPos){
     qDebug()<<"clicked object  " << refCreases.get();
 }
 
+//アフィン変換の実行(中身はtransform.cppに記載)
 void Model::AffinTranse_Crease(int type, const QPointF& befPos, const QPointF& curPos, const QPointF& basePos){
     if(refCreases == nullptr)return;
     switch (type) {
@@ -79,6 +78,9 @@ void Model::AffinTranse_Crease(int type, const QPointF& befPos, const QPointF& c
     }
 }
 
+//色の割り当て時に色の0~255を折りの0~piに線形性のある対応にしていない
+//ある色の値を閾値として、それよりも大きい値の色を指定すると曲げ角度が急激に変化する(deform関数のColor2Angleを参照)
+//閾値の編集
 void Model::SetMaxFold(double val){
     ColorPt.angle = val * std::numbers::pi/180.0;
     if(!outline->IsClosed())return;
@@ -91,7 +93,9 @@ void Model::SetMaxFold(double val){
     deform();
 }
 
-
+//rulingに割り当てられた色から離散可展面を作成(折り目を含めない)
+//色 -> 曲げ角度では閾値をColorPoint変数で定義
+//閾値を境界としてrulingに割り当てられた色と曲げ角度は折れ線のような形状となる
 void Model::deform(){
     auto Color2Angle = [](double a, ColorPoint CP){
         if(-CP.color <= a && a <= CP.color) return -a * CP.angle/CP.color;
@@ -160,7 +164,8 @@ void Model::deform(){
     }
 }
 
-void Model::ChangeFoldLineState(){
+//折り目の追加と不要な折り目(制御点の数が足りずベジエ曲線を作成できないもの)の削除
+void Model::RemoveUnable2GenCurve(){
     std::queue<std::shared_ptr<TreeNode<std::shared_ptr<FoldLine>>>> q;
     for(auto&btmcrease: NTree_Creases.GetRoot()->children)q.push(btmcrease);
     while (!q.empty()) {
@@ -170,6 +175,7 @@ void Model::ChangeFoldLineState(){
     }
 }
 
+//線分とベジエ曲線で表される折り目の交点を計算
 std::vector<std::shared_ptr<CrvPt_FL>> getCrossPoint(std::vector<Eigen::Vector3d>& CtrlPts,  const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o, int dim){
     std::vector<double>arcT = BezierClipping(CtrlPts, v, o, dim);
     std::vector<std::shared_ptr<CrvPt_FL>> P;
@@ -186,16 +192,6 @@ std::vector<std::shared_ptr<CrvPt_FL>> getCrossPoint(std::vector<Eigen::Vector3d
 }
 
 void Model::initializeSurfaceVertices(){ for(auto&v: outline->vertices)v->p3 = v->p3_ori;}
-
-void Model::RemoveUnable2GenCurve(){
-    std::queue<std::shared_ptr<TreeNode<std::shared_ptr<FoldLine>>>> q;
-    for(auto&btmcrease: NTree_Creases.GetRoot()->children)q.push(btmcrease);
-    while (!q.empty()) {
-        std::shared_ptr<TreeNode<std::shared_ptr<FoldLine>>> cur = q.front(); q.pop();
-        for (auto child : cur->children){if (child != nullptr)q.push(child);}
-        if(cur->data->CtrlPts.size() <= 3 && cur->data != refCreases)NTree_Creases.Erase(cur->data);
-    }
-}
 
 
 //曲線同士の交差を想定しない
@@ -304,6 +300,7 @@ void Model::MakeTree(std::shared_ptr<FoldLine>& NewCrease){
 template <typename T>
 bool IsOverlapped(std::shared_ptr<T>&p, std::shared_ptr<T>&q){return ((p->p - q->p).norm() < 1e-8)? true: false;};
 
+//端点の空間座標の計算
 void Model::SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::shared_ptr<Line>>& Surface, const std::vector<std::shared_ptr<Line>>& Rulings, bool IsupdateEndPt){
     int s = Surface.size();
     std::shared_ptr<Vertex> prev = nullptr, next = nullptr;
@@ -403,7 +400,7 @@ void Model::SetEndPoint(std::shared_ptr<Vertex4d>&v4d, const std::vector<std::sh
 
 //曲面の輪郭がもつ三次元上の頂点を正しい位置に配置する
 //端点の修正は曲面の頂点修正後に行う
-void Model::SetOnVertices_outline(bool IsupdateEndPt){
+void Model::SetOnVertices_outline(){
     class vertexinfo{
     public:
         std::shared_ptr<Vertex> v;
@@ -575,9 +572,6 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
             auto itr = std::find_if(Rulings.begin(), Rulings.end(), [&](const std::shared_ptr<Line>& r){return (prev->p == r->o->p && next->p == r->v->p) || (prev->p == r->v->p && next->p == r->o->p);});
             if(itr != Rulings.end() || basePt == nullptr){}
             else{
-                //prevとnextがsecond, firstで構成あるいはthird, firstで構成されてないと計算がおかしい
-                //条件を満たす場合にのみ頂点位置を計算する←考えが正しいのかわからない＋例外処理としてほかのケースもありそう
-
                 Eigen::Vector3d po = outline->vertices[i]->p - basePt->p, a = prev->p - basePt->p, b = next->p - basePt->p;
                 double s,t;
                 if(a.norm() < 1e-15 || b.norm() < 1e-15) continue;
@@ -602,23 +596,10 @@ void Model::SetOnVertices_outline(bool IsupdateEndPt){
     }
 }
 
-bool Model::Modify4LastFoldLine(std::shared_ptr<FoldLine>& tar, double wp, double wsim){
-    std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
-
-    tar->applyAAAMethod(Poly_V, tar->a_flap);
-    tar->PropagateOptimization_Vertex(Poly_V, wp, wsim);
-    tar->applyAAAMethod(Poly_V, tar->a_flap);
-    //tar->CheckIsCrossedRulings();
-    SetOnVertices_outline(false);
-    //tar->SimpleSmooothSrf(Poly_V);
-    return true;
-}
-
+//曲線折りの実行
 bool Model::BendingModel(double wp, double wsim, int dim, int alg){
-
     AddNewCrease(refCreases);
     if(NTree_Creases.GetRoot()->children.empty())return false;
-
     std::vector<std::shared_ptr<Vertex>> Poly_V = outline->getVertices();
     std::queue<std::shared_ptr<TreeNode<std::shared_ptr<FoldLine>>>> q; 
     for(auto&btmcrease: NTree_Creases.GetRoot()->children)q.push(btmcrease);
@@ -642,10 +623,11 @@ bool Model::BendingModel(double wp, double wsim, int dim, int alg){
             }
         }     
     }
-    SetOnVertices_outline(false);
+    SetOnVertices_outline();
     return true;
 }
 
+//曲面の輪郭上にのっている頂点の情報をかえす
 std::vector<vertexinfo> Model::MappingVertex(bool IsRemovingOverlapping){
     std::vector<vertexinfo> VerticesInfo;
     for(auto&v: outline->vertices)VerticesInfo.push_back(vertexinfo(v, 0));
@@ -680,6 +662,7 @@ std::vector<vertexinfo> Model::MappingVertex(bool IsRemovingOverlapping){
     return VerticesInfo;
 }
 
+//折り目を追加したときの木構造の再構成
 bool Model::AddNewCrease(std::shared_ptr<FoldLine>& NewCrease){
     if(NewCrease == nullptr)return false;
     MakeTree(NewCrease);
@@ -698,6 +681,7 @@ bool Model::AddNewCrease(std::shared_ptr<FoldLine>& NewCrease){
     return true;
 }
 
+//rulingと折り目の交点を計算し三次元区間上の折り目の頂点座標の計算
 bool Model::SplitRulings(int dim){
     Eigen::Vector3d UpVec(0,-1,0);
     if(NTree_Creases.GetRoot()->children.empty())return false;
@@ -741,11 +725,13 @@ bool Model::SplitRulings(int dim){
     return true;
 }
 
+//折り目を最小二乗平面上に乗せる
 void Model::flatten_lsp(std::shared_ptr<FoldLine>& FldLine){
     if(!NTree_Creases.find(FldLine))return;
     _flatten_lsp(FldLine);
 }
 
+//折り目とrulingの交点を間引く
 void Model::SimplifyModel(int iselim){
     if(refCreases == nullptr || refCreases->FoldingCurve.empty())return;
     bool isroot = false;
@@ -757,6 +743,7 @@ void Model::SimplifyModel(int iselim){
     refCreases->SimplifyModel(validsize, isroot);
 }
 
+//間引いた後にrulingの向きを修正して滑らかさの補間(可展性を考慮していない)
 bool Model::Smoothing(){
     auto root = NTree_Creases.GetRoot();
     if(root == nullptr)return false;
@@ -1074,7 +1061,6 @@ bool Model::ControlPoint(PaintTool dtype, int event, QPointF p, int curveDimenti
                 RulingCurve.shrink_to_fit();
                 refCrv.shrink_to_fit();
                 if(outline->IsClosed() && res){
-                    if(RulingCurve[DelIndex[0]]->getCurveType() == CurveType::bezier3)RulingCurve[DelIndex[0]]->BezierRulings(outline, DivSize, crvPtNum);
                     if(RulingCurve[DelIndex[0]]->getCurveType() == CurveType::bsp3)RulingCurve[DelIndex[0]]->BsplineRulings(outline, DivSize, crvPtNum, curveDimention);
                     addRulings();
                 }

@@ -13,42 +13,6 @@ namespace MathTool{
     double rad2deg(double a){return a * 180.0/std::numbers::pi;}
     double deg2rad(double a){return a * std::numbers::pi/180.0;}
 
-    Eigen::Vector3d PCA(std::vector<Eigen::Vector3d>& X, Eigen::Vector3d& o) {
-
-
-        o = Eigen::Vector3d(0, 0, 0);
-        for (auto& x : X)o += x;
-        o /= static_cast<double>(X.size());
-
-        Eigen::MatrixXd M(3, static_cast<int>(X.size()));
-        for (int i = 0; i < (int)X.size(); i++)M.col(i) = X[i] - o;
-        Eigen::MatrixXd S = (M * (M.transpose()))/(double)X.size();//共分散行列
-        Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> ES(S);
-        Eigen::Vector3d e,v0,v1,v2;
-        //hoge
-        //e = ES.eigenvalues(); Eigen::MatrixXd U = ES.eigenvectors();
-        //Eigen::Vector3d v0 = Eigen::Vector3d(U.col(0).x(), U.col(0).y(), U.col(0).z()), v1 = Eigen::Vector3d(U.col(1).x(), U.col(1).y(), U.col(1).z()), v2 = Eigen::Vector3d(U.col(2).x(), U.col(2).y(), U.col(2).z());
-        double minelem = std::min({e(0), e(1), e(2)});
-        if(minelem == e(0)){
-            return (v1.cross(v2)).normalized();
-        }else if(minelem == e(1)){
-            return (v1.cross(v2)).normalized();
-        }else{
-            return (v1.cross(v2)).normalized();
-        }
-    }
-    Eigen::Vector3d CrossPointLineAndPlane(Eigen::Vector3d e, Eigen::Vector3d e2, Eigen::Vector3d o, Eigen::Vector3d p, Eigen::Vector3d v){
-        e = e.normalized(); e2 = e2.normalized(); v = (v - p).normalized();
-        //Eigen::Vector3d e = (ValidFC[i]->first->p3 - ValidFC[i-1]->first->p3).normalized(), e2 = (ValidFC[i-2]->first->p3 - ValidFC[i-1]->first->p3).normalized();
-        //Eigen::Vector3d v = (ValidFC[i+1]->first->p3 - ValidFC[i+1]->third->p3).normalized();
-        Eigen::Matrix3d A;
-        A.col(0) = e; A.col(1) = e2; A.col(2) = -v;
-        Eigen::Vector3d b = p - o;
-        //Eigen::Vector3d b = ValidFC[i+1]->third->p3 - ValidFC[i-1]->first->p3;
-        Eigen::Vector3d x = A.colPivHouseholderQr().solve(b);
-        return x(2)*v + p;
-    }
-
     Eigen::Vector3d bspline(std::vector<Eigen::Vector3d>&CtrlPts, double t, int dim, std::vector<double>Knot){
         Eigen::Vector3d vec(0,0,0);
         for(int j = 0; j < (int)CtrlPts.size(); j++){
@@ -58,6 +22,7 @@ namespace MathTool{
         return vec;
     }
 
+    //p1,p2からなる線分とp3,p4からなる線分が交差しているかの判定
     bool IsIntersect(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, const Eigen::Vector3d& p3, const Eigen::Vector3d& p4, Eigen::Vector3d& q, bool ConsiderEnd){
         auto set3pt = [](const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, const Eigen::Vector3d& p3) {
             return (p2(0) - p1(0)) * (p3(1) - p1(1)) - (p2(1) - p1(1)) * (p3(0) - p1(0));
@@ -78,28 +43,7 @@ namespace MathTool{
         return false;
     }
 
-    bool IsAngleLessThan180(Eigen::Vector3d& o, Eigen::Vector3d& a, Eigen::Vector3d& b){
-        Eigen::Vector3d ao = (a - o), bo = (b - o);
-        ao = ao.normalized(); bo = bo.normalized();
-        Eigen::Vector3d Normal = ao.cross(bo);
-        Eigen::Vector3d BiNormal = ao.cross(Normal);
-        return (BiNormal.dot(bo) < 0)? true: false;
-    }
-
-    bool hasPointInTriangle3D(const Eigen::Vector3d& p, std::array<Eigen::Vector3d, 3>& V){
-        double angle = 0.0;
-        Eigen::Vector3d v1, v2;
-        int n = V.size();
-        for(int i = 0; i < n; i++){
-            v1 = V[i] - p; v1 = v1.normalized();
-            v2 = V[(i + 1) % n] - p; v2 = v2.normalized();
-            angle += std::acos(v1.dot(v2));
-        }
-
-        return (angle >= 2 * std::numbers::pi - 1e-9)? true: false;
-    }
-
-
+    //bezier clippingの中身
     std::vector<double> _bezierclipping(const std::vector<Eigen::Vector3d>&CtrlPts_base, std::vector<Eigen::Vector3d>&CtrlPts_cur, std::array<Eigen::Vector3d, 2>& line, int dim){
         double t_min = 1, t_max = 0;
         Eigen::Vector3d p = line[0], q = line[1];
@@ -179,6 +123,7 @@ namespace MathTool{
         return S;
     }
 
+    //二つのベクトルの交点座標の計算（二次元平面上でのみ扱う）
     Eigen::Vector3d calcCrossPoint_2Vector(Eigen::Vector3d p1, Eigen::Vector3d q1, Eigen::Vector3d p2, Eigen::Vector3d q2){
         double t = ((p2.x() - p1.x())*(p2.y() - q2.y()) - (p2.x() - q2.x())*(p2.y() - p1.y()))/((q1.x() - p1.x()) * (p2.y() - q2.y()) - (p2.x() - q2.x())*(q1.y() - p1.y()));
         return Eigen::Vector3d(t * (q1.x() - p1.x()) + p1.x(), t * (q1.y() - p1.y()) + p1.y(), 0);
@@ -190,6 +135,7 @@ namespace MathTool{
         return v.x() * v2.y() - v.y() * v2.x();
     }
 
+    //lp1, lp2からなる線分上に頂点pがあるかの判定
     bool is_point_on_line(Eigen::Vector3d p, Eigen::Vector3d lp1, Eigen::Vector3d lp2){
         double ac = (p - lp1).norm(), bc = (p - lp2).norm(), lp = (lp1 - lp2).norm();
         return ((ac < 1e-7 || bc < 1e-7) || abs(lp - ac - bc) < 1e-7)? true: false;
@@ -226,10 +172,7 @@ namespace MathTool{
 
 
     double basis(int n, int i, int p, double u, std::vector<double>& U){
-        //if((U[0] <= u && u <= U[i]) && (U[i+p] <= u && u <= U[n+p]))return 0;
         if(p == 0){return (U[i] <= u && u < U[i+1]) ? 1: 0;}
-        //double a = (U[i+p] != U[i])? (u - U[i])/(U[i+p] - U[i]): (u == U[i+p] && U[i] != 0) ? 1: 0;
-        //double b = (U[i+p+1] != U[i+1])? (U[i+p+1] - u)/(U[i+p+1] - U[i+1])? (U[i+1] == u && U[i+p+1] != 0): 1: 0;
         double a = (U[i+p] != U[i])? (u - U[i])/(U[i+p] - U[i]): 0;
         double b = (U[i+p+1] != U[i+1])? (U[i+p+1] - u)/(U[i+p+1] - U[i+1]): 0;
         return a * basis(n,i,p-1,u,U) + b * basis(n,i+1,p-1,u,U);

@@ -6,7 +6,7 @@ Eigen::Vector3d find_plane(const std::vector<Eigen::Vector3d>& X, Eigen::Vector3
     com = A.rowwise().mean();
     for(int i = 0; i < (int)X.size(); i++)A.col(i) -= com;
     A = A * A.transpose();
-    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> ES(A);//固有値問題
+    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> ES(A);
     Eigen::VectorXd e = ES.eigenvalues();
     Eigen::MatrixXd U = ES.eigenvectors();
     Eigen::VectorXd::Index minId;
@@ -15,6 +15,7 @@ Eigen::Vector3d find_plane(const std::vector<Eigen::Vector3d>& X, Eigen::Vector3
     return N;
 }
 
+//最小二乗平面に折り目をのせる
 void _flatten_lsp(std::shared_ptr<FoldLine>& FldLine){
     std::vector<Eigen::Vector3d> data;
     std::vector<std::shared_ptr<Vertex4d>> ValidFC;

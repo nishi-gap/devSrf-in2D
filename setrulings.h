@@ -87,7 +87,7 @@ public:
 
     bool drawBspline(int curveDimention,  int crvPtNum);
     bool drawBezier(int curveDimention, int crvPtNum);
-    void BezierRulings(std::shared_ptr<OUTLINE>& outline, int& DivSize, int crvPtNum);
+
     void BsplineRulings(std::shared_ptr<OUTLINE>& outline , int& DivSize, int crvPtNum, int curveDimention);
     bool drawLine();
     void LineRulings(std::shared_ptr<OUTLINE>& outline, int DivSize);
@@ -141,14 +141,12 @@ public:
     Eigen::Vector2d origin;//polygonの始点
     int hasPtNum; //0 ~ 2 (polygonの点の数)
     bool IsPointInFace(Eigen::Vector3d p);
-    Eigen::Vector3d getNormalVec();
 private:
 
     int movePointIndex(Eigen::Vector3d p);
 };
 
 void CrossDetection(std::shared_ptr<OUTLINE>& outline, std::shared_ptr<CRV>& crvs);
-std::shared_ptr<Vertex> getClosestVertex(const std::shared_ptr<Vertex>& v, const std::shared_ptr<Vertex>& o,  const std::vector<std::shared_ptr<Vertex4d>>& FoldingCurve, bool SkipTrimedPoint);
 std::vector<double> BezierClipping(std::vector<Eigen::Vector3d>&CtrlPts, const std::shared_ptr<Vertex>& p, const std::shared_ptr<Vertex>& q, int dim);
 std::vector<std::shared_ptr<Vertex>> SortPolygon(std::vector<std::shared_ptr<Vertex>>& polygon);
 std::vector<std::vector<std::shared_ptr<Vertex>>> MakeModel(const std::vector<std::shared_ptr<Line>>& Surface,

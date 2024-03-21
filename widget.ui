@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1402</width>
-    <height>847</height>
+    <height>647</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,24 +17,11 @@
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>10</y>
+     <y>0</y>
      <width>621</width>
      <height>411</height>
     </rect>
    </property>
-   <widget class="Line" name="line_4">
-    <property name="geometry">
-     <rect>
-      <x>-10</x>
-      <y>0</y>
-      <width>20</width>
-      <height>451</height>
-     </rect>
-    </property>
-    <property name="orientation">
-     <enum>Qt::Vertical</enum>
-    </property>
-   </widget>
    <widget class="Line" name="line_6">
     <property name="geometry">
      <rect>
@@ -52,85 +39,103 @@
   <widget class="QGroupBox" name="CurveListBox">
    <property name="geometry">
     <rect>
-     <x>510</x>
-     <y>420</y>
+     <x>200</x>
+     <y>410</y>
      <width>151</width>
-     <height>231</height>
+     <height>181</height>
     </rect>
    </property>
    <property name="title">
     <string>Ruling Control Curve</string>
    </property>
-   <widget class="QWidget" name="verticalLayoutWidget">
+   <widget class="QPushButton" name="curve_add">
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>20</y>
-      <width>121</width>
-      <height>204</height>
+      <y>30</y>
+      <width>119</width>
+      <height>24</height>
      </rect>
     </property>
-    <layout class="QVBoxLayout" name="verticalLayout">
-     <item>
-      <widget class="QPushButton" name="curve_add">
-       <property name="text">
-        <string>Add Curve</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="delete_curve">
-       <property name="text">
-        <string>Delete Curve</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="CurveTypeBox">
-       <property name="currentText">
-        <string>Line</string>
-       </property>
-       <item>
-        <property name="text">
-         <string>Line</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>B-spline</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Arc</string>
-        </property>
-       </item>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="move_ctrl_pt">
-       <property name="text">
-        <string>Move Control Point</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="insert_ctrl_pt">
-       <property name="text">
-        <string>Insert Control Point</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
+    <property name="text">
+     <string>Add Curve</string>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="CurveTypeBox">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>60</y>
+      <width>119</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="currentText">
+     <string>Line</string>
+    </property>
+    <item>
+     <property name="text">
+      <string>Line</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>B-spline</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Arc</string>
+     </property>
+    </item>
+   </widget>
+   <widget class="QPushButton" name="delete_curve">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>90</y>
+      <width>119</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Delete Curve</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="move_ctrl_pt">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>120</y>
+      <width>119</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Move Control Point</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="insert_ctrl_pt">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>150</y>
+      <width>119</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Insert Control Point</string>
+    </property>
    </widget>
   </widget>
   <widget class="QGroupBox" name="GradationBox">
    <property name="geometry">
     <rect>
-     <x>340</x>
-     <y>420</y>
+     <x>360</x>
+     <y>410</y>
      <width>161</width>
-     <height>281</height>
+     <height>191</height>
     </rect>
    </property>
    <property name="title">
@@ -224,46 +229,14 @@
      <string>binary MV color</string>
     </property>
    </widget>
-   <widget class="QSlider" name="LineWidthSlider">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>250</y>
-      <width>141</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="minimum">
-     <number>0</number>
-    </property>
-    <property name="maximum">
-     <number>100</number>
-    </property>
-    <property name="orientation">
-     <enum>Qt::Horizontal</enum>
-    </property>
-   </widget>
-   <widget class="QLabel" name="label_3">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>230</y>
-      <width>121</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>ruling line width</string>
-    </property>
-   </widget>
   </widget>
   <widget class="QGroupBox" name="OutlineBox">
    <property name="geometry">
     <rect>
-     <x>20</x>
-     <y>420</y>
+     <x>30</x>
+     <y>410</y>
      <width>161</width>
-     <height>131</height>
+     <height>171</height>
     </rect>
    </property>
    <property name="title">
@@ -308,7 +281,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>PolyLine</string>
+     <string>Polyline</string>
     </property>
    </widget>
    <widget class="QCheckBox" name="outline_rectangle">
@@ -324,12 +297,44 @@
      <string>Rectangle</string>
     </property>
    </widget>
+   <widget class="QSlider" name="LineWidthSlider">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>140</y>
+      <width>141</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="minimum">
+     <number>0</number>
+    </property>
+    <property name="maximum">
+     <number>100</number>
+    </property>
+    <property name="orientation">
+     <enum>Qt::Horizontal</enum>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_3">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>120</y>
+      <width>121</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>ruling line width</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QGroupBox" name="DivideSizeBox">
    <property name="geometry">
     <rect>
-     <x>200</x>
-     <y>420</y>
+     <x>860</x>
+     <y>410</y>
      <width>121</width>
      <height>131</height>
     </rect>
@@ -414,10 +419,10 @@
   <widget class="QGroupBox" name="OtherBox">
    <property name="geometry">
     <rect>
-     <x>850</x>
-     <y>400</y>
+     <x>680</x>
+     <y>410</y>
      <width>171</width>
-     <height>161</height>
+     <height>131</height>
     </rect>
    </property>
    <property name="title">
@@ -479,10 +484,10 @@
   <widget class="QGroupBox" name="LayerListWidget">
    <property name="geometry">
     <rect>
-     <x>1160</x>
-     <y>450</y>
+     <x>1030</x>
+     <y>410</y>
      <width>141</width>
-     <height>311</height>
+     <height>201</height>
     </rect>
    </property>
    <property name="title">
@@ -493,9 +498,9 @@
    <property name="geometry">
     <rect>
      <x>640</x>
-     <y>10</y>
+     <y>0</y>
      <width>631</width>
-     <height>371</height>
+     <height>411</height>
     </rect>
    </property>
   </widget>
@@ -515,8 +520,8 @@
   <widget class="QGroupBox" name="FoldLineBox">
    <property name="geometry">
     <rect>
-     <x>680</x>
-     <y>400</y>
+     <x>530</x>
+     <y>410</y>
      <width>141</width>
      <height>211</height>
     </rect>
